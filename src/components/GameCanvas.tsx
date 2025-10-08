@@ -1,17 +1,20 @@
 import { forwardRef, useEffect } from "react";
-import type { Brick, Ball, Paddle, GameState } from "./Game";
+import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet } from "@/types/game";
 
 interface GameCanvasProps {
   width: number;
   height: number;
   bricks: Brick[];
-  ball: Ball | null;
+  balls: Ball[];
   paddle: Paddle | null;
   gameState: GameState;
+  powerUps: PowerUp[];
+  bullets: Bullet[];
+  stuckBalls: Ball[];
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, ball, paddle, gameState }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, stuckBalls }, ref) => {
     useEffect(() => {
       const canvas = ref as React.RefObject<HTMLCanvasElement>;
       if (!canvas.current) return;
@@ -53,11 +56,13 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height / 2);
         }
 
-        // Draw ball
-        if (ball) {
+        // Draw balls
+        [...balls, ...stuckBalls].forEach((ball) => {
+          const ballColor = ball.isFireball ? "hsl(30, 100%, 60%)" : "hsl(330, 100%, 65%)";
+          
           ctx.shadowBlur = 25;
-          ctx.shadowColor = "hsl(330, 100%, 65%)";
-          ctx.fillStyle = "hsl(330, 100%, 65%)";
+          ctx.shadowColor = ballColor;
+          ctx.fillStyle = ballColor;
           ctx.beginPath();
           ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
           ctx.fill();
@@ -68,6 +73,43 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.beginPath();
           ctx.arc(ball.x - 2, ball.y - 2, ball.radius / 2, 0, Math.PI * 2);
           ctx.fill();
+
+          // Fireball trail effect
+          if (ball.isFireball) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "hsl(30, 100%, 60%)";
+            ctx.fillStyle = "hsla(30, 100%, 60%, 0.3)";
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
+
+        // Draw power-ups
+        powerUps.forEach((powerUp) => {
+          if (!powerUp.active) return;
+
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = "hsl(280, 100%, 70%)";
+          ctx.fillStyle = "hsl(280, 100%, 70%)";
+          ctx.fillRect(powerUp.x, powerUp.y, powerUp.width, powerUp.height);
+        });
+
+        // Draw bullets
+        bullets.forEach((bullet) => {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = "hsl(180, 100%, 60%)";
+          ctx.fillStyle = "hsl(180, 100%, 60%)";
+          ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+        });
+
+        // Draw turrets on paddle
+        if (paddle && paddle.hasTurrets) {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = "hsl(30, 100%, 60%)";
+          ctx.fillStyle = "hsl(30, 100%, 60%)";
+          ctx.fillRect(paddle.x + 5, paddle.y - 10, 8, 10);
+          ctx.fillRect(paddle.x + paddle.width - 13, paddle.y - 10, 8, 10);
         }
 
         // Game state overlay
@@ -102,7 +144,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       };
 
       animate();
-    }, [ref, width, height, bricks, ball, paddle, gameState]);
+    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, stuckBalls]);
 
     return (
       <canvas

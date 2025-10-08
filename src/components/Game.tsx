@@ -2,89 +2,73 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { GameCanvas } from "./GameCanvas";
 import { GameUI } from "./GameUI";
 import { toast } from "sonner";
-
-export interface Brick {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  color: string;
-  visible: boolean;
-  points: number;
-}
-
-export interface Ball {
-  x: number;
-  y: number;
-  dx: number;
-  dy: number;
-  radius: number;
-  speed: number;
-}
-
-export interface Paddle {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-export type GameState = "ready" | "playing" | "paused" | "gameOver" | "won";
+import type { Brick, Ball, Paddle, GameState } from "@/types/game";
+import { 
+  CANVAS_WIDTH, 
+  CANVAS_HEIGHT, 
+  PADDLE_WIDTH, 
+  PADDLE_HEIGHT, 
+  BALL_RADIUS,
+  BRICK_ROWS,
+  BRICK_COLS,
+  BRICK_WIDTH,
+  BRICK_HEIGHT,
+  BRICK_PADDING,
+  BRICK_OFFSET_TOP,
+  BRICK_OFFSET_LEFT,
+  brickColors,
+  POWERUP_DROP_CHANCE
+} from "@/constants/game";
+import { usePowerUps } from "@/hooks/usePowerUps";
+import { useBullets } from "@/hooks/useBullets";
+import { soundManager } from "@/utils/sounds";
 
 export const Game = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
+  const [level, setLevel] = useState(1);
   const [gameState, setGameState] = useState<GameState>("ready");
   const [bricks, setBricks] = useState<Brick[]>([]);
-  const ballRef = useRef<Ball | null>(null);
-  const paddleRef = useRef<Paddle | null>(null);
+  const [balls, setBalls] = useState<Ball[]>([]);
+  const [paddle, setPaddle] = useState<Paddle | null>(null);
+  const [glueActive, setGlueActive] = useState(false);
+  const [stuckBalls, setStuckBalls] = useState<Ball[]>([]);
   const animationFrameRef = useRef<number>();
+  const nextBallId = useRef(1);
 
-  const CANVAS_WIDTH = 800;
-  const CANVAS_HEIGHT = 600;
-  const PADDLE_WIDTH = 100;
-  const PADDLE_HEIGHT = 12;
-  const BALL_RADIUS = 8;
-  const BRICK_ROWS = 5;
-  const BRICK_COLS = 10;
-  const BRICK_WIDTH = 70;
-  const BRICK_HEIGHT = 25;
-  const BRICK_PADDING = 10;
-  const BRICK_OFFSET_TOP = 60;
-  const BRICK_OFFSET_LEFT = 35;
-
-  const brickColors = [
-    "hsl(330, 100%, 65%)", // pink
-    "hsl(30, 100%, 60%)",  // orange
-    "hsl(280, 100%, 70%)", // purple
-    "hsl(180, 100%, 60%)", // cyan
-    "hsl(120, 100%, 60%)", // green
-  ];
+  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives);
+  const { bullets, fireBullets, updateBullets } = useBullets(setScore, setBricks);
 
   const initGame = useCallback(() => {
     // Initialize paddle
-    paddleRef.current = {
+    setPaddle({
       x: CANVAS_WIDTH / 2 - PADDLE_WIDTH / 2,
       y: CANVAS_HEIGHT - 40,
       width: PADDLE_WIDTH,
       height: PADDLE_HEIGHT,
-    };
+      hasGlue: false,
+      hasTurrets: false,
+    });
 
     // Initialize ball
-    ballRef.current = {
+    const initialBall: Ball = {
       x: CANVAS_WIDTH / 2,
       y: CANVAS_HEIGHT - 60,
       dx: 3,
       dy: -3,
       radius: BALL_RADIUS,
       speed: 3,
+      id: nextBallId.current++,
+      isFireball: false,
     };
+    setBalls([initialBall]);
 
     // Initialize bricks
     const newBricks: Brick[] = [];
     for (let row = 0; row < BRICK_ROWS; row++) {
       for (let col = 0; col < BRICK_COLS; col++) {
+        const hasPowerUp = Math.random() < POWERUP_DROP_CHANCE;
         newBricks.push({
           x: col * (BRICK_WIDTH + BRICK_PADDING) + BRICK_OFFSET_LEFT,
           y: row * (BRICK_HEIGHT + BRICK_PADDING) + BRICK_OFFSET_TOP,
@@ -93,35 +77,77 @@ export const Game = () => {
           color: brickColors[row],
           visible: true,
           points: (BRICK_ROWS - row) * 10,
+          hasPowerUp,
         });
       }
     }
     setBricks(newBricks);
     setScore(0);
     setLives(3);
+    setLevel(1);
     setGameState("ready");
-  }, []);
+    setPowerUps([]);
+    setGlueActive(false);
+    setStuckBalls([]);
+  }, [setPowerUps]);
 
   useEffect(() => {
     initGame();
   }, [initGame]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!canvasRef.current || !paddleRef.current || gameState !== "playing") return;
+    if (!canvasRef.current || !paddle || gameState !== "playing") return;
     
     const rect = canvasRef.current.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
-    paddleRef.current.x = Math.max(0, Math.min(CANVAS_WIDTH - PADDLE_WIDTH, mouseX - PADDLE_WIDTH / 2));
-  }, [gameState, CANVAS_WIDTH, PADDLE_WIDTH]);
+    const newX = Math.max(0, Math.min(CANVAS_WIDTH - PADDLE_WIDTH, mouseX - PADDLE_WIDTH / 2));
+    
+    setPaddle(prev => prev ? { ...prev, x: newX } : null);
+    
+    // Move stuck balls with paddle
+    if (glueActive && stuckBalls.length > 0) {
+      setStuckBalls(prev => prev.map(ball => ({
+        ...ball,
+        x: newX + PADDLE_WIDTH / 2
+      })));
+    }
+  }, [gameState, paddle, glueActive, stuckBalls]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!canvasRef.current || !paddleRef.current || gameState !== "playing") return;
+    if (!canvasRef.current || !paddle || gameState !== "playing") return;
     
     e.preventDefault();
     const rect = canvasRef.current.getBoundingClientRect();
     const touchX = e.touches[0].clientX - rect.left;
-    paddleRef.current.x = Math.max(0, Math.min(CANVAS_WIDTH - PADDLE_WIDTH, touchX - PADDLE_WIDTH / 2));
-  }, [gameState, CANVAS_WIDTH, PADDLE_WIDTH]);
+    const newX = Math.max(0, Math.min(CANVAS_WIDTH - PADDLE_WIDTH, touchX - PADDLE_WIDTH / 2));
+    
+    setPaddle(prev => prev ? { ...prev, x: newX } : null);
+    
+    // Move stuck balls with paddle
+    if (glueActive && stuckBalls.length > 0) {
+      setStuckBalls(prev => prev.map(ball => ({
+        ...ball,
+        x: newX + PADDLE_WIDTH / 2
+      })));
+    }
+  }, [gameState, paddle, glueActive, stuckBalls]);
+
+  const handleClick = useCallback(() => {
+    if (!paddle || gameState !== "playing") return;
+
+    // Release stuck balls
+    if (glueActive && stuckBalls.length > 0) {
+      setBalls(prev => [...prev, ...stuckBalls]);
+      setStuckBalls([]);
+      setGlueActive(false);
+      setPaddle(prev => prev ? { ...prev, hasGlue: false } : null);
+    }
+
+    // Fire turrets
+    if (paddle.hasTurrets) {
+      fireBullets(paddle);
+    }
+  }, [paddle, gameState, glueActive, stuckBalls, fireBullets]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -129,99 +155,165 @@ export const Game = () => {
 
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+    canvas.addEventListener("click", handleClick);
 
     return () => {
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("touchmove", handleTouchMove);
+      canvas.removeEventListener("click", handleClick);
     };
-  }, [handleMouseMove, handleTouchMove]);
+  }, [handleMouseMove, handleTouchMove, handleClick]);
 
   const checkCollision = useCallback(() => {
-    const ball = ballRef.current;
-    const paddle = paddleRef.current;
-    if (!ball || !paddle) return;
+    if (!paddle || balls.length === 0) return;
 
-    // Wall collision
-    if (ball.x + ball.dx > CANVAS_WIDTH - ball.radius || ball.x + ball.dx < ball.radius) {
-      ball.dx = -ball.dx;
-    }
-    if (ball.y + ball.dy < ball.radius) {
-      ball.dy = -ball.dy;
-    }
+    setBalls(prevBalls => {
+      let updatedBalls = prevBalls.map(ball => {
+        let newBall = { ...ball };
 
-    // Paddle collision
-    if (
-      ball.y + ball.dy > paddle.y - ball.radius &&
-      ball.x > paddle.x &&
-      ball.x < paddle.x + paddle.width &&
-      ball.dy > 0
-    ) {
-      const hitPos = (ball.x - paddle.x) / paddle.width;
-      const angle = (hitPos - 0.5) * Math.PI * 0.6;
-      const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-      ball.dx = speed * Math.sin(angle);
-      ball.dy = -speed * Math.cos(angle);
-    }
-
-    // Bottom collision (lose life)
-    if (ball.y + ball.dy > CANVAS_HEIGHT - ball.radius) {
-      setLives((prev) => {
-        const newLives = prev - 1;
-        if (newLives <= 0) {
-          setGameState("gameOver");
-          toast.error("Game Over!");
-        } else {
-          // Reset ball
-          ball.x = CANVAS_WIDTH / 2;
-          ball.y = CANVAS_HEIGHT - 60;
-          ball.dx = 3;
-          ball.dy = -3;
-          toast("Life lost!");
+        // Wall collision
+        if (newBall.x + newBall.dx > CANVAS_WIDTH - newBall.radius || newBall.x + newBall.dx < newBall.radius) {
+          newBall.dx = -newBall.dx;
         }
-        return newLives;
-      });
-    }
+        if (newBall.y + newBall.dy < newBall.radius) {
+          newBall.dy = -newBall.dy;
+        }
 
-    // Brick collision
-    setBricks((prevBricks) => {
-      let brickHit = false;
-      const newBricks = prevBricks.map((brick) => {
+        // Paddle collision
         if (
-          !brickHit &&
-          brick.visible &&
-          ball.x + ball.radius > brick.x &&
-          ball.x - ball.radius < brick.x + brick.width &&
-          ball.y + ball.radius > brick.y &&
-          ball.y - ball.radius < brick.y + brick.height
+          newBall.y + newBall.dy > paddle.y - newBall.radius &&
+          newBall.x > paddle.x &&
+          newBall.x < paddle.x + paddle.width &&
+          newBall.dy > 0
         ) {
-          brickHit = true;
-          ball.dy = -ball.dy;
-          setScore((prev) => prev + brick.points);
-          return { ...brick, visible: false };
-        }
-        return brick;
-      });
+          // Check for glue paddle
+          if (paddle.hasGlue && !glueActive) {
+            setGlueActive(true);
+            setStuckBalls(prev => [...prev, newBall]);
+            return null; // Remove from active balls
+          }
 
-      // Check win condition
-      if (newBricks.every((brick) => !brick.visible)) {
-        setGameState("won");
-        toast.success("You Won! 🎉");
+          soundManager.playBounce();
+          
+          const hitPos = (newBall.x - paddle.x) / paddle.width;
+          const angle = (hitPos - 0.5) * Math.PI * 0.6;
+          const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
+          newBall.dx = speed * Math.sin(angle);
+          newBall.dy = -speed * Math.cos(angle);
+        }
+
+        // Bottom collision (lose life)
+        if (newBall.y + newBall.dy > CANVAS_HEIGHT - newBall.radius) {
+          // Remove this ball
+          return null;
+        }
+
+        // Brick collision
+        setBricks((prevBricks) => {
+          let brickHit = false;
+          const newBricks = prevBricks.map((brick) => {
+            if (
+              !brickHit &&
+              brick.visible &&
+              newBall.x + newBall.radius > brick.x &&
+              newBall.x - newBall.radius < brick.x + brick.width &&
+              newBall.y + newBall.radius > brick.y &&
+              newBall.y - newBall.radius < brick.y + brick.height
+            ) {
+              brickHit = true;
+              
+              // Only bounce if not fireball
+              if (!newBall.isFireball) {
+                newBall.dy = -newBall.dy;
+              }
+              
+              soundManager.playBrickHit();
+              setScore((prev) => prev + brick.points);
+
+              // Create power-up if brick has one
+              if (brick.hasPowerUp) {
+                const powerUp = createPowerUp(brick);
+                if (powerUp) {
+                  setPowerUps(prev => [...prev, powerUp]);
+                }
+              }
+
+              return { ...brick, visible: false };
+            }
+            return brick;
+          });
+
+          // Check win condition
+          if (newBricks.every((brick) => !brick.visible)) {
+            soundManager.playWin();
+            setGameState("won");
+            toast.success("You Won! 🎉");
+          }
+
+          return newBricks;
+        });
+
+        return newBall;
+      }).filter(Boolean) as Ball[];
+
+      // Check if all balls are lost
+      if (updatedBalls.length === 0 && stuckBalls.length === 0) {
+        setLives((prev) => {
+          const newLives = prev - 1;
+          soundManager.playLoseLife();
+          
+          if (newLives <= 0) {
+            setGameState("gameOver");
+            toast.error("Game Over!");
+          } else {
+            // Reset ball
+            const resetBall: Ball = {
+              x: CANVAS_WIDTH / 2,
+              y: CANVAS_HEIGHT - 60,
+              dx: 3,
+              dy: -3,
+              radius: BALL_RADIUS,
+              speed: 3,
+              id: nextBallId.current++,
+              isFireball: false,
+            };
+            setBalls([resetBall]);
+            toast("Life lost!");
+          }
+          return newLives;
+        });
       }
 
-      return newBricks;
+      return updatedBalls;
     });
-  }, [CANVAS_WIDTH, CANVAS_HEIGHT]);
+  }, [paddle, balls, glueActive, stuckBalls, createPowerUp, setPowerUps]);
 
   const gameLoop = useCallback(() => {
-    const ball = ballRef.current;
-    if (!ball || gameState !== "playing") return;
+    if (gameState !== "playing") return;
 
+    // Update balls
+    setBalls(prev => prev.map(ball => ({
+      ...ball,
+      x: ball.x + ball.dx,
+      y: ball.y + ball.dy,
+    })));
+
+    // Update power-ups
+    updatePowerUps();
+
+    // Update bullets
+    updateBullets();
+
+    // Check collisions
     checkCollision();
-    ball.x += ball.dx;
-    ball.y += ball.dy;
+
+    // Check power-up collision
+    if (paddle) {
+      checkPowerUpCollision(paddle, balls, setBalls, setPaddle);
+    }
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [gameState, checkCollision]);
+  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision]);
 
   useEffect(() => {
     if (gameState === "playing") {
@@ -266,9 +358,12 @@ export const Game = () => {
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
           bricks={bricks}
-          ball={ballRef.current}
-          paddle={paddleRef.current}
+          balls={balls}
+          paddle={paddle}
           gameState={gameState}
+          powerUps={powerUps}
+          bullets={bullets}
+          stuckBalls={stuckBalls}
         />
       </div>
 
