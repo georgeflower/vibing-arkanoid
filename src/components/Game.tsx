@@ -192,10 +192,14 @@ export const Game = () => {
 
     // Release stuck balls
     if (glueActive && stuckBalls.length > 0) {
-      setBalls(prev => [...prev, ...stuckBalls]);
+      const releasedBalls = stuckBalls.map(ball => ({
+        ...ball,
+        dx: 3,
+        dy: -3,
+      }));
+      setBalls(prev => [...prev, ...releasedBalls]);
       setStuckBalls([]);
       setGlueActive(false);
-      setPaddle(prev => prev ? { ...prev, hasGlue: false } : null);
     }
 
     // Fire turrets
@@ -242,9 +246,10 @@ export const Game = () => {
           newBall.dy > 0
         ) {
           // Check for glue paddle
-          if (paddle.hasGlue && !glueActive) {
+          if (paddle.hasGlue) {
             setGlueActive(true);
-            setStuckBalls(prev => [...prev, newBall]);
+            setStuckBalls(prev => [...prev, { ...newBall, y: paddle.y - newBall.radius }]);
+            setPaddle(prev => prev ? { ...prev, hasGlue: false } : null);
             return null; // Remove from active balls
           }
 
