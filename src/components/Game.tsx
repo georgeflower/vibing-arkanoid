@@ -19,6 +19,7 @@ import {
   brickColors,
   POWERUP_DROP_CHANCE
 } from "@/constants/game";
+import { levelLayouts } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
 import { soundManager } from "@/utils/sounds";
@@ -34,11 +35,37 @@ export const Game = () => {
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   const [glueActive, setGlueActive] = useState(false);
   const [stuckBalls, setStuckBalls] = useState<Ball[]>([]);
+  const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
 
   const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives);
   const { bullets, fireBullets, updateBullets } = useBullets(setScore, setBricks);
+
+  const initBricksForLevel = useCallback((currentLevel: number) => {
+    const layoutIndex = ((currentLevel - 1) % 10);
+    const layout = levelLayouts[layoutIndex];
+    
+    const newBricks: Brick[] = [];
+    for (let row = 0; row < BRICK_ROWS; row++) {
+      for (let col = 0; col < BRICK_COLS; col++) {
+        if (layout[row][col]) {
+          const hasPowerUp = Math.random() < POWERUP_DROP_CHANCE;
+          newBricks.push({
+            x: col * (BRICK_WIDTH + BRICK_PADDING) + BRICK_OFFSET_LEFT,
+            y: row * (BRICK_HEIGHT + BRICK_PADDING) + BRICK_OFFSET_TOP,
+            width: BRICK_WIDTH,
+            height: BRICK_HEIGHT,
+            color: brickColors[row],
+            visible: true,
+            points: (BRICK_ROWS - row) * 10,
+            hasPowerUp,
+          });
+        }
+      }
+    }
+    return newBricks;
+  }, []);
 
   const initGame = useCallback(() => {
     // Initialize paddle
@@ -51,45 +78,73 @@ export const Game = () => {
       hasTurrets: false,
     });
 
-    // Initialize ball
+    // Initialize ball with speed multiplier
+    const baseSpeed = 3;
     const initialBall: Ball = {
       x: CANVAS_WIDTH / 2,
       y: CANVAS_HEIGHT - 60,
-      dx: 3,
-      dy: -3,
+      dx: baseSpeed,
+      dy: -baseSpeed,
       radius: BALL_RADIUS,
-      speed: 3,
+      speed: baseSpeed,
       id: nextBallId.current++,
       isFireball: false,
     };
     setBalls([initialBall]);
 
-    // Initialize bricks
-    const newBricks: Brick[] = [];
-    for (let row = 0; row < BRICK_ROWS; row++) {
-      for (let col = 0; col < BRICK_COLS; col++) {
-        const hasPowerUp = Math.random() < POWERUP_DROP_CHANCE;
-        newBricks.push({
-          x: col * (BRICK_WIDTH + BRICK_PADDING) + BRICK_OFFSET_LEFT,
-          y: row * (BRICK_HEIGHT + BRICK_PADDING) + BRICK_OFFSET_TOP,
-          width: BRICK_WIDTH,
-          height: BRICK_HEIGHT,
-          color: brickColors[row],
-          visible: true,
-          points: (BRICK_ROWS - row) * 10,
-          hasPowerUp,
-        });
-      }
-    }
-    setBricks(newBricks);
+    // Initialize bricks for level 1
+    setBricks(initBricksForLevel(1));
     setScore(0);
     setLives(3);
     setLevel(1);
+    setSpeedMultiplier(1);
     setGameState("ready");
     setPowerUps([]);
     setGlueActive(false);
     setStuckBalls([]);
-  }, [setPowerUps]);
+  }, [setPowerUps, initBricksForLevel]);
+
+  const nextLevel = useCallback(() => {
+    const newLevel = level + 1;
+    const cycleNumber = Math.floor((newLevel - 1) / 10);
+    const newSpeedMultiplier = 1 + (cycleNumber * 0.1);
+    
+    setLevel(newLevel);
+    setSpeedMultiplier(newSpeedMultiplier);
+    
+    // Reset paddle
+    setPaddle({
+      x: CANVAS_WIDTH / 2 - PADDLE_WIDTH / 2,
+      y: CANVAS_HEIGHT - 40,
+      width: PADDLE_WIDTH,
+      height: PADDLE_HEIGHT,
+      hasGlue: false,
+      hasTurrets: false,
+    });
+
+    // Initialize ball with new speed
+    const baseSpeed = 3 * newSpeedMultiplier;
+    const initialBall: Ball = {
+      x: CANVAS_WIDTH / 2,
+      y: CANVAS_HEIGHT - 60,
+      dx: baseSpeed,
+      dy: -baseSpeed,
+      radius: BALL_RADIUS,
+      speed: baseSpeed,
+      id: nextBallId.current++,
+      isFireball: false,
+    };
+    setBalls([initialBall]);
+    
+    // Initialize bricks for new level
+    setBricks(initBricksForLevel(newLevel));
+    setPowerUps([]);
+    setGlueActive(false);
+    setStuckBalls([]);
+    setGameState("playing");
+    
+    toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
+  }, [level, initBricksForLevel, setPowerUps]);
 
   useEffect(() => {
     initGame();
@@ -246,8 +301,8 @@ export const Game = () => {
           // Check win condition
           if (newBricks.every((brick) => !brick.visible)) {
             soundManager.playWin();
-            setGameState("won");
-            toast.success("You Won! 🎉");
+            // Start next level instead of ending game
+            setTimeout(() => nextLevel(), 1000);
           }
 
           return newBricks;
@@ -286,7 +341,7 @@ export const Game = () => {
 
       return updatedBalls;
     });
-  }, [paddle, balls, glueActive, stuckBalls, createPowerUp, setPowerUps]);
+  }, [paddle, balls, glueActive, stuckBalls, createPowerUp, setPowerUps, nextLevel]);
 
   const gameLoop = useCallback(() => {
     if (gameState !== "playing") return;
@@ -294,8 +349,8 @@ export const Game = () => {
     // Update balls
     setBalls(prev => prev.map(ball => ({
       ...ball,
-      x: ball.x + ball.dx,
-      y: ball.y + ball.dy,
+      x: ball.x + ball.dx * speedMultiplier,
+      y: ball.y + ball.dy * speedMultiplier,
     })));
 
     // Update power-ups
@@ -313,7 +368,7 @@ export const Game = () => {
     }
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision]);
+  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier]);
 
   useEffect(() => {
     if (gameState === "playing") {
@@ -350,7 +405,7 @@ export const Game = () => {
         NEON BREAKER
       </h1>
       
-      <GameUI score={score} lives={lives} />
+      <GameUI score={score} lives={lives} level={level} />
       
       <div className="game-glow rounded-lg overflow-hidden">
         <GameCanvas
