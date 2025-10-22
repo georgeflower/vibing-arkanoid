@@ -293,6 +293,10 @@ export const Game = () => {
                 }
               }
 
+              // Increase ball speed slightly with each brick destroyed
+              newBall.dx *= 1.005;
+              newBall.dy *= 1.005;
+
               return { ...brick, visible: false };
             }
             return brick;
