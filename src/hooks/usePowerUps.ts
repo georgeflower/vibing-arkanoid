@@ -4,12 +4,11 @@ import { POWERUP_SIZE, POWERUP_FALL_SPEED, POWERUP_DROP_CHANCE, CANVAS_HEIGHT, F
 import { toast } from "sonner";
 import { soundManager } from "@/utils/sounds";
 
-const powerUpTypes: PowerUpType[] = ["multiball", "glue", "turrets", "fireball", "life"];
+const powerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life"];
 
 export const usePowerUps = (
   currentLevel: number,
-  setLives: React.Dispatch<React.SetStateAction<number>>,
-  setGlueActive: React.Dispatch<React.SetStateAction<boolean>>
+  setLives: React.Dispatch<React.SetStateAction<number>>
 ) => {
   const [powerUps, setPowerUps] = useState<PowerUp[]>([]);
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
@@ -77,15 +76,8 @@ export const usePowerUps = (
               }
               break;
             
-            case "glue":
-              setPaddle(prev => prev ? { ...prev, hasGlue: true, hasTurrets: false } : null);
-              setGlueActive(true);
-              toast.success("Sticky paddle activated!");
-              break;
-            
             case "turrets":
-              setPaddle(prev => prev ? { ...prev, hasTurrets: true, hasGlue: false } : null);
-              setGlueActive(false);
+              setPaddle(prev => prev ? { ...prev, hasTurrets: true } : null);
               toast.success("Turrets activated!");
               break;
             
@@ -112,7 +104,7 @@ export const usePowerUps = (
         return powerUp;
       });
     });
-  }, [currentLevel, extraLifeUsedLevels, setLives, setGlueActive]);
+  }, [currentLevel, extraLifeUsedLevels, setLives]);
 
   return {
     powerUps,

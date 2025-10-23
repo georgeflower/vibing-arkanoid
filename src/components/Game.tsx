@@ -33,13 +33,11 @@ export const Game = () => {
   const [bricks, setBricks] = useState<Brick[]>([]);
   const [balls, setBalls] = useState<Ball[]>([]);
   const [paddle, setPaddle] = useState<Paddle | null>(null);
-  const [glueActive, setGlueActive] = useState(false);
-  const [stuckBalls, setStuckBalls] = useState<Ball[]>([]);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
 
-  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives, setGlueActive);
+  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives);
   const { bullets, fireBullets, updateBullets } = useBullets(setScore, setBricks);
 
   const initBricksForLevel = useCallback((currentLevel: number) => {
@@ -74,7 +72,6 @@ export const Game = () => {
       y: CANVAS_HEIGHT - 40,
       width: PADDLE_WIDTH,
       height: PADDLE_HEIGHT,
-      hasGlue: false,
       hasTurrets: false,
     });
 
@@ -100,8 +97,6 @@ export const Game = () => {
     setSpeedMultiplier(1);
     setGameState("ready");
     setPowerUps([]);
-    setGlueActive(false);
-    setStuckBalls([]);
   }, [setPowerUps, initBricksForLevel]);
 
   const nextLevel = useCallback(() => {
@@ -122,7 +117,6 @@ export const Game = () => {
       y: CANVAS_HEIGHT - 40,
       width: PADDLE_WIDTH,
       height: PADDLE_HEIGHT,
-      hasGlue: false,
       hasTurrets: false,
     });
 
@@ -143,8 +137,6 @@ export const Game = () => {
     // Initialize bricks for new level
     setBricks(initBricksForLevel(newLevel));
     setPowerUps([]);
-    setGlueActive(false);
-    setStuckBalls([]);
     setGameState("playing");
     
     toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
@@ -162,15 +154,7 @@ export const Game = () => {
     const newX = Math.max(0, Math.min(CANVAS_WIDTH - PADDLE_WIDTH, mouseX - PADDLE_WIDTH / 2));
     
     setPaddle(prev => prev ? { ...prev, x: newX } : null);
-    
-    // Move stuck balls with paddle
-    if (glueActive && stuckBalls.length > 0) {
-      setStuckBalls(prev => prev.map(ball => ({
-        ...ball,
-        x: newX + PADDLE_WIDTH / 2
-      })));
-    }
-  }, [gameState, paddle, glueActive, stuckBalls]);
+  }, [gameState, paddle]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     if (!canvasRef.current || !paddle || gameState !== "playing") return;
@@ -181,37 +165,16 @@ export const Game = () => {
     const newX = Math.max(0, Math.min(CANVAS_WIDTH - PADDLE_WIDTH, touchX - PADDLE_WIDTH / 2));
     
     setPaddle(prev => prev ? { ...prev, x: newX } : null);
-    
-    // Move stuck balls with paddle
-    if (glueActive && stuckBalls.length > 0) {
-      setStuckBalls(prev => prev.map(ball => ({
-        ...ball,
-        x: newX + PADDLE_WIDTH / 2
-      })));
-    }
-  }, [gameState, paddle, glueActive, stuckBalls]);
+  }, [gameState, paddle]);
 
   const handleClick = useCallback(() => {
     if (!paddle || gameState !== "playing") return;
-
-    // Release stuck balls
-    if (glueActive && stuckBalls.length > 0) {
-      const baseSpeed = 3 * speedMultiplier;
-      const releasedBalls = stuckBalls.map(ball => ({
-        ...ball,
-        dx: baseSpeed,
-        dy: -baseSpeed,
-      }));
-      setBalls(prev => [...prev, ...releasedBalls]);
-      setStuckBalls([]);
-      setGlueActive(false);
-    }
 
     // Fire turrets
     if (paddle.hasTurrets) {
       fireBullets(paddle);
     }
-  }, [paddle, gameState, glueActive, stuckBalls, fireBullets, speedMultiplier]);
+  }, [paddle, gameState, fireBullets]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -250,18 +213,6 @@ export const Game = () => {
           newBall.x < paddle.x + paddle.width &&
           newBall.dy > 0
         ) {
-          // Check for glue paddle
-          if (glueActive) {
-            setStuckBalls(prev => [...prev, { 
-              ...newBall, 
-              x: paddle.x + paddle.width / 2,
-              y: paddle.y - newBall.radius, 
-              dx: 0, 
-              dy: 0 
-            }]);
-            return null; // Remove from active balls
-          }
-
           soundManager.playBounce();
           
           const hitPos = (newBall.x - paddle.x) / paddle.width;
@@ -331,7 +282,7 @@ export const Game = () => {
       }).filter(Boolean) as Ball[];
 
       // Check if all balls are lost
-      if (updatedBalls.length === 0 && stuckBalls.length === 0) {
+      if (updatedBalls.length === 0) {
         setLives((prev) => {
           const newLives = prev - 1;
           soundManager.playLoseLife();
@@ -354,8 +305,7 @@ export const Game = () => {
             };
             setBalls([resetBall]);
             setPowerUps([]);
-            setGlueActive(false);
-            setPaddle(prev => prev ? { ...prev, hasGlue: false, hasTurrets: false } : null);
+            setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
             toast("Life lost!");
           }
           return newLives;
@@ -364,7 +314,7 @@ export const Game = () => {
 
       return updatedBalls;
     });
-  }, [paddle, balls, glueActive, stuckBalls, createPowerUp, setPowerUps, nextLevel]);
+  }, [paddle, balls, createPowerUp, setPowerUps, nextLevel]);
 
   const gameLoop = useCallback(() => {
     if (gameState !== "playing") return;
@@ -441,7 +391,6 @@ export const Game = () => {
           gameState={gameState}
           powerUps={powerUps}
           bullets={bullets}
-          stuckBalls={stuckBalls}
         />
       </div>
 

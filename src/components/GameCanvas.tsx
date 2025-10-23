@@ -10,11 +10,10 @@ interface GameCanvasProps {
   gameState: GameState;
   powerUps: PowerUp[];
   bullets: Bullet[];
-  stuckBalls: Ball[];
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, stuckBalls }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets }, ref) => {
     useEffect(() => {
       const canvas = ref as React.RefObject<HTMLCanvasElement>;
       if (!canvas.current) return;
@@ -56,7 +55,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       }
 
       // Draw balls
-      [...balls, ...stuckBalls].forEach((ball) => {
+      balls.forEach((ball) => {
         const ballColor = ball.isFireball ? "hsl(30, 100%, 60%)" : "hsl(330, 100%, 65%)";
         
         ctx.shadowBlur = 25;
@@ -135,7 +134,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fillText("YOU WON!", width / 2, height / 2);
         }
       }
-    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, stuckBalls]);
+    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets]);
 
     return (
       <canvas

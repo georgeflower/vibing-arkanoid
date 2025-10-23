@@ -25,7 +25,6 @@ export interface Paddle {
   y: number;
   width: number;
   height: number;
-  hasGlue?: boolean;
   hasTurrets?: boolean;
 }
 
@@ -37,7 +36,7 @@ export interface Bullet {
   speed: number;
 }
 
-export type PowerUpType = "multiball" | "glue" | "turrets" | "fireball" | "life";
+export type PowerUpType = "multiball" | "turrets" | "fireball" | "life";
 
 export interface PowerUp {
   x: number;
