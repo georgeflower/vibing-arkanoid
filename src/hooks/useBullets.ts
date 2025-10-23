@@ -34,32 +34,31 @@ export const useBullets = (
   }, []);
 
   const updateBullets = useCallback(() => {
+    // First move bullets up
     setBullets(prev => 
       prev
         .map(b => ({ ...b, y: b.y - b.speed }))
         .filter(b => b.y > 0)
     );
 
-    // Check bullet-brick collision
+    // Then check collisions in a separate update
     setBullets(prevBullets => {
-      const activeBullets: Bullet[] = [];
-      const bulletsToRemove = new Set<number>();
+      const bulletsToKeep: Bullet[] = [];
       
-      prevBullets.forEach((bullet, bulletIndex) => {
-        let hit = false;
+      prevBullets.forEach((bullet) => {
+        let bulletHit = false;
         
         setBricks(prevBricks => {
           return prevBricks.map(brick => {
             if (
-              !hit &&
+              !bulletHit &&
               brick.visible &&
               bullet.x + bullet.width > brick.x &&
               bullet.x < brick.x + brick.width &&
               bullet.y < brick.y + brick.height &&
               bullet.y + bullet.height > brick.y
             ) {
-              hit = true;
-              bulletsToRemove.add(bulletIndex);
+              bulletHit = true;
               soundManager.playBrickHit();
               setScore(prev => prev + brick.points);
               return { ...brick, visible: false };
@@ -68,12 +67,13 @@ export const useBullets = (
           });
         });
 
-        if (!hit && !bulletsToRemove.has(bulletIndex)) {
-          activeBullets.push(bullet);
+        // Only keep bullet if it didn't hit anything
+        if (!bulletHit) {
+          bulletsToKeep.push(bullet);
         }
       });
 
-      return activeBullets;
+      return bulletsToKeep;
     });
   }, [setBricks, setScore]);
 

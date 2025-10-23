@@ -204,13 +204,14 @@ export const Game = () => {
       }));
       setBalls(prev => [...prev, ...releasedBalls]);
       setStuckBalls([]);
+      setGlueActive(false);
     }
 
     // Fire turrets
     if (paddle.hasTurrets) {
       fireBullets(paddle);
     }
-  }, [paddle, gameState, glueActive, stuckBalls, fireBullets]);
+  }, [paddle, gameState, glueActive, stuckBalls, fireBullets, speedMultiplier]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -251,7 +252,13 @@ export const Game = () => {
         ) {
           // Check for glue paddle
           if (glueActive) {
-            setStuckBalls(prev => [...prev, { ...newBall, y: paddle.y - newBall.radius, dx: 0, dy: 0 }]);
+            setStuckBalls(prev => [...prev, { 
+              ...newBall, 
+              x: paddle.x + paddle.width / 2,
+              y: paddle.y - newBall.radius, 
+              dx: 0, 
+              dy: 0 
+            }]);
             return null; // Remove from active balls
           }
 
