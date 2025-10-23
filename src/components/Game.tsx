@@ -105,6 +105,11 @@ export const Game = () => {
   }, [setPowerUps, initBricksForLevel]);
 
   const nextLevel = useCallback(() => {
+    // Cancel any running animation frame before starting new level
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    
     const newLevel = level + 1;
     const cycleNumber = Math.floor((newLevel - 1) / 10);
     const newSpeedMultiplier = 1 + (cycleNumber * 0.1);
@@ -310,6 +315,7 @@ export const Game = () => {
           // Check win condition
           if (newBricks.every((brick) => !brick.visible)) {
             soundManager.playWin();
+            setGameState("ready"); // Pause game during transition
             // Start next level instead of ending game
             setTimeout(() => nextLevel(), 1000);
           }
