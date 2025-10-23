@@ -39,7 +39,7 @@ export const Game = () => {
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
 
-  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives);
+  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives, setGlueActive);
   const { bullets, fireBullets, updateBullets } = useBullets(setScore, setBricks);
 
   const initBricksForLevel = useCallback((currentLevel: number) => {
@@ -111,8 +111,7 @@ export const Game = () => {
     }
     
     const newLevel = level + 1;
-    const cycleNumber = Math.floor((newLevel - 1) / 10);
-    const newSpeedMultiplier = 1 + (cycleNumber * 0.1);
+    const newSpeedMultiplier = 1 + ((newLevel - 1) * 0.05); // 5% faster per level
     
     setLevel(newLevel);
     setSpeedMultiplier(newSpeedMultiplier);
@@ -197,14 +196,14 @@ export const Game = () => {
 
     // Release stuck balls
     if (glueActive && stuckBalls.length > 0) {
+      const baseSpeed = 3 * speedMultiplier;
       const releasedBalls = stuckBalls.map(ball => ({
         ...ball,
-        dx: 3,
-        dy: -3,
+        dx: baseSpeed,
+        dy: -baseSpeed,
       }));
       setBalls(prev => [...prev, ...releasedBalls]);
       setStuckBalls([]);
-      setGlueActive(false);
     }
 
     // Fire turrets
@@ -251,10 +250,8 @@ export const Game = () => {
           newBall.dy > 0
         ) {
           // Check for glue paddle
-          if (paddle.hasGlue) {
-            setGlueActive(true);
-            setStuckBalls(prev => [...prev, { ...newBall, y: paddle.y - newBall.radius }]);
-            setPaddle(prev => prev ? { ...prev, hasGlue: false } : null);
+          if (glueActive) {
+            setStuckBalls(prev => [...prev, { ...newBall, y: paddle.y - newBall.radius, dx: 0, dy: 0 }]);
             return null; // Remove from active balls
           }
 
@@ -336,18 +333,22 @@ export const Game = () => {
             setGameState("gameOver");
             toast.error("Game Over!");
           } else {
-            // Reset ball
+            // Reset ball and clear power-ups
+            const baseSpeed = 3 * speedMultiplier;
             const resetBall: Ball = {
               x: CANVAS_WIDTH / 2,
               y: CANVAS_HEIGHT - 60,
-              dx: 3,
-              dy: -3,
+              dx: baseSpeed,
+              dy: -baseSpeed,
               radius: BALL_RADIUS,
-              speed: 3,
+              speed: baseSpeed,
               id: nextBallId.current++,
               isFireball: false,
             };
             setBalls([resetBall]);
+            setPowerUps([]);
+            setGlueActive(false);
+            setPaddle(prev => prev ? { ...prev, hasGlue: false, hasTurrets: false } : null);
             toast("Life lost!");
           }
           return newLives;

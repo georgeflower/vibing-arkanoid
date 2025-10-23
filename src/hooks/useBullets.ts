@@ -43,8 +43,9 @@ export const useBullets = (
     // Check bullet-brick collision
     setBullets(prevBullets => {
       const activeBullets: Bullet[] = [];
+      const bulletsToRemove = new Set<number>();
       
-      prevBullets.forEach(bullet => {
+      prevBullets.forEach((bullet, bulletIndex) => {
         let hit = false;
         
         setBricks(prevBricks => {
@@ -58,6 +59,7 @@ export const useBullets = (
               bullet.y + bullet.height > brick.y
             ) {
               hit = true;
+              bulletsToRemove.add(bulletIndex);
               soundManager.playBrickHit();
               setScore(prev => prev + brick.points);
               return { ...brick, visible: false };
@@ -66,7 +68,7 @@ export const useBullets = (
           });
         });
 
-        if (!hit) {
+        if (!hit && !bulletsToRemove.has(bulletIndex)) {
           activeBullets.push(bullet);
         }
       });

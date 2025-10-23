@@ -8,7 +8,8 @@ const powerUpTypes: PowerUpType[] = ["multiball", "glue", "turrets", "fireball",
 
 export const usePowerUps = (
   currentLevel: number,
-  setLives: React.Dispatch<React.SetStateAction<number>>
+  setLives: React.Dispatch<React.SetStateAction<number>>,
+  setGlueActive: React.Dispatch<React.SetStateAction<boolean>>
 ) => {
   const [powerUps, setPowerUps] = useState<PowerUp[]>([]);
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
@@ -77,12 +78,14 @@ export const usePowerUps = (
               break;
             
             case "glue":
-              setPaddle(prev => prev ? { ...prev, hasGlue: true } : null);
+              setPaddle(prev => prev ? { ...prev, hasGlue: true, hasTurrets: false } : null);
+              setGlueActive(true);
               toast.success("Sticky paddle activated!");
               break;
             
             case "turrets":
-              setPaddle(prev => prev ? { ...prev, hasTurrets: true } : null);
+              setPaddle(prev => prev ? { ...prev, hasTurrets: true, hasGlue: false } : null);
+              setGlueActive(false);
               toast.success("Turrets activated!");
               break;
             
@@ -109,7 +112,7 @@ export const usePowerUps = (
         return powerUp;
       });
     });
-  }, [currentLevel, extraLifeUsedLevels, setLives]);
+  }, [currentLevel, extraLifeUsedLevels, setLives, setGlueActive]);
 
   return {
     powerUps,
