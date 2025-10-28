@@ -17,9 +17,10 @@ import {
   BRICK_OFFSET_TOP,
   BRICK_OFFSET_LEFT,
   brickColors,
-  POWERUP_DROP_CHANCE
+  POWERUP_DROP_CHANCE,
+  getHitColor
 } from "@/constants/game";
-import { levelLayouts } from "@/constants/levelLayouts";
+import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
 import { soundManager } from "@/utils/sounds";
@@ -49,15 +50,19 @@ export const Game = () => {
       for (let col = 0; col < BRICK_COLS; col++) {
         if (layout[row][col]) {
           const hasPowerUp = Math.random() < POWERUP_DROP_CHANCE;
+          const maxHits = getBrickHits(currentLevel, row);
+          const baseColor = brickColors[row % brickColors.length];
           newBricks.push({
             x: col * (BRICK_WIDTH + BRICK_PADDING) + BRICK_OFFSET_LEFT,
             y: row * (BRICK_HEIGHT + BRICK_PADDING) + BRICK_OFFSET_TOP,
             width: BRICK_WIDTH,
             height: BRICK_HEIGHT,
-            color: brickColors[row],
+            color: baseColor,
             visible: true,
-            points: (BRICK_ROWS - row) * 10,
+            points: (BRICK_ROWS - row) * 10 * maxHits,
             hasPowerUp,
+            maxHits,
+            hitsRemaining: maxHits,
           });
         }
       }
@@ -248,21 +253,31 @@ export const Game = () => {
               }
               
               soundManager.playBrickHit();
-              setScore((prev) => prev + brick.points);
-
-              // Create power-up if brick has one
-              if (brick.hasPowerUp) {
-                const powerUp = createPowerUp(brick);
-                if (powerUp) {
-                  setPowerUps(prev => [...prev, powerUp]);
+              
+              const updatedBrick = { ...brick, hitsRemaining: brick.hitsRemaining - 1 };
+              
+              // Update brick color based on hits remaining
+              if (updatedBrick.hitsRemaining > 0) {
+                updatedBrick.color = getHitColor(brick.color, updatedBrick.hitsRemaining, brick.maxHits);
+              } else {
+                updatedBrick.visible = false;
+                
+                // Award points and create power-up only when brick is destroyed
+                setScore((prev) => prev + brick.points);
+                
+                if (brick.hasPowerUp) {
+                  const powerUp = createPowerUp(brick);
+                  if (powerUp) {
+                    setPowerUps(prev => [...prev, powerUp]);
+                  }
                 }
               }
 
-              // Increase ball speed slightly with each brick destroyed
+              // Increase ball speed slightly with each brick hit
               newBall.dx *= 1.005;
               newBall.dy *= 1.005;
 
-              return { ...brick, visible: false };
+              return updatedBrick;
             }
             return brick;
           });

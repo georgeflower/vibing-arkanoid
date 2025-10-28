@@ -8,49 +8,49 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 250 40% 8%;
-    --foreground: 180 100% 95%;
+    --background: 220 25% 12%;
+    --foreground: 200 15% 85%;
 
-    --card: 250 30% 12%;
-    --card-foreground: 180 100% 95%;
+    --card: 220 20% 18%;
+    --card-foreground: 200 15% 85%;
 
-    --popover: 250 35% 10%;
-    --popover-foreground: 180 100% 95%;
+    --popover: 220 22% 15%;
+    --popover-foreground: 200 15% 85%;
 
-    --primary: 280 100% 70%;
+    --primary: 280 60% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 180 100% 60%;
-    --secondary-foreground: 250 40% 8%;
+    --secondary: 200 70% 50%;
+    --secondary-foreground: 220 25% 12%;
 
-    --muted: 250 20% 20%;
-    --muted-foreground: 180 20% 60%;
+    --muted: 220 15% 25%;
+    --muted-foreground: 200 10% 55%;
 
-    --accent: 330 100% 65%;
+    --accent: 330 70% 55%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 100% 60%;
+    --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 250 30% 20%;
-    --input: 250 30% 20%;
-    --ring: 280 100% 70%;
+    --border: 220 20% 25%;
+    --input: 220 20% 25%;
+    --ring: 280 60% 55%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    --neon-purple: 280 100% 70%;
-    --neon-cyan: 180 100% 60%;
-    --neon-pink: 330 100% 65%;
-    --neon-orange: 30 100% 60%;
+    --neon-purple: 280 60% 55%;
+    --neon-cyan: 200 70% 50%;
+    --neon-pink: 330 70% 55%;
+    --neon-orange: 30 85% 55%;
     
-    --glow-purple: 0 0 20px hsl(280 100% 70% / 0.5);
-    --glow-cyan: 0 0 20px hsl(180 100% 60% / 0.5);
-    --glow-pink: 0 0 20px hsl(330 100% 65% / 0.5);
+    --glow-purple: 0 0 12px hsl(280 60% 55% / 0.3);
+    --glow-cyan: 0 0 12px hsl(200 70% 50% / 0.3);
+    --glow-pink: 0 0 12px hsl(330 70% 55% / 0.3);
   }
 
   .dark {
-    --background: 250 40% 8%;
-    --foreground: 180 100% 95%;
+    --background: 220 25% 12%;
+    --foreground: 200 15% 85%;
   }
 }
 
@@ -65,10 +65,10 @@ All colors MUST be HSL.
   }
 
   .neon-text {
-    text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
+    text-shadow: 0 0 6px currentColor, 0 0 12px currentColor;
   }
 
   .game-glow {
-    box-shadow: 0 0 20px hsl(var(--neon-cyan) / 0.3), 0 0 40px hsl(var(--neon-purple) / 0.2);
+    box-shadow: 0 0 16px hsl(var(--neon-cyan) / 0.2), 0 0 32px hsl(var(--neon-purple) / 0.15);
   }
 }

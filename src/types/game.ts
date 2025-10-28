@@ -7,6 +7,8 @@ export interface Brick {
   visible: boolean;
   points: number;
   hasPowerUp?: boolean;
+  maxHits: number;
+  hitsRemaining: number;
 }
 
 export interface Ball {
