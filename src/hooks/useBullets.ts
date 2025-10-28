@@ -34,31 +34,32 @@ export const useBullets = (
   }, []);
 
   const updateBullets = useCallback(() => {
-    // First move bullets up
-    setBullets(prev => 
-      prev
-        .map(b => ({ ...b, y: b.y - b.speed }))
-        .filter(b => b.y > 0)
-    );
+    const bulletsToRemove = new Set<number>();
+    
+    // Move bullets and check collisions in one pass
+    setBullets(prev => {
+      const movedBullets = prev
+        .map((b, idx) => ({ ...b, y: b.y - b.speed, idx }))
+        .filter(b => b.y > 0);
 
-    // Then check collisions in a separate update
-    setBullets(prevBullets => {
-      const bulletsToKeep: Bullet[] = [];
-      
-      prevBullets.forEach((bullet) => {
-        let bulletHit = false;
+      // Check collisions for each bullet
+      movedBullets.forEach((bullet) => {
+        if (bulletsToRemove.has(bullet.idx)) return;
         
         setBricks(prevBricks => {
+          let brickWasHit = false;
+          
           return prevBricks.map(brick => {
             if (
-              !bulletHit &&
+              !brickWasHit &&
               brick.visible &&
               bullet.x + bullet.width > brick.x &&
               bullet.x < brick.x + brick.width &&
               bullet.y < brick.y + brick.height &&
               bullet.y + bullet.height > brick.y
             ) {
-              bulletHit = true;
+              brickWasHit = true;
+              bulletsToRemove.add(bullet.idx);
               soundManager.playBrickHit();
               setScore(prev => prev + brick.points);
               return { ...brick, visible: false };
@@ -66,14 +67,10 @@ export const useBullets = (
             return brick;
           });
         });
-
-        // Only keep bullet if it didn't hit anything
-        if (!bulletHit) {
-          bulletsToKeep.push(bullet);
-        }
       });
 
-      return bulletsToKeep;
+      // Return only bullets that didn't hit anything
+      return movedBullets.filter(b => !bulletsToRemove.has(b.idx)).map(({ idx, ...bullet }) => bullet);
     });
   }, [setBricks, setScore]);
 
