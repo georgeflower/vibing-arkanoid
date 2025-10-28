@@ -34,43 +34,51 @@ export const useBullets = (
   }, []);
 
   const updateBullets = useCallback(() => {
-    const bulletsToRemove = new Set<number>();
-    
-    // Move bullets and check collisions in one pass
-    setBullets(prev => {
-      const movedBullets = prev
-        .map((b, idx) => ({ ...b, y: b.y - b.speed, idx }))
-        .filter(b => b.y > 0);
+    // Move bullets
+    setBullets(prev => prev
+      .map(b => ({ ...b, y: b.y - b.speed }))
+      .filter(b => b.y > 0)
+    );
 
-      // Check collisions for each bullet
-      movedBullets.forEach((bullet) => {
-        if (bulletsToRemove.has(bullet.idx)) return;
-        
-        setBricks(prevBricks => {
-          let brickWasHit = false;
+    // Check collisions - do this after movement is complete
+    setBullets(prevBullets => {
+      const bulletIndicesHit = new Set<number>();
+      const brickIndicesToDestroy = new Set<number>();
+      
+      // First pass: find all collisions
+      setBricks(prevBricks => {
+        prevBullets.forEach((bullet, bulletIdx) => {
+          if (bulletIndicesHit.has(bulletIdx)) return;
           
-          return prevBricks.map(brick => {
+          prevBricks.forEach((brick, brickIdx) => {
             if (
-              !brickWasHit &&
-              brick.visible &&
-              bullet.x + bullet.width > brick.x &&
-              bullet.x < brick.x + brick.width &&
-              bullet.y < brick.y + brick.height &&
-              bullet.y + bullet.height > brick.y
+              bulletIndicesHit.has(bulletIdx) || // bullet already hit something
+              brickIndicesToDestroy.has(brickIdx) || // brick already being destroyed
+              !brick.visible ||
+              bullet.x + bullet.width <= brick.x ||
+              bullet.x >= brick.x + brick.width ||
+              bullet.y >= brick.y + brick.height ||
+              bullet.y + bullet.height <= brick.y
             ) {
-              brickWasHit = true;
-              bulletsToRemove.add(bullet.idx);
-              soundManager.playBrickHit();
-              setScore(prev => prev + brick.points);
-              return { ...brick, visible: false };
+              return;
             }
-            return brick;
+            
+            // Collision detected
+            bulletIndicesHit.add(bulletIdx);
+            brickIndicesToDestroy.add(brickIdx);
+            soundManager.playBrickHit();
+            setScore(prev => prev + brick.points);
           });
         });
+        
+        // Update bricks
+        return prevBricks.map((brick, idx) => 
+          brickIndicesToDestroy.has(idx) ? { ...brick, visible: false } : brick
+        );
       });
-
-      // Return only bullets that didn't hit anything
-      return movedBullets.filter(b => !bulletsToRemove.has(b.idx)).map(({ idx, ...bullet }) => bullet);
+      
+      // Return bullets that didn't hit anything
+      return prevBullets.filter((_, idx) => !bulletIndicesHit.has(idx));
     });
   }, [setBricks, setScore]);
 
