@@ -173,13 +173,26 @@ export const Game = () => {
   }, [gameState, paddle]);
 
   const handleClick = useCallback(() => {
+    // If game is ready and waiting to continue, start/continue the game
+    if (gameState === "ready" && bricks.length > 0) {
+      const isLevelComplete = bricks.every(brick => !brick.visible) && bricks.length > 0;
+      
+      if (isLevelComplete) {
+        nextLevel();
+      } else {
+        setGameState("playing");
+        toast.success("Continue!");
+      }
+      return;
+    }
+
     if (!paddle || gameState !== "playing") return;
 
     // Fire turrets
     if (paddle.hasTurrets) {
       fireBullets(paddle);
     }
-  }, [paddle, gameState, fireBullets]);
+  }, [paddle, gameState, fireBullets, bricks, nextLevel]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -329,7 +342,7 @@ export const Game = () => {
 
       return updatedBalls;
     });
-  }, [paddle, balls, createPowerUp, setPowerUps, nextLevel]);
+  }, [paddle, balls, createPowerUp, setPowerUps, nextLevel, speedMultiplier]);
 
   const gameLoop = useCallback(() => {
     if (gameState !== "playing") return;
