@@ -375,15 +375,15 @@ export const Game = () => {
   const handleStart = () => {
     if (gameState === "ready") {
       // Check if this is level completion (all bricks destroyed)
-      const isLevelComplete = bricks.every(brick => !brick.visible);
+      const isLevelComplete = bricks.every(brick => !brick.visible) && bricks.length > 0;
       
-      if (isLevelComplete && level >= 1) {
+      if (isLevelComplete) {
         // Start next level
         nextLevel();
       } else {
         // Continue current level
         setGameState("playing");
-        toast.success(level === 1 && bricks.some(b => b.visible) ? "Game Started!" : "Continue!");
+        toast.success("Continue!");
       }
     }
   };
@@ -424,7 +424,7 @@ export const Game = () => {
             onClick={handleStart}
             className="px-8 py-3 bg-neon-purple text-white font-bold rounded-lg neon-text hover:scale-105 transition-transform"
           >
-            START GAME
+            {bricks.every(brick => !brick.visible) && level > 0 ? "NEXT LEVEL" : "START GAME"}
           </button>
         )}
         {(gameState === "gameOver" || gameState === "won") && (
