@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { GameCanvas } from "./GameCanvas";
 import { GameUI } from "./GameUI";
+import { HighScoreTable } from "./HighScoreTable";
+import { HighScoreEntry } from "./HighScoreEntry";
 import { toast } from "sonner";
 import type { Brick, Ball, Paddle, GameState } from "@/types/game";
+import { useHighScores } from "@/hooks/useHighScores";
 import { 
   CANVAS_WIDTH, 
   CANVAS_HEIGHT, 
@@ -35,8 +38,11 @@ export const Game = () => {
   const [balls, setBalls] = useState<Ball[]>([]);
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
+  const [showHighScoreEntry, setShowHighScoreEntry] = useState(false);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
+
+  const { highScores, isHighScore, addHighScore } = useHighScores();
 
   const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives);
   const { bullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks);
@@ -316,7 +322,14 @@ export const Game = () => {
           
           if (newLives <= 0) {
             setGameState("gameOver");
-            toast.error("Game Over!");
+            
+            // Check if it's a high score
+            if (isHighScore(score)) {
+              setShowHighScoreEntry(true);
+              toast.success("New High Score!");
+            } else {
+              toast.error("Game Over!");
+            }
           } else {
             // Reset ball and clear power-ups, but wait for click to continue
             const baseSpeed = 3 * speedMultiplier;
@@ -405,8 +418,15 @@ export const Game = () => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
+    setShowHighScoreEntry(false);
     initGame();
     toast("Game Reset!");
+  };
+
+  const handleHighScoreSubmit = (name: string) => {
+    addHighScore(name, score, level);
+    setShowHighScoreEntry(false);
+    toast.success("High score saved!");
   };
 
   return (
@@ -415,44 +435,58 @@ export const Game = () => {
         NEON BREAKER
       </h1>
       
-      <GameUI score={score} lives={lives} level={level} />
-      
-      <div className="game-glow rounded-lg overflow-hidden">
-        <GameCanvas
-          ref={canvasRef}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
-          bricks={bricks}
-          balls={balls}
-          paddle={paddle}
-          gameState={gameState}
-          powerUps={powerUps}
-          bullets={bullets}
+      {showHighScoreEntry ? (
+        <HighScoreEntry
+          score={score}
+          level={level}
+          onSubmit={handleHighScoreSubmit}
         />
-      </div>
+      ) : (
+        <>
+          <GameUI score={score} lives={lives} level={level} />
+          
+          <div className="game-glow rounded-lg overflow-hidden">
+            <GameCanvas
+              ref={canvasRef}
+              width={CANVAS_WIDTH}
+              height={CANVAS_HEIGHT}
+              bricks={bricks}
+              balls={balls}
+              paddle={paddle}
+              gameState={gameState}
+              powerUps={powerUps}
+              bullets={bullets}
+            />
+          </div>
 
-      <div className="flex gap-4">
-        {gameState === "ready" && (
-          <button
-            onClick={handleStart}
-            className="px-8 py-3 bg-neon-purple text-white font-bold rounded-lg neon-text hover:scale-105 transition-transform"
-          >
-            {bricks.every(brick => !brick.visible) && level > 0 ? "NEXT LEVEL" : "START GAME"}
-          </button>
-        )}
-        {(gameState === "gameOver" || gameState === "won") && (
-          <button
-            onClick={handleRestart}
-            className="px-8 py-3 bg-neon-pink text-white font-bold rounded-lg neon-text hover:scale-105 transition-transform"
-          >
-            PLAY AGAIN
-          </button>
-        )}
-      </div>
+          <div className="flex gap-4">
+            {gameState === "ready" && (
+              <button
+                onClick={handleStart}
+                className="px-8 py-3 bg-neon-purple text-white font-bold rounded-lg neon-text hover:scale-105 transition-transform"
+              >
+                {bricks.every(brick => !brick.visible) && level > 0 ? "NEXT LEVEL" : "START GAME"}
+              </button>
+            )}
+            {(gameState === "gameOver" || gameState === "won") && (
+              <button
+                onClick={handleRestart}
+                className="px-8 py-3 bg-neon-pink text-white font-bold rounded-lg neon-text hover:scale-105 transition-transform"
+              >
+                PLAY AGAIN
+              </button>
+            )}
+          </div>
 
-      <div className="text-muted-foreground text-sm text-center">
-        Move your mouse or touch to control the paddle
-      </div>
+          <div className="text-muted-foreground text-sm text-center">
+            Move your mouse or touch to control the paddle
+          </div>
+          
+          {highScores.length > 0 && (
+            <HighScoreTable scores={highScores} />
+          )}
+        </>
+      )}
     </div>
   );
 };
