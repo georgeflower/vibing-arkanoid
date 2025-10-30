@@ -1,5 +1,6 @@
-import { forwardRef, useEffect } from "react";
+import { forwardRef, useEffect, useRef } from "react";
 import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet } from "@/types/game";
+import { powerUpImages } from "@/utils/powerUpImages";
 
 interface GameCanvasProps {
   width: number;
@@ -14,6 +15,17 @@ interface GameCanvasProps {
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
   ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets }, ref) => {
+    const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
+    
+    // Load power-up images
+    useEffect(() => {
+      Object.entries(powerUpImages).forEach(([type, src]) => {
+        const img = new Image();
+        img.src = src;
+        loadedImagesRef.current[type] = img;
+      });
+    }, []);
+
     useEffect(() => {
       const canvas = ref as React.RefObject<HTMLCanvasElement>;
       if (!canvas.current) return;
@@ -96,10 +108,18 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       powerUps.forEach((powerUp) => {
         if (!powerUp.active) return;
 
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "hsl(280, 60%, 55%)";
-        ctx.fillStyle = "hsl(280, 60%, 55%)";
-        ctx.fillRect(powerUp.x, powerUp.y, powerUp.width, powerUp.height);
+        const img = loadedImagesRef.current[powerUp.type];
+        if (img && img.complete) {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = "hsl(280, 60%, 55%)";
+          ctx.drawImage(img, powerUp.x, powerUp.y, powerUp.width, powerUp.height);
+        } else {
+          // Fallback to colored square while image loads
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = "hsl(280, 60%, 55%)";
+          ctx.fillStyle = "hsl(280, 60%, 55%)";
+          ctx.fillRect(powerUp.x, powerUp.y, powerUp.width, powerUp.height);
+        }
       });
 
       // Draw bullets
