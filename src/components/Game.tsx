@@ -39,7 +39,7 @@ export const Game = () => {
   const nextBallId = useRef(1);
 
   const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives);
-  const { bullets, fireBullets, updateBullets } = useBullets(setScore, setBricks);
+  const { bullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks);
 
   const initBricksForLevel = useCallback((currentLevel: number) => {
     const layoutIndex = ((currentLevel - 1) % 10);
@@ -285,9 +285,8 @@ export const Game = () => {
           // Check win condition
           if (newBricks.every((brick) => !brick.visible)) {
             soundManager.playWin();
-            setGameState("ready"); // Pause game during transition
-            // Start next level instead of ending game
-            setTimeout(() => nextLevel(), 1000);
+            setGameState("ready"); // Wait for click to start next level
+            toast.success(`Level ${level} Complete! Click to continue.`);
           }
 
           return newBricks;
@@ -306,7 +305,7 @@ export const Game = () => {
             setGameState("gameOver");
             toast.error("Game Over!");
           } else {
-            // Reset ball and clear power-ups
+            // Reset ball and clear power-ups, but wait for click to continue
             const baseSpeed = 3 * speedMultiplier;
             const resetBall: Ball = {
               x: CANVAS_WIDTH / 2,
@@ -321,7 +320,8 @@ export const Game = () => {
             setBalls([resetBall]);
             setPowerUps([]);
             setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
-            toast("Life lost!");
+            setGameState("ready");
+            toast(`Life lost! ${newLives} lives remaining. Click to continue.`);
           }
           return newLives;
         });
@@ -345,7 +345,7 @@ export const Game = () => {
     updatePowerUps();
 
     // Update bullets
-    updateBullets();
+    updateBullets(bricks);
 
     // Check collisions
     checkCollision();
@@ -374,8 +374,17 @@ export const Game = () => {
 
   const handleStart = () => {
     if (gameState === "ready") {
-      setGameState("playing");
-      toast.success("Game Started!");
+      // Check if this is level completion (all bricks destroyed)
+      const isLevelComplete = bricks.every(brick => !brick.visible);
+      
+      if (isLevelComplete && level >= 1) {
+        // Start next level
+        nextLevel();
+      } else {
+        // Continue current level
+        setGameState("playing");
+        toast.success(level === 1 && bricks.some(b => b.visible) ? "Game Started!" : "Continue!");
+      }
     }
   };
 

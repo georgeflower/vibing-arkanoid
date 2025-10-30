@@ -5,7 +5,8 @@ import { soundManager } from "@/utils/sounds";
 
 export const useBullets = (
   setScore: React.Dispatch<React.SetStateAction<number>>,
-  setBricks: React.Dispatch<React.SetStateAction<Brick[]>>
+  setBricks: React.Dispatch<React.SetStateAction<Brick[]>>,
+  bricks: Brick[]
 ) => {
   const [bullets, setBullets] = useState<Bullet[]>([]);
 
@@ -33,52 +34,55 @@ export const useBullets = (
     setBullets(prev => [...prev, leftBullet, rightBullet]);
   }, []);
 
-  const updateBullets = useCallback(() => {
-    // Move bullets
-    setBullets(prev => prev
-      .map(b => ({ ...b, y: b.y - b.speed }))
-      .filter(b => b.y > 0)
-    );
-
-    // Check collisions - do this after movement is complete
-    setBullets(prevBullets => {
+  const updateBullets = useCallback((currentBricks: Brick[]) => {
+    // Move bullets and collect collision information
+    setBullets(prev => {
+      const movedBullets = prev
+        .map(b => ({ ...b, y: b.y - b.speed }))
+        .filter(b => b.y > 0);
+      
       const bulletIndicesHit = new Set<number>();
       const brickIndicesToDestroy = new Set<number>();
       
-      // First pass: find all collisions
-      setBricks(prevBricks => {
-        prevBullets.forEach((bullet, bulletIdx) => {
-          if (bulletIndicesHit.has(bulletIdx)) return;
-          
-          prevBricks.forEach((brick, brickIdx) => {
-            if (
-              bulletIndicesHit.has(bulletIdx) || // bullet already hit something
-              brickIndicesToDestroy.has(brickIdx) || // brick already being destroyed
-              !brick.visible ||
-              bullet.x + bullet.width <= brick.x ||
-              bullet.x >= brick.x + brick.width ||
-              bullet.y >= brick.y + brick.height ||
-              bullet.y + bullet.height <= brick.y
-            ) {
-              return;
-            }
-            
-            // Collision detected
-            bulletIndicesHit.add(bulletIdx);
-            brickIndicesToDestroy.add(brickIdx);
-            soundManager.playBrickHit();
-            setScore(prev => prev + brick.points);
-          });
-        });
+      // Check all collisions
+      movedBullets.forEach((bullet, bulletIdx) => {
+        if (bulletIndicesHit.has(bulletIdx)) return;
         
-        // Update bricks
-        return prevBricks.map((brick, idx) => 
-          brickIndicesToDestroy.has(idx) ? { ...brick, visible: false } : brick
-        );
+        currentBricks.forEach((brick, brickIdx) => {
+          if (
+            bulletIndicesHit.has(bulletIdx) ||
+            brickIndicesToDestroy.has(brickIdx) ||
+            !brick.visible ||
+            bullet.x + bullet.width <= brick.x ||
+            bullet.x >= brick.x + brick.width ||
+            bullet.y >= brick.y + brick.height ||
+            bullet.y + bullet.height <= brick.y
+          ) {
+            return;
+          }
+          
+          // Collision detected
+          bulletIndicesHit.add(bulletIdx);
+          brickIndicesToDestroy.add(brickIdx);
+        });
       });
       
+      // Update bricks if any collisions occurred
+      if (brickIndicesToDestroy.size > 0) {
+        setBricks(prevBricks => 
+          prevBricks.map((brick, idx) => {
+            if (brickIndicesToDestroy.has(idx)) {
+              soundManager.playBrickHit();
+              setScore(prev => prev + brick.points);
+              return { ...brick, visible: false };
+            }
+            return brick;
+          })
+        );
+      }
+      
       // Return bullets that didn't hit anything
-      return prevBullets.filter((_, idx) => !bulletIndicesHit.has(idx));
+      return movedBullets.filter((_, idx) => !bulletIndicesHit.has(idx));
     });
   }, [setBricks, setScore]);
 
