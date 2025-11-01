@@ -45,7 +45,7 @@ export const Game = () => {
   const { highScores, isHighScore, addHighScore } = useHighScores();
 
   const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives);
-  const { bullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks);
+  const { bullets, setBullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks);
 
   const initBricksForLevel = useCallback((currentLevel: number) => {
     const layoutIndex = ((currentLevel - 1) % 10);
@@ -148,6 +148,7 @@ export const Game = () => {
     // Initialize bricks for new level
     setBricks(initBricksForLevel(newLevel));
     setPowerUps([]);
+    setBullets([]);
     setGameState("playing");
     
     toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);

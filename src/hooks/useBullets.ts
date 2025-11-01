@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import type { Bullet, Paddle, Brick } from "@/types/game";
 import { BULLET_WIDTH, BULLET_HEIGHT, BULLET_SPEED, CANVAS_HEIGHT } from "@/constants/game";
 import { soundManager } from "@/utils/sounds";
+import { getHitColor } from "@/constants/game";
 
 export const useBullets = (
   setScore: React.Dispatch<React.SetStateAction<number>>,
@@ -73,8 +74,17 @@ export const useBullets = (
           prevBricks.map((brick, idx) => {
             if (brickIndicesToDestroy.has(idx)) {
               soundManager.playBrickHit();
-              setScore(prev => prev + brick.points);
-              return { ...brick, visible: false };
+              const updatedBrick = { ...brick, hitsRemaining: brick.hitsRemaining - 1 };
+              
+              // Update brick color or make invisible
+              if (updatedBrick.hitsRemaining > 0) {
+                updatedBrick.color = getHitColor(brick.color, updatedBrick.hitsRemaining, brick.maxHits);
+              } else {
+                updatedBrick.visible = false;
+                setScore(prev => prev + brick.points);
+              }
+              
+              return updatedBrick;
             }
             return brick;
           })
