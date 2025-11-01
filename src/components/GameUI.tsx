@@ -29,17 +29,8 @@ export const GameUI = ({ score, lives, level }: GameUIProps) => {
         <div className="text-neon-pink text-sm font-semibold tracking-wider">
           LIVES
         </div>
-        <div className="flex gap-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={i}
-              className={`w-6 h-6 rounded-full transition-all ${
-                i < lives
-                  ? "bg-neon-pink shadow-[0_0_10px_hsl(330,100%,65%)]"
-                  : "bg-muted opacity-30"
-              }`}
-            />
-          ))}
+        <div className="text-4xl font-bold neon-text text-neon-pink">
+          {lives}
         </div>
       </div>
     </div>

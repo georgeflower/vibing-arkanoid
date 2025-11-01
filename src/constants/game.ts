@@ -13,7 +13,7 @@ export const BRICK_OFFSET_LEFT = 40;
 
 export const POWERUP_SIZE = 30;
 export const POWERUP_FALL_SPEED = 2;
-export const POWERUP_DROP_CHANCE = 0.40; // 40%
+export const POWERUP_DROP_CHANCE = 0.25; // 25%
 export const FIREBALL_DURATION = 5000; // 5 seconds
 
 export const BULLET_WIDTH = 4;

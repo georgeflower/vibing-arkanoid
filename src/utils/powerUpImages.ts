@@ -2,6 +2,9 @@ import multiballImg from "@/assets/powerup-multiball.png";
 import turretsImg from "@/assets/powerup-turrets.png";
 import fireballImg from "@/assets/powerup-fireball.png";
 import lifeImg from "@/assets/powerup-life.png";
+import slowdownImg from "@/assets/powerup-slowdown.png";
+import extendImg from "@/assets/powerup-extend.png";
+import shrinkImg from "@/assets/powerup-shrink.png";
 import type { PowerUpType } from "@/types/game";
 
 export const powerUpImages: Record<PowerUpType, string> = {
@@ -9,6 +12,9 @@ export const powerUpImages: Record<PowerUpType, string> = {
   turrets: turretsImg,
   fireball: fireballImg,
   life: lifeImg,
+  slowdown: slowdownImg,
+  paddleExtend: extendImg,
+  paddleShrink: shrinkImg,
 };
 
 export const powerUpColors: Record<PowerUpType, string> = {
@@ -16,4 +22,7 @@ export const powerUpColors: Record<PowerUpType, string> = {
   turrets: "hsl(30, 100%, 60%)", // orange
   fireball: "hsl(30, 100%, 60%)", // orange
   life: "hsl(0, 100%, 60%)", // red
+  slowdown: "hsl(200, 100%, 60%)", // cyan
+  paddleExtend: "hsl(120, 60%, 45%)", // green
+  paddleShrink: "hsl(0, 75%, 55%)", // red
 };

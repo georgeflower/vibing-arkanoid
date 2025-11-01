@@ -38,7 +38,7 @@ export interface Bullet {
   speed: number;
 }
 
-export type PowerUpType = "multiball" | "turrets" | "fireball" | "life";
+export type PowerUpType = "multiball" | "turrets" | "fireball" | "life" | "slowdown" | "paddleExtend" | "paddleShrink";
 
 export interface PowerUp {
   x: number;

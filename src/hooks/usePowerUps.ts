@@ -4,7 +4,7 @@ import { POWERUP_SIZE, POWERUP_FALL_SPEED, POWERUP_DROP_CHANCE, CANVAS_HEIGHT, F
 import { toast } from "sonner";
 import { soundManager } from "@/utils/sounds";
 
-const powerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life"];
+const powerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life", "slowdown", "paddleExtend", "paddleShrink"];
 
 export const usePowerUps = (
   currentLevel: number,
@@ -49,7 +49,8 @@ export const usePowerUps = (
     paddle: Paddle,
     balls: Ball[],
     setBalls: React.Dispatch<React.SetStateAction<Ball[]>>,
-    setPaddle: React.Dispatch<React.SetStateAction<Paddle | null>>
+    setPaddle: React.Dispatch<React.SetStateAction<Paddle | null>>,
+    setSpeedMultiplier: React.Dispatch<React.SetStateAction<number>>
   ) => {
     setPowerUps(prev => {
       return prev.map(powerUp => {
@@ -96,6 +97,21 @@ export const usePowerUps = (
                 setExtraLifeUsedLevels(prev => [...prev, levelGroup]);
                 toast.success("Extra life!");
               }
+              break;
+            
+            case "slowdown":
+              setSpeedMultiplier(prev => Math.max(0.5, prev - 0.1));
+              toast.success("Speed reduced by 10%!");
+              break;
+            
+            case "paddleExtend":
+              setPaddle(prev => prev ? { ...prev, width: Math.min(200, prev.width + 30) } : null);
+              toast.success("Paddle extended!");
+              break;
+            
+            case "paddleShrink":
+              setPaddle(prev => prev ? { ...prev, width: Math.max(60, prev.width - 30) } : null);
+              toast.success("Paddle shrunk!");
               break;
           }
 

@@ -382,7 +382,7 @@ export const Game = () => {
 
     // Check power-up collision
     if (paddle) {
-      checkPowerUpCollision(paddle, balls, setBalls, setPaddle);
+      checkPowerUpCollision(paddle, balls, setBalls, setPaddle, setSpeedMultiplier);
     }
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);

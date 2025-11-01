@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useRef } from "react";
 import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet } from "@/types/game";
 import { powerUpImages } from "@/utils/powerUpImages";
+import paddleImg from "@/assets/paddle.png";
 
 interface GameCanvasProps {
   width: number;
@@ -16,14 +17,19 @@ interface GameCanvasProps {
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
   ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
+    const paddleImageRef = useRef<HTMLImageElement | null>(null);
     
-    // Load power-up images
+    // Load power-up images and paddle image
     useEffect(() => {
       Object.entries(powerUpImages).forEach(([type, src]) => {
         const img = new Image();
         img.src = src;
         loadedImagesRef.current[type] = img;
       });
+      
+      const paddleImage = new Image();
+      paddleImage.src = paddleImg;
+      paddleImageRef.current = paddleImage;
     }, []);
 
     useEffect(() => {
@@ -64,15 +70,23 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw paddle
       if (paddle) {
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = "hsl(200, 70%, 50%)";
-        ctx.fillStyle = "hsl(200, 70%, 50%)";
-        ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
-        
-        // Paddle highlight
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
-        ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height / 2);
+        const img = paddleImageRef.current;
+        if (img && img.complete) {
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = "hsl(200, 70%, 50%)";
+          ctx.drawImage(img, paddle.x, paddle.y, paddle.width, paddle.height);
+        } else {
+          // Fallback while image loads
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = "hsl(200, 70%, 50%)";
+          ctx.fillStyle = "hsl(200, 70%, 50%)";
+          ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+          
+          // Paddle highlight
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+          ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height / 2);
+        }
       }
 
       // Draw balls
