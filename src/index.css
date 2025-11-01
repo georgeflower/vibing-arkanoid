@@ -71,4 +71,89 @@ All colors MUST be HSL.
   .game-glow {
     box-shadow: 0 0 16px hsl(var(--neon-cyan) / 0.2), 0 0 32px hsl(var(--neon-purple) / 0.15);
   }
+
+  /* Retro Amiga High Score Styles */
+  .retro-title {
+    background: linear-gradient(90deg, 
+      hsl(280, 60%, 55%), 
+      hsl(330, 70%, 55%), 
+      hsl(200, 70%, 50%), 
+      hsl(280, 60%, 55%)
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: retro-shine 3s linear infinite;
+    text-shadow: 0 0 20px hsl(280, 60%, 55%);
+  }
+
+  @keyframes retro-shine {
+    0% { background-position: 0% center; }
+    100% { background-position: 200% center; }
+  }
+
+  .retro-border {
+    border: 4px solid;
+    border-image: linear-gradient(
+      45deg,
+      hsl(280, 60%, 55%),
+      hsl(200, 70%, 50%),
+      hsl(330, 70%, 55%),
+      hsl(280, 60%, 55%)
+    ) 1;
+    animation: border-glow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes border-glow {
+    0% {
+      box-shadow: 0 0 20px hsl(280, 60%, 55% / 0.5);
+    }
+    100% {
+      box-shadow: 0 0 40px hsl(200, 70%, 50% / 0.7);
+    }
+  }
+
+  .retro-row {
+    animation: slide-in 0.5s ease-out backwards;
+  }
+
+  @keyframes slide-in {
+    0% {
+      transform: translateX(-100px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .retro-button {
+    animation: button-pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes button-pulse {
+    0%, 100% {
+      box-shadow: 0 0 10px hsl(200, 70%, 50% / 0.5);
+    }
+    50% {
+      box-shadow: 0 0 30px hsl(280, 60%, 55% / 0.8);
+    }
+  }
+
+  .animate-scale-in {
+    animation: scale-in-center 0.5s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
+  }
+
+  @keyframes scale-in-center {
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
 }

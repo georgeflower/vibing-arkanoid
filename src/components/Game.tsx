@@ -3,6 +3,7 @@ import { GameCanvas } from "./GameCanvas";
 import { GameUI } from "./GameUI";
 import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
+import { HighScoreDisplay } from "./HighScoreDisplay";
 import { toast } from "sonner";
 import type { Brick, Ball, Paddle, GameState } from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
@@ -39,6 +40,7 @@ export const Game = () => {
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [showHighScoreEntry, setShowHighScoreEntry] = useState(false);
+  const [showHighScoreDisplay, setShowHighScoreDisplay] = useState(false);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
 
@@ -330,6 +332,7 @@ export const Game = () => {
             // Check if it's a high score
             if (isHighScore(score)) {
               setShowHighScoreEntry(true);
+              soundManager.playHighScoreMusic();
               toast.success("New High Score!");
             } else {
               toast.error("Game Over!");
@@ -419,37 +422,50 @@ export const Game = () => {
     }
   };
 
-  const handleRestart = () => {
+  const handleRestart = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
     soundManager.stopBackgroundMusic();
+    soundManager.stopHighScoreMusic();
     setShowHighScoreEntry(false);
+    setShowHighScoreDisplay(false);
     initGame();
     toast("Game Reset!");
-  };
+  }, [initGame]);
 
   const handleHighScoreSubmit = (name: string) => {
     addHighScore(name, score, level);
     setShowHighScoreEntry(false);
+    setShowHighScoreDisplay(true);
     toast.success("High score saved!");
+  };
+
+  const handleCloseHighScoreDisplay = () => {
+    setShowHighScoreDisplay(false);
+    soundManager.stopHighScoreMusic();
+    handleRestart();
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-4">
-      <h1 className="text-5xl font-bold neon-text text-neon-cyan">
-        NEON BREAKER
-      </h1>
-      
-      {showHighScoreEntry ? (
-        <HighScoreEntry
-          score={score}
-          level={level}
-          onSubmit={handleHighScoreSubmit}
-        />
+      {showHighScoreDisplay ? (
+        <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} />
       ) : (
         <>
-          <GameUI score={score} lives={lives} level={level} />
+          <h1 className="text-5xl font-bold neon-text text-neon-cyan">
+            NEON BREAKER
+          </h1>
+          
+          {showHighScoreEntry ? (
+            <HighScoreEntry
+              score={score}
+              level={level}
+              onSubmit={handleHighScoreSubmit}
+            />
+          ) : (
+            <>
+              <GameUI score={score} lives={lives} level={level} />
           
           <div className="game-glow rounded-lg overflow-hidden">
             <GameCanvas
@@ -490,6 +506,8 @@ export const Game = () => {
           
           {highScores.length > 0 && (
             <HighScoreTable scores={highScores} />
+          )}
+            </>
           )}
         </>
       )}

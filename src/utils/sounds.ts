@@ -2,6 +2,7 @@
 class SoundManager {
   private audioContext: AudioContext | null = null;
   private bgMusic: HTMLAudioElement | null = null;
+  private highScoreMusic: HTMLAudioElement | null = null;
 
   private getAudioContext() {
     if (!this.audioContext) {
@@ -29,6 +30,23 @@ class SoundManager {
     if (this.bgMusic) {
       this.bgMusic.pause();
       this.bgMusic.currentTime = 0;
+    }
+  }
+
+  playHighScoreMusic() {
+    this.stopBackgroundMusic(); // Stop game music
+    if (!this.highScoreMusic) {
+      this.highScoreMusic = new Audio('/High_score.mp3');
+      this.highScoreMusic.loop = true;
+      this.highScoreMusic.volume = 0.4;
+    }
+    this.highScoreMusic.play().catch(err => console.log('High score audio play failed:', err));
+  }
+
+  stopHighScoreMusic() {
+    if (this.highScoreMusic) {
+      this.highScoreMusic.pause();
+      this.highScoreMusic.currentTime = 0;
     }
   }
 
