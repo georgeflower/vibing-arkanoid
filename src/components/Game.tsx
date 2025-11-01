@@ -150,6 +150,7 @@ export const Game = () => {
     setPowerUps([]);
     setBullets([]);
     setGameState("playing");
+    soundManager.playBackgroundMusic();
     
     toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
   }, [level, initBricksForLevel, setPowerUps]);
@@ -188,6 +189,7 @@ export const Game = () => {
         nextLevel();
       } else {
         setGameState("playing");
+        soundManager.playBackgroundMusic();
         toast.success("Continue!");
       }
       return;
@@ -323,6 +325,7 @@ export const Game = () => {
           
           if (newLives <= 0) {
             setGameState("gameOver");
+            soundManager.stopBackgroundMusic();
             
             // Check if it's a high score
             if (isHighScore(score)) {
@@ -410,6 +413,7 @@ export const Game = () => {
       } else {
         // Continue current level
         setGameState("playing");
+        soundManager.playBackgroundMusic();
         toast.success("Continue!");
       }
     }
@@ -419,6 +423,7 @@ export const Game = () => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
+    soundManager.stopBackgroundMusic();
     setShowHighScoreEntry(false);
     initGame();
     toast("Game Reset!");

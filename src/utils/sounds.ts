@@ -1,12 +1,35 @@
 // Simple sound effects using Web Audio API
 class SoundManager {
   private audioContext: AudioContext | null = null;
+  private bgMusic: HTMLAudioElement | null = null;
 
   private getAudioContext() {
     if (!this.audioContext) {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     return this.audioContext;
+  }
+
+  playBackgroundMusic() {
+    if (!this.bgMusic) {
+      this.bgMusic = new Audio('/Pixel_Frenzy.mp3');
+      this.bgMusic.loop = true;
+      this.bgMusic.volume = 0.3;
+    }
+    this.bgMusic.play().catch(err => console.log('Audio play failed:', err));
+  }
+
+  pauseBackgroundMusic() {
+    if (this.bgMusic) {
+      this.bgMusic.pause();
+    }
+  }
+
+  stopBackgroundMusic() {
+    if (this.bgMusic) {
+      this.bgMusic.pause();
+      this.bgMusic.currentTime = 0;
+    }
   }
 
   playBounce() {
