@@ -34,13 +34,13 @@ class SoundManager {
   }
 
   private handleTrackEnd() {
-    // Move to next track (no loop - just play once)
+    // Move to next track and play it continuously
     this.currentTrackIndex = (this.currentTrackIndex + 1) % this.trackUrls.length;
     
-    // Stop current track completely
-    this.stopBackgroundMusic();
-    
-    // Don't automatically play the next song - player can restart if they want
+    // Play next song immediately if music is enabled
+    if (this.musicEnabled) {
+      this.playBackgroundMusic();
+    }
   }
 
   pauseBackgroundMusic() {

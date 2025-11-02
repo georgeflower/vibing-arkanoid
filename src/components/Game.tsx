@@ -517,12 +517,13 @@ export const Game = () => {
 
     // Check if balls hit enemies (bounce AND damage/destroy)
     const hitEnemies = new Set<number>();
+    const currentEnemies = enemies; // Capture current enemies for collision detection
     setBalls(prevBalls => {
       let ballsUpdated = false;
       const newBalls = prevBalls.map(ball => {
         if (ball.waitingToLaunch) return ball;
         
-        for (const enemy of enemies) {
+        for (const enemy of currentEnemies) {
           if (ball.x + ball.radius > enemy.x &&
             ball.x - ball.radius < enemy.x + enemy.width &&
             ball.y + ball.radius > enemy.y &&
@@ -644,25 +645,12 @@ export const Game = () => {
       let newY = bomb.y + bomb.speed;
       let newDx = bomb.dx || 0;
       
-      // Rockets have magnetic behavior towards paddle and balls
-      if (bomb.type === "rocket" && paddle && balls.length > 0) {
-        // 10% attraction towards paddle
+      // Rockets have magnetic behavior towards paddle only (1% attraction)
+      if (bomb.type === "rocket" && paddle) {
+        // 1% attraction towards paddle
         const paddleCenterX = paddle.x + paddle.width / 2;
         const toPaddleX = paddleCenterX - bomb.x;
-        newDx += toPaddleX * 0.001;
-        
-        // 7% attraction towards closest ball
-        const closestBall = balls.reduce((closest, ball) => {
-          if (ball.waitingToLaunch) return closest;
-          const distToBall = Math.sqrt(Math.pow(ball.x - bomb.x, 2) + Math.pow(ball.y - bomb.y, 2));
-          const distToClosest = closest ? Math.sqrt(Math.pow(closest.x - bomb.x, 2) + Math.pow(closest.y - bomb.y, 2)) : Infinity;
-          return distToBall < distToClosest ? ball : closest;
-        }, null as Ball | null);
-        
-        if (closestBall) {
-          const toBallX = closestBall.x - bomb.x;
-          newDx += toBallX * 0.0007;
-        }
+        newDx += toPaddleX * 0.0001;
         
         // Apply horizontal movement
         newX += newDx;
@@ -915,11 +903,11 @@ export const Game = () => {
             }
             
             const newProjectile: Bomb = {
-              x: currentEnemy.x + currentEnemy.width / 2 - 5,
+              x: currentEnemy.x + currentEnemy.width / 2 - (currentEnemy.type === "sphere" ? 10 : 5),
               y: currentEnemy.y + currentEnemy.height,
-              width: 10,
-              height: 10,
-              speed: currentEnemy.type === "sphere" ? 2.5 : 3,
+              width: currentEnemy.type === "sphere" ? 20 : 10,
+              height: currentEnemy.type === "sphere" ? 20 : 10,
+              speed: currentEnemy.type === "sphere" ? 1.5 : 3,
               enemyId: enemyId,
               type: currentEnemy.type === "sphere" ? "rocket" : "bomb",
               dx: 0, // Initialize horizontal velocity for rockets
@@ -933,10 +921,14 @@ export const Game = () => {
     }
   }, [timer, gameState, lastEnemySpawnTime, enemySpawnCount, level]);
 
-  // Animate launch angle indicator
+  // Animate launch angle indicator - continues until ball leaves paddle area
   useEffect(() => {
     const waitingBall = balls.find(ball => ball.waitingToLaunch);
-    const shouldAnimate = (gameState === "playing" || gameState === "ready") && waitingBall;
+    const ballOnPaddle = paddle && balls.some(ball => 
+      Math.abs(ball.y - (paddle.y - ball.radius - 5)) < 10 && 
+      Math.abs(ball.x - (paddle.x + paddle.width / 2)) < paddle.width / 2 + ball.radius
+    );
+    const shouldAnimate = (gameState === "playing" || gameState === "ready") && (waitingBall || ballOnPaddle);
     
     // Only manage interval when animation state changes
     if (shouldAnimate && !launchAngleIntervalRef.current) {

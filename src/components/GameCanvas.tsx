@@ -215,7 +215,16 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
       });
 
-      // Turrets are now part of the paddle image, no need to draw separately
+      // Draw turrets if paddle has them
+      if (paddle.hasTurrets) {
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = "hsl(0, 85%, 55%)";
+        ctx.fillStyle = "hsl(0, 85%, 55%)";
+        // Left turret
+        ctx.fillRect(paddle.x, paddle.y - 10, 15, 10);
+        // Right turret
+        ctx.fillRect(paddle.x + paddle.width - 15, paddle.y - 10, 15, 10);
+      }
 
       // Draw enemies (cubes and spheres)
       enemy.forEach((singleEnemy) => {
