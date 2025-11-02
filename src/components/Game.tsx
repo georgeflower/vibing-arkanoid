@@ -563,24 +563,52 @@ export const Game = () => {
 
     // Process enemy hits
     if (hitEnemies.size > 0) {
-      setEnemies(prev => prev.filter(enemy => {
-        if (enemy.id === undefined || !hitEnemies.has(enemy.id)) return true;
+      setEnemies(prev => {
+        const updatedEnemies: typeof prev = [];
         
-        // Handle sphere enemy (2 hits)
-        if (enemy.type === "sphere") {
-          const currentHits = enemy.hits || 0;
-          if (currentHits === 0) {
-            // First hit - make it angry and faster
-            enemy.hits = 1;
-            enemy.isAngry = true;
-            enemy.speed *= 1.3;
-            enemy.dx *= 1.3;
-            enemy.dy *= 1.3;
-            soundManager.playBounce();
-            toast.warning("Sphere enemy is angry!");
-            return true; // Keep the enemy
+        prev.forEach(enemy => {
+          if (enemy.id === undefined || !hitEnemies.has(enemy.id)) {
+            // Enemy not hit, keep as is
+            updatedEnemies.push(enemy);
+            return;
+          }
+          
+          // Handle sphere enemy (2 hits)
+          if (enemy.type === "sphere") {
+            const currentHits = enemy.hits || 0;
+            if (currentHits === 0) {
+              // First hit - make it angry and faster
+              soundManager.playBounce();
+              toast.warning("Sphere enemy is angry!");
+              updatedEnemies.push({
+                ...enemy,
+                hits: 1,
+                isAngry: true,
+                speed: enemy.speed * 1.3,
+                dx: enemy.dx * 1.3,
+                dy: enemy.dy * 1.3,
+              });
+            } else {
+              // Second hit - destroy it
+              setExplosions(prev => [...prev, {
+                x: enemy.x + enemy.width / 2,
+                y: enemy.y + enemy.height / 2,
+                frame: 0,
+                maxFrames: 20,
+              }]);
+              soundManager.playBrickHit();
+              setScore(s => s + 200);
+              toast.success("Sphere enemy destroyed! +200 points");
+              // Clear bomb interval for this enemy
+              const interval = bombIntervalsRef.current.get(enemy.id);
+              if (interval) {
+                clearInterval(interval);
+                bombIntervalsRef.current.delete(enemy.id);
+              }
+              // Don't add to updatedEnemies (remove it)
+            }
           } else {
-            // Second hit - destroy it
+            // Cube enemy - destroy on first hit
             setExplosions(prev => [...prev, {
               x: enemy.x + enemy.width / 2,
               y: enemy.y + enemy.height / 2,
@@ -588,40 +616,20 @@ export const Game = () => {
               maxFrames: 20,
             }]);
             soundManager.playBrickHit();
-            setScore(s => s + 200);
-            toast.success("Sphere enemy destroyed! +200 points");
+            setScore(s => s + 100);
+            toast.success("Enemy destroyed! +100 points");
             // Clear bomb interval for this enemy
-            if (enemy.id !== undefined) {
-              const interval = bombIntervalsRef.current.get(enemy.id);
-              if (interval) {
-                clearInterval(interval);
-                bombIntervalsRef.current.delete(enemy.id);
-              }
-            }
-            return false; // Remove the enemy
-          }
-        } else {
-          // Cube enemy - destroy on first hit
-          setExplosions(prev => [...prev, {
-            x: enemy.x + enemy.width / 2,
-            y: enemy.y + enemy.height / 2,
-            frame: 0,
-            maxFrames: 20,
-          }]);
-          soundManager.playBrickHit();
-          setScore(s => s + 100);
-          toast.success("Enemy destroyed! +100 points");
-          // Clear bomb interval for this enemy
-          if (enemy.id !== undefined) {
             const interval = bombIntervalsRef.current.get(enemy.id);
             if (interval) {
               clearInterval(interval);
               bombIntervalsRef.current.delete(enemy.id);
             }
+            // Don't add to updatedEnemies (remove it)
           }
-          return false; // Remove the enemy
-        }
-      }));
+        });
+        
+        return updatedEnemies;
+      });
     }
 
     // Update explosions
