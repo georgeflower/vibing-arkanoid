@@ -1180,27 +1180,29 @@ export const Game = () => {
             />
           ) : (
             <>
-              <GameUI score={score} lives={lives} level={level} timer={timer} speed={speedMultiplier} gameState={gameState} setGameState={setGameState} />
+              <div className={`flex gap-6 items-center justify-center ${isFullscreen ? 'w-full' : ''}`}>
+                <GameUI score={score} lives={lives} level={level} timer={timer} speed={speedMultiplier} gameState={gameState} setGameState={setGameState} />
           
-          <div className={`game-glow rounded-lg overflow-hidden ${isFullscreen ? 'game-canvas-wrapper' : ''}`}>
-            <GameCanvas
-              ref={canvasRef}
-              width={CANVAS_WIDTH}
-              height={CANVAS_HEIGHT}
-              bricks={bricks}
-              balls={balls}
-              paddle={paddle}
-              gameState={gameState}
-              powerUps={powerUps}
-              bullets={bullets}
-              enemy={enemies}
-              bombs={bombs}
-              level={level}
-              backgroundPhase={backgroundPhase}
-              explosions={explosions}
-              launchAngle={launchAngle}
-            />
-          </div>
+                <div className={`game-glow rounded-lg overflow-hidden ${isFullscreen ? 'game-canvas-wrapper' : ''}`}>
+                  <GameCanvas
+                    ref={canvasRef}
+                    width={CANVAS_WIDTH}
+                    height={CANVAS_HEIGHT}
+                    bricks={bricks}
+                    balls={balls}
+                    paddle={paddle}
+                    gameState={gameState}
+                    powerUps={powerUps}
+                    bullets={bullets}
+                    enemy={enemies}
+                    bombs={bombs}
+                    level={level}
+                    backgroundPhase={backgroundPhase}
+                    explosions={explosions}
+                    launchAngle={launchAngle}
+                  />
+                </div>
+              </div>
 
           <div className="flex gap-4">
             {gameState === "ready" && (

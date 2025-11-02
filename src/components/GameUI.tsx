@@ -15,9 +15,9 @@ export const GameUI = ({ score, lives, level, timer, speed, gameState, setGameSt
   return (
     <>
       <MusicSettings gameState={gameState} setGameState={setGameState} />
-      <div className="flex gap-8 items-start">
+      <div className="flex flex-col gap-4">
         {/* Score */}
-        <div className="amiga-box px-4 py-3">
+        <div className="amiga-box px-4 py-3 min-w-[140px]">
           <div className="text-[10px] retro-pixel-text mb-2" style={{ color: 'hsl(0, 0%, 60%)' }}>
             SCORE
           </div>
@@ -27,7 +27,7 @@ export const GameUI = ({ score, lives, level, timer, speed, gameState, setGameSt
         </div>
 
         {/* Level */}
-        <div className="amiga-box px-4 py-3">
+        <div className="amiga-box px-4 py-3 min-w-[140px]">
           <div className="text-[10px] retro-pixel-text mb-2" style={{ color: 'hsl(30, 75%, 55%)' }}>
             LEVEL
           </div>
@@ -37,7 +37,7 @@ export const GameUI = ({ score, lives, level, timer, speed, gameState, setGameSt
         </div>
 
         {/* Lives */}
-        <div className="amiga-box px-4 py-3">
+        <div className="amiga-box px-4 py-3 min-w-[140px]">
           <div className="text-[10px] retro-pixel-text mb-2" style={{ color: 'hsl(0, 70%, 55%)' }}>
             LIVES
           </div>
@@ -47,7 +47,7 @@ export const GameUI = ({ score, lives, level, timer, speed, gameState, setGameSt
         </div>
 
         {/* Timer */}
-        <div className="amiga-box px-4 py-3">
+        <div className="amiga-box px-4 py-3 min-w-[140px]">
           <div className="text-[10px] retro-pixel-text mb-2" style={{ color: 'hsl(210, 60%, 55%)' }}>
             TIMER
           </div>
@@ -57,7 +57,7 @@ export const GameUI = ({ score, lives, level, timer, speed, gameState, setGameSt
         </div>
 
         {/* Speed */}
-        <div className="amiga-box px-4 py-3">
+        <div className="amiga-box px-4 py-3 min-w-[140px]">
           <div className="text-[10px] retro-pixel-text mb-2" style={{ color: 'hsl(120, 50%, 50%)' }}>
             SPEED
           </div>
