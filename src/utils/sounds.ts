@@ -304,6 +304,10 @@ class SoundManager {
     audio.volume = 0.5;
     audio.play().catch(err => console.log('Shrink sound failed:', err));
   }
+
+  isMusicPlaying(): boolean {
+    return this.musicTracks.some(track => track && !track.paused && track.currentTime > 0);
+  }
 }
 
 export const soundManager = new SoundManager();

@@ -198,7 +198,6 @@ export const Game = () => {
     bombIntervalsRef.current.forEach(interval => clearInterval(interval));
     bombIntervalsRef.current.clear();
     setGameState("playing");
-    soundManager.playBackgroundMusic(newLevel);
     
     if (newLevel === 10) {
       toast.success(`Level ${newLevel}! New music unlocked!`);
@@ -240,8 +239,11 @@ export const Game = () => {
       if (isLevelComplete) {
         nextLevel();
       } else {
+        // Start game - start music only if not already playing
         setGameState("playing");
-        soundManager.playBackgroundMusic(level);
+        if (!soundManager.isMusicPlaying()) {
+          soundManager.playBackgroundMusic(level);
+        }
         toast.success("Click again to launch!");
       }
       return;
@@ -938,9 +940,11 @@ export const Game = () => {
         // Start next level
         nextLevel();
       } else {
-        // Continue current level
+        // Continue current level - start music only if not already playing
         setGameState("playing");
-        soundManager.playBackgroundMusic(level);
+        if (!soundManager.isMusicPlaying()) {
+          soundManager.playBackgroundMusic(level);
+        }
         toast.success("Continue!");
       }
     }
