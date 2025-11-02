@@ -29,6 +29,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const rotationSpeedRef = useRef(0.5);
     const zoomSpeedRef = useRef(0.3);
     const zoomDirectionRef = useRef(1);
+    const dashOffsetRef = useRef(0);
     
     // Load power-up images and paddle image
     useEffect(() => {
@@ -151,32 +152,26 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         // Draw launch indicator if ball is waiting to launch
         if (ball.waitingToLaunch) {
           const angle = (launchAngle * Math.PI) / 180;
-          const lineLength = 60;
+          const lineLength = 100;
           const endX = ball.x + Math.sin(angle) * lineLength;
           const endY = ball.y - Math.cos(angle) * lineLength;
           
-          // Draw line
+          // Animate dash offset for moving dots effect
+          dashOffsetRef.current = (dashOffsetRef.current + 1) % 20;
+          
+          // Draw dotted line
           ctx.shadowBlur = 10;
-          ctx.shadowColor = "hsl(120, 70%, 50%)";
-          ctx.strokeStyle = "hsl(120, 70%, 50%)";
-          ctx.lineWidth = 3;
+          ctx.shadowColor = "hsl(0, 85%, 55%)";
+          ctx.strokeStyle = "hsl(0, 85%, 55%)";
+          ctx.lineWidth = 4;
+          ctx.setLineDash([8, 8]);
+          ctx.lineDashOffset = -dashOffsetRef.current;
           ctx.beginPath();
           ctx.moveTo(ball.x, ball.y);
           ctx.lineTo(endX, endY);
           ctx.stroke();
-          
-          // Draw arrow head
-          const arrowSize = 8;
-          const arrowAngle1 = angle + Math.PI * 0.75;
-          const arrowAngle2 = angle - Math.PI * 0.75;
-          
-          ctx.fillStyle = "hsl(120, 70%, 50%)";
-          ctx.beginPath();
-          ctx.moveTo(endX, endY);
-          ctx.lineTo(endX + Math.cos(arrowAngle1) * arrowSize, endY + Math.sin(arrowAngle1) * arrowSize);
-          ctx.lineTo(endX + Math.cos(arrowAngle2) * arrowSize, endY + Math.sin(arrowAngle2) * arrowSize);
-          ctx.closePath();
-          ctx.fill();
+          ctx.setLineDash([]); // Reset dash pattern
+          ctx.lineDashOffset = 0;
         }
       });
 
