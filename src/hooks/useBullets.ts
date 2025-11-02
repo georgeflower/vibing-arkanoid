@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import type { Bullet, Paddle, Brick, Enemy } from "@/types/game";
-import { BULLET_WIDTH, BULLET_HEIGHT, BULLET_SPEED, CANVAS_HEIGHT } from "@/constants/game";
+import { BULLET_WIDTH, BULLET_HEIGHT, BULLET_SPEED, CANVAS_HEIGHT, BRICK_PADDING } from "@/constants/game";
 import { soundManager } from "@/utils/sounds";
 import { getHitColor } from "@/constants/game";
 
@@ -76,14 +76,20 @@ export const useBullets = (
         if (bulletIndicesHit.has(bulletIdx) || bulletIndicesToBounce.has(bulletIdx) || bullet.isBounced) return;
         
         currentBricks.forEach((brick, brickIdx) => {
+          // Use actual brick dimensions (no expansion to cover padding)
+          const collisionX = brick.x;
+          const collisionY = brick.y;
+          const collisionWidth = brick.width;
+          const collisionHeight = brick.height;
+          
           if (
             bulletIndicesHit.has(bulletIdx) ||
             brickIndicesToDestroy.has(brickIdx) ||
             !brick.visible ||
-            bullet.x + bullet.width <= brick.x ||
-            bullet.x >= brick.x + brick.width ||
-            bullet.y >= brick.y + brick.height ||
-            bullet.y + bullet.height <= brick.y
+            bullet.x + bullet.width <= collisionX ||
+            bullet.x >= collisionX + collisionWidth ||
+            bullet.y >= collisionY + collisionHeight ||
+            bullet.y + bullet.height <= collisionY
           ) {
             return;
           }

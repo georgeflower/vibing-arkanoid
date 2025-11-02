@@ -23,6 +23,7 @@ export interface Ball {
   isFireball?: boolean;
   waitingToLaunch?: boolean;
   rotation?: number; // For 3D spinning effect
+  lastHitTime?: number; // Timestamp of last brick hit
 }
 
 export interface Paddle {
