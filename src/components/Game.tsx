@@ -499,18 +499,47 @@ export const Game = () => {
           bomb.x < paddle.x + paddle.width &&
           bomb.y + bomb.height > paddle.y &&
           bomb.y < paddle.y + paddle.height) {
-          // Bomb hit paddle - game over
-          setGameState("gameOver");
-          soundManager.stopBackgroundMusic();
+          // Bomb hit paddle - lose a life
           soundManager.playLoseLife();
           setBombs([]);
           setEnemy(null);
-          toast.error("Bomb destroyed the paddle! Game Over!");
           
-          if (isHighScore(score)) {
-            setShowHighScoreEntry(true);
-            soundManager.playHighScoreMusic();
-          }
+          setLives((prev) => {
+            const newLives = prev - 1;
+            
+            if (newLives <= 0) {
+              setGameState("gameOver");
+              soundManager.stopBackgroundMusic();
+              toast.error("Game Over!");
+              
+              if (isHighScore(score)) {
+                setShowHighScoreEntry(true);
+                soundManager.playHighScoreMusic();
+              }
+            } else {
+              // Reset ball and clear power-ups, but wait for click to continue
+              const baseSpeed = 3 * speedMultiplier;
+              const resetBall: Ball = {
+                x: CANVAS_WIDTH / 2,
+                y: CANVAS_HEIGHT - 60,
+                dx: baseSpeed,
+                dy: -baseSpeed,
+                radius: BALL_RADIUS,
+                speed: baseSpeed,
+                id: nextBallId.current++,
+                isFireball: false,
+              };
+              setBalls([resetBall]);
+              setPowerUps([]);
+              setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
+              setTimer(0);
+              setLastEnemySpawnTime(0);
+              setExplosions([]);
+              setGameState("ready");
+              toast.error(`Bomb hit! ${newLives} lives remaining. Click to continue.`);
+            }
+            return newLives;
+          });
         }
       });
     }
