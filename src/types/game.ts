@@ -50,4 +50,22 @@ export interface PowerUp {
   active: boolean;
 }
 
+export interface Enemy {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  speed: number;
+  direction: number;
+}
+
+export interface Bomb {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  speed: number;
+}
+
 export type GameState = "ready" | "playing" | "paused" | "gameOver" | "won";

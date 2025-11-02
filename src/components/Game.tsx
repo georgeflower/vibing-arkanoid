@@ -5,7 +5,7 @@ import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { toast } from "sonner";
-import type { Brick, Ball, Paddle, GameState } from "@/types/game";
+import type { Brick, Ball, Paddle, GameState, Enemy, Bomb } from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
 import { 
   CANVAS_WIDTH, 
@@ -22,7 +22,8 @@ import {
   BRICK_OFFSET_LEFT,
   brickColors,
   POWERUP_DROP_CHANCE,
-  getHitColor
+  getHitColor,
+  getBrickColors
 } from "@/constants/game";
 import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
@@ -41,8 +42,14 @@ export const Game = () => {
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [showHighScoreEntry, setShowHighScoreEntry] = useState(false);
   const [showHighScoreDisplay, setShowHighScoreDisplay] = useState(false);
+  const [timer, setTimer] = useState(0);
+  const [enemy, setEnemy] = useState<Enemy | null>(null);
+  const [bombs, setBombs] = useState<Bomb[]>([]);
+  const [backgroundPhase, setBackgroundPhase] = useState(0);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
+  const timerIntervalRef = useRef<NodeJS.Timeout>();
+  const bombIntervalRef = useRef<NodeJS.Timeout>();
 
   const { highScores, isHighScore, addHighScore } = useHighScores();
 
@@ -52,6 +59,7 @@ export const Game = () => {
   const initBricksForLevel = useCallback((currentLevel: number) => {
     const layoutIndex = ((currentLevel - 1) % 10);
     const layout = levelLayouts[layoutIndex];
+    const levelColors = getBrickColors(currentLevel);
     
     const newBricks: Brick[] = [];
     for (let row = 0; row < BRICK_ROWS; row++) {
@@ -59,7 +67,7 @@ export const Game = () => {
         if (layout[row][col]) {
           const hasPowerUp = Math.random() < POWERUP_DROP_CHANCE;
           const maxHits = getBrickHits(currentLevel, row);
-          const baseColor = brickColors[row % brickColors.length];
+          const baseColor = levelColors[row % levelColors.length];
           newBricks.push({
             x: col * (BRICK_WIDTH + BRICK_PADDING) + BRICK_OFFSET_LEFT,
             y: row * (BRICK_HEIGHT + BRICK_PADDING) + BRICK_OFFSET_TOP,
@@ -110,6 +118,10 @@ export const Game = () => {
     setSpeedMultiplier(1);
     setGameState("ready");
     setPowerUps([]);
+    setTimer(0);
+    setEnemy(null);
+    setBombs([]);
+    setBackgroundPhase(0);
   }, [setPowerUps, initBricksForLevel]);
 
   const nextLevel = useCallback(() => {
@@ -151,6 +163,9 @@ export const Game = () => {
     setBricks(initBricksForLevel(newLevel));
     setPowerUps([]);
     setBullets([]);
+    setTimer(0);
+    setEnemy(null);
+    setBombs([]);
     setGameState("playing");
     soundManager.playBackgroundMusic();
     
@@ -353,6 +368,9 @@ export const Game = () => {
             setBalls([resetBall]);
             setPowerUps([]);
             setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
+            setTimer(0);
+            setEnemy(null);
+            setBombs([]);
             setGameState("ready");
             toast(`Life lost! ${newLives} lives remaining. Click to continue.`);
           }
@@ -367,6 +385,9 @@ export const Game = () => {
   const gameLoop = useCallback(() => {
     if (gameState !== "playing") return;
 
+    // Update background animation
+    setBackgroundPhase(prev => (prev + 1) % 360);
+
     // Update balls
     setBalls(prev => prev.map(ball => ({
       ...ball,
@@ -380,6 +401,71 @@ export const Game = () => {
     // Update bullets
     updateBullets(bricks);
 
+    // Update enemy
+    if (enemy) {
+      setEnemy(prev => {
+        if (!prev) return null;
+        let newX = prev.x + prev.speed * prev.direction;
+        let newDirection = prev.direction;
+        
+        if (newX <= 0 || newX >= CANVAS_WIDTH - prev.width) {
+          newDirection = -prev.direction;
+          newX = Math.max(0, Math.min(CANVAS_WIDTH - prev.width, newX));
+        }
+        
+        return {
+          ...prev,
+          x: newX,
+          direction: newDirection,
+          rotation: prev.rotation + 0.1,
+        };
+      });
+
+      // Check if ball hits enemy
+      balls.forEach(ball => {
+        if (enemy &&
+          ball.x + ball.radius > enemy.x &&
+          ball.x - ball.radius < enemy.x + enemy.width &&
+          ball.y + ball.radius > enemy.y &&
+          ball.y - ball.radius < enemy.y + enemy.height) {
+          setEnemy(null);
+          setBombs([]);
+          setScore(prev => prev + 500);
+          soundManager.playPowerUp();
+          toast.success("Enemy destroyed! +500");
+        }
+      });
+    }
+
+    // Update bombs
+    setBombs(prev => prev.map(bomb => ({
+      ...bomb,
+      y: bomb.y + bomb.speed,
+    })).filter(bomb => bomb.y < CANVAS_HEIGHT));
+
+    // Check bomb-paddle collision
+    if (paddle) {
+      bombs.forEach(bomb => {
+        if (bomb.x + bomb.width > paddle.x &&
+          bomb.x < paddle.x + paddle.width &&
+          bomb.y + bomb.height > paddle.y &&
+          bomb.y < paddle.y + paddle.height) {
+          // Bomb hit paddle - game over
+          setGameState("gameOver");
+          soundManager.stopBackgroundMusic();
+          soundManager.playLoseLife();
+          setBombs([]);
+          setEnemy(null);
+          toast.error("Bomb destroyed the paddle! Game Over!");
+          
+          if (isHighScore(score)) {
+            setShowHighScoreEntry(true);
+            soundManager.playHighScoreMusic();
+          }
+        }
+      });
+    }
+
     // Check collisions
     checkCollision();
 
@@ -389,21 +475,79 @@ export const Game = () => {
     }
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier]);
+  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemy, bombs, bricks, score, isHighScore]);
 
   useEffect(() => {
     if (gameState === "playing") {
       animationFrameRef.current = requestAnimationFrame(gameLoop);
-    } else if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
+      
+      // Start timer
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+      timerIntervalRef.current = setInterval(() => {
+        setTimer(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+      if (bombIntervalRef.current) {
+        clearInterval(bombIntervalRef.current);
+      }
     }
 
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+      if (bombIntervalRef.current) {
+        clearInterval(bombIntervalRef.current);
+      }
     };
   }, [gameState, gameLoop]);
+
+  // Enemy spawn when timer reaches 30
+  useEffect(() => {
+    if (gameState === "playing" && timer >= 30 && !enemy) {
+      const newEnemy: Enemy = {
+        x: Math.random() * (CANVAS_WIDTH - 40),
+        y: 150,
+        width: 30,
+        height: 30,
+        rotation: 0,
+        speed: 2,
+        direction: Math.random() > 0.5 ? 1 : -1,
+      };
+      setEnemy(newEnemy);
+      toast.warning("Enemy appeared!");
+
+      // Start dropping bombs
+      if (bombIntervalRef.current) {
+        clearInterval(bombIntervalRef.current);
+      }
+      bombIntervalRef.current = setInterval(() => {
+        setEnemy(currentEnemy => {
+          if (!currentEnemy) return null;
+          const newBomb: Bomb = {
+            x: currentEnemy.x + currentEnemy.width / 2 - 5,
+            y: currentEnemy.y + currentEnemy.height,
+            width: 10,
+            height: 10,
+            speed: 3,
+          };
+          setBombs(prev => [...prev, newBomb]);
+          return currentEnemy;
+        });
+      }, 2000);
+    }
+  }, [timer, gameState, enemy]);
 
   const handleStart = () => {
     if (gameState === "ready") {
@@ -465,7 +609,7 @@ export const Game = () => {
             />
           ) : (
             <>
-              <GameUI score={score} lives={lives} level={level} />
+              <GameUI score={score} lives={lives} level={level} timer={timer} speed={speedMultiplier} />
           
           <div className="game-glow rounded-lg overflow-hidden">
             <GameCanvas
@@ -478,6 +622,10 @@ export const Game = () => {
               gameState={gameState}
               powerUps={powerUps}
               bullets={bullets}
+              enemy={enemy}
+              bombs={bombs}
+              level={level}
+              backgroundPhase={backgroundPhase}
             />
           </div>
 
