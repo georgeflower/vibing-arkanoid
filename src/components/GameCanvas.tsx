@@ -216,7 +216,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       });
 
       // Draw turrets if paddle has them
-      if (paddle.hasTurrets) {
+      if (paddle && paddle.hasTurrets) {
         ctx.shadowBlur = 8;
         ctx.shadowColor = "hsl(0, 85%, 55%)";
         ctx.fillStyle = "hsl(0, 85%, 55%)";
