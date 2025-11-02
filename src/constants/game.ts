@@ -7,7 +7,7 @@ export const BRICK_ROWS = 18;
 export const BRICK_COLS = 14;
 export const BRICK_WIDTH = 60;
 export const BRICK_HEIGHT = 20;
-export const BRICK_PADDING = 8;
+export const BRICK_PADDING = 0;
 export const BRICK_OFFSET_TOP = 80;
 export const BRICK_OFFSET_LEFT = 40;
 
