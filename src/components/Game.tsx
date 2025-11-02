@@ -492,7 +492,22 @@ export const Game = () => {
   useEffect(() => {
     if (gameState === "playing") {
       animationFrameRef.current = requestAnimationFrame(gameLoop);
-      
+    } else {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    }
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [gameState, gameLoop]);
+
+  // Separate useEffect for timer management
+  useEffect(() => {
+    if (gameState === "playing") {
       // Start timer
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
@@ -501,9 +516,6 @@ export const Game = () => {
         setTimer(prev => prev + 1);
       }, 1000);
     } else {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
       }
@@ -513,9 +525,6 @@ export const Game = () => {
     }
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
       }
@@ -523,7 +532,7 @@ export const Game = () => {
         clearInterval(bombIntervalRef.current);
       }
     };
-  }, [gameState, gameLoop]);
+  }, [gameState]);
 
   // Enemy spawn when timer reaches 30
   useEffect(() => {
