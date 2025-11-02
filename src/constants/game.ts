@@ -9,7 +9,7 @@ export const BRICK_WIDTH = 60;
 export const BRICK_HEIGHT = 20;
 export const BRICK_PADDING = 5;
 export const BRICK_OFFSET_TOP = 80;
-export const BRICK_OFFSET_LEFT = (CANVAS_WIDTH - (BRICK_COLS * BRICK_WIDTH)) / 2;
+export const BRICK_OFFSET_LEFT = (CANVAS_WIDTH - (BRICK_COLS * BRICK_WIDTH + (BRICK_COLS - 1) * BRICK_PADDING)) / 2;
 
 export const POWERUP_SIZE = 30;
 export const POWERUP_FALL_SPEED = 2;
