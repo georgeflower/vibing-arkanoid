@@ -83,6 +83,31 @@ All colors MUST be HSL.
                 0 0 0 1px hsl(0, 0%, 10%);
   }
 
+  /* Fullscreen game scaling */
+  .game-container-fullscreen {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .game-canvas-wrapper {
+    max-width: 90vw;
+    max-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .game-canvas-wrapper canvas {
+    width: 100%;
+    height: auto;
+    max-height: 70vh;
+    object-fit: contain;
+  }
+
   .neon-text {
     text-shadow: 0 0 6px currentColor, 0 0 12px currentColor;
   }

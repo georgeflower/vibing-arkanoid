@@ -5,6 +5,7 @@ import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { toast } from "sonner";
+import { Maximize2, Minimize2 } from "lucide-react";
 import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion } from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
 import { 
@@ -51,6 +52,7 @@ export const Game = () => {
   const [lastEnemySpawnTime, setLastEnemySpawnTime] = useState(0);
   const [launchAngle, setLaunchAngle] = useState(-60);
   const [showInstructions, setShowInstructions] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
@@ -58,6 +60,7 @@ export const Game = () => {
   const timerIntervalRef = useRef<NodeJS.Timeout>();
   const bombIntervalsRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
   const launchAngleIntervalRef = useRef<NodeJS.Timeout>();
+  const fullscreenContainerRef = useRef<HTMLDivElement>(null);
 
   const { highScores, isHighScore, addHighScore } = useHighScores();
 
@@ -1110,12 +1113,58 @@ export const Game = () => {
     handleRestart();
   };
 
+  const toggleFullscreen = async () => {
+    if (!fullscreenContainerRef.current) return;
+
+    try {
+      if (!document.fullscreenElement) {
+        await fullscreenContainerRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (err) {
+      console.error('Fullscreen error:', err);
+    }
+  };
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-4">
+    <div 
+      ref={fullscreenContainerRef}
+      className={`flex flex-col items-center justify-center gap-6 p-4 ${
+        isFullscreen ? 'min-h-screen bg-background' : 'min-h-screen'
+      }`}
+    >
       {showHighScoreDisplay ? (
         <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} />
       ) : (
         <>
+          {/* Fullscreen button */}
+          {!showHighScoreEntry && (
+            <button
+              onClick={toggleFullscreen}
+              className="absolute top-4 right-4 amiga-box px-3 py-2 hover:bg-muted/50 transition-colors z-50 flex items-center gap-2"
+              title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+            >
+              {isFullscreen ? (
+                <Minimize2 size={16} style={{ color: 'hsl(0, 0%, 85%)' }} />
+              ) : (
+                <Maximize2 size={16} style={{ color: 'hsl(0, 0%, 85%)' }} />
+              )}
+            </button>
+          )}
+
           <h1 className="text-4xl retro-pixel-text tracking-wider" style={{ 
             color: 'hsl(0, 0%, 85%)',
             textShadow: '3px 3px 0px hsl(0, 0%, 30%), 0 0 20px hsl(210, 60%, 55%, 0.3)'
@@ -1133,7 +1182,7 @@ export const Game = () => {
             <>
               <GameUI score={score} lives={lives} level={level} timer={timer} speed={speedMultiplier} />
           
-          <div className="game-glow rounded-lg overflow-hidden">
+          <div className={`game-glow rounded-lg overflow-hidden ${isFullscreen ? 'game-canvas-wrapper' : ''}`}>
             <GameCanvas
               ref={canvasRef}
               width={CANVAS_WIDTH}
@@ -1157,7 +1206,8 @@ export const Game = () => {
             {gameState === "ready" && (
               <button
                 onClick={handleStart}
-                className="px-8 py-3 bg-neon-purple text-white font-bold rounded-lg neon-text hover:scale-105 transition-transform"
+                className="amiga-box px-8 py-3 retro-pixel-text hover:bg-muted/50 transition-all text-sm"
+                style={{ color: 'hsl(0, 0%, 85%)' }}
               >
                 {bricks.every(brick => !brick.visible) && level > 0 ? "NEXT LEVEL" : "START GAME"}
               </button>
@@ -1165,18 +1215,19 @@ export const Game = () => {
             {(gameState === "gameOver" || gameState === "won") && (
               <button
                 onClick={handleRestart}
-                className="px-8 py-3 bg-neon-pink text-white font-bold rounded-lg neon-text hover:scale-105 transition-transform"
+                className="amiga-box px-8 py-3 retro-pixel-text hover:bg-muted/50 transition-all text-sm"
+                style={{ color: 'hsl(0, 0%, 85%)' }}
               >
                 PLAY AGAIN
               </button>
             )}
           </div>
 
-          <div className="text-muted-foreground text-sm text-center">
+          <div className="retro-pixel-text text-xs" style={{ color: 'hsl(0, 0%, 60%)' }}>
             Move your mouse or touch to control the paddle
           </div>
           
-          {highScores.length > 0 && (
+          {!isFullscreen && highScores.length > 0 && (
             <HighScoreTable scores={highScores} />
           )}
             </>
