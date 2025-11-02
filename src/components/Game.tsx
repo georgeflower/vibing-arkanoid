@@ -1202,10 +1202,43 @@ export const Game = () => {
             />
           ) : (
             <>
-              {/* Control buttons above playable area */}
+              {/* Control buttons and stats above playable area */}
               <div className="flex gap-4 w-full max-w-[1200px] justify-between items-center mb-2">
                 <MusicSettings gameState={gameState} setGameState={setGameState} />
-                <div className="flex-1"></div>
+                
+                {/* Score, Level, Lives in horizontal row */}
+                <div className="flex gap-3 flex-1 justify-center">
+                  {/* Score */}
+                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[100px]">
+                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: 'hsl(0, 0%, 60%)' }}>
+                      SCORE
+                    </div>
+                    <div className="text-base retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
+                      {score.toString().padStart(6, "0")}
+                    </div>
+                  </div>
+
+                  {/* Level */}
+                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[80px]">
+                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: 'hsl(30, 75%, 55%)' }}>
+                      LEVEL
+                    </div>
+                    <div className="text-base retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
+                      {level.toString().padStart(2, "0")}
+                    </div>
+                  </div>
+
+                  {/* Lives */}
+                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[80px]">
+                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: 'hsl(0, 70%, 55%)' }}>
+                      LIVES
+                    </div>
+                    <div className="text-base retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
+                      {lives}
+                    </div>
+                  </div>
+                </div>
+                
                 <button
                   onClick={toggleFullscreen}
                   className="amiga-box px-3 py-2 hover:bg-muted/50 transition-colors flex items-center gap-2"
@@ -1240,53 +1273,24 @@ export const Game = () => {
                   />
                 </div>
 
-                <div className="flex flex-col gap-4">
-                  {/* Score */}
-                  <div className="amiga-box px-4 py-3 min-w-[140px]">
-                    <div className="text-[10px] retro-pixel-text mb-2 text-center" style={{ color: 'hsl(0, 0%, 60%)' }}>
-                      SCORE
-                    </div>
-                    <div className="text-xl retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
-                      {score.toString().padStart(6, "0")}
-                    </div>
-                  </div>
-
-                  {/* Level */}
-                  <div className="amiga-box px-4 py-3 min-w-[140px]">
-                    <div className="text-[10px] retro-pixel-text mb-2 text-center" style={{ color: 'hsl(30, 75%, 55%)' }}>
-                      LEVEL
-                    </div>
-                    <div className="text-xl retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
-                      {level.toString().padStart(2, "0")}
-                    </div>
-                  </div>
-
-                  {/* Lives */}
-                  <div className="amiga-box px-4 py-3 min-w-[140px]">
-                    <div className="text-[10px] retro-pixel-text mb-2 text-center" style={{ color: 'hsl(0, 70%, 55%)' }}>
-                      LIVES
-                    </div>
-                    <div className="text-xl retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
-                      {lives}
-                    </div>
-                  </div>
-
+                {/* Timer and Speed on the right */}
+                <div className="flex flex-col gap-3">
                   {/* Timer */}
-                  <div className="amiga-box px-4 py-3 min-w-[140px]">
-                    <div className="text-[10px] retro-pixel-text mb-2 text-center" style={{ color: 'hsl(210, 60%, 55%)' }}>
+                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[100px]">
+                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: 'hsl(210, 60%, 55%)' }}>
                       TIMER
                     </div>
-                    <div className="text-xl retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
+                    <div className="text-base retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
                       {timer}s
                     </div>
                   </div>
 
                   {/* Speed */}
-                  <div className="amiga-box px-4 py-3 min-w-[140px]">
-                    <div className="text-[10px] retro-pixel-text mb-2 text-center" style={{ color: 'hsl(120, 50%, 50%)' }}>
+                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[100px]">
+                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: 'hsl(120, 50%, 50%)' }}>
                       SPEED
                     </div>
-                    <div className="text-xl retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
+                    <div className="text-base retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
                       {Math.round(speedMultiplier * 100)}%
                     </div>
                   </div>
