@@ -735,7 +735,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.textBaseline = "middle";
         
         // Draw with pixel-like effect by drawing twice with slight offset
-        const instructionY = height / 2 + 60;
+        const instructionY = height * 0.85;
         const text = "USE A AND D OR LEFT AND RIGHT TO CHANGE THE ANGLE";
         
         // Shadow for depth

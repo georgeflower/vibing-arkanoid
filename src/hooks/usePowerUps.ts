@@ -104,7 +104,7 @@ export const usePowerUps = (
             
             case "slowdown":
               soundManager.playSlowerSound();
-              setSpeedMultiplier(prev => Math.max(0.5, prev - 0.1));
+              setSpeedMultiplier(prev => Math.max(0.9, prev - 0.1));
               toast.success("Speed reduced by 10%!");
               break;
             

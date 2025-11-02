@@ -423,7 +423,7 @@ export const Game = () => {
             }
           } else {
             // Reset ball and clear power-ups, but wait for click to continue
-            const baseSpeed = 3 * speedMultiplier;
+            const baseSpeed = 3;
             const resetBall: Ball = {
               x: CANVAS_WIDTH / 2,
               y: CANVAS_HEIGHT - 60,
@@ -442,6 +442,7 @@ export const Game = () => {
             setPowerUps([]);
             setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
             setBullets([]); // Clear all bullets
+            setSpeedMultiplier(1); // Reset speed multiplier
             setTimer(0);
             setEnemies([]);
             setBombs([]);
@@ -736,7 +737,7 @@ export const Game = () => {
               }
             } else {
               // Reset ball and clear power-ups, but wait for click to continue
-              const baseSpeed = 3 * speedMultiplier;
+              const baseSpeed = 3;
               const resetBall: Ball = {
                 x: CANVAS_WIDTH / 2,
                 y: CANVAS_HEIGHT - 60,
@@ -755,6 +756,7 @@ export const Game = () => {
               setPowerUps([]);
               setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
               setBullets([]); // Clear all bullets
+              setSpeedMultiplier(1); // Reset speed multiplier
               setTimer(0);
               setLastEnemySpawnTime(0);
               setEnemies([]); // Clear all enemies
@@ -798,7 +800,7 @@ export const Game = () => {
               }
             } else {
               // Reset ball and clear power-ups, but wait for click to continue
-              const baseSpeed = 3 * speedMultiplier;
+              const baseSpeed = 3;
               const resetBall: Ball = {
                 x: CANVAS_WIDTH / 2,
                 y: CANVAS_HEIGHT - 60,
@@ -817,6 +819,7 @@ export const Game = () => {
               setPowerUps([]);
               setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
               setBullets([]); // Clear all bullets
+              setSpeedMultiplier(1); // Reset speed multiplier
               setTimer(0);
               setLastEnemySpawnTime(0);
               setEnemies([]); // Clear all enemies
