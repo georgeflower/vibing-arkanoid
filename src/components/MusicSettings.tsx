@@ -62,7 +62,7 @@ export const MusicSettings = ({ gameState, setGameState }: MusicSettingsProps) =
         <Button
           variant="outline"
           size="icon"
-          className="amiga-box hover:bg-muted/50 transition-colors"
+          className="fixed top-4 left-4 z-50 amiga-box hover:bg-muted/50 transition-colors"
         >
           <Settings className="h-5 w-5" style={{ color: 'hsl(0, 0%, 85%)' }} />
         </Button>

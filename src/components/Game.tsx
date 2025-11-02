@@ -4,7 +4,6 @@ import { GameUI } from "./GameUI";
 import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
-import { MusicSettings } from "./MusicSettings";
 import { toast } from "sonner";
 import { Maximize2, Minimize2 } from "lucide-react";
 import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion } from "@/types/game";
@@ -350,46 +349,23 @@ export const Game = () => {
           return null;
         }
 
-        // Brick collision (expand collision area to cover padding gaps)
+        // Brick collision
         setBricks((prevBricks) => {
           let brickHit = false;
-          
-          // Check cooldown - prevent hitting multiple bricks too quickly
-          const now = Date.now();
-          if (newBall.lastHitTime && now - newBall.lastHitTime < 40) {
-            return prevBricks;
-          }
-          
           const newBricks = prevBricks.map((brick) => {
-            // Expand brick collision box by half padding on each side to prevent ball passing through gaps
-            const collisionX = brick.x - BRICK_PADDING / 2;
-            const collisionY = brick.y - BRICK_PADDING / 2;
-            const collisionWidth = brick.width + BRICK_PADDING;
-            const collisionHeight = brick.height + BRICK_PADDING;
-            
-            // Set collision radius to 1 pixel
-            const expandedRadius = 1;
-            
             if (
               !brickHit &&
               brick.visible &&
-              newBall.x + expandedRadius > collisionX &&
-              newBall.x - expandedRadius < collisionX + collisionWidth &&
-              newBall.y + expandedRadius > collisionY &&
-              newBall.y - expandedRadius < collisionY + collisionHeight
+              newBall.x + newBall.radius > brick.x &&
+              newBall.x - newBall.radius < brick.x + brick.width &&
+              newBall.y + newBall.radius > brick.y &&
+              newBall.y - newBall.radius < brick.y + brick.height
             ) {
               brickHit = true;
-              
-              // Set hit cooldown
-              newBall.lastHitTime = now;
               
               // Indestructible bricks - just bounce off
               if (brick.isIndestructible) {
                 newBall.dy = -newBall.dy;
-                // Add slight random angle variation (±1 degree) to horizontal direction
-                const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180); // ±1 degree in radians
-                const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-                newBall.dx += speed * Math.sin(angleVariation) * 0.1; // Small adjustment
                 soundManager.playBounce();
                 return brick;
               }
@@ -397,10 +373,6 @@ export const Game = () => {
               // Only bounce if not fireball
               if (!newBall.isFireball) {
                 newBall.dy = -newBall.dy;
-                // Add slight random angle variation (±1 degree) to horizontal direction
-                const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180); // ±1 degree in radians
-                const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-                newBall.dx += speed * Math.sin(angleVariation) * 0.1; // Small adjustment
               }
               
               soundManager.playBrickHit();
@@ -1095,22 +1067,8 @@ export const Game = () => {
       }
     };
 
-    const handleWheel = (e: WheelEvent) => {
-      if (e.deltaY < 0) {
-        // Scroll up = left
-        setLaunchAngle(prev => Math.max(prev - 3, -80));
-      } else if (e.deltaY > 0) {
-        // Scroll down = right
-        setLaunchAngle(prev => Math.min(prev + 3, 80));
-      }
-    };
-
     window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("wheel", handleWheel);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("wheel", handleWheel);
-    };
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [gameState, balls]);
 
   const handleStart = () => {
@@ -1194,6 +1152,21 @@ export const Game = () => {
         <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} />
       ) : (
         <>
+          {/* Fullscreen button */}
+          {!showHighScoreEntry && (
+            <button
+              onClick={toggleFullscreen}
+              className="absolute top-4 right-4 amiga-box px-3 py-2 hover:bg-muted/50 transition-colors z-50 flex items-center gap-2"
+              title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+            >
+              {isFullscreen ? (
+                <Minimize2 size={16} style={{ color: 'hsl(0, 0%, 85%)' }} />
+              ) : (
+                <Maximize2 size={16} style={{ color: 'hsl(0, 0%, 85%)' }} />
+              )}
+            </button>
+          )}
+
           <h1 className="text-4xl retro-pixel-text tracking-wider" style={{ 
             color: 'hsl(0, 0%, 85%)',
             textShadow: '3px 3px 0px hsl(0, 0%, 30%), 0 0 20px hsl(210, 60%, 55%, 0.3)'
@@ -1209,57 +1182,9 @@ export const Game = () => {
             />
           ) : (
             <>
-              {/* Control buttons and stats above playable area */}
-              <div className="flex gap-4 w-full max-w-[1200px] justify-between items-center mb-2">
-                <MusicSettings gameState={gameState} setGameState={setGameState} />
-                
-                {/* Score, Level, Lives in horizontal row */}
-                <div className="flex gap-3 flex-1 justify-center">
-                  {/* Score */}
-                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[100px]">
-                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: 'hsl(0, 0%, 60%)' }}>
-                      SCORE
-                    </div>
-                    <div className="text-base retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
-                      {score.toString().padStart(6, "0")}
-                    </div>
-                  </div>
-
-                  {/* Level */}
-                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[80px]">
-                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: 'hsl(30, 75%, 55%)' }}>
-                      LEVEL
-                    </div>
-                    <div className="text-base retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
-                      {level.toString().padStart(2, "0")}
-                    </div>
-                  </div>
-
-                  {/* Lives */}
-                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[80px]">
-                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: 'hsl(0, 70%, 55%)' }}>
-                      LIVES
-                    </div>
-                    <div className="text-base retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
-                      {lives}
-                    </div>
-                  </div>
-                </div>
-                
-                <button
-                  onClick={toggleFullscreen}
-                  className="amiga-box px-3 py-2 hover:bg-muted/50 transition-colors flex items-center gap-2"
-                  title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-                >
-                  {isFullscreen ? (
-                    <Minimize2 size={16} style={{ color: 'hsl(0, 0%, 85%)' }} />
-                  ) : (
-                    <Maximize2 size={16} style={{ color: 'hsl(0, 0%, 85%)' }} />
-                  )}
-                </button>
-              </div>
-
               <div className={`flex gap-6 items-center justify-center ${isFullscreen ? 'w-full' : ''}`}>
+                <GameUI score={score} lives={lives} level={level} timer={timer} speed={speedMultiplier} gameState={gameState} setGameState={setGameState} />
+          
                 <div className={`game-glow rounded-lg overflow-hidden ${isFullscreen ? 'game-canvas-wrapper' : ''}`}>
                   <GameCanvas
                     ref={canvasRef}
@@ -1278,29 +1203,6 @@ export const Game = () => {
                     explosions={explosions}
                     launchAngle={launchAngle}
                   />
-                </div>
-
-                {/* Timer and Speed on the right */}
-                <div className="flex flex-col gap-3">
-                  {/* Timer */}
-                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[100px]">
-                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: 'hsl(210, 60%, 55%)' }}>
-                      TIMER
-                    </div>
-                    <div className="text-base retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
-                      {timer}s
-                    </div>
-                  </div>
-
-                  {/* Speed */}
-                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[100px]">
-                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: 'hsl(120, 50%, 50%)' }}>
-                      SPEED
-                    </div>
-                    <div className="text-base retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
-                      {Math.round(speedMultiplier * 100)}%
-                    </div>
-                  </div>
                 </div>
               </div>
 
