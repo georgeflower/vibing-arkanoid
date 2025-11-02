@@ -1,3 +1,5 @@
+import { MusicSettings } from "./MusicSettings";
+
 interface GameUIProps {
   score: number;
   lives: number;
@@ -8,7 +10,9 @@ interface GameUIProps {
 
 export const GameUI = ({ score, lives, level, timer, speed }: GameUIProps) => {
   return (
-    <div className="flex gap-12 items-center">
+    <>
+      <MusicSettings />
+      <div className="flex gap-12 items-center">
       <div className="flex flex-col items-center gap-2">
         <div className="text-neon-cyan text-sm font-semibold tracking-wider">
           SCORE
@@ -54,5 +58,6 @@ export const GameUI = ({ score, lives, level, timer, speed }: GameUIProps) => {
         </div>
       </div>
     </div>
+    </>
   );
 };

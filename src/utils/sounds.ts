@@ -1,12 +1,15 @@
 // Simple sound effects using Web Audio API
 class SoundManager {
   private audioContext: AudioContext | null = null;
-  private pixelMusic: HTMLAudioElement | null = null;
-  private sound2Music: HTMLAudioElement | null = null;
+  private musicTracks: HTMLAudioElement[] = [];
+  private currentTrackIndex = 0;
   private highScoreMusic: HTMLAudioElement | null = null;
-  private currentTrack: 'pixel' | 'sound2' = 'pixel';
-  private pixelLoopCount = 0;
-  private sound2LoopCount = 0;
+  private musicEnabled = true;
+  private trackUrls = [
+    '/Pixel_Frenzy-2.mp3',
+    '/sound_2.mp3',
+    '/level_3.mp3'
+  ];
 
   private getAudioContext() {
     if (!this.audioContext) {
@@ -16,74 +19,76 @@ class SoundManager {
   }
 
   playBackgroundMusic(level: number = 1) {
-    // Initialize both tracks if needed
-    if (!this.pixelMusic) {
-      this.pixelMusic = new Audio('/Pixel_Frenzy-2.mp3');
-      this.pixelMusic.volume = 0.3;
-      this.pixelMusic.addEventListener('ended', () => this.handleTrackEnd('pixel'));
-    }
-    if (!this.sound2Music) {
-      this.sound2Music = new Audio('/sound_2.mp3');
-      this.sound2Music.volume = 0.3;
-      this.sound2Music.addEventListener('ended', () => this.handleTrackEnd('sound2'));
+    if (!this.musicEnabled) return;
+
+    // Initialize track if not already loaded
+    if (!this.musicTracks[this.currentTrackIndex]) {
+      const audio = new Audio(this.trackUrls[this.currentTrackIndex]);
+      audio.volume = 0.3;
+      audio.addEventListener('ended', () => this.handleTrackEnd());
+      this.musicTracks[this.currentTrackIndex] = audio;
     }
 
-    // Start with pixel track
-    if (this.currentTrack === 'pixel') {
-      this.pixelMusic.play().catch(err => console.log('Pixel audio play failed:', err));
-    } else {
-      this.sound2Music.play().catch(err => console.log('Sound2 audio play failed:', err));
-    }
+    // Play current track
+    this.musicTracks[this.currentTrackIndex]?.play().catch(err => console.log('Audio play failed:', err));
   }
 
-  private handleTrackEnd(track: 'pixel' | 'sound2') {
-    if (track === 'pixel') {
-      this.pixelLoopCount++;
-      if (this.pixelLoopCount >= 2) {
-        // Switch to sound2
-        this.pixelLoopCount = 0;
-        this.currentTrack = 'sound2';
-        this.sound2Music?.play().catch(err => console.log('Sound2 audio play failed:', err));
-      } else {
-        // Play pixel again
-        this.pixelMusic?.play().catch(err => console.log('Pixel audio play failed:', err));
-      }
-    } else {
-      this.sound2LoopCount++;
-      if (this.sound2LoopCount >= 3) {
-        // Switch to pixel
-        this.sound2LoopCount = 0;
-        this.currentTrack = 'pixel';
-        this.pixelMusic?.play().catch(err => console.log('Pixel audio play failed:', err));
-      } else {
-        // Play sound2 again
-        this.sound2Music?.play().catch(err => console.log('Sound2 audio play failed:', err));
-      }
-    }
+  private handleTrackEnd() {
+    // Move to next track (no loop - just play once)
+    this.currentTrackIndex = (this.currentTrackIndex + 1) % this.trackUrls.length;
+    
+    // Stop current track completely
+    this.stopBackgroundMusic();
+    
+    // Don't automatically play the next song - player can restart if they want
   }
 
   pauseBackgroundMusic() {
-    if (this.pixelMusic) {
-      this.pixelMusic.pause();
-    }
-    if (this.sound2Music) {
-      this.sound2Music.pause();
-    }
+    this.musicTracks.forEach(track => track?.pause());
   }
 
   stopBackgroundMusic() {
-    if (this.pixelMusic) {
-      this.pixelMusic.pause();
-      this.pixelMusic.currentTime = 0;
+    this.musicTracks.forEach(track => {
+      if (track) {
+        track.pause();
+        track.currentTime = 0;
+      }
+    });
+  }
+
+  setMusicEnabled(enabled: boolean) {
+    this.musicEnabled = enabled;
+    if (!enabled) {
+      this.stopBackgroundMusic();
     }
-    if (this.sound2Music) {
-      this.sound2Music.pause();
-      this.sound2Music.currentTime = 0;
+  }
+
+  getMusicEnabled(): boolean {
+    return this.musicEnabled;
+  }
+
+  setCurrentTrack(trackIndex: number) {
+    const wasPlaying = this.musicTracks[this.currentTrackIndex] && 
+                       !this.musicTracks[this.currentTrackIndex].paused;
+    
+    this.stopBackgroundMusic();
+    this.currentTrackIndex = trackIndex;
+    
+    if (wasPlaying && this.musicEnabled) {
+      this.playBackgroundMusic();
     }
-    // Reset loop counts when stopping
-    this.pixelLoopCount = 0;
-    this.sound2LoopCount = 0;
-    this.currentTrack = 'pixel';
+  }
+
+  getCurrentTrackIndex(): number {
+    return this.currentTrackIndex;
+  }
+
+  getTrackNames(): string[] {
+    return [
+      'Pixel Frenzy',
+      'Sound 2',
+      'Level 3'
+    ];
   }
 
   playHighScoreMusic() {
