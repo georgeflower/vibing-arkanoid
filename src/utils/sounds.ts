@@ -2,7 +2,9 @@
 class SoundManager {
   private audioContext: AudioContext | null = null;
   private bgMusic: HTMLAudioElement | null = null;
+  private turricanMusic: HTMLAudioElement | null = null;
   private highScoreMusic: HTMLAudioElement | null = null;
+  private currentTrack: 'pixel' | 'turrican' = 'pixel';
 
   private getAudioContext() {
     if (!this.audioContext) {
@@ -11,18 +13,39 @@ class SoundManager {
     return this.audioContext;
   }
 
-  playBackgroundMusic() {
-    if (!this.bgMusic) {
-      this.bgMusic = new Audio('/Pixel_Frenzy.mp3');
-      this.bgMusic.loop = true;
-      this.bgMusic.volume = 0.3;
+  playBackgroundMusic(level: number = 1) {
+    // Switch to Turrican track from level 10 onwards
+    if (level >= 10 && this.currentTrack !== 'turrican') {
+      this.stopBackgroundMusic();
+      this.currentTrack = 'turrican';
+    } else if (level < 10 && this.currentTrack !== 'pixel') {
+      this.stopBackgroundMusic();
+      this.currentTrack = 'pixel';
     }
-    this.bgMusic.play().catch(err => console.log('Audio play failed:', err));
+
+    if (this.currentTrack === 'turrican') {
+      if (!this.turricanMusic) {
+        this.turricanMusic = new Audio('/Turrican.mp3');
+        this.turricanMusic.loop = true;
+        this.turricanMusic.volume = 0.3;
+      }
+      this.turricanMusic.play().catch(err => console.log('Turrican audio play failed:', err));
+    } else {
+      if (!this.bgMusic) {
+        this.bgMusic = new Audio('/Pixel_Frenzy.mp3');
+        this.bgMusic.loop = true;
+        this.bgMusic.volume = 0.3;
+      }
+      this.bgMusic.play().catch(err => console.log('Audio play failed:', err));
+    }
   }
 
   pauseBackgroundMusic() {
     if (this.bgMusic) {
       this.bgMusic.pause();
+    }
+    if (this.turricanMusic) {
+      this.turricanMusic.pause();
     }
   }
 
@@ -30,6 +53,10 @@ class SoundManager {
     if (this.bgMusic) {
       this.bgMusic.pause();
       this.bgMusic.currentTime = 0;
+    }
+    if (this.turricanMusic) {
+      this.turricanMusic.pause();
+      this.turricanMusic.currentTime = 0;
     }
   }
 

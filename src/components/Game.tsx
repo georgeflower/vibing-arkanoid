@@ -167,9 +167,13 @@ export const Game = () => {
     setEnemy(null);
     setBombs([]);
     setGameState("playing");
-    soundManager.playBackgroundMusic();
+    soundManager.playBackgroundMusic(newLevel);
     
-    toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
+    if (newLevel === 10) {
+      toast.success(`Level ${newLevel}! New music unlocked!`);
+    } else {
+      toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
+    }
   }, [level, initBricksForLevel, setPowerUps]);
 
   useEffect(() => {
@@ -206,7 +210,7 @@ export const Game = () => {
         nextLevel();
       } else {
         setGameState("playing");
-        soundManager.playBackgroundMusic();
+        soundManager.playBackgroundMusic(level);
         toast.success("Continue!");
       }
       return;
@@ -560,7 +564,7 @@ export const Game = () => {
       } else {
         // Continue current level
         setGameState("playing");
-        soundManager.playBackgroundMusic();
+        soundManager.playBackgroundMusic(level);
         toast.success("Continue!");
       }
     }
