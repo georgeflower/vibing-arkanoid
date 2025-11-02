@@ -12,52 +12,57 @@ export const GameUI = ({ score, lives, level, timer, speed }: GameUIProps) => {
   return (
     <>
       <MusicSettings />
-      <div className="flex gap-12 items-center">
-      <div className="flex flex-col items-center gap-2">
-        <div className="text-neon-cyan text-sm font-semibold tracking-wider">
-          SCORE
+      <div className="flex gap-8 items-start">
+        {/* Score */}
+        <div className="amiga-box px-4 py-3">
+          <div className="text-[10px] retro-pixel-text mb-2" style={{ color: 'hsl(0, 0%, 60%)' }}>
+            SCORE
+          </div>
+          <div className="text-xl retro-pixel-text" style={{ color: 'hsl(0, 0%, 85%)' }}>
+            {score.toString().padStart(6, "0")}
+          </div>
         </div>
-        <div className="text-4xl font-bold neon-text text-neon-purple">
-          {score.toString().padStart(6, "0")}
-        </div>
-      </div>
 
-      <div className="flex flex-col items-center gap-2">
-        <div className="text-neon-orange text-sm font-semibold tracking-wider">
-          LEVEL
+        {/* Level */}
+        <div className="amiga-box px-4 py-3">
+          <div className="text-[10px] retro-pixel-text mb-2" style={{ color: 'hsl(30, 75%, 55%)' }}>
+            LEVEL
+          </div>
+          <div className="text-xl retro-pixel-text" style={{ color: 'hsl(0, 0%, 85%)' }}>
+            {level.toString().padStart(2, "0")}
+          </div>
         </div>
-        <div className="text-4xl font-bold neon-text text-neon-orange">
-          {level.toString().padStart(2, "0")}
-        </div>
-      </div>
 
-      <div className="flex flex-col items-center gap-2">
-        <div className="text-neon-pink text-sm font-semibold tracking-wider">
-          LIVES
+        {/* Lives */}
+        <div className="amiga-box px-4 py-3">
+          <div className="text-[10px] retro-pixel-text mb-2" style={{ color: 'hsl(0, 70%, 55%)' }}>
+            LIVES
+          </div>
+          <div className="text-xl retro-pixel-text" style={{ color: 'hsl(0, 0%, 85%)' }}>
+            {lives}
+          </div>
         </div>
-        <div className="text-4xl font-bold neon-text text-neon-pink">
-          {lives}
-        </div>
-      </div>
 
-      <div className="flex flex-col items-center gap-2">
-        <div className="text-neon-cyan text-sm font-semibold tracking-wider">
-          TIMER
+        {/* Timer */}
+        <div className="amiga-box px-4 py-3">
+          <div className="text-[10px] retro-pixel-text mb-2" style={{ color: 'hsl(210, 60%, 55%)' }}>
+            TIMER
+          </div>
+          <div className="text-xl retro-pixel-text" style={{ color: 'hsl(0, 0%, 85%)' }}>
+            {timer}s
+          </div>
         </div>
-        <div className="text-4xl font-bold neon-text text-neon-cyan">
-          {timer}s
-        </div>
-      </div>
 
-      <div className="flex flex-col items-center gap-2">
-        <div className="text-neon-orange text-sm font-semibold tracking-wider">
-          SPEED
-        </div>
-        <div className="text-4xl font-bold neon-text text-neon-orange">
-          {Math.round(speed * 100)}%
+        {/* Speed */}
+        <div className="amiga-box px-4 py-3">
+          <div className="text-[10px] retro-pixel-text mb-2" style={{ color: 'hsl(120, 50%, 50%)' }}>
+            SPEED
+          </div>
+          <div className="text-xl retro-pixel-text" style={{ color: 'hsl(0, 0%, 85%)' }}>
+            {Math.round(speed * 100)}%
+          </div>
         </div>
       </div>
-    </div>
     </>
   );
 };

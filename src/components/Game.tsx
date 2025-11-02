@@ -1116,8 +1116,11 @@ export const Game = () => {
         <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} />
       ) : (
         <>
-          <h1 className="text-5xl font-bold neon-text text-neon-cyan">
-            NEON BREAKER
+          <h1 className="text-4xl retro-pixel-text tracking-wider" style={{ 
+            color: 'hsl(0, 0%, 85%)',
+            textShadow: '3px 3px 0px hsl(0, 0%, 30%), 0 0 20px hsl(210, 60%, 55%, 0.3)'
+          }}>
+            VIBING ARKANOID
           </h1>
           
           {showHighScoreEntry ? (

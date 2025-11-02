@@ -8,49 +8,49 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 220 25% 12%;
-    --foreground: 200 15% 85%;
+    --background: 0 0% 18%;
+    --foreground: 0 0% 90%;
 
-    --card: 220 20% 18%;
-    --card-foreground: 200 15% 85%;
+    --card: 0 0% 22%;
+    --card-foreground: 0 0% 90%;
 
-    --popover: 220 22% 15%;
-    --popover-foreground: 200 15% 85%;
+    --popover: 0 0% 20%;
+    --popover-foreground: 0 0% 90%;
 
-    --primary: 280 60% 55%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 0 0% 70%;
+    --primary-foreground: 0 0% 10%;
 
-    --secondary: 200 70% 50%;
-    --secondary-foreground: 220 25% 12%;
+    --secondary: 200 15% 45%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 220 15% 25%;
-    --muted-foreground: 200 10% 55%;
+    --muted: 0 0% 28%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 330 70% 55%;
+    --accent: 330 40% 50%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 75% 55%;
+    --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 20% 25%;
-    --input: 220 20% 25%;
-    --ring: 280 60% 55%;
+    --border: 0 0% 30%;
+    --input: 0 0% 30%;
+    --ring: 0 0% 70%;
 
-    --radius: 0.5rem;
+    --radius: 0.25rem;
 
-    --neon-purple: 280 60% 55%;
-    --neon-cyan: 200 70% 50%;
-    --neon-pink: 330 70% 55%;
-    --neon-orange: 30 85% 55%;
-    
-    --glow-purple: 0 0 12px hsl(280 60% 55% / 0.3);
-    --glow-cyan: 0 0 12px hsl(200 70% 50% / 0.3);
-    --glow-pink: 0 0 12px hsl(330 70% 55% / 0.3);
+    /* Amiga 16-bit retro colors */
+    --amiga-light-grey: 0 0% 80%;
+    --amiga-mid-grey: 0 0% 60%;
+    --amiga-dark-grey: 0 0% 40%;
+    --amiga-blue: 210 60% 55%;
+    --amiga-orange: 30 75% 55%;
+    --amiga-green: 120 50% 50%;
+    --amiga-red: 0 70% 55%;
   }
 
   .dark {
-    --background: 220 25% 12%;
-    --foreground: 200 15% 85%;
+    --background: 0 0% 18%;
+    --foreground: 0 0% 90%;
   }
 }
 
@@ -61,7 +61,26 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Press Start 2P', system-ui, monospace;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+  }
+
+  .retro-pixel-text {
+    font-family: 'Press Start 2P', monospace;
+    text-shadow: 2px 2px 0px hsl(var(--amiga-dark-grey));
+    letter-spacing: 0.05em;
+  }
+
+  .amiga-box {
+    background: linear-gradient(135deg, hsl(0, 0%, 25%) 0%, hsl(0, 0%, 20%) 100%);
+    border: 3px solid hsl(0, 0%, 40%);
+    border-top-color: hsl(0, 0%, 50%);
+    border-left-color: hsl(0, 0%, 50%);
+    box-shadow: inset 1px 1px 0px hsl(0, 0%, 55%), 
+                inset -1px -1px 0px hsl(0, 0%, 15%),
+                0 0 0 1px hsl(0, 0%, 10%);
   }
 
   .neon-text {
