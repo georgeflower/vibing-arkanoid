@@ -281,6 +281,12 @@ class SoundManager {
     audio.play().catch(err => console.log('Turrets sound failed:', err));
   }
 
+  playFireballSound() {
+    const audio = new Audio('/fireball.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(err => console.log('Fireball sound failed:', err));
+  }
+
   playExtraLifeSound() {
     const audio = new Audio('/extra_life.mp3');
     audio.volume = 0.5;

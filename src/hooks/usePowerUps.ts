@@ -84,7 +84,7 @@ export const usePowerUps = (
               break;
             
             case "fireball":
-              soundManager.playPowerUp();
+              soundManager.playFireballSound();
               setBalls(prev => prev.map(ball => ({ ...ball, isFireball: true })));
               setTimeout(() => {
                 setBalls(prev => prev.map(ball => ({ ...ball, isFireball: false })));
