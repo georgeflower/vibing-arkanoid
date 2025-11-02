@@ -8,7 +8,8 @@ class SoundManager {
   private trackUrls = [
     '/Pixel_Frenzy-2.mp3',
     '/sound_2.mp3',
-    '/level_3.mp3'
+    '/level_3.mp3',
+    '/level_4.mp3'
   ];
 
   private getAudioContext() {
@@ -87,7 +88,8 @@ class SoundManager {
     return [
       'Pixel Frenzy',
       'Sound 2',
-      'Level 3'
+      'Level 3',
+      'Level 4'
     ];
   }
 
