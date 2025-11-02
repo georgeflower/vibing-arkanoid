@@ -116,7 +116,7 @@ export const Game = () => {
       waitingToLaunch: true,
     };
     setBalls([initialBall]);
-    setLaunchAngle(0);
+    setLaunchAngle(60); // Start from right side
 
     // Initialize bricks for level 1
     setBricks(initBricksForLevel(1));
@@ -179,7 +179,7 @@ export const Game = () => {
       waitingToLaunch: true,
     };
     setBalls([initialBall]);
-    setLaunchAngle(0);
+    setLaunchAngle(60); // Start from right side
     
     // Initialize bricks for new level
     setBricks(initBricksForLevel(newLevel));
@@ -418,7 +418,7 @@ export const Game = () => {
               waitingToLaunch: true,
             };
             setBalls([resetBall]);
-            setLaunchAngle(0);
+            setLaunchAngle(60); // Start from right side
             setPowerUps([]);
             setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
             setTimer(0);
@@ -707,7 +707,8 @@ export const Game = () => {
   // Animate launch angle indicator
   useEffect(() => {
     const waitingBall = balls.find(ball => ball.waitingToLaunch);
-    if (gameState === "playing" && waitingBall) {
+    // Animate when ball is waiting to launch (in both "ready" and "playing" states)
+    if ((gameState === "playing" || gameState === "ready") && waitingBall) {
       if (launchAngleIntervalRef.current) {
         clearInterval(launchAngleIntervalRef.current);
       }
