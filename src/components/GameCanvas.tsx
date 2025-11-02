@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useRef } from "react";
-import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb } from "@/types/game";
+import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion } from "@/types/game";
 import { powerUpImages } from "@/utils/powerUpImages";
 import paddleImg from "@/assets/paddle.png";
 
@@ -16,10 +16,11 @@ interface GameCanvasProps {
   bombs: Bomb[];
   level: number;
   backgroundPhase: number;
+  explosions: Explosion[];
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
     
@@ -229,23 +230,72 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillRect(paddle.x + paddle.width - 13, paddle.y - 10, 8, 10);
       }
 
-      // Draw enemy
+      // Draw enemy with 3D rotation
       if (enemy) {
         ctx.save();
         ctx.translate(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
-        ctx.rotate(enemy.rotation);
+        
+        // Simulate 3D rotation with scaling and shearing
+        const scaleX = Math.cos(enemy.rotationY) * 0.8 + 0.2;
+        const scaleY = Math.cos(enemy.rotationX) * 0.8 + 0.2;
+        const shearX = Math.sin(enemy.rotationY) * 0.3;
+        const shearY = Math.sin(enemy.rotationX) * 0.3;
+        
+        ctx.transform(scaleX, shearY, shearX, scaleY, 0, 0);
+        ctx.rotate(enemy.rotationZ);
         
         ctx.shadowBlur = 12;
         ctx.shadowColor = "hsl(0, 85%, 55%)";
         ctx.fillStyle = "hsl(0, 85%, 55%)";
         ctx.fillRect(-enemy.width / 2, -enemy.height / 2, enemy.width, enemy.height);
         
-        // Enemy pattern
-        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
-        ctx.fillRect(-enemy.width / 4, -enemy.height / 4, enemy.width / 2, enemy.height / 2);
+        // Enemy cross pattern
+        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.fillRect(-enemy.width / 2 + 5, -2, enemy.width - 10, 4);
+        ctx.fillRect(-2, -enemy.height / 2 + 5, 4, enemy.height - 10);
         
         ctx.restore();
       }
+
+      // Draw explosions
+      explosions.forEach((explosion) => {
+        const progress = explosion.frame / explosion.maxFrames;
+        const radius = 15 * (1 + progress * 2);
+        const alpha = 1 - progress;
+        
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        
+        // Outer ring
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = `hsla(30, 100%, 50%, ${alpha})`;
+        ctx.strokeStyle = `hsla(30, 100%, 50%, ${alpha})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(explosion.x, explosion.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Inner glow
+        ctx.fillStyle = `hsla(60, 100%, 60%, ${alpha * 0.6})`;
+        ctx.beginPath();
+        ctx.arc(explosion.x, explosion.y, radius * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Particles
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2 + progress * Math.PI;
+          const dist = radius * 0.8;
+          const px = explosion.x + Math.cos(angle) * dist;
+          const py = explosion.y + Math.sin(angle) * dist;
+          
+          ctx.fillStyle = `hsla(${30 + i * 10}, 100%, 60%, ${alpha})`;
+          ctx.beginPath();
+          ctx.arc(px, py, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        
+        ctx.restore();
+      });
 
       // Draw bombs
       bombs.forEach((bomb) => {
@@ -288,7 +338,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fillText("YOU WON!", width / 2, height / 2);
         }
       }
-    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase]);
+    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions]);
 
     return (
       <canvas

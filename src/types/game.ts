@@ -56,8 +56,19 @@ export interface Enemy {
   width: number;
   height: number;
   rotation: number;
+  rotationX: number;
+  rotationY: number;
+  rotationZ: number;
   speed: number;
-  direction: number;
+  dx: number;
+  dy: number;
+}
+
+export interface Explosion {
+  x: number;
+  y: number;
+  frame: number;
+  maxFrames: number;
 }
 
 export interface Bomb {

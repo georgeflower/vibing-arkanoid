@@ -190,6 +190,31 @@ class SoundManager {
       oscillator.stop(ctx.currentTime + time + 0.3);
     });
   }
+
+  playExplosion() {
+    const ctx = this.getAudioContext();
+    // Low rumble explosion sound
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    oscillator.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    oscillator.frequency.setValueAtTime(150, ctx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.4);
+    oscillator.type = 'sawtooth';
+    
+    filter.type = 'lowpass';
+    filter.frequency.value = 400;
+    
+    gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.4);
+  }
 }
 
 export const soundManager = new SoundManager();

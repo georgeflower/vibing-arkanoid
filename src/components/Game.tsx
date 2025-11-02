@@ -5,7 +5,7 @@ import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { toast } from "sonner";
-import type { Brick, Ball, Paddle, GameState, Enemy, Bomb } from "@/types/game";
+import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion } from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
 import { 
   CANVAS_WIDTH, 
@@ -46,6 +46,9 @@ export const Game = () => {
   const [enemy, setEnemy] = useState<Enemy | null>(null);
   const [bombs, setBombs] = useState<Bomb[]>([]);
   const [backgroundPhase, setBackgroundPhase] = useState(0);
+  const [explosions, setExplosions] = useState<Explosion[]>([]);
+  const [enemySpawnCount, setEnemySpawnCount] = useState(0);
+  const [lastEnemySpawnTime, setLastEnemySpawnTime] = useState(0);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
   const timerIntervalRef = useRef<NodeJS.Timeout>();
@@ -122,6 +125,9 @@ export const Game = () => {
     setEnemy(null);
     setBombs([]);
     setBackgroundPhase(0);
+    setExplosions([]);
+    setEnemySpawnCount(0);
+    setLastEnemySpawnTime(0);
   }, [setPowerUps, initBricksForLevel]);
 
   const nextLevel = useCallback(() => {
@@ -174,6 +180,9 @@ export const Game = () => {
     setTimer(0);
     setEnemy(null);
     setBombs([]);
+    setExplosions([]);
+    setEnemySpawnCount(0);
+    setLastEnemySpawnTime(0);
     setGameState("playing");
     soundManager.playBackgroundMusic(newLevel);
     
@@ -383,6 +392,7 @@ export const Game = () => {
             setTimer(0);
             setEnemy(null);
             setBombs([]);
+            setExplosions([]);
             setGameState("ready");
             toast(`Life lost! ${newLives} lives remaining. Click to continue.`);
           }
@@ -417,19 +427,33 @@ export const Game = () => {
     if (enemy) {
       setEnemy(prev => {
         if (!prev) return null;
-        let newX = prev.x + prev.speed * prev.direction;
-        let newDirection = prev.direction;
+        let newX = prev.x + prev.dx;
+        let newY = prev.y + prev.dy;
+        let newDx = prev.dx;
+        let newDy = prev.dy;
         
+        // Bounce off walls
         if (newX <= 0 || newX >= CANVAS_WIDTH - prev.width) {
-          newDirection = -prev.direction;
+          newDx = -prev.dx;
           newX = Math.max(0, Math.min(CANVAS_WIDTH - prev.width, newX));
+        }
+        
+        // Bounce off top and 60% boundary
+        const maxY = CANVAS_HEIGHT * 0.6;
+        if (newY <= 0 || newY >= maxY - prev.height) {
+          newDy = -prev.dy;
+          newY = Math.max(0, Math.min(maxY - prev.height, newY));
         }
         
         return {
           ...prev,
           x: newX,
-          direction: newDirection,
-          rotation: prev.rotation + 0.1,
+          y: newY,
+          dx: newDx,
+          dy: newDy,
+          rotationX: prev.rotationX + 0.05,
+          rotationY: prev.rotationY + 0.08,
+          rotationZ: prev.rotationZ + 0.03,
         };
       });
 
@@ -440,14 +464,27 @@ export const Game = () => {
           ball.x - ball.radius < enemy.x + enemy.width &&
           ball.y + ball.radius > enemy.y &&
           ball.y - ball.radius < enemy.y + enemy.height) {
+          // Create explosion
+          setExplosions(prev => [...prev, {
+            x: enemy.x + enemy.width / 2,
+            y: enemy.y + enemy.height / 2,
+            frame: 0,
+            maxFrames: 20,
+          }]);
           setEnemy(null);
           setBombs([]);
           setScore(prev => prev + 500);
-          soundManager.playPowerUp();
+          soundManager.playExplosion();
           toast.success("Enemy destroyed! +500");
         }
       });
     }
+
+    // Update explosions
+    setExplosions(prev => prev.map(exp => ({
+      ...exp,
+      frame: exp.frame + 1,
+    })).filter(exp => exp.frame < exp.maxFrames));
 
     // Update bombs
     setBombs(prev => prev.map(bomb => ({
@@ -487,7 +524,7 @@ export const Game = () => {
     }
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemy, bombs, bricks, score, isHighScore]);
+  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemy, bombs, bricks, score, isHighScore, explosions]);
 
   useEffect(() => {
     if (gameState === "playing") {
@@ -534,20 +571,30 @@ export const Game = () => {
     };
   }, [gameState]);
 
-  // Enemy spawn when timer reaches 30
+  // Enemy spawn every 30 seconds
   useEffect(() => {
-    if (gameState === "playing" && timer >= 30 && !enemy) {
+    if (gameState === "playing" && !enemy && timer > 0 && timer - lastEnemySpawnTime >= 30) {
+      const speedIncrease = 1 + (enemySpawnCount * 0.3); // 30% faster each spawn
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2 * speedIncrease;
+      
       const newEnemy: Enemy = {
         x: Math.random() * (CANVAS_WIDTH - 40),
-        y: 150,
+        y: 50 + Math.random() * 50,
         width: 30,
         height: 30,
         rotation: 0,
-        speed: 2,
-        direction: Math.random() > 0.5 ? 1 : -1,
+        rotationX: 0,
+        rotationY: 0,
+        rotationZ: 0,
+        speed: speed,
+        dx: Math.cos(angle) * speed,
+        dy: Math.abs(Math.sin(angle)) * speed, // Always move downward initially
       };
       setEnemy(newEnemy);
-      toast.warning("Enemy appeared!");
+      setLastEnemySpawnTime(timer);
+      setEnemySpawnCount(prev => prev + 1);
+      toast.warning(`Enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
 
       // Start dropping bombs
       if (bombIntervalRef.current) {
@@ -568,7 +615,7 @@ export const Game = () => {
         });
       }, 2000);
     }
-  }, [timer, gameState, enemy]);
+  }, [timer, gameState, enemy, lastEnemySpawnTime, enemySpawnCount]);
 
   const handleStart = () => {
     if (gameState === "ready") {
@@ -647,6 +694,7 @@ export const Game = () => {
               bombs={bombs}
               level={level}
               backgroundPhase={backgroundPhase}
+              explosions={explosions}
             />
           </div>
 
