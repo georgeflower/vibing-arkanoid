@@ -394,7 +394,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.stroke();
           }
         } else {
-          // Draw cube enemy with retro 16-bit red texture
+          // Draw cube enemy
           const size = singleEnemy.width;
           const depth = size * 0.7;
           
@@ -428,14 +428,14 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ];
           });
           
-          // Draw faces (back to front for proper depth) - all red shades
+          // Draw faces (back to front for proper depth)
           const faces = [
-            { indices: [0, 1, 2, 3], color: "hsl(0, 80%, 35%)" }, // back - darkest
-            { indices: [0, 3, 7, 4], color: "hsl(0, 85%, 42%)" }, // left
-            { indices: [1, 5, 6, 2], color: "hsl(0, 85%, 45%)" }, // right
-            { indices: [0, 1, 5, 4], color: "hsl(0, 85%, 40%)" }, // bottom
-            { indices: [3, 2, 6, 7], color: "hsl(0, 90%, 55%)" }, // top - brightest
-            { indices: [4, 5, 6, 7], color: "hsl(0, 88%, 50%)" }  // front
+            { indices: [0, 1, 2, 3], color: "hsl(0, 75%, 40%)" }, // back
+            { indices: [0, 3, 7, 4], color: "hsl(0, 80%, 45%)" }, // left
+            { indices: [1, 5, 6, 2], color: "hsl(0, 80%, 50%)" }, // right
+            { indices: [0, 1, 5, 4], color: "hsl(0, 85%, 45%)" }, // bottom
+            { indices: [3, 2, 6, 7], color: "hsl(0, 85%, 55%)" }, // top
+            { indices: [4, 5, 6, 7], color: "hsl(0, 90%, 60%)" }  // front
           ];
           
           // Sort faces by average z-depth
@@ -444,7 +444,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             avgZ: face.indices.reduce((sum, i) => sum + projected[i][2], 0) / 4
           })).sort((a, b) => a.avgZ - b.avgZ);
           
-          // Draw each face with retro texture
+          // Draw each face
           sortedFaces.forEach(face => {
             ctx.shadowBlur = 15;
             ctx.shadowColor = "hsl(0, 85%, 55%)";
@@ -457,45 +457,11 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.closePath();
             ctx.fill();
             
-            // Add 16-bit retro pixel texture overlay
+            // Add edge lines
             ctx.shadowBlur = 0;
-            const pixelSize = 3;
-            face.indices.forEach(i => {
-              const x = projected[i][0];
-              const y = projected[i][1];
-              
-              // Draw retro dithering pattern
-              for (let py = -size/2; py < size/2; py += pixelSize) {
-                for (let px = -size/2; px < size/2; px += pixelSize) {
-                  const worldX = x + px;
-                  const worldY = y + py;
-                  const patternValue = (Math.floor(worldX / pixelSize) + Math.floor(worldY / pixelSize)) % 4;
-                  
-                  if (patternValue === 0) {
-                    ctx.fillStyle = "rgba(255, 100, 100, 0.3)";
-                    ctx.fillRect(worldX, worldY, 2, 2);
-                  } else if (patternValue === 1) {
-                    ctx.fillStyle = "rgba(150, 0, 0, 0.2)";
-                    ctx.fillRect(worldX, worldY, 2, 2);
-                  }
-                }
-              }
-            });
-            
-            // Add edge lines for retro look
-            ctx.strokeStyle = "rgba(100, 0, 0, 0.8)";
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
+            ctx.lineWidth = 1.5;
             ctx.stroke();
-            
-            // Add highlight pixels on edges
-            ctx.fillStyle = "rgba(255, 150, 150, 0.6)";
-            for (let i = 0; i < face.indices.length; i++) {
-              const idx = face.indices[i];
-              const nextIdx = face.indices[(i + 1) % face.indices.length];
-              const midX = (projected[idx][0] + projected[nextIdx][0]) / 2;
-              const midY = (projected[idx][1] + projected[nextIdx][1]) / 2;
-              ctx.fillRect(midX - 1, midY - 1, 2, 2);
-            }
           });
         }
         
