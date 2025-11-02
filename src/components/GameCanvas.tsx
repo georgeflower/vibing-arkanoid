@@ -130,21 +130,40 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw balls
       balls.forEach((ball) => {
-        const ballColor = ball.isFireball ? "hsl(30, 85%, 55%)" : "hsl(330, 70%, 55%)";
+        const ballColor = ball.isFireball ? "hsl(30, 85%, 55%)" : "hsl(0, 0%, 60%)";
+        
+        // Slow spinning effect using time-based rotation
+        const spinRotation = (Date.now() / 50) % 360;
+        
+        ctx.save();
+        ctx.translate(ball.x, ball.y);
+        ctx.rotate((spinRotation * Math.PI) / 180);
         
         ctx.shadowBlur = 14;
         ctx.shadowColor = ballColor;
         ctx.fillStyle = ballColor;
         ctx.beginPath();
-        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
         ctx.fill();
         
         // Ball highlight
         ctx.shadowBlur = 0;
         ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
         ctx.beginPath();
-        ctx.arc(ball.x - 1.5, ball.y - 1.5, ball.radius / 2, 0, Math.PI * 2);
+        ctx.arc(-1.5, -1.5, ball.radius / 2, 0, Math.PI * 2);
         ctx.fill();
+        
+        // Retro pattern - darker horizontal lines for spinning effect
+        if (!ball.isFireball) {
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "hsl(0, 0%, 40%)";
+          for (let i = -ball.radius; i < ball.radius; i += 3) {
+            const lineWidth = Math.sqrt(ball.radius * ball.radius - i * i) * 2;
+            ctx.fillRect(-lineWidth / 2, i, lineWidth, 1);
+          }
+        }
+        
+        ctx.restore();
 
         // Fireball trail effect
         if (ball.isFireball) {
@@ -447,20 +466,30 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw bombs and rockets
       bombs.forEach((bomb) => {
+        const bombCenterX = bomb.x + bomb.width / 2;
+        const bombCenterY = bomb.y + bomb.height / 2;
+        
+        // Spinning rotation
+        const bombRotation = (Date.now() / 30) % 360;
+        
+        ctx.save();
+        ctx.translate(bombCenterX, bombCenterY);
+        ctx.rotate((bombRotation * Math.PI) / 180);
+        
         if (bomb.type === "rocket") {
-          // Draw blue rocket (same as bomb but blue)
+          // Draw yellow rocket (from sphere)
           ctx.shadowBlur = 8;
-          ctx.shadowColor = "hsl(220, 85%, 55%)";
-          ctx.fillStyle = "hsl(220, 85%, 55%)";
+          ctx.shadowColor = "hsl(50, 85%, 55%)";
+          ctx.fillStyle = "hsl(50, 85%, 55%)";
           ctx.beginPath();
-          ctx.arc(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, bomb.width / 2, 0, Math.PI * 2);
+          ctx.arc(0, 0, bomb.width / 2, 0, Math.PI * 2);
           ctx.fill();
           
           // Rocket highlight
           ctx.shadowBlur = 0;
           ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
           ctx.beginPath();
-          ctx.arc(bomb.x + bomb.width / 2 - 2, bomb.y + bomb.height / 2 - 2, bomb.width / 4, 0, Math.PI * 2);
+          ctx.arc(-2, -2, bomb.width / 4, 0, Math.PI * 2);
           ctx.fill();
         } else {
           // Draw regular bomb (red)
@@ -468,16 +497,18 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.shadowColor = "hsl(0, 85%, 55%)";
           ctx.fillStyle = "hsl(0, 85%, 55%)";
           ctx.beginPath();
-          ctx.arc(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, bomb.width / 2, 0, Math.PI * 2);
+          ctx.arc(0, 0, bomb.width / 2, 0, Math.PI * 2);
           ctx.fill();
           
           // Bomb highlight
           ctx.shadowBlur = 0;
           ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
           ctx.beginPath();
-          ctx.arc(bomb.x + bomb.width / 2 - 2, bomb.y + bomb.height / 2 - 2, bomb.width / 4, 0, Math.PI * 2);
+          ctx.arc(-2, -2, bomb.width / 4, 0, Math.PI * 2);
           ctx.fill();
         }
+        
+        ctx.restore();
       });
 
       // Game state overlay
