@@ -62,10 +62,10 @@ export const usePowerUps = (
           powerUp.y < paddle.y + paddle.height
         ) {
           // Apply power-up effect
-          soundManager.playPowerUp();
           
           switch (powerUp.type) {
             case "multiball":
+              soundManager.playMultiballSound();
               if (balls.length > 0) {
                 const baseBall = balls[0];
                 const newBalls: Ball[] = [
@@ -78,11 +78,13 @@ export const usePowerUps = (
               break;
             
             case "turrets":
+              soundManager.playTurretsSound();
               setPaddle(prev => prev ? { ...prev, hasTurrets: true } : null);
               toast.success("Turrets activated!");
               break;
             
             case "fireball":
+              soundManager.playPowerUp();
               setBalls(prev => prev.map(ball => ({ ...ball, isFireball: true })));
               setTimeout(() => {
                 setBalls(prev => prev.map(ball => ({ ...ball, isFireball: false })));
@@ -93,6 +95,7 @@ export const usePowerUps = (
             case "life":
               const levelGroup = Math.floor(currentLevel / 5);
               if (!extraLifeUsedLevels.includes(levelGroup)) {
+                soundManager.playExtraLifeSound();
                 setLives(prev => prev + 1);
                 setExtraLifeUsedLevels(prev => [...prev, levelGroup]);
                 toast.success("Extra life!");
@@ -100,16 +103,19 @@ export const usePowerUps = (
               break;
             
             case "slowdown":
+              soundManager.playSlowerSound();
               setSpeedMultiplier(prev => Math.max(0.5, prev - 0.1));
               toast.success("Speed reduced by 10%!");
               break;
             
             case "paddleExtend":
+              soundManager.playWiderSound();
               setPaddle(prev => prev ? { ...prev, width: Math.min(200, prev.width + 30) } : null);
               toast.success("Paddle extended!");
               break;
             
             case "paddleShrink":
+              soundManager.playShrinkSound();
               setPaddle(prev => prev ? { ...prev, width: Math.max(60, prev.width - 30) } : null);
               toast.success("Paddle shrunk!");
               break;

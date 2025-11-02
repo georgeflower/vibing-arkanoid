@@ -259,6 +259,43 @@ class SoundManager {
     oscillator.start(ctx.currentTime);
     oscillator.stop(ctx.currentTime + 0.4);
   }
+
+  // Power-up specific sounds
+  playMultiballSound() {
+    const audio = new Audio('/multiball.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(err => console.log('Multiball sound failed:', err));
+  }
+
+  playTurretsSound() {
+    const audio = new Audio('/turrets.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(err => console.log('Turrets sound failed:', err));
+  }
+
+  playExtraLifeSound() {
+    const audio = new Audio('/extra_life.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(err => console.log('Extra life sound failed:', err));
+  }
+
+  playSlowerSound() {
+    const audio = new Audio('/slower.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(err => console.log('Slower sound failed:', err));
+  }
+
+  playWiderSound() {
+    const audio = new Audio('/wider.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(err => console.log('Wider sound failed:', err));
+  }
+
+  playShrinkSound() {
+    const audio = new Audio('/shrink.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(err => console.log('Shrink sound failed:', err));
+  }
 }
 
 export const soundManager = new SoundManager();
