@@ -1,10 +1,12 @@
 // Simple sound effects using Web Audio API
 class SoundManager {
   private audioContext: AudioContext | null = null;
-  private bgMusic: HTMLAudioElement | null = null;
-  private turricanMusic: HTMLAudioElement | null = null;
+  private pixelMusic: HTMLAudioElement | null = null;
+  private sound2Music: HTMLAudioElement | null = null;
   private highScoreMusic: HTMLAudioElement | null = null;
-  private currentTrack: 'pixel' | 'turrican' = 'pixel';
+  private currentTrack: 'pixel' | 'sound2' = 'pixel';
+  private pixelLoopCount = 0;
+  private sound2LoopCount = 0;
 
   private getAudioContext() {
     if (!this.audioContext) {
@@ -14,50 +16,74 @@ class SoundManager {
   }
 
   playBackgroundMusic(level: number = 1) {
-    // Switch to Turrican track from level 10 onwards
-    if (level >= 10 && this.currentTrack !== 'turrican') {
-      this.stopBackgroundMusic();
-      this.currentTrack = 'turrican';
-    } else if (level < 10 && this.currentTrack !== 'pixel') {
-      this.stopBackgroundMusic();
-      this.currentTrack = 'pixel';
+    // Initialize both tracks if needed
+    if (!this.pixelMusic) {
+      this.pixelMusic = new Audio('/Pixel_Frenzy-2.mp3');
+      this.pixelMusic.volume = 0.3;
+      this.pixelMusic.addEventListener('ended', () => this.handleTrackEnd('pixel'));
+    }
+    if (!this.sound2Music) {
+      this.sound2Music = new Audio('/sound_2.mp3');
+      this.sound2Music.volume = 0.3;
+      this.sound2Music.addEventListener('ended', () => this.handleTrackEnd('sound2'));
     }
 
-    if (this.currentTrack === 'turrican') {
-      if (!this.turricanMusic) {
-        this.turricanMusic = new Audio('/Turrican.mp3');
-        this.turricanMusic.loop = true;
-        this.turricanMusic.volume = 0.3;
-      }
-      this.turricanMusic.play().catch(err => console.log('Turrican audio play failed:', err));
+    // Start with pixel track
+    if (this.currentTrack === 'pixel') {
+      this.pixelMusic.play().catch(err => console.log('Pixel audio play failed:', err));
     } else {
-      if (!this.bgMusic) {
-        this.bgMusic = new Audio('/Pixel_Frenzy.mp3');
-        this.bgMusic.loop = true;
-        this.bgMusic.volume = 0.3;
+      this.sound2Music.play().catch(err => console.log('Sound2 audio play failed:', err));
+    }
+  }
+
+  private handleTrackEnd(track: 'pixel' | 'sound2') {
+    if (track === 'pixel') {
+      this.pixelLoopCount++;
+      if (this.pixelLoopCount >= 2) {
+        // Switch to sound2
+        this.pixelLoopCount = 0;
+        this.currentTrack = 'sound2';
+        this.sound2Music?.play().catch(err => console.log('Sound2 audio play failed:', err));
+      } else {
+        // Play pixel again
+        this.pixelMusic?.play().catch(err => console.log('Pixel audio play failed:', err));
       }
-      this.bgMusic.play().catch(err => console.log('Audio play failed:', err));
+    } else {
+      this.sound2LoopCount++;
+      if (this.sound2LoopCount >= 3) {
+        // Switch to pixel
+        this.sound2LoopCount = 0;
+        this.currentTrack = 'pixel';
+        this.pixelMusic?.play().catch(err => console.log('Pixel audio play failed:', err));
+      } else {
+        // Play sound2 again
+        this.sound2Music?.play().catch(err => console.log('Sound2 audio play failed:', err));
+      }
     }
   }
 
   pauseBackgroundMusic() {
-    if (this.bgMusic) {
-      this.bgMusic.pause();
+    if (this.pixelMusic) {
+      this.pixelMusic.pause();
     }
-    if (this.turricanMusic) {
-      this.turricanMusic.pause();
+    if (this.sound2Music) {
+      this.sound2Music.pause();
     }
   }
 
   stopBackgroundMusic() {
-    if (this.bgMusic) {
-      this.bgMusic.pause();
-      this.bgMusic.currentTime = 0;
+    if (this.pixelMusic) {
+      this.pixelMusic.pause();
+      this.pixelMusic.currentTime = 0;
     }
-    if (this.turricanMusic) {
-      this.turricanMusic.pause();
-      this.turricanMusic.currentTime = 0;
+    if (this.sound2Music) {
+      this.sound2Music.pause();
+      this.sound2Music.currentTime = 0;
     }
+    // Reset loop counts when stopping
+    this.pixelLoopCount = 0;
+    this.sound2LoopCount = 0;
+    this.currentTrack = 'pixel';
   }
 
   playHighScoreMusic() {
