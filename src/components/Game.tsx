@@ -921,7 +921,7 @@ export const Game = () => {
       if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") {
         setLaunchAngle(prev => Math.max(prev - 3, -80));
       } else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") {
-        setLaunchAngle(prev => Math.min(prev + 3, -10));
+        setLaunchAngle(prev => Math.min(prev + 3, 80));
       }
     };
 
