@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import type { PowerUp, PowerUpType, Ball, Paddle, Brick } from "@/types/game";
 import { POWERUP_SIZE, POWERUP_FALL_SPEED, POWERUP_DROP_CHANCE, CANVAS_HEIGHT, FIREBALL_DURATION } from "@/constants/game";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ export const usePowerUps = (
 ) => {
   const [powerUps, setPowerUps] = useState<PowerUp[]>([]);
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
+  const fireballTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const createPowerUp = useCallback((brick: Brick): PowerUp | null => {
     if (Math.random() > POWERUP_DROP_CHANCE) return null;
@@ -86,8 +87,14 @@ export const usePowerUps = (
             case "fireball":
               soundManager.playFireballSound();
               setBalls(prev => prev.map(ball => ({ ...ball, isFireball: true })));
-              setTimeout(() => {
+              // Clear existing timeout if fireball is already active
+              if (fireballTimeoutRef.current) {
+                clearTimeout(fireballTimeoutRef.current);
+              }
+              // Set new timeout and store reference
+              fireballTimeoutRef.current = setTimeout(() => {
                 setBalls(prev => prev.map(ball => ({ ...ball, isFireball: false })));
+                fireballTimeoutRef.current = null;
               }, FIREBALL_DURATION);
               toast.success("Fireball activated!");
               break;

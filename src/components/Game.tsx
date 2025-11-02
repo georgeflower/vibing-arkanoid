@@ -450,7 +450,7 @@ export const Game = () => {
             launchAngleDirectionRef.current = 1; // Move right initially
             setShowInstructions(true); // Show instructions when resetting ball
               setPowerUps([]);
-              setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
+              setPaddle(prev => prev ? { ...prev, hasTurrets: false, width: PADDLE_WIDTH } : null);
               setBullets([]); // Clear all bullets
               // Only reset speed if it's slower than base speed
               if (speedMultiplier < 1) {
@@ -767,7 +767,7 @@ export const Game = () => {
               launchAngleDirectionRef.current = 1;
               setShowInstructions(true); // Show instructions when resetting ball
               setPowerUps([]);
-              setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
+              setPaddle(prev => prev ? { ...prev, hasTurrets: false, width: PADDLE_WIDTH } : null);
               setBullets([]); // Clear all bullets
               // Only reset speed if it's slower than base speed
               if (speedMultiplier < 1) {
@@ -833,7 +833,7 @@ export const Game = () => {
               launchAngleDirectionRef.current = 1;
               setShowInstructions(true); // Show instructions when resetting ball
               setPowerUps([]);
-              setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
+              setPaddle(prev => prev ? { ...prev, hasTurrets: false, width: PADDLE_WIDTH } : null);
               setBullets([]); // Clear all bullets
               // Only reset speed if it's slower than base speed
               if (speedMultiplier < 1) {
@@ -920,9 +920,9 @@ export const Game = () => {
         const speedIncrease = 1 + (enemySpawnCount * 0.3); // 30% faster each spawn
         const enemyId = nextEnemyId.current++;
         
-        // Determine enemy type - sphere from level 3+, pyramid from level 7+
+        // Determine enemy type - sphere from level 3+, pyramid from level 6+
         let enemyType: "cube" | "sphere" | "pyramid";
-        if (level >= 7 && Math.random() < 0.3) {
+        if (level >= 6 && Math.random() < 0.3) {
           enemyType = "pyramid";
         } else if (level >= 3 && Math.random() > 0.5) {
           enemyType = "sphere";
