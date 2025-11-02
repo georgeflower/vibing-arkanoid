@@ -912,48 +912,22 @@ export const Game = () => {
     }
   }, [timer, gameState, lastEnemySpawnTime, enemySpawnCount, level]);
 
-  // Animate launch angle indicator - continues until ball leaves paddle area
+  // Keyboard controls for launch angle
   useEffect(() => {
     const waitingBall = balls.find(ball => ball.waitingToLaunch);
-    const ballOnPaddle = paddle && balls.some(ball => 
-      Math.abs(ball.y - (paddle.y - ball.radius - 5)) < 10 && 
-      Math.abs(ball.x - (paddle.x + paddle.width / 2)) < paddle.width / 2 + ball.radius
-    );
-    const shouldAnimate = gameState === "playing" && (waitingBall || ballOnPaddle);
-    
-    // Only manage interval when animation state changes
-    if (shouldAnimate && !launchAngleIntervalRef.current) {
-      // Start animation
-      launchAngleIntervalRef.current = setInterval(() => {
-        setLaunchAngle(prev => {
-          // Oscillate between -60 and 60 degrees
-          let newAngle = prev + (launchAngleDirectionRef.current * 2);
-          
-          // Reverse direction at boundaries
-          if (newAngle >= 60) {
-            newAngle = 60;
-            launchAngleDirectionRef.current = -1;
-          } else if (newAngle <= -60) {
-            newAngle = -60;
-            launchAngleDirectionRef.current = 1;
-          }
-          
-          return newAngle;
-        });
-      }, 20);
-    } else if (!shouldAnimate && launchAngleIntervalRef.current) {
-      // Stop animation
-      clearInterval(launchAngleIntervalRef.current);
-      launchAngleIntervalRef.current = null;
-    }
+    if (gameState !== "playing" || !waitingBall) return;
 
-    return () => {
-      if (launchAngleIntervalRef.current) {
-        clearInterval(launchAngleIntervalRef.current);
-        launchAngleIntervalRef.current = null;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") {
+        setLaunchAngle(prev => Math.max(prev - 3, -80));
+      } else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") {
+        setLaunchAngle(prev => Math.min(prev + 3, -10));
       }
     };
-  }, [gameState, balls, paddle]);
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [gameState, balls]);
 
   const handleStart = () => {
     if (gameState === "ready") {
