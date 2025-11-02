@@ -130,6 +130,14 @@ export const Game = () => {
       cancelAnimationFrame(animationFrameRef.current);
     }
     
+    // Clear timer interval before resetting
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+    if (bombIntervalRef.current) {
+      clearInterval(bombIntervalRef.current);
+    }
+    
     const newLevel = level + 1;
     const newSpeedMultiplier = 1 + ((newLevel - 1) * 0.05); // 5% faster per level
     
