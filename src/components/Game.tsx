@@ -49,7 +49,8 @@ export const Game = () => {
   const [explosions, setExplosions] = useState<Explosion[]>([]);
   const [enemySpawnCount, setEnemySpawnCount] = useState(0);
   const [lastEnemySpawnTime, setLastEnemySpawnTime] = useState(0);
-  const [launchAngle, setLaunchAngle] = useState(0);
+  const [launchAngle, setLaunchAngle] = useState(-60);
+  const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
   const nextEnemyId = useRef(1);
@@ -116,7 +117,8 @@ export const Game = () => {
       waitingToLaunch: true,
     };
     setBalls([initialBall]);
-    setLaunchAngle(60); // Start from right side
+    setLaunchAngle(-60); // Start from left side
+    launchAngleDirectionRef.current = 1; // Move right initially
 
     // Initialize bricks for level 1
     setBricks(initBricksForLevel(1));
@@ -179,7 +181,8 @@ export const Game = () => {
       waitingToLaunch: true,
     };
     setBalls([initialBall]);
-    setLaunchAngle(60); // Start from right side
+    setLaunchAngle(-60); // Start from left side
+    launchAngleDirectionRef.current = 1; // Move right initially
     
     // Initialize bricks for new level
     setBricks(initBricksForLevel(newLevel));
@@ -418,7 +421,8 @@ export const Game = () => {
               waitingToLaunch: true,
             };
             setBalls([resetBall]);
-            setLaunchAngle(60); // Start from right side
+            setLaunchAngle(-60); // Start from left side
+            launchAngleDirectionRef.current = 1; // Move right initially
             setPowerUps([]);
             setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
             setTimer(0);
@@ -714,9 +718,18 @@ export const Game = () => {
       }
       launchAngleIntervalRef.current = setInterval(() => {
         setLaunchAngle(prev => {
-          // Sweep from right to left (60 to -60 degrees)
-          let newAngle = prev - 2;
-          if (newAngle < -60) newAngle = 60;
+          // Oscillate between -60 and 60 degrees
+          let newAngle = prev + (launchAngleDirectionRef.current * 2);
+          
+          // Reverse direction at boundaries
+          if (newAngle >= 60) {
+            newAngle = 60;
+            launchAngleDirectionRef.current = -1;
+          } else if (newAngle <= -60) {
+            newAngle = -60;
+            launchAngleDirectionRef.current = 1;
+          }
+          
           return newAngle;
         });
       }, 20);
