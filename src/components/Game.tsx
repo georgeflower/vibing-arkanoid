@@ -515,29 +515,19 @@ export const Game = () => {
       };
     }));
 
-    // Check if balls hit enemies (bounce AND damage/destroy)
-    const hitEnemies = new Set<number>();
-    const currentEnemies = enemies; // Capture current enemies for collision detection
+    // Check ball-enemy collisions and destroy enemies immediately
     setBalls(prevBalls => {
       let ballsUpdated = false;
       const newBalls = prevBalls.map(ball => {
         if (ball.waitingToLaunch) return ball;
         
-        for (const enemy of currentEnemies) {
+        for (const enemy of enemies) {
           if (ball.x + ball.radius > enemy.x &&
             ball.x - ball.radius < enemy.x + enemy.width &&
             ball.y + ball.radius > enemy.y &&
             ball.y - ball.radius < enemy.y + enemy.height) {
-            // Mark enemy as hit
-            if (enemy.id !== undefined) {
-              hitEnemies.add(enemy.id);
-            }
             
-            // Bounce the ball
-            soundManager.playBounce();
-            ballsUpdated = true;
-            
-            // Determine which side was hit and bounce accordingly
+            // Change ball trajectory immediately
             const ballCenterX = ball.x;
             const ballCenterY = ball.y;
             const enemyCenterX = enemy.x + enemy.width / 2;
@@ -546,51 +536,59 @@ export const Game = () => {
             const dx = ballCenterX - enemyCenterX;
             const dy = ballCenterY - enemyCenterY;
             
-            // Bounce based on which side was hit
+            ballsUpdated = true;
+            let updatedBall = ball;
+            
+            // Reverse ball direction based on collision side
             if (Math.abs(dx) > Math.abs(dy)) {
-              // Hit from left or right
-              return { ...ball, dx: -ball.dx };
+              updatedBall = { ...ball, dx: -ball.dx };
             } else {
-              // Hit from top or bottom
-              return { ...ball, dy: -ball.dy };
+              updatedBall = { ...ball, dy: -ball.dy };
             }
-          }
-        }
-        return ball;
-      });
-      
-      return ballsUpdated ? newBalls : prevBalls;
-    });
-
-    // Process enemy hits
-    if (hitEnemies.size > 0) {
-      setEnemies(prev => {
-        const updatedEnemies: typeof prev = [];
-        
-        prev.forEach(enemy => {
-          if (enemy.id === undefined || !hitEnemies.has(enemy.id)) {
-            // Enemy not hit, keep as is
-            updatedEnemies.push(enemy);
-            return;
-          }
-          
-          // Handle sphere enemy (2 hits)
-          if (enemy.type === "sphere") {
-            const currentHits = enemy.hits || 0;
-            if (currentHits === 0) {
-              // First hit - make it angry and faster
-              soundManager.playBounce();
-              toast.warning("Sphere enemy is angry!");
-              updatedEnemies.push({
-                ...enemy,
-                hits: 1,
-                isAngry: true,
-                speed: enemy.speed * 1.3,
-                dx: enemy.dx * 1.3,
-                dy: enemy.dy * 1.3,
-              });
+            
+            // Handle enemy destruction/damage
+            if (enemy.type === "sphere") {
+              const currentHits = enemy.hits || 0;
+              if (currentHits === 0) {
+                // First hit - make it angry and faster
+                soundManager.playBounce();
+                toast.warning("Sphere enemy is angry!");
+                setEnemies(prev => prev.map(e => 
+                  e.id === enemy.id ? {
+                    ...e,
+                    hits: 1,
+                    isAngry: true,
+                    speed: e.speed * 1.3,
+                    dx: e.dx * 1.3,
+                    dy: e.dy * 1.3,
+                  } : e
+                ));
+              } else {
+                // Second hit - destroy it
+                setExplosions(prev => [...prev, {
+                  x: enemy.x + enemy.width / 2,
+                  y: enemy.y + enemy.height / 2,
+                  frame: 0,
+                  maxFrames: 20,
+                }]);
+                soundManager.playBrickHit();
+                setScore(s => s + 200);
+                toast.success("Sphere enemy destroyed! +200 points");
+                
+                // Remove enemy
+                setEnemies(prev => prev.filter(e => e.id !== enemy.id));
+                
+                // Clear bomb interval
+                if (enemy.id !== undefined) {
+                  const interval = bombIntervalsRef.current.get(enemy.id);
+                  if (interval) {
+                    clearInterval(interval);
+                    bombIntervalsRef.current.delete(enemy.id);
+                  }
+                }
+              }
             } else {
-              // Second hit - destroy it
+              // Cube enemy - destroy on first hit
               setExplosions(prev => [...prev, {
                 x: enemy.x + enemy.width / 2,
                 y: enemy.y + enemy.height / 2,
@@ -598,40 +596,30 @@ export const Game = () => {
                 maxFrames: 20,
               }]);
               soundManager.playBrickHit();
-              setScore(s => s + 200);
-              toast.success("Sphere enemy destroyed! +200 points");
-              // Clear bomb interval for this enemy
-              const interval = bombIntervalsRef.current.get(enemy.id);
-              if (interval) {
-                clearInterval(interval);
-                bombIntervalsRef.current.delete(enemy.id);
+              setScore(s => s + 100);
+              toast.success("Enemy destroyed! +100 points");
+              
+              // Remove enemy
+              setEnemies(prev => prev.filter(e => e.id !== enemy.id));
+              
+              // Clear bomb interval
+              if (enemy.id !== undefined) {
+                const interval = bombIntervalsRef.current.get(enemy.id);
+                if (interval) {
+                  clearInterval(interval);
+                  bombIntervalsRef.current.delete(enemy.id);
+                }
               }
-              // Don't add to updatedEnemies (remove it)
             }
-          } else {
-            // Cube enemy - destroy on first hit
-            setExplosions(prev => [...prev, {
-              x: enemy.x + enemy.width / 2,
-              y: enemy.y + enemy.height / 2,
-              frame: 0,
-              maxFrames: 20,
-            }]);
-            soundManager.playBrickHit();
-            setScore(s => s + 100);
-            toast.success("Enemy destroyed! +100 points");
-            // Clear bomb interval for this enemy
-            const interval = bombIntervalsRef.current.get(enemy.id);
-            if (interval) {
-              clearInterval(interval);
-              bombIntervalsRef.current.delete(enemy.id);
-            }
-            // Don't add to updatedEnemies (remove it)
+            
+            return updatedBall;
           }
-        });
-        
-        return updatedEnemies;
+        }
+        return ball;
       });
-    }
+      
+      return ballsUpdated ? newBalls : prevBalls;
+    });
 
     // Update explosions
     setExplosions(prev => prev.map(exp => ({
