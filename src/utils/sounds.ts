@@ -9,7 +9,9 @@ class SoundManager {
     '/Pixel_Frenzy-2.mp3',
     '/sound_2.mp3',
     '/level_3.mp3',
-    '/level_4.mp3'
+    '/level_4.mp3',
+    '/Turrican.mp3',
+    '/Turrican_2.mp3'
   ];
 
   private getAudioContext() {
@@ -110,7 +112,9 @@ class SoundManager {
       'Pixel Frenzy',
       'Sound 2',
       'Level 3',
-      'Level 4'
+      'Level 4',
+      'Turrican',
+      'Turrican 2'
     ];
   }
 
