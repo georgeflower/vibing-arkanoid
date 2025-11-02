@@ -433,6 +433,7 @@ export const Game = () => {
             launchAngleDirectionRef.current = 1; // Move right initially
             setPowerUps([]);
             setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
+            setBullets([]); // Clear all bullets
             setTimer(0);
             setEnemies([]);
             setBombs([]);
@@ -685,6 +686,7 @@ export const Game = () => {
               launchAngleDirectionRef.current = 1;
               setPowerUps([]);
               setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
+              setBullets([]); // Clear all bullets
               setTimer(0);
               setLastEnemySpawnTime(0);
               setEnemies([]); // Clear all enemies
@@ -745,9 +747,15 @@ export const Game = () => {
               launchAngleDirectionRef.current = 1;
               setPowerUps([]);
               setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
+              setBullets([]); // Clear all bullets
               setTimer(0);
               setLastEnemySpawnTime(0);
+              setEnemies([]); // Clear all enemies
+              setBombs([]); // Clear all bombs
               setExplosions([]);
+              // Clear all bomb intervals
+              bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+              bombIntervalsRef.current.clear();
               setGameState("ready");
               toast.error(`Bullet hit! ${newLives} lives remaining. Click to continue.`);
             }

@@ -216,13 +216,42 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw turrets if paddle has them
       if (paddle && paddle.hasTurrets) {
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = "hsl(0, 85%, 55%)";
-        ctx.fillStyle = "hsl(0, 85%, 55%)";
+        const turretWidth = 10; // Narrower turrets
+        const turretHeight = 12;
+        
         // Left turret
-        ctx.fillRect(paddle.x, paddle.y - 10, 15, 10);
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = "hsl(0, 0%, 60%)";
+        ctx.fillStyle = "hsl(0, 0%, 60%)"; // Grey
+        ctx.fillRect(paddle.x + 5, paddle.y - turretHeight, turretWidth, turretHeight);
+        
+        // Retro pattern - darker lines
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "hsl(0, 0%, 40%)";
+        for (let i = 0; i < turretHeight; i += 3) {
+          ctx.fillRect(paddle.x + 5, paddle.y - turretHeight + i, turretWidth, 1);
+        }
+        
+        // Highlight
+        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.fillRect(paddle.x + 5, paddle.y - turretHeight, turretWidth, 2);
+        
         // Right turret
-        ctx.fillRect(paddle.x + paddle.width - 15, paddle.y - 10, 15, 10);
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = "hsl(0, 0%, 60%)";
+        ctx.fillStyle = "hsl(0, 0%, 60%)"; // Grey
+        ctx.fillRect(paddle.x + paddle.width - 15, paddle.y - turretHeight, turretWidth, turretHeight);
+        
+        // Retro pattern - darker lines
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "hsl(0, 0%, 40%)";
+        for (let i = 0; i < turretHeight; i += 3) {
+          ctx.fillRect(paddle.x + paddle.width - 15, paddle.y - turretHeight + i, turretWidth, 1);
+        }
+        
+        // Highlight
+        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.fillRect(paddle.x + paddle.width - 15, paddle.y - turretHeight, turretWidth, 2);
       }
 
       // Draw enemies (cubes and spheres)
