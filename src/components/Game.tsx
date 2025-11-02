@@ -223,8 +223,9 @@ export const Game = () => {
     if (!canvasRef.current || !paddle || gameState !== "playing") return;
     
     const rect = canvasRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const newX = Math.max(0, Math.min(CANVAS_WIDTH - PADDLE_WIDTH, mouseX - PADDLE_WIDTH / 2));
+    const scaleX = CANVAS_WIDTH / rect.width;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const newX = Math.max(0, Math.min(CANVAS_WIDTH - paddle.width, mouseX - paddle.width / 2));
     
     setPaddle(prev => prev ? { ...prev, x: newX } : null);
   }, [gameState, paddle]);
@@ -234,8 +235,9 @@ export const Game = () => {
     
     e.preventDefault();
     const rect = canvasRef.current.getBoundingClientRect();
-    const touchX = e.touches[0].clientX - rect.left;
-    const newX = Math.max(0, Math.min(CANVAS_WIDTH - PADDLE_WIDTH, touchX - PADDLE_WIDTH / 2));
+    const scaleX = CANVAS_WIDTH / rect.width;
+    const touchX = (e.touches[0].clientX - rect.left) * scaleX;
+    const newX = Math.max(0, Math.min(CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
     
     setPaddle(prev => prev ? { ...prev, x: newX } : null);
   }, [gameState, paddle]);
