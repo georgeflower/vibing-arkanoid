@@ -713,9 +713,9 @@ export const Game = () => {
       }
       launchAngleIntervalRef.current = setInterval(() => {
         setLaunchAngle(prev => {
-          // Sweep from -60 to 60 degrees
-          let newAngle = prev + 2;
-          if (newAngle > 60) newAngle = -60;
+          // Sweep from right to left (60 to -60 degrees)
+          let newAngle = prev - 2;
+          if (newAngle < -60) newAngle = 60;
           return newAngle;
         });
       }, 20);
