@@ -23,6 +23,11 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
   ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
+    const bgRotationRef = useRef(0);
+    const bgZoomRef = useRef(1);
+    const rotationSpeedRef = useRef(0.5);
+    const zoomSpeedRef = useRef(0.3);
+    const zoomDirectionRef = useRef(1);
     
     // Load power-up images and paddle image
     useEffect(() => {
@@ -48,6 +53,32 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       ctx.fillStyle = "hsl(220, 25%, 12%)";
       ctx.fillRect(0, 0, width, height);
 
+      // Update background animation parameters with random changes
+      if (backgroundPhase % 60 === 0) {
+        // Change rotation speed randomly every 60 frames
+        rotationSpeedRef.current = 0.2 + Math.random() * 1.5;
+      }
+      if (backgroundPhase % 90 === 0) {
+        // Change zoom speed randomly every 90 frames
+        zoomSpeedRef.current = 0.2 + Math.random() * 0.8;
+      }
+      
+      // Update rotation (randomly speeds up/slows down)
+      bgRotationRef.current += (rotationSpeedRef.current * 0.01) * (Math.sin(backgroundPhase * 0.01) * 0.5 + 1);
+      
+      // Update zoom with oscillation and random changes
+      bgZoomRef.current += zoomDirectionRef.current * zoomSpeedRef.current * 0.005;
+      if (bgZoomRef.current > 1.3 || bgZoomRef.current < 0.8) {
+        zoomDirectionRef.current *= -1;
+      }
+
+      // Apply transformations for background
+      ctx.save();
+      ctx.translate(width / 2, height / 2);
+      ctx.rotate(bgRotationRef.current);
+      ctx.scale(bgZoomRef.current, bgZoomRef.current);
+      ctx.translate(-width / 2, -height / 2);
+
       // Draw animated retro background (changes every 5 levels)
       const backgroundStyle = Math.floor((level - 1) / 5) % 4;
       ctx.strokeStyle = "rgba(100, 180, 255, 0.15)";
@@ -55,25 +86,25 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       if (backgroundStyle === 0) {
         // Style 1: Grid pattern
-        for (let i = 0; i < width; i += 40) {
+        for (let i = -width; i < width * 2; i += 40) {
           ctx.beginPath();
-          ctx.moveTo(i + (backgroundPhase % 40), 0);
-          ctx.lineTo(i + (backgroundPhase % 40), height);
+          ctx.moveTo(i + (backgroundPhase % 40), -height);
+          ctx.lineTo(i + (backgroundPhase % 40), height * 2);
           ctx.stroke();
         }
-        for (let i = 0; i < height; i += 40) {
+        for (let i = -height; i < height * 2; i += 40) {
           ctx.beginPath();
-          ctx.moveTo(0, i + (backgroundPhase % 40));
-          ctx.lineTo(width, i + (backgroundPhase % 40));
+          ctx.moveTo(-width, i + (backgroundPhase % 40));
+          ctx.lineTo(width * 2, i + (backgroundPhase % 40));
           ctx.stroke();
         }
       } else if (backgroundStyle === 1) {
         // Style 2: Diagonal lines
         ctx.strokeStyle = "rgba(255, 100, 180, 0.15)";
-        for (let i = -height; i < width + height; i += 30) {
+        for (let i = -height * 2; i < width * 2 + height * 2; i += 30) {
           ctx.beginPath();
-          ctx.moveTo(i + (backgroundPhase * 2) % 60, 0);
-          ctx.lineTo(i + (backgroundPhase * 2) % 60 - height, height);
+          ctx.moveTo(i + (backgroundPhase * 2) % 60, -height);
+          ctx.lineTo(i + (backgroundPhase * 2) % 60 - height * 2, height * 2);
           ctx.stroke();
         }
       } else if (backgroundStyle === 2) {
@@ -81,7 +112,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.strokeStyle = "rgba(100, 255, 180, 0.15)";
         const centerX = width / 2;
         const centerY = height / 2;
-        for (let r = 50; r < width; r += 60) {
+        for (let r = 50; r < width * 1.5; r += 60) {
           ctx.beginPath();
           ctx.arc(centerX, centerY, r + (backgroundPhase % 60), 0, Math.PI * 2);
           ctx.stroke();
@@ -89,16 +120,18 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       } else {
         // Style 4: Sine waves
         ctx.strokeStyle = "rgba(255, 180, 100, 0.15)";
-        for (let y = 50; y < height; y += 60) {
+        for (let y = -height; y < height * 2; y += 60) {
           ctx.beginPath();
-          ctx.moveTo(0, y);
-          for (let x = 0; x < width; x += 10) {
+          ctx.moveTo(-width, y);
+          for (let x = -width; x < width * 2; x += 10) {
             const wave = Math.sin((x + backgroundPhase * 3) * 0.02) * 20;
             ctx.lineTo(x, y + wave);
           }
           ctx.stroke();
         }
       }
+      
+      ctx.restore();
 
       // Draw bricks with 16-bit Turrican 2 style texture
       bricks.forEach((brick) => {
