@@ -287,6 +287,25 @@ class SoundManager {
     audio.play().catch(err => console.log('Fireball sound failed:', err));
   }
 
+  playBombDropSound() {
+    const ctx = this.getAudioContext();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    // Pew sound - quick descending pitch
+    oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.1);
+    
+    gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+    
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.1);
+  }
+
   playExtraLifeSound() {
     const audio = new Audio('/extra_life.mp3');
     audio.volume = 0.5;

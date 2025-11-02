@@ -912,6 +912,7 @@ export const Game = () => {
               type: currentEnemy.type === "sphere" ? "rocket" : "bomb",
               dx: 0, // Initialize horizontal velocity for rockets
             };
+            soundManager.playBombDropSound();
             setBombs(prev => [...prev, newProjectile]);
             return currentEnemies;
           });

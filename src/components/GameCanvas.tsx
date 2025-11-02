@@ -293,55 +293,86 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         const centerY = singleEnemy.y + singleEnemy.height / 2;
         
         if (singleEnemy.type === "sphere") {
-          // Draw 3D rotating sphere with 16-bit texture
+          // Draw 3D spinning sphere with enhanced depth
           const radius = singleEnemy.width / 2;
           
           // Determine color based on state
           let baseColor = "hsl(200, 70%, 50%)";
+          let highlightColor = "hsl(200, 80%, 70%)";
           if (singleEnemy.isAngry) {
             // Blinking red when angry
             const blinkPhase = Math.floor(Date.now() / 150) % 2;
             baseColor = blinkPhase === 0 ? "hsl(0, 85%, 55%)" : "hsl(0, 75%, 40%)";
+            highlightColor = "hsl(0, 90%, 75%)";
           }
           
-          // Draw sphere with rotation-based shading
+          // Calculate light position based on rotation for 3D effect
+          const lightX = Math.cos(singleEnemy.rotationY) * radius * 0.4;
+          const lightY = Math.sin(singleEnemy.rotationX) * radius * 0.4;
+          
+          // Draw sphere with enhanced 3D gradient
           const gradient = ctx.createRadialGradient(
-            centerX - radius * 0.3,
-            centerY - radius * 0.3,
-            0,
+            centerX + lightX,
+            centerY + lightY,
+            radius * 0.1,
             centerX,
             centerY,
-            radius
+            radius * 1.2
           );
-          gradient.addColorStop(0, "rgba(255, 255, 255, 0.8)");
-          gradient.addColorStop(0.5, baseColor);
-          gradient.addColorStop(1, "rgba(0, 0, 0, 0.5)");
+          gradient.addColorStop(0, highlightColor);
+          gradient.addColorStop(0.3, baseColor);
+          gradient.addColorStop(0.7, `hsl(${singleEnemy.isAngry ? 0 : 200}, 60%, 30%)`);
+          gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
           
-          ctx.shadowBlur = 15;
+          ctx.shadowBlur = 20;
           ctx.shadowColor = baseColor;
           ctx.fillStyle = gradient;
           ctx.beginPath();
           ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
           ctx.fill();
           
-          // Add 16-bit pixel texture pattern
+          // Draw rotating latitude/longitude lines for spinning effect
           ctx.shadowBlur = 0;
-          ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
-          const pixelSize = 4;
-          for (let py = -radius; py < radius; py += pixelSize) {
-            for (let px = -radius; px < radius; px += pixelSize) {
-              // Check if pixel is within sphere
-              if (px * px + py * py < radius * radius) {
-                // Rotate pixel coordinates
-                const rotatedX = px * Math.cos(singleEnemy.rotationY) - py * Math.sin(singleEnemy.rotationY);
-                const rotatedY = px * Math.sin(singleEnemy.rotationY) + py * Math.cos(singleEnemy.rotationY);
-                
-                if ((Math.floor(rotatedX / pixelSize) + Math.floor(rotatedY / pixelSize)) % 3 === 0) {
-                  ctx.fillRect(centerX + px, centerY + py, 2, 2);
-                }
-              }
-            }
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+          ctx.lineWidth = 1.5;
+          
+          // Latitude lines
+          for (let i = -2; i <= 2; i++) {
+            const latY = centerY + i * radius * 0.3;
+            const latRadius = Math.sqrt(radius * radius - (i * radius * 0.3) * (i * radius * 0.3));
+            const squeeze = Math.abs(Math.cos(singleEnemy.rotationX + i * 0.5));
+            
+            ctx.beginPath();
+            ctx.ellipse(centerX, latY, latRadius * squeeze, latRadius * 0.3, 0, 0, Math.PI * 2);
+            ctx.stroke();
           }
+          
+          // Longitude lines
+          for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI + singleEnemy.rotationY;
+            const x1 = centerX + Math.cos(angle) * radius * 0.8;
+            const x2 = centerX - Math.cos(angle) * radius * 0.8;
+            
+            ctx.beginPath();
+            ctx.ellipse(centerX, centerY, Math.abs(Math.cos(angle)) * radius, radius, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          
+          // Add specular highlight for extra 3D depth
+          const specGradient = ctx.createRadialGradient(
+            centerX + lightX * 0.7,
+            centerY + lightY * 0.7,
+            0,
+            centerX + lightX * 0.7,
+            centerY + lightY * 0.7,
+            radius * 0.4
+          );
+          specGradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+          specGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+          ctx.fillStyle = specGradient;
+          ctx.beginPath();
+          ctx.arc(centerX + lightX * 0.7, centerY + lightY * 0.7, radius * 0.3, 0, Math.PI * 2);
+          ctx.fill();
           
           // Draw angry expression if angry
           if (singleEnemy.isAngry) {
@@ -363,7 +394,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.stroke();
           }
         } else {
-          // Draw cube enemy (existing code)
+          // Draw cube enemy with retro 16-bit red texture
           const size = singleEnemy.width;
           const depth = size * 0.7;
           
@@ -397,14 +428,14 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ];
           });
           
-          // Draw faces (back to front for proper depth)
+          // Draw faces (back to front for proper depth) - all red shades
           const faces = [
-            { indices: [0, 1, 2, 3], color: "hsl(0, 75%, 40%)" }, // back
-            { indices: [0, 3, 7, 4], color: "hsl(0, 80%, 45%)" }, // left
-            { indices: [1, 5, 6, 2], color: "hsl(0, 80%, 50%)" }, // right
-            { indices: [0, 1, 5, 4], color: "hsl(0, 85%, 45%)" }, // bottom
-            { indices: [3, 2, 6, 7], color: "hsl(0, 85%, 55%)" }, // top
-            { indices: [4, 5, 6, 7], color: "hsl(0, 90%, 60%)" }  // front
+            { indices: [0, 1, 2, 3], color: "hsl(0, 80%, 35%)" }, // back - darkest
+            { indices: [0, 3, 7, 4], color: "hsl(0, 85%, 42%)" }, // left
+            { indices: [1, 5, 6, 2], color: "hsl(0, 85%, 45%)" }, // right
+            { indices: [0, 1, 5, 4], color: "hsl(0, 85%, 40%)" }, // bottom
+            { indices: [3, 2, 6, 7], color: "hsl(0, 90%, 55%)" }, // top - brightest
+            { indices: [4, 5, 6, 7], color: "hsl(0, 88%, 50%)" }  // front
           ];
           
           // Sort faces by average z-depth
@@ -413,7 +444,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             avgZ: face.indices.reduce((sum, i) => sum + projected[i][2], 0) / 4
           })).sort((a, b) => a.avgZ - b.avgZ);
           
-          // Draw each face
+          // Draw each face with retro texture
           sortedFaces.forEach(face => {
             ctx.shadowBlur = 15;
             ctx.shadowColor = "hsl(0, 85%, 55%)";
@@ -426,11 +457,45 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.closePath();
             ctx.fill();
             
-            // Add edge lines
+            // Add 16-bit retro pixel texture overlay
             ctx.shadowBlur = 0;
-            ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
-            ctx.lineWidth = 1.5;
+            const pixelSize = 3;
+            face.indices.forEach(i => {
+              const x = projected[i][0];
+              const y = projected[i][1];
+              
+              // Draw retro dithering pattern
+              for (let py = -size/2; py < size/2; py += pixelSize) {
+                for (let px = -size/2; px < size/2; px += pixelSize) {
+                  const worldX = x + px;
+                  const worldY = y + py;
+                  const patternValue = (Math.floor(worldX / pixelSize) + Math.floor(worldY / pixelSize)) % 4;
+                  
+                  if (patternValue === 0) {
+                    ctx.fillStyle = "rgba(255, 100, 100, 0.3)";
+                    ctx.fillRect(worldX, worldY, 2, 2);
+                  } else if (patternValue === 1) {
+                    ctx.fillStyle = "rgba(150, 0, 0, 0.2)";
+                    ctx.fillRect(worldX, worldY, 2, 2);
+                  }
+                }
+              }
+            });
+            
+            // Add edge lines for retro look
+            ctx.strokeStyle = "rgba(100, 0, 0, 0.8)";
+            ctx.lineWidth = 2;
             ctx.stroke();
+            
+            // Add highlight pixels on edges
+            ctx.fillStyle = "rgba(255, 150, 150, 0.6)";
+            for (let i = 0; i < face.indices.length; i++) {
+              const idx = face.indices[i];
+              const nextIdx = face.indices[(i + 1) % face.indices.length];
+              const midX = (projected[idx][0] + projected[nextIdx][0]) / 2;
+              const midY = (projected[idx][1] + projected[nextIdx][1]) / 2;
+              ctx.fillRect(midX - 1, midY - 1, 2, 2);
+            }
           });
         }
         
