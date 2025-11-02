@@ -600,51 +600,56 @@ export const Game = () => {
     };
   }, [gameState]);
 
-  // Enemy spawn every 30 seconds
+  // Enemy spawn every 30 seconds (faster on higher levels)
   useEffect(() => {
-    if (gameState === "playing" && !enemy && timer > 0 && timer - lastEnemySpawnTime >= 30) {
-      const speedIncrease = 1 + (enemySpawnCount * 0.3); // 30% faster each spawn
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 2 * speedIncrease;
+    if (gameState === "playing" && !enemy && timer > 0) {
+      // Spawn interval decreases with level (30s at level 1, 20s at level 2, 15s at level 3+)
+      const spawnInterval = Math.max(15, 30 - (level - 1) * 5);
       
-      const newEnemy: Enemy = {
-        x: Math.random() * (CANVAS_WIDTH - 40),
-        y: 50 + Math.random() * 50,
-        width: 30,
-        height: 30,
-        rotation: 0,
-        rotationX: 0,
-        rotationY: 0,
-        rotationZ: 0,
-        speed: speed,
-        dx: Math.cos(angle) * speed,
-        dy: Math.abs(Math.sin(angle)) * speed, // Always move downward initially
-      };
-      setEnemy(newEnemy);
-      setLastEnemySpawnTime(timer);
-      setEnemySpawnCount(prev => prev + 1);
-      toast.warning(`Enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
+      if (timer - lastEnemySpawnTime >= spawnInterval) {
+        const speedIncrease = 1 + (enemySpawnCount * 0.3); // 30% faster each spawn
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 * speedIncrease;
+        
+        const newEnemy: Enemy = {
+          x: Math.random() * (CANVAS_WIDTH - 40),
+          y: 50 + Math.random() * 50,
+          width: 30,
+          height: 30,
+          rotation: 0,
+          rotationX: 0,
+          rotationY: 0,
+          rotationZ: 0,
+          speed: speed,
+          dx: Math.cos(angle) * speed,
+          dy: Math.abs(Math.sin(angle)) * speed, // Always move downward initially
+        };
+        setEnemy(newEnemy);
+        setLastEnemySpawnTime(timer);
+        setEnemySpawnCount(prev => prev + 1);
+        toast.warning(`Enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
 
-      // Start dropping bombs
-      if (bombIntervalRef.current) {
-        clearInterval(bombIntervalRef.current);
+        // Start dropping bombs
+        if (bombIntervalRef.current) {
+          clearInterval(bombIntervalRef.current);
+        }
+        bombIntervalRef.current = setInterval(() => {
+          setEnemy(currentEnemy => {
+            if (!currentEnemy) return null;
+            const newBomb: Bomb = {
+              x: currentEnemy.x + currentEnemy.width / 2 - 5,
+              y: currentEnemy.y + currentEnemy.height,
+              width: 10,
+              height: 10,
+              speed: 3,
+            };
+            setBombs(prev => [...prev, newBomb]);
+            return currentEnemy;
+          });
+        }, 2000);
       }
-      bombIntervalRef.current = setInterval(() => {
-        setEnemy(currentEnemy => {
-          if (!currentEnemy) return null;
-          const newBomb: Bomb = {
-            x: currentEnemy.x + currentEnemy.width / 2 - 5,
-            y: currentEnemy.y + currentEnemy.height,
-            width: 10,
-            height: 10,
-            speed: 3,
-          };
-          setBombs(prev => [...prev, newBomb]);
-          return currentEnemy;
-        });
-      }, 2000);
     }
-  }, [timer, gameState, enemy, lastEnemySpawnTime, enemySpawnCount]);
+  }, [timer, gameState, enemy, lastEnemySpawnTime, enemySpawnCount, level]);
 
   const handleStart = () => {
     if (gameState === "ready") {
