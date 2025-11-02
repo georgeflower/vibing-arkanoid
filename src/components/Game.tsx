@@ -571,7 +571,7 @@ export const Game = () => {
                   frame: 0,
                   maxFrames: 20,
                 }]);
-                soundManager.playBrickHit();
+                soundManager.playExplosion();
                 setScore(s => s + 200);
                 toast.success("Sphere enemy destroyed! +200 points");
                 
@@ -595,7 +595,7 @@ export const Game = () => {
                 frame: 0,
                 maxFrames: 20,
               }]);
-              soundManager.playBrickHit();
+              soundManager.playExplosion();
               setScore(s => s + 100);
               toast.success("Enemy destroyed! +100 points");
               
@@ -633,18 +633,22 @@ export const Game = () => {
       let newY = bomb.y + bomb.speed;
       let newDx = bomb.dx || 0;
       
-      // Rockets have magnetic behavior towards paddle only (1% attraction)
+      // Rockets have magnetic behavior towards paddle when in bottom 30% (5% attraction)
       if (bomb.type === "rocket" && paddle) {
-        // 1% attraction towards paddle
-        const paddleCenterX = paddle.x + paddle.width / 2;
-        const toPaddleX = paddleCenterX - bomb.x;
-        newDx += toPaddleX * 0.0001;
+        const bottomThreshold = CANVAS_HEIGHT * 0.7; // Bottom 30% of screen
         
-        // Apply horizontal movement
-        newX += newDx;
-        
-        // Clamp to canvas bounds
-        newX = Math.max(0, Math.min(CANVAS_WIDTH - bomb.width, newX));
+        if (bomb.y >= bottomThreshold) {
+          // 5% attraction towards paddle when in bottom 30%
+          const paddleCenterX = paddle.x + paddle.width / 2;
+          const toPaddleX = paddleCenterX - bomb.x;
+          newDx += toPaddleX * 0.05;
+          
+          // Apply horizontal movement
+          newX += newDx;
+          
+          // Clamp to canvas bounds
+          newX = Math.max(0, Math.min(CANVAS_WIDTH - bomb.width, newX));
+        }
       }
       
       return {
@@ -891,11 +895,11 @@ export const Game = () => {
             }
             
             const newProjectile: Bomb = {
-              x: currentEnemy.x + currentEnemy.width / 2 - (currentEnemy.type === "sphere" ? 10 : 5),
+              x: currentEnemy.x + currentEnemy.width / 2 - 5,
               y: currentEnemy.y + currentEnemy.height,
-              width: currentEnemy.type === "sphere" ? 20 : 10,
-              height: currentEnemy.type === "sphere" ? 20 : 10,
-              speed: currentEnemy.type === "sphere" ? 1.5 : 3,
+              width: 10,
+              height: 10,
+              speed: 3,
               enemyId: enemyId,
               type: currentEnemy.type === "sphere" ? "rocket" : "bomb",
               dx: 0, // Initialize horizontal velocity for rockets

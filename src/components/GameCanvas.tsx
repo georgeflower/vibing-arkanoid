@@ -420,43 +420,22 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       // Draw bombs and rockets
       bombs.forEach((bomb) => {
         if (bomb.type === "rocket") {
-          // Draw rocket with flame trail
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = "hsl(30, 85%, 55%)";
-          
-          // Rocket body
-          ctx.fillStyle = "hsl(0, 75%, 50%)";
+          // Draw blue rocket (same as bomb but blue)
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = "hsl(220, 85%, 55%)";
+          ctx.fillStyle = "hsl(220, 85%, 55%)";
           ctx.beginPath();
-          ctx.moveTo(bomb.x + bomb.width / 2, bomb.y);
-          ctx.lineTo(bomb.x + bomb.width, bomb.y + bomb.height * 0.7);
-          ctx.lineTo(bomb.x + bomb.width * 0.6, bomb.y + bomb.height * 0.7);
-          ctx.lineTo(bomb.x + bomb.width * 0.6, bomb.y + bomb.height);
-          ctx.lineTo(bomb.x + bomb.width * 0.4, bomb.y + bomb.height);
-          ctx.lineTo(bomb.x + bomb.width * 0.4, bomb.y + bomb.height * 0.7);
-          ctx.lineTo(bomb.x, bomb.y + bomb.height * 0.7);
-          ctx.closePath();
+          ctx.arc(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, bomb.width / 2, 0, Math.PI * 2);
           ctx.fill();
           
-          // Rocket nose cone
-          ctx.fillStyle = "hsl(0, 85%, 60%)";
+          // Rocket highlight
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
           ctx.beginPath();
-          ctx.moveTo(bomb.x + bomb.width / 2, bomb.y);
-          ctx.lineTo(bomb.x + bomb.width, bomb.y + bomb.height * 0.4);
-          ctx.lineTo(bomb.x, bomb.y + bomb.height * 0.4);
-          ctx.closePath();
-          ctx.fill();
-          
-          // Flame trail
-          ctx.shadowBlur = 15;
-          ctx.shadowColor = "hsl(30, 100%, 50%)";
-          ctx.fillStyle = "hsla(30, 100%, 60%, 0.7)";
-          ctx.beginPath();
-          ctx.moveTo(bomb.x + bomb.width * 0.4, bomb.y + bomb.height);
-          ctx.lineTo(bomb.x + bomb.width / 2, bomb.y + bomb.height + 8);
-          ctx.lineTo(bomb.x + bomb.width * 0.6, bomb.y + bomb.height);
+          ctx.arc(bomb.x + bomb.width / 2 - 2, bomb.y + bomb.height / 2 - 2, bomb.width / 4, 0, Math.PI * 2);
           ctx.fill();
         } else {
-          // Draw regular bomb
+          // Draw regular bomb (red)
           ctx.shadowBlur = 8;
           ctx.shadowColor = "hsl(0, 85%, 55%)";
           ctx.fillStyle = "hsl(0, 85%, 55%)";

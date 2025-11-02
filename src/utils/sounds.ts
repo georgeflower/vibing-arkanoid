@@ -242,7 +242,7 @@ class SoundManager {
     filter.type = 'lowpass';
     filter.frequency.value = 400;
     
-    gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+    gainNode.gain.setValueAtTime(0.08, ctx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
 
     oscillator.start(ctx.currentTime);
