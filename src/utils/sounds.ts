@@ -22,6 +22,14 @@ class SoundManager {
   playBackgroundMusic(level: number = 1) {
     if (!this.musicEnabled) return;
 
+    // Stop all currently playing tracks first
+    this.musicTracks.forEach((track, index) => {
+      if (track && !track.paused) {
+        track.pause();
+        track.currentTime = 0;
+      }
+    });
+
     // If no track is playing yet, pick a random starting track
     const noTrackPlaying = this.musicTracks.every(track => !track || track.paused || track.currentTime === 0);
     if (noTrackPlaying) {
