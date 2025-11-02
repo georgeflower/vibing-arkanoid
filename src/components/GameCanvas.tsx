@@ -12,7 +12,7 @@ interface GameCanvasProps {
   gameState: GameState;
   powerUps: PowerUp[];
   bullets: Bullet[];
-  enemy: Enemy | null;
+  enemy: Enemy[];
   bombs: Bomb[];
   level: number;
   backgroundPhase: number;
@@ -183,21 +183,21 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillRect(paddle.x + paddle.width - 13, paddle.y - 10, 8, 10);
       }
 
-      // Draw enemy as 3D cube
-      if (enemy) {
+      // Draw enemies as 3D cubes
+      enemy.forEach((singleEnemy) => {
         ctx.save();
-        const centerX = enemy.x + enemy.width / 2;
-        const centerY = enemy.y + enemy.height / 2;
+        const centerX = singleEnemy.x + singleEnemy.width / 2;
+        const centerY = singleEnemy.y + singleEnemy.height / 2;
         
         // Calculate cube vertices with 3D rotation
-        const size = enemy.width;
+        const size = singleEnemy.width;
         const depth = size * 0.7;
         
         // Simple 3D projection
-        const cos = Math.cos(enemy.rotationY);
-        const sin = Math.sin(enemy.rotationY);
-        const cosX = Math.cos(enemy.rotationX);
-        const sinX = Math.sin(enemy.rotationX);
+        const cos = Math.cos(singleEnemy.rotationY);
+        const sin = Math.sin(singleEnemy.rotationY);
+        const cosX = Math.cos(singleEnemy.rotationX);
+        const sinX = Math.sin(singleEnemy.rotationX);
         
         // Define cube vertices (x, y, z)
         const vertices = [
@@ -260,7 +260,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         });
         
         ctx.restore();
-      }
+      });
 
       // Draw explosions
       explosions.forEach((explosion) => {

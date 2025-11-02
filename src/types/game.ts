@@ -51,6 +51,7 @@ export interface PowerUp {
 }
 
 export interface Enemy {
+  id?: number;
   x: number;
   y: number;
   width: number;
@@ -64,19 +65,20 @@ export interface Enemy {
   dy: number;
 }
 
-export interface Explosion {
-  x: number;
-  y: number;
-  frame: number;
-  maxFrames: number;
-}
-
 export interface Bomb {
   x: number;
   y: number;
   width: number;
   height: number;
   speed: number;
+  enemyId?: number;
+}
+
+export interface Explosion {
+  x: number;
+  y: number;
+  frame: number;
+  maxFrames: number;
 }
 
 export type GameState = "ready" | "playing" | "paused" | "gameOver" | "won";

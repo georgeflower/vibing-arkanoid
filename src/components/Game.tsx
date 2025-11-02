@@ -43,7 +43,7 @@ export const Game = () => {
   const [showHighScoreEntry, setShowHighScoreEntry] = useState(false);
   const [showHighScoreDisplay, setShowHighScoreDisplay] = useState(false);
   const [timer, setTimer] = useState(0);
-  const [enemy, setEnemy] = useState<Enemy | null>(null);
+  const [enemies, setEnemies] = useState<Enemy[]>([]);
   const [bombs, setBombs] = useState<Bomb[]>([]);
   const [backgroundPhase, setBackgroundPhase] = useState(0);
   const [explosions, setExplosions] = useState<Explosion[]>([]);
@@ -51,8 +51,9 @@ export const Game = () => {
   const [lastEnemySpawnTime, setLastEnemySpawnTime] = useState(0);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
+  const nextEnemyId = useRef(1);
   const timerIntervalRef = useRef<NodeJS.Timeout>();
-  const bombIntervalRef = useRef<NodeJS.Timeout>();
+  const bombIntervalsRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
   const { highScores, isHighScore, addHighScore } = useHighScores();
 
@@ -122,12 +123,14 @@ export const Game = () => {
     setGameState("ready");
     setPowerUps([]);
     setTimer(0);
-    setEnemy(null);
+    setEnemies([]);
     setBombs([]);
     setBackgroundPhase(0);
     setExplosions([]);
     setEnemySpawnCount(0);
     setLastEnemySpawnTime(0);
+    bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+    bombIntervalsRef.current.clear();
   }, [setPowerUps, initBricksForLevel]);
 
   const nextLevel = useCallback(() => {
@@ -140,9 +143,8 @@ export const Game = () => {
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
     }
-    if (bombIntervalRef.current) {
-      clearInterval(bombIntervalRef.current);
-    }
+    bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+    bombIntervalsRef.current.clear();
     
     const newLevel = level + 1;
     const newSpeedMultiplier = 1 + ((newLevel - 1) * 0.05); // 5% faster per level
@@ -178,11 +180,13 @@ export const Game = () => {
     setPowerUps([]);
     setBullets([]);
     setTimer(0);
-    setEnemy(null);
+    setEnemies([]);
     setBombs([]);
     setExplosions([]);
     setEnemySpawnCount(0);
     setLastEnemySpawnTime(0);
+    bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+    bombIntervalsRef.current.clear();
     setGameState("playing");
     soundManager.playBackgroundMusic(newLevel);
     
@@ -390,9 +394,11 @@ export const Game = () => {
             setPowerUps([]);
             setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
             setTimer(0);
-            setEnemy(null);
+            setEnemies([]);
             setBombs([]);
             setExplosions([]);
+            bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+            bombIntervalsRef.current.clear();
             setGameState("ready");
             toast(`Life lost! ${newLives} lives remaining. Click to continue.`);
           }
@@ -423,44 +429,42 @@ export const Game = () => {
     // Update bullets
     updateBullets(bricks);
 
-    // Update enemy
-    if (enemy) {
-      setEnemy(prev => {
-        if (!prev) return null;
-        let newX = prev.x + prev.dx;
-        let newY = prev.y + prev.dy;
-        let newDx = prev.dx;
-        let newDy = prev.dy;
-        
-        // Bounce off walls
-        if (newX <= 0 || newX >= CANVAS_WIDTH - prev.width) {
-          newDx = -prev.dx;
-          newX = Math.max(0, Math.min(CANVAS_WIDTH - prev.width, newX));
-        }
-        
-        // Bounce off top and 60% boundary
-        const maxY = CANVAS_HEIGHT * 0.6;
-        if (newY <= 0 || newY >= maxY - prev.height) {
-          newDy = -prev.dy;
-          newY = Math.max(0, Math.min(maxY - prev.height, newY));
-        }
-        
-        return {
-          ...prev,
-          x: newX,
-          y: newY,
-          dx: newDx,
-          dy: newDy,
-          rotationX: prev.rotationX + 0.05,
-          rotationY: prev.rotationY + 0.08,
-          rotationZ: prev.rotationZ + 0.03,
-        };
-      });
+    // Update enemies
+    setEnemies(prev => prev.map(enemy => {
+      let newX = enemy.x + enemy.dx;
+      let newY = enemy.y + enemy.dy;
+      let newDx = enemy.dx;
+      let newDy = enemy.dy;
+      
+      // Bounce off walls
+      if (newX <= 0 || newX >= CANVAS_WIDTH - enemy.width) {
+        newDx = -enemy.dx;
+        newX = Math.max(0, Math.min(CANVAS_WIDTH - enemy.width, newX));
+      }
+      
+      // Bounce off top and 60% boundary
+      const maxY = CANVAS_HEIGHT * 0.6;
+      if (newY <= 0 || newY >= maxY - enemy.height) {
+        newDy = -enemy.dy;
+        newY = Math.max(0, Math.min(maxY - enemy.height, newY));
+      }
+      
+      return {
+        ...enemy,
+        x: newX,
+        y: newY,
+        dx: newDx,
+        dy: newDy,
+        rotationX: enemy.rotationX + 0.05,
+        rotationY: enemy.rotationY + 0.08,
+        rotationZ: enemy.rotationZ + 0.03,
+      };
+    }));
 
-      // Check if ball hits enemy
-      balls.forEach(ball => {
-        if (enemy &&
-          ball.x + ball.radius > enemy.x &&
+    // Check if balls hit enemies
+    balls.forEach(ball => {
+      enemies.forEach(enemy => {
+        if (ball.x + ball.radius > enemy.x &&
           ball.x - ball.radius < enemy.x + enemy.width &&
           ball.y + ball.radius > enemy.y &&
           ball.y - ball.radius < enemy.y + enemy.height) {
@@ -471,14 +475,22 @@ export const Game = () => {
             frame: 0,
             maxFrames: 20,
           }]);
-          setEnemy(null);
-          setBombs([]);
+          // Remove this enemy
+          setEnemies(prev => prev.filter(e => e.id !== enemy.id));
+          // Remove bombs from this enemy
+          setBombs(prev => prev.filter(b => b.enemyId !== enemy.id));
+          // Clear bomb interval for this enemy
+          const interval = bombIntervalsRef.current.get(enemy.id!);
+          if (interval) {
+            clearInterval(interval);
+            bombIntervalsRef.current.delete(enemy.id!);
+          }
           setScore(prev => prev + 500);
           soundManager.playExplosion();
           toast.success("Enemy destroyed! +500");
         }
       });
-    }
+    });
 
     // Update explosions
     setExplosions(prev => prev.map(exp => ({
@@ -501,8 +513,7 @@ export const Game = () => {
           bomb.y < paddle.y + paddle.height) {
           // Bomb hit paddle - lose a life
           soundManager.playLoseLife();
-          setBombs([]);
-          setEnemy(null);
+          setBombs(prev => prev.filter(b => b.enemyId !== bomb.enemyId));
           
           setLives((prev) => {
             const newLives = prev - 1;
@@ -553,7 +564,7 @@ export const Game = () => {
     }
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemy, bombs, bricks, score, isHighScore, explosions]);
+  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemies, bombs, bricks, score, isHighScore, explosions]);
 
   useEffect(() => {
     if (gameState === "playing") {
@@ -585,24 +596,22 @@ export const Game = () => {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
       }
-      if (bombIntervalRef.current) {
-        clearInterval(bombIntervalRef.current);
-      }
+      bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+      bombIntervalsRef.current.clear();
     }
 
     return () => {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
       }
-      if (bombIntervalRef.current) {
-        clearInterval(bombIntervalRef.current);
-      }
+      bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+      bombIntervalsRef.current.clear();
     };
   }, [gameState]);
 
-  // Enemy spawn every 30 seconds (faster on higher levels)
+  // Enemy spawn at regular intervals
   useEffect(() => {
-    if (gameState === "playing" && !enemy && timer > 0) {
+    if (gameState === "playing" && timer > 0) {
       // Spawn interval decreases with level (30s at level 1, 20s at level 2, 15s at level 3+)
       const spawnInterval = Math.max(15, 30 - (level - 1) * 5);
       
@@ -610,8 +619,10 @@ export const Game = () => {
         const speedIncrease = 1 + (enemySpawnCount * 0.3); // 30% faster each spawn
         const angle = Math.random() * Math.PI * 2;
         const speed = 2 * speedIncrease;
+        const enemyId = nextEnemyId.current++;
         
         const newEnemy: Enemy = {
+          id: enemyId,
           x: Math.random() * (CANVAS_WIDTH - 40),
           y: 50 + Math.random() * 50,
           width: 30,
@@ -624,32 +635,36 @@ export const Game = () => {
           dx: Math.cos(angle) * speed,
           dy: Math.abs(Math.sin(angle)) * speed, // Always move downward initially
         };
-        setEnemy(newEnemy);
+        setEnemies(prev => [...prev, newEnemy]);
         setLastEnemySpawnTime(timer);
         setEnemySpawnCount(prev => prev + 1);
         toast.warning(`Enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
 
-        // Start dropping bombs
-        if (bombIntervalRef.current) {
-          clearInterval(bombIntervalRef.current);
-        }
-        bombIntervalRef.current = setInterval(() => {
-          setEnemy(currentEnemy => {
-            if (!currentEnemy) return null;
+        // Start dropping bombs for this enemy
+        const bombInterval = setInterval(() => {
+          setEnemies(currentEnemies => {
+            const currentEnemy = currentEnemies.find(e => e.id === enemyId);
+            if (!currentEnemy) {
+              clearInterval(bombInterval);
+              bombIntervalsRef.current.delete(enemyId);
+              return currentEnemies;
+            }
             const newBomb: Bomb = {
               x: currentEnemy.x + currentEnemy.width / 2 - 5,
               y: currentEnemy.y + currentEnemy.height,
               width: 10,
               height: 10,
               speed: 3,
+              enemyId: enemyId,
             };
             setBombs(prev => [...prev, newBomb]);
-            return currentEnemy;
+            return currentEnemies;
           });
         }, 2000);
+        bombIntervalsRef.current.set(enemyId, bombInterval);
       }
     }
-  }, [timer, gameState, enemy, lastEnemySpawnTime, enemySpawnCount, level]);
+  }, [timer, gameState, lastEnemySpawnTime, enemySpawnCount, level]);
 
   const handleStart = () => {
     if (gameState === "ready") {
@@ -724,7 +739,7 @@ export const Game = () => {
               gameState={gameState}
               powerUps={powerUps}
               bullets={bullets}
-              enemy={enemy}
+              enemy={enemies}
               bombs={bombs}
               level={level}
               backgroundPhase={backgroundPhase}
