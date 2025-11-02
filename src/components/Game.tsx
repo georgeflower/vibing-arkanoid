@@ -372,28 +372,22 @@ export const Game = () => {
               
               // Indestructible bricks - just bounce off
               if (brick.isIndestructible) {
-                // Add slight random angle variation (±1 degree)
+                newBall.dy = -newBall.dy;
+                // Add slight random angle variation (±1 degree) to horizontal direction
                 const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180); // ±1 degree in radians
                 const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-                const currentAngle = Math.atan2(newBall.dx, -newBall.dy);
-                const newAngle = currentAngle + angleVariation;
-                
-                newBall.dx = speed * Math.sin(newAngle);
-                newBall.dy = -speed * Math.cos(newAngle);
+                newBall.dx += speed * Math.sin(angleVariation) * 0.1; // Small adjustment
                 soundManager.playBounce();
                 return brick;
               }
               
               // Only bounce if not fireball
               if (!newBall.isFireball) {
-                // Add slight random angle variation (±1 degree)
+                newBall.dy = -newBall.dy;
+                // Add slight random angle variation (±1 degree) to horizontal direction
                 const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180); // ±1 degree in radians
                 const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-                const currentAngle = Math.atan2(newBall.dx, -newBall.dy);
-                const newAngle = currentAngle + angleVariation;
-                
-                newBall.dx = speed * Math.sin(newAngle);
-                newBall.dy = -speed * Math.cos(newAngle);
+                newBall.dx += speed * Math.sin(angleVariation) * 0.1; // Small adjustment
               }
               
               soundManager.playBrickHit();
