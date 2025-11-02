@@ -130,36 +130,49 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw balls
       balls.forEach((ball) => {
-        const ballColor = ball.isFireball ? "hsl(30, 85%, 55%)" : "hsl(0, 0%, 60%)";
-        
-        // Slow spinning effect using time-based rotation
-        const spinRotation = (Date.now() / 50) % 360;
+        const ballColor = ball.isFireball ? "hsl(30, 85%, 55%)" : "hsl(0, 0%, 70%)";
+        const ballRotation = ball.rotation || 0;
         
         ctx.save();
         ctx.translate(ball.x, ball.y);
-        ctx.rotate((spinRotation * Math.PI) / 180);
+        
+        // Create 3D sphere with gradient
+        const gradient = ctx.createRadialGradient(
+          -ball.radius * 0.3,
+          -ball.radius * 0.3,
+          0,
+          0,
+          0,
+          ball.radius
+        );
+        
+        if (ball.isFireball) {
+          gradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+          gradient.addColorStop(0.3, "hsl(30, 85%, 65%)");
+          gradient.addColorStop(0.7, ballColor);
+          gradient.addColorStop(1, "hsl(30, 85%, 35%)");
+        } else {
+          gradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+          gradient.addColorStop(0.3, "hsl(0, 0%, 85%)");
+          gradient.addColorStop(0.7, ballColor);
+          gradient.addColorStop(1, "hsl(0, 0%, 40%)");
+        }
         
         ctx.shadowBlur = 14;
         ctx.shadowColor = ballColor;
-        ctx.fillStyle = ballColor;
+        ctx.fillStyle = gradient;
         ctx.beginPath();
         ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
         ctx.fill();
         
-        // Ball highlight
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-        ctx.beginPath();
-        ctx.arc(-1.5, -1.5, ball.radius / 2, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Retro pattern - darker horizontal lines for spinning effect
+        // Retro spinning pattern - rotating horizontal bands
         if (!ball.isFireball) {
           ctx.shadowBlur = 0;
-          ctx.fillStyle = "hsl(0, 0%, 40%)";
-          for (let i = -ball.radius; i < ball.radius; i += 3) {
+          ctx.rotate((ballRotation * Math.PI) / 180);
+          ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+          for (let i = -ball.radius; i < ball.radius; i += 4) {
             const lineWidth = Math.sqrt(ball.radius * ball.radius - i * i) * 2;
-            ctx.fillRect(-lineWidth / 2, i, lineWidth, 1);
+            ctx.fillRect(-lineWidth / 2, i, lineWidth, 2);
           }
         }
         

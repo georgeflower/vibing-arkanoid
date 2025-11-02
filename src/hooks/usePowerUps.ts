@@ -69,8 +69,8 @@ export const usePowerUps = (
               if (balls.length > 0) {
                 const baseBall = balls[0];
                 const newBalls: Ball[] = [
-                  { ...baseBall, id: Date.now() + 1, dx: baseBall.dx - 2 },
-                  { ...baseBall, id: Date.now() + 2, dx: baseBall.dx + 2 },
+                  { ...baseBall, id: Date.now() + 1, dx: baseBall.dx - 2, rotation: Math.random() * 360 },
+                  { ...baseBall, id: Date.now() + 2, dx: baseBall.dx + 2, rotation: Math.random() * 360 },
                 ];
                 setBalls(prev => [...prev, ...newBalls]);
                 toast.success("Multi-ball activated!");

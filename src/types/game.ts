@@ -21,6 +21,7 @@ export interface Ball {
   id: number;
   isFireball?: boolean;
   waitingToLaunch?: boolean;
+  rotation?: number; // For 3D spinning effect
 }
 
 export interface Paddle {

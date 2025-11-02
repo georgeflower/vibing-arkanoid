@@ -115,6 +115,7 @@ export const Game = () => {
       id: nextBallId.current++,
       isFireball: false,
       waitingToLaunch: true,
+      rotation: 0,
     };
     setBalls([initialBall]);
     setLaunchAngle(-60); // Start from left side
@@ -471,6 +472,7 @@ export const Game = () => {
         ...ball,
         x: ball.x + ball.dx * speedMultiplier,
         y: ball.y + ball.dy * speedMultiplier,
+        rotation: ((ball.rotation || 0) + 3) % 360, // Spinning rotation
       };
     }));
 
@@ -951,7 +953,7 @@ export const Game = () => {
         launchAngleIntervalRef.current = null;
       }
     };
-  }, [gameState, balls]);
+  }, [gameState, balls, paddle]);
 
   const handleStart = () => {
     if (gameState === "ready") {
