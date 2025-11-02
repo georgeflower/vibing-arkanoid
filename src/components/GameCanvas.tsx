@@ -263,29 +263,81 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillRect(paddle.x + paddle.width - 13, paddle.y - 10, 8, 10);
       }
 
-      // Draw enemy with 3D rotation
+      // Draw enemy as 3D cube
       if (enemy) {
         ctx.save();
-        ctx.translate(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+        const centerX = enemy.x + enemy.width / 2;
+        const centerY = enemy.y + enemy.height / 2;
         
-        // Simulate 3D rotation with scaling and shearing
-        const scaleX = Math.cos(enemy.rotationY) * 0.8 + 0.2;
-        const scaleY = Math.cos(enemy.rotationX) * 0.8 + 0.2;
-        const shearX = Math.sin(enemy.rotationY) * 0.3;
-        const shearY = Math.sin(enemy.rotationX) * 0.3;
+        // Calculate cube vertices with 3D rotation
+        const size = enemy.width;
+        const depth = size * 0.7;
         
-        ctx.transform(scaleX, shearY, shearX, scaleY, 0, 0);
-        ctx.rotate(enemy.rotationZ);
+        // Simple 3D projection
+        const cos = Math.cos(enemy.rotationY);
+        const sin = Math.sin(enemy.rotationY);
+        const cosX = Math.cos(enemy.rotationX);
+        const sinX = Math.sin(enemy.rotationX);
         
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = "hsl(0, 85%, 55%)";
-        ctx.fillStyle = "hsl(0, 85%, 55%)";
-        ctx.fillRect(-enemy.width / 2, -enemy.height / 2, enemy.width, enemy.height);
+        // Define cube vertices (x, y, z)
+        const vertices = [
+          [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], // back face
+          [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]  // front face
+        ];
         
-        // Enemy cross pattern
-        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-        ctx.fillRect(-enemy.width / 2 + 5, -2, enemy.width - 10, 4);
-        ctx.fillRect(-2, -enemy.height / 2 + 5, 4, enemy.height - 10);
+        // Project 3D vertices to 2D
+        const projected = vertices.map(([x, y, z]) => {
+          // Apply rotation
+          const rx = x;
+          const ry = y * cosX - z * sinX;
+          const rz = y * sinX + z * cosX;
+          
+          const rx2 = rx * cos - rz * sin;
+          const rz2 = rx * sin + rz * cos;
+          
+          // Apply size and position
+          return [
+            centerX + rx2 * size / 2,
+            centerY + ry * size / 2,
+            rz2
+          ];
+        });
+        
+        // Draw faces (back to front for proper depth)
+        const faces = [
+          { indices: [0, 1, 2, 3], color: "hsl(0, 75%, 40%)" }, // back
+          { indices: [0, 3, 7, 4], color: "hsl(0, 80%, 45%)" }, // left
+          { indices: [1, 5, 6, 2], color: "hsl(0, 80%, 50%)" }, // right
+          { indices: [0, 1, 5, 4], color: "hsl(0, 85%, 45%)" }, // bottom
+          { indices: [3, 2, 6, 7], color: "hsl(0, 85%, 55%)" }, // top
+          { indices: [4, 5, 6, 7], color: "hsl(0, 90%, 60%)" }  // front
+        ];
+        
+        // Sort faces by average z-depth
+        const sortedFaces = faces.map(face => ({
+          ...face,
+          avgZ: face.indices.reduce((sum, i) => sum + projected[i][2], 0) / 4
+        })).sort((a, b) => a.avgZ - b.avgZ);
+        
+        // Draw each face
+        sortedFaces.forEach(face => {
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = "hsl(0, 85%, 55%)";
+          ctx.fillStyle = face.color;
+          ctx.beginPath();
+          ctx.moveTo(projected[face.indices[0]][0], projected[face.indices[0]][1]);
+          face.indices.forEach(i => {
+            ctx.lineTo(projected[i][0], projected[i][1]);
+          });
+          ctx.closePath();
+          ctx.fill();
+          
+          // Add edge lines
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        });
         
         ctx.restore();
       }
