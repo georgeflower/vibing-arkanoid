@@ -1,4 +1,5 @@
-// Level layouts - each layout is a 2D boolean array where true = brick exists
+// Level layouts - each layout is a 2D array where:
+// false = no brick, true = normal brick, 2 = indestructible brick (from level 10+)
 // Returns the number of hits required for a brick at this position and level
 export const getBrickHits = (level: number, row: number): number => {
   if (level < 3) return 1;
@@ -8,7 +9,7 @@ export const getBrickHits = (level: number, row: number): number => {
   return row < 3 ? 3 : row < 5 ? 2 : 1;
 };
 
-export const levelLayouts: boolean[][][] = [
+export const levelLayouts: (boolean | number)[][][] = [
   // Level 1: Classic Rows
   [
     [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
@@ -207,25 +208,25 @@ export const levelLayouts: boolean[][][] = [
     [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
   ],
   
-  // Level 10: Full Dense Grid
+  // Level 10: With Indestructible Frame (2 = indestructible)
   [
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
+    [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+    [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
+    [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
+    [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
+    [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
+    [2, 2, 2, true, true, true, true, true, true, true, true, 2, 2, 2],
+    [false, false, 2, true, true, true, true, true, true, true, true, 2, false, false],
+    [false, false, 2, true, true, true, true, true, true, true, true, 2, false, false],
+    [false, false, 2, true, true, true, true, true, true, true, true, 2, false, false],
+    [false, false, 2, true, true, true, true, true, true, true, true, 2, false, false],
+    [false, false, 2, true, true, true, true, true, true, true, true, 2, false, false],
+    [false, false, 2, true, true, true, true, true, true, true, true, 2, false, false],
+    [2, 2, 2, true, true, true, true, true, true, true, true, 2, 2, 2],
+    [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
+    [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
+    [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
+    [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
+    [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
   ],
 ];

@@ -72,10 +72,12 @@ export const Game = () => {
     const newBricks: Brick[] = [];
     for (let row = 0; row < BRICK_ROWS; row++) {
       for (let col = 0; col < BRICK_COLS; col++) {
-        if (layout[row][col]) {
-          const hasPowerUp = Math.random() < POWERUP_DROP_CHANCE;
-          const maxHits = getBrickHits(currentLevel, row);
-          const baseColor = levelColors[row % levelColors.length];
+        const cellValue = layout[row][col];
+        if (cellValue === true || cellValue === 2) {
+          const isIndestructible = cellValue === 2;
+          const hasPowerUp = isIndestructible ? false : Math.random() < POWERUP_DROP_CHANCE;
+          const maxHits = isIndestructible ? 1 : getBrickHits(currentLevel, row);
+          const baseColor = isIndestructible ? '#333333' : levelColors[row % levelColors.length];
           newBricks.push({
             x: col * (BRICK_WIDTH + BRICK_PADDING) + BRICK_OFFSET_LEFT,
             y: row * (BRICK_HEIGHT + BRICK_PADDING) + BRICK_OFFSET_TOP,
@@ -83,10 +85,11 @@ export const Game = () => {
             height: BRICK_HEIGHT,
             color: baseColor,
             visible: true,
-            points: (BRICK_ROWS - row) * 10 * maxHits,
+            points: isIndestructible ? 0 : (BRICK_ROWS - row) * 10 * maxHits,
             hasPowerUp,
             maxHits,
             hitsRemaining: maxHits,
+            isIndestructible,
           });
         }
       }
@@ -156,7 +159,7 @@ export const Game = () => {
     bombIntervalsRef.current.clear();
     
     const newLevel = level + 1;
-    const newSpeedMultiplier = 1 + ((newLevel - 1) * 0.05); // 5% faster per level
+    const newSpeedMultiplier = Math.min(2.0, 1 + ((newLevel - 1) * 0.05)); // 5% faster per level, max 200%
     
     setLevel(newLevel);
     setSpeedMultiplier(newSpeedMultiplier);
@@ -355,6 +358,13 @@ export const Game = () => {
             ) {
               brickHit = true;
               
+              // Indestructible bricks - just bounce off
+              if (brick.isIndestructible) {
+                newBall.dy = -newBall.dy;
+                soundManager.playBounce();
+                return brick;
+              }
+              
               // Only bounce if not fireball
               if (!newBall.isFireball) {
                 newBall.dy = -newBall.dy;
@@ -390,8 +400,8 @@ export const Game = () => {
             return brick;
           });
 
-          // Check win condition
-          if (newBricks.every((brick) => !brick.visible)) {
+          // Check win condition (don't count indestructible bricks)
+          if (newBricks.every((brick) => !brick.visible || brick.isIndestructible)) {
             soundManager.playWin();
             setGameState("ready"); // Wait for click to start next level
             toast.success(`Level ${level} Complete! Click to continue.`);
@@ -439,10 +449,13 @@ export const Game = () => {
             setLaunchAngle(-60); // Start from left side
             launchAngleDirectionRef.current = 1; // Move right initially
             setShowInstructions(true); // Show instructions when resetting ball
-            setPowerUps([]);
-            setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
-            setBullets([]); // Clear all bullets
-            setSpeedMultiplier(1); // Reset speed multiplier
+              setPowerUps([]);
+              setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
+              setBullets([]); // Clear all bullets
+              // Only reset speed if it's slower than base speed
+              if (speedMultiplier < 1) {
+                setSpeedMultiplier(1);
+              }
             setTimer(0);
             setEnemies([]);
             setBombs([]);
@@ -756,7 +769,10 @@ export const Game = () => {
               setPowerUps([]);
               setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
               setBullets([]); // Clear all bullets
-              setSpeedMultiplier(1); // Reset speed multiplier
+              // Only reset speed if it's slower than base speed
+              if (speedMultiplier < 1) {
+                setSpeedMultiplier(1);
+              }
               setTimer(0);
               setLastEnemySpawnTime(0);
               setEnemies([]); // Clear all enemies
@@ -819,7 +835,10 @@ export const Game = () => {
               setPowerUps([]);
               setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
               setBullets([]); // Clear all bullets
-              setSpeedMultiplier(1); // Reset speed multiplier
+              // Only reset speed if it's slower than base speed
+              if (speedMultiplier < 1) {
+                setSpeedMultiplier(1);
+              }
               setTimer(0);
               setLastEnemySpawnTime(0);
               setEnemies([]); // Clear all enemies

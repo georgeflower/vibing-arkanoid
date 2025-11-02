@@ -64,44 +64,94 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       // Draw bricks with 16-bit Turrican 2 style texture
       bricks.forEach((brick) => {
         if (brick.visible) {
-          // Base brick color with glow
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = brick.color;
-          ctx.fillStyle = brick.color;
-          ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
-          
-          // Top highlight
-          ctx.shadowBlur = 0;
-          ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
-          ctx.fillRect(brick.x, brick.y, brick.width, 3);
-          
-          // Left highlight
-          ctx.fillRect(brick.x, brick.y, 3, brick.height);
-          
-          // Bottom shadow
-          ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-          ctx.fillRect(brick.x, brick.y + brick.height - 3, brick.width, 3);
-          
-          // Right shadow
-          ctx.fillRect(brick.x + brick.width - 3, brick.y, 3, brick.height);
-          
-          // 16-bit pixel pattern texture (Turrican 2 style)
-          ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
-          for (let py = brick.y + 4; py < brick.y + brick.height - 4; py += 4) {
-            for (let px = brick.x + 4; px < brick.x + brick.width - 4; px += 4) {
-              if ((px + py) % 8 === 0) {
-                ctx.fillRect(px, py, 2, 2);
+          // Indestructible bricks - steel appearance
+          if (brick.isIndestructible) {
+            // Steel base color
+            ctx.shadowBlur = 6;
+            ctx.shadowColor = '#666666';
+            ctx.fillStyle = '#555555';
+            ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+            
+            // Metallic highlight
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "rgba(200, 200, 200, 0.4)";
+            ctx.fillRect(brick.x, brick.y, brick.width, 4);
+            
+            // Left metallic shine
+            ctx.fillRect(brick.x, brick.y, 4, brick.height);
+            
+            // Darker bottom
+            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+            ctx.fillRect(brick.x, brick.y + brick.height - 4, brick.width, 4);
+            
+            // Right shadow
+            ctx.fillRect(brick.x + brick.width - 4, brick.y, 4, brick.height);
+            
+            // Steel rivets pattern
+            ctx.fillStyle = "rgba(100, 100, 100, 0.8)";
+            const rivetSize = 3;
+            const spacing = 12;
+            for (let py = brick.y + spacing / 2; py < brick.y + brick.height; py += spacing) {
+              for (let px = brick.x + spacing / 2; px < brick.x + brick.width; px += spacing) {
+                ctx.beginPath();
+                ctx.arc(px, py, rivetSize, 0, Math.PI * 2);
+                ctx.fill();
               }
             }
-          }
-          
-          // Draw hit counter for multi-hit bricks
-          if (brick.maxHits > 1) {
-            ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-            ctx.font = "bold 12px monospace";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(brick.hitsRemaining.toString(), brick.x + brick.width / 2, brick.y + brick.height / 2);
+            
+            // Diagonal hatching pattern
+            ctx.strokeStyle = "rgba(150, 150, 150, 0.15)";
+            ctx.lineWidth = 1;
+            for (let i = 0; i < brick.width + brick.height; i += 6) {
+              ctx.beginPath();
+              ctx.moveTo(brick.x + i, brick.y);
+              ctx.lineTo(brick.x, brick.y + i);
+              ctx.stroke();
+            }
+          } else {
+            // Normal brick - Base brick color with glow
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = brick.color;
+            ctx.fillStyle = brick.color;
+            ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+            
+            // Top highlight
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+            ctx.fillRect(brick.x, brick.y, brick.width, 3);
+            
+            // Left highlight
+            ctx.fillRect(brick.x, brick.y, 3, brick.height);
+            
+            // Bottom shadow
+            ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+            ctx.fillRect(brick.x, brick.y + brick.height - 3, brick.width, 3);
+            
+            // Right shadow
+            ctx.fillRect(brick.x + brick.width - 3, brick.y, 3, brick.height);
+            
+            // 16-bit pixel pattern texture (Turrican 2 style)
+            ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+            for (let py = brick.y + 4; py < brick.y + brick.height - 4; py += 4) {
+              for (let px = brick.x + 4; px < brick.x + brick.width - 4; px += 4) {
+                if ((px + py) % 8 === 0) {
+                  ctx.fillRect(px, py, 2, 2);
+                }
+              }
+            }
+            
+            // Draw hit counter for multi-hit bricks
+            if (brick.maxHits > 1) {
+              ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+              ctx.font = "bold 12px 'Courier New', monospace";
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              ctx.fillText(
+                brick.hitsRemaining.toString(),
+                brick.x + brick.width / 2,
+                brick.y + brick.height / 2
+              );
+            }
           }
         }
       });

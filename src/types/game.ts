@@ -9,6 +9,7 @@ export interface Brick {
   hasPowerUp?: boolean;
   maxHits: number;
   hitsRemaining: number;
+  isIndestructible?: boolean;
 }
 
 export interface Ball {

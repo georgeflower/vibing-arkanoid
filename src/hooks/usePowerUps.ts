@@ -104,7 +104,22 @@ export const usePowerUps = (
             
             case "slowdown":
               soundManager.playSlowerSound();
-              setSpeedMultiplier(prev => Math.max(0.9, prev - 0.1));
+              setSpeedMultiplier(prev => {
+                const newSpeed = Math.max(0.9, prev - 0.1);
+                // Apply speed change to balls immediately
+                setBalls(prevBalls => prevBalls.map(ball => {
+                  const currentSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+                  const newBallSpeed = currentSpeed * (newSpeed / prev);
+                  const angle = Math.atan2(ball.dx, -ball.dy);
+                  return {
+                    ...ball,
+                    speed: newBallSpeed,
+                    dx: newBallSpeed * Math.sin(angle),
+                    dy: -newBallSpeed * Math.cos(angle),
+                  };
+                }));
+                return newSpeed;
+              });
               toast.success("Speed reduced by 10%!");
               break;
             
