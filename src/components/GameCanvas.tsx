@@ -216,81 +216,153 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillRect(paddle.x + paddle.width - 13, paddle.y - 10, 8, 10);
       }
 
-      // Draw enemies as 3D cubes
+      // Draw enemies (cubes and spheres)
       enemy.forEach((singleEnemy) => {
         ctx.save();
         const centerX = singleEnemy.x + singleEnemy.width / 2;
         const centerY = singleEnemy.y + singleEnemy.height / 2;
         
-        // Calculate cube vertices with 3D rotation
-        const size = singleEnemy.width;
-        const depth = size * 0.7;
-        
-        // Simple 3D projection
-        const cos = Math.cos(singleEnemy.rotationY);
-        const sin = Math.sin(singleEnemy.rotationY);
-        const cosX = Math.cos(singleEnemy.rotationX);
-        const sinX = Math.sin(singleEnemy.rotationX);
-        
-        // Define cube vertices (x, y, z)
-        const vertices = [
-          [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], // back face
-          [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]  // front face
-        ];
-        
-        // Project 3D vertices to 2D
-        const projected = vertices.map(([x, y, z]) => {
-          // Apply rotation
-          const rx = x;
-          const ry = y * cosX - z * sinX;
-          const rz = y * sinX + z * cosX;
+        if (singleEnemy.type === "sphere") {
+          // Draw 3D rotating sphere with 16-bit texture
+          const radius = singleEnemy.width / 2;
           
-          const rx2 = rx * cos - rz * sin;
-          const rz2 = rx * sin + rz * cos;
+          // Determine color based on state
+          let baseColor = "hsl(200, 70%, 50%)";
+          if (singleEnemy.isAngry) {
+            // Blinking red when angry
+            const blinkPhase = Math.floor(Date.now() / 150) % 2;
+            baseColor = blinkPhase === 0 ? "hsl(0, 85%, 55%)" : "hsl(0, 75%, 40%)";
+          }
           
-          // Apply size and position
-          return [
-            centerX + rx2 * size / 2,
-            centerY + ry * size / 2,
-            rz2
-          ];
-        });
-        
-        // Draw faces (back to front for proper depth)
-        const faces = [
-          { indices: [0, 1, 2, 3], color: "hsl(0, 75%, 40%)" }, // back
-          { indices: [0, 3, 7, 4], color: "hsl(0, 80%, 45%)" }, // left
-          { indices: [1, 5, 6, 2], color: "hsl(0, 80%, 50%)" }, // right
-          { indices: [0, 1, 5, 4], color: "hsl(0, 85%, 45%)" }, // bottom
-          { indices: [3, 2, 6, 7], color: "hsl(0, 85%, 55%)" }, // top
-          { indices: [4, 5, 6, 7], color: "hsl(0, 90%, 60%)" }  // front
-        ];
-        
-        // Sort faces by average z-depth
-        const sortedFaces = faces.map(face => ({
-          ...face,
-          avgZ: face.indices.reduce((sum, i) => sum + projected[i][2], 0) / 4
-        })).sort((a, b) => a.avgZ - b.avgZ);
-        
-        // Draw each face
-        sortedFaces.forEach(face => {
+          // Draw sphere with rotation-based shading
+          const gradient = ctx.createRadialGradient(
+            centerX - radius * 0.3,
+            centerY - radius * 0.3,
+            0,
+            centerX,
+            centerY,
+            radius
+          );
+          gradient.addColorStop(0, "rgba(255, 255, 255, 0.8)");
+          gradient.addColorStop(0.5, baseColor);
+          gradient.addColorStop(1, "rgba(0, 0, 0, 0.5)");
+          
           ctx.shadowBlur = 15;
-          ctx.shadowColor = "hsl(0, 85%, 55%)";
-          ctx.fillStyle = face.color;
+          ctx.shadowColor = baseColor;
+          ctx.fillStyle = gradient;
           ctx.beginPath();
-          ctx.moveTo(projected[face.indices[0]][0], projected[face.indices[0]][1]);
-          face.indices.forEach(i => {
-            ctx.lineTo(projected[i][0], projected[i][1]);
-          });
-          ctx.closePath();
+          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
           ctx.fill();
           
-          // Add edge lines
+          // Add 16-bit pixel texture pattern
           ctx.shadowBlur = 0;
-          ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-        });
+          ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+          const pixelSize = 4;
+          for (let py = -radius; py < radius; py += pixelSize) {
+            for (let px = -radius; px < radius; px += pixelSize) {
+              // Check if pixel is within sphere
+              if (px * px + py * py < radius * radius) {
+                // Rotate pixel coordinates
+                const rotatedX = px * Math.cos(singleEnemy.rotationY) - py * Math.sin(singleEnemy.rotationY);
+                const rotatedY = px * Math.sin(singleEnemy.rotationY) + py * Math.cos(singleEnemy.rotationY);
+                
+                if ((Math.floor(rotatedX / pixelSize) + Math.floor(rotatedY / pixelSize)) % 3 === 0) {
+                  ctx.fillRect(centerX + px, centerY + py, 2, 2);
+                }
+              }
+            }
+          }
+          
+          // Draw angry expression if angry
+          if (singleEnemy.isAngry) {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+            ctx.lineWidth = 2;
+            
+            // Angry eyes (V shape)
+            ctx.beginPath();
+            ctx.moveTo(centerX - 8, centerY - 5);
+            ctx.lineTo(centerX - 5, centerY);
+            ctx.moveTo(centerX + 8, centerY - 5);
+            ctx.lineTo(centerX + 5, centerY);
+            ctx.stroke();
+            
+            // Angry mouth (down curve)
+            ctx.beginPath();
+            ctx.arc(centerX, centerY + 8, 6, 0.2 * Math.PI, 0.8 * Math.PI);
+            ctx.stroke();
+          }
+        } else {
+          // Draw cube enemy (existing code)
+          const size = singleEnemy.width;
+          const depth = size * 0.7;
+          
+          // Simple 3D projection
+          const cos = Math.cos(singleEnemy.rotationY);
+          const sin = Math.sin(singleEnemy.rotationY);
+          const cosX = Math.cos(singleEnemy.rotationX);
+          const sinX = Math.sin(singleEnemy.rotationX);
+          
+          // Define cube vertices (x, y, z)
+          const vertices = [
+            [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], // back face
+            [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]  // front face
+          ];
+          
+          // Project 3D vertices to 2D
+          const projected = vertices.map(([x, y, z]) => {
+            // Apply rotation
+            const rx = x;
+            const ry = y * cosX - z * sinX;
+            const rz = y * sinX + z * cosX;
+            
+            const rx2 = rx * cos - rz * sin;
+            const rz2 = rx * sin + rz * cos;
+            
+            // Apply size and position
+            return [
+              centerX + rx2 * size / 2,
+              centerY + ry * size / 2,
+              rz2
+            ];
+          });
+          
+          // Draw faces (back to front for proper depth)
+          const faces = [
+            { indices: [0, 1, 2, 3], color: "hsl(0, 75%, 40%)" }, // back
+            { indices: [0, 3, 7, 4], color: "hsl(0, 80%, 45%)" }, // left
+            { indices: [1, 5, 6, 2], color: "hsl(0, 80%, 50%)" }, // right
+            { indices: [0, 1, 5, 4], color: "hsl(0, 85%, 45%)" }, // bottom
+            { indices: [3, 2, 6, 7], color: "hsl(0, 85%, 55%)" }, // top
+            { indices: [4, 5, 6, 7], color: "hsl(0, 90%, 60%)" }  // front
+          ];
+          
+          // Sort faces by average z-depth
+          const sortedFaces = faces.map(face => ({
+            ...face,
+            avgZ: face.indices.reduce((sum, i) => sum + projected[i][2], 0) / 4
+          })).sort((a, b) => a.avgZ - b.avgZ);
+          
+          // Draw each face
+          sortedFaces.forEach(face => {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "hsl(0, 85%, 55%)";
+            ctx.fillStyle = face.color;
+            ctx.beginPath();
+            ctx.moveTo(projected[face.indices[0]][0], projected[face.indices[0]][1]);
+            face.indices.forEach(i => {
+              ctx.lineTo(projected[i][0], projected[i][1]);
+            });
+            ctx.closePath();
+            ctx.fill();
+            
+            // Add edge lines
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          });
+        }
         
         ctx.restore();
       });
@@ -335,21 +407,60 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.restore();
       });
 
-      // Draw bombs
+      // Draw bombs and rockets
       bombs.forEach((bomb) => {
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = "hsl(0, 85%, 55%)";
-        ctx.fillStyle = "hsl(0, 85%, 55%)";
-        ctx.beginPath();
-        ctx.arc(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, bomb.width / 2, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Bomb highlight
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-        ctx.beginPath();
-        ctx.arc(bomb.x + bomb.width / 2 - 2, bomb.y + bomb.height / 2 - 2, bomb.width / 4, 0, Math.PI * 2);
-        ctx.fill();
+        if (bomb.type === "rocket") {
+          // Draw rocket with flame trail
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = "hsl(30, 85%, 55%)";
+          
+          // Rocket body
+          ctx.fillStyle = "hsl(0, 75%, 50%)";
+          ctx.beginPath();
+          ctx.moveTo(bomb.x + bomb.width / 2, bomb.y);
+          ctx.lineTo(bomb.x + bomb.width, bomb.y + bomb.height * 0.7);
+          ctx.lineTo(bomb.x + bomb.width * 0.6, bomb.y + bomb.height * 0.7);
+          ctx.lineTo(bomb.x + bomb.width * 0.6, bomb.y + bomb.height);
+          ctx.lineTo(bomb.x + bomb.width * 0.4, bomb.y + bomb.height);
+          ctx.lineTo(bomb.x + bomb.width * 0.4, bomb.y + bomb.height * 0.7);
+          ctx.lineTo(bomb.x, bomb.y + bomb.height * 0.7);
+          ctx.closePath();
+          ctx.fill();
+          
+          // Rocket nose cone
+          ctx.fillStyle = "hsl(0, 85%, 60%)";
+          ctx.beginPath();
+          ctx.moveTo(bomb.x + bomb.width / 2, bomb.y);
+          ctx.lineTo(bomb.x + bomb.width, bomb.y + bomb.height * 0.4);
+          ctx.lineTo(bomb.x, bomb.y + bomb.height * 0.4);
+          ctx.closePath();
+          ctx.fill();
+          
+          // Flame trail
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = "hsl(30, 100%, 50%)";
+          ctx.fillStyle = "hsla(30, 100%, 60%, 0.7)";
+          ctx.beginPath();
+          ctx.moveTo(bomb.x + bomb.width * 0.4, bomb.y + bomb.height);
+          ctx.lineTo(bomb.x + bomb.width / 2, bomb.y + bomb.height + 8);
+          ctx.lineTo(bomb.x + bomb.width * 0.6, bomb.y + bomb.height);
+          ctx.fill();
+        } else {
+          // Draw regular bomb
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = "hsl(0, 85%, 55%)";
+          ctx.fillStyle = "hsl(0, 85%, 55%)";
+          ctx.beginPath();
+          ctx.arc(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, bomb.width / 2, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Bomb highlight
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+          ctx.beginPath();
+          ctx.arc(bomb.x + bomb.width / 2 - 2, bomb.y + bomb.height / 2 - 2, bomb.width / 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
       });
 
       // Game state overlay

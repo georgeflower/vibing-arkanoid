@@ -52,8 +52,11 @@ export interface PowerUp {
   active: boolean;
 }
 
+export type EnemyType = "cube" | "sphere";
+
 export interface Enemy {
   id?: number;
+  type: EnemyType;
   x: number;
   y: number;
   width: number;
@@ -65,7 +68,11 @@ export interface Enemy {
   speed: number;
   dx: number;
   dy: number;
+  hits?: number; // For sphere enemies (2 hits to destroy)
+  isAngry?: boolean; // For sphere enemies after first hit
 }
+
+export type ProjectileType = "bomb" | "rocket";
 
 export interface Bomb {
   x: number;
@@ -74,6 +81,8 @@ export interface Bomb {
   height: number;
   speed: number;
   enemyId?: number;
+  type: ProjectileType;
+  dx?: number; // For rockets with magnetic behavior
 }
 
 export interface Explosion {

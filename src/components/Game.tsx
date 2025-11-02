@@ -478,6 +478,18 @@ export const Game = () => {
       let newDx = enemy.dx;
       let newDy = enemy.dy;
       
+      // Sphere enemies have more random movement
+      if (enemy.type === "sphere") {
+        // Add some randomness to movement
+        if (Math.random() < 0.05) {
+          const randomAngle = (Math.random() - 0.5) * Math.PI / 4;
+          const currentAngle = Math.atan2(newDy, newDx);
+          const newAngle = currentAngle + randomAngle;
+          newDx = Math.cos(newAngle) * enemy.speed;
+          newDy = Math.sin(newAngle) * enemy.speed;
+        }
+      }
+      
       // Bounce off walls
       if (newX <= 0 || newX >= CANVAS_WIDTH - enemy.width) {
         newDx = -enemy.dx;
@@ -497,13 +509,14 @@ export const Game = () => {
         y: newY,
         dx: newDx,
         dy: newDy,
-        rotationX: enemy.rotationX + 0.05,
-        rotationY: enemy.rotationY + 0.08,
-        rotationZ: enemy.rotationZ + 0.03,
+        rotationX: enemy.rotationX + (enemy.type === "sphere" ? 0.08 : 0.05),
+        rotationY: enemy.rotationY + (enemy.type === "sphere" ? 0.12 : 0.08),
+        rotationZ: enemy.rotationZ + (enemy.type === "sphere" ? 0.06 : 0.03),
       };
     }));
 
-    // Check if balls hit enemies (bounce instead of destroy)
+    // Check if balls hit enemies (bounce AND damage/destroy)
+    const hitEnemies = new Set<number>();
     setBalls(prevBalls => {
       let ballsUpdated = false;
       const newBalls = prevBalls.map(ball => {
@@ -514,6 +527,11 @@ export const Game = () => {
             ball.x - ball.radius < enemy.x + enemy.width &&
             ball.y + ball.radius > enemy.y &&
             ball.y - ball.radius < enemy.y + enemy.height) {
+            // Mark enemy as hit
+            if (enemy.id !== undefined) {
+              hitEnemies.add(enemy.id);
+            }
+            
             // Bounce the ball
             soundManager.playBounce();
             ballsUpdated = true;
@@ -543,17 +561,115 @@ export const Game = () => {
       return ballsUpdated ? newBalls : prevBalls;
     });
 
+    // Process enemy hits
+    if (hitEnemies.size > 0) {
+      setEnemies(prev => prev.filter(enemy => {
+        if (enemy.id === undefined || !hitEnemies.has(enemy.id)) return true;
+        
+        // Handle sphere enemy (2 hits)
+        if (enemy.type === "sphere") {
+          const currentHits = enemy.hits || 0;
+          if (currentHits === 0) {
+            // First hit - make it angry and faster
+            enemy.hits = 1;
+            enemy.isAngry = true;
+            enemy.speed *= 1.3;
+            enemy.dx *= 1.3;
+            enemy.dy *= 1.3;
+            soundManager.playBounce();
+            toast.warning("Sphere enemy is angry!");
+            return true; // Keep the enemy
+          } else {
+            // Second hit - destroy it
+            setExplosions(prev => [...prev, {
+              x: enemy.x + enemy.width / 2,
+              y: enemy.y + enemy.height / 2,
+              frame: 0,
+              maxFrames: 20,
+            }]);
+            soundManager.playBrickHit();
+            setScore(s => s + 200);
+            toast.success("Sphere enemy destroyed! +200 points");
+            // Clear bomb interval for this enemy
+            if (enemy.id !== undefined) {
+              const interval = bombIntervalsRef.current.get(enemy.id);
+              if (interval) {
+                clearInterval(interval);
+                bombIntervalsRef.current.delete(enemy.id);
+              }
+            }
+            return false; // Remove the enemy
+          }
+        } else {
+          // Cube enemy - destroy on first hit
+          setExplosions(prev => [...prev, {
+            x: enemy.x + enemy.width / 2,
+            y: enemy.y + enemy.height / 2,
+            frame: 0,
+            maxFrames: 20,
+          }]);
+          soundManager.playBrickHit();
+          setScore(s => s + 100);
+          toast.success("Enemy destroyed! +100 points");
+          // Clear bomb interval for this enemy
+          if (enemy.id !== undefined) {
+            const interval = bombIntervalsRef.current.get(enemy.id);
+            if (interval) {
+              clearInterval(interval);
+              bombIntervalsRef.current.delete(enemy.id);
+            }
+          }
+          return false; // Remove the enemy
+        }
+      }));
+    }
+
     // Update explosions
     setExplosions(prev => prev.map(exp => ({
       ...exp,
       frame: exp.frame + 1,
     })).filter(exp => exp.frame < exp.maxFrames));
 
-    // Update bombs
-    setBombs(prev => prev.map(bomb => ({
-      ...bomb,
-      y: bomb.y + bomb.speed,
-    })).filter(bomb => bomb.y < CANVAS_HEIGHT));
+    // Update bombs and rockets with magnetic behavior
+    setBombs(prev => prev.map(bomb => {
+      let newX = bomb.x;
+      let newY = bomb.y + bomb.speed;
+      let newDx = bomb.dx || 0;
+      
+      // Rockets have magnetic behavior towards paddle and balls
+      if (bomb.type === "rocket" && paddle && balls.length > 0) {
+        // 10% attraction towards paddle
+        const paddleCenterX = paddle.x + paddle.width / 2;
+        const toPaddleX = paddleCenterX - bomb.x;
+        newDx += toPaddleX * 0.001;
+        
+        // 7% attraction towards closest ball
+        const closestBall = balls.reduce((closest, ball) => {
+          if (ball.waitingToLaunch) return closest;
+          const distToBall = Math.sqrt(Math.pow(ball.x - bomb.x, 2) + Math.pow(ball.y - bomb.y, 2));
+          const distToClosest = closest ? Math.sqrt(Math.pow(closest.x - bomb.x, 2) + Math.pow(closest.y - bomb.y, 2)) : Infinity;
+          return distToBall < distToClosest ? ball : closest;
+        }, null as Ball | null);
+        
+        if (closestBall) {
+          const toBallX = closestBall.x - bomb.x;
+          newDx += toBallX * 0.0007;
+        }
+        
+        // Apply horizontal movement
+        newX += newDx;
+        
+        // Clamp to canvas bounds
+        newX = Math.max(0, Math.min(CANVAS_WIDTH - bomb.width, newX));
+      }
+      
+      return {
+        ...bomb,
+        x: newX,
+        y: newY,
+        dx: newDx,
+      };
+    }).filter(bomb => bomb.y < CANVAS_HEIGHT));
 
     // Check bomb-paddle collision
     if (paddle) {
@@ -726,51 +842,85 @@ export const Game = () => {
       
       if (timer - lastEnemySpawnTime >= spawnInterval) {
         const speedIncrease = 1 + (enemySpawnCount * 0.3); // 30% faster each spawn
-        const angle = Math.random() * Math.PI * 2;
-        const speed = 2 * speedIncrease;
         const enemyId = nextEnemyId.current++;
         
-        const newEnemy: Enemy = {
-          id: enemyId,
-          x: Math.random() * (CANVAS_WIDTH - 40),
-          y: 50 + Math.random() * 50,
-          width: 30,
-          height: 30,
-          rotation: 0,
-          rotationX: 0,
-          rotationY: 0,
-          rotationZ: 0,
-          speed: speed,
-          dx: Math.cos(angle) * speed,
-          dy: Math.abs(Math.sin(angle)) * speed, // Always move downward initially
-        };
+        // Determine enemy type - sphere enemies from level 3+
+        const enemyType: "cube" | "sphere" = level >= 3 && Math.random() > 0.5 ? "sphere" : "cube";
+        
+        let newEnemy: Enemy;
+        
+        if (enemyType === "sphere") {
+          // Sphere enemy - random movement pattern
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 2.5 * speedIncrease; // Slightly faster
+          newEnemy = {
+            id: enemyId,
+            type: "sphere",
+            x: Math.random() * (CANVAS_WIDTH - 40),
+            y: 50 + Math.random() * 50,
+            width: 35,
+            height: 35,
+            rotation: 0,
+            rotationX: Math.random() * Math.PI,
+            rotationY: Math.random() * Math.PI,
+            rotationZ: Math.random() * Math.PI,
+            speed: speed,
+            dx: Math.cos(angle) * speed,
+            dy: Math.sin(angle) * speed,
+            hits: 0,
+            isAngry: false,
+          };
+        } else {
+          // Cube enemy - straight line movement
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 2 * speedIncrease;
+          newEnemy = {
+            id: enemyId,
+            type: "cube",
+            x: Math.random() * (CANVAS_WIDTH - 40),
+            y: 50 + Math.random() * 50,
+            width: 30,
+            height: 30,
+            rotation: 0,
+            rotationX: 0,
+            rotationY: 0,
+            rotationZ: 0,
+            speed: speed,
+            dx: Math.cos(angle) * speed,
+            dy: Math.abs(Math.sin(angle)) * speed, // Always move downward initially
+          };
+        }
+        
         setEnemies(prev => [...prev, newEnemy]);
         setLastEnemySpawnTime(timer);
         setEnemySpawnCount(prev => prev + 1);
-        toast.warning(`Enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
+        toast.warning(`${enemyType === "sphere" ? "Sphere" : "Cube"} enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
 
-        // Start dropping bombs for this enemy
-        const bombInterval = setInterval(() => {
+        // Start dropping projectiles for this enemy
+        const projectileInterval = setInterval(() => {
           setEnemies(currentEnemies => {
             const currentEnemy = currentEnemies.find(e => e.id === enemyId);
             if (!currentEnemy) {
-              clearInterval(bombInterval);
+              clearInterval(projectileInterval);
               bombIntervalsRef.current.delete(enemyId);
               return currentEnemies;
             }
-            const newBomb: Bomb = {
+            
+            const newProjectile: Bomb = {
               x: currentEnemy.x + currentEnemy.width / 2 - 5,
               y: currentEnemy.y + currentEnemy.height,
               width: 10,
               height: 10,
-              speed: 3,
+              speed: currentEnemy.type === "sphere" ? 2.5 : 3,
               enemyId: enemyId,
+              type: currentEnemy.type === "sphere" ? "rocket" : "bomb",
+              dx: 0, // Initialize horizontal velocity for rockets
             };
-            setBombs(prev => [...prev, newBomb]);
+            setBombs(prev => [...prev, newProjectile]);
             return currentEnemies;
           });
         }, 2000);
-        bombIntervalsRef.current.set(enemyId, bombInterval);
+        bombIntervalsRef.current.set(enemyId, projectileInterval);
       }
     }
   }, [timer, gameState, lastEnemySpawnTime, enemySpawnCount, level]);
@@ -778,11 +928,11 @@ export const Game = () => {
   // Animate launch angle indicator
   useEffect(() => {
     const waitingBall = balls.find(ball => ball.waitingToLaunch);
-    // Animate when ball is waiting to launch (in both "ready" and "playing" states)
-    if ((gameState === "playing" || gameState === "ready") && waitingBall) {
-      if (launchAngleIntervalRef.current) {
-        clearInterval(launchAngleIntervalRef.current);
-      }
+    const shouldAnimate = (gameState === "playing" || gameState === "ready") && waitingBall;
+    
+    // Only manage interval when animation state changes
+    if (shouldAnimate && !launchAngleIntervalRef.current) {
+      // Start animation
       launchAngleIntervalRef.current = setInterval(() => {
         setLaunchAngle(prev => {
           // Oscillate between -60 and 60 degrees
@@ -800,15 +950,16 @@ export const Game = () => {
           return newAngle;
         });
       }, 20);
-    } else {
-      if (launchAngleIntervalRef.current) {
-        clearInterval(launchAngleIntervalRef.current);
-      }
+    } else if (!shouldAnimate && launchAngleIntervalRef.current) {
+      // Stop animation
+      clearInterval(launchAngleIntervalRef.current);
+      launchAngleIntervalRef.current = null;
     }
 
     return () => {
       if (launchAngleIntervalRef.current) {
         clearInterval(launchAngleIntervalRef.current);
+        launchAngleIntervalRef.current = null;
       }
     };
   }, [gameState, balls]);
