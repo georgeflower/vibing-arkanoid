@@ -50,6 +50,7 @@ export const Game = () => {
   const [enemySpawnCount, setEnemySpawnCount] = useState(0);
   const [lastEnemySpawnTime, setLastEnemySpawnTime] = useState(0);
   const [launchAngle, setLaunchAngle] = useState(-60);
+  const [showInstructions, setShowInstructions] = useState(true);
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
@@ -120,6 +121,7 @@ export const Game = () => {
     setBalls([initialBall]);
     setLaunchAngle(-60); // Start from left side
     launchAngleDirectionRef.current = 1; // Move right initially
+    setShowInstructions(true); // Show instructions for new game
 
     // Initialize bricks for level 1
     setBricks(initBricksForLevel(1));
@@ -184,6 +186,7 @@ export const Game = () => {
     setBalls([initialBall]);
     setLaunchAngle(-60); // Start from left side
     launchAngleDirectionRef.current = 1; // Move right initially
+    setShowInstructions(true); // Show instructions for new level
     
     // Initialize bricks for new level
     setBricks(initBricksForLevel(newLevel));
@@ -255,6 +258,7 @@ export const Game = () => {
     const waitingBall = balls.find(ball => ball.waitingToLaunch);
     if (waitingBall) {
       // Launch ball in the direction of the current angle
+      setShowInstructions(false);
       setBalls(prev => prev.map(ball => {
         if (ball.waitingToLaunch) {
           const speed = ball.speed;
@@ -434,6 +438,7 @@ export const Game = () => {
             setBalls([resetBall]);
             setLaunchAngle(-60); // Start from left side
             launchAngleDirectionRef.current = 1; // Move right initially
+            setShowInstructions(true); // Show instructions when resetting ball
             setPowerUps([]);
             setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
             setBullets([]); // Clear all bullets
@@ -688,6 +693,7 @@ export const Game = () => {
               setBalls([resetBall]);
               setLaunchAngle(-60);
               launchAngleDirectionRef.current = 1;
+              setShowInstructions(true); // Show instructions when resetting ball
               setPowerUps([]);
               setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
               setBullets([]); // Clear all bullets
@@ -749,6 +755,7 @@ export const Game = () => {
               setBalls([resetBall]);
               setLaunchAngle(-60);
               launchAngleDirectionRef.current = 1;
+              setShowInstructions(true); // Show instructions when resetting ball
               setPowerUps([]);
               setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
               setBullets([]); // Clear all bullets

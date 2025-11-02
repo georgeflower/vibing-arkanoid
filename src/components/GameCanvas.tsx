@@ -548,6 +548,30 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fillText("YOU WON!", width / 2, height / 2);
         }
       }
+
+      // Amiga-style instructions overlay (when ball is waiting to launch)
+      const waitingBall = balls.find(ball => ball.waitingToLaunch);
+      if (waitingBall && gameState === "playing") {
+        // Amiga retro demo style - grey blockish pixelated text
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "rgba(160, 160, 160, 0.95)";
+        ctx.font = "bold 20px 'Courier New', monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        
+        // Draw with pixel-like effect by drawing twice with slight offset
+        const instructionY = height / 2 + 60;
+        const text = "USE A AND D OR LEFT AND RIGHT TO CHANGE THE ANGLE";
+        
+        // Shadow for depth
+        ctx.fillStyle = "rgba(80, 80, 80, 0.8)";
+        ctx.fillText(text, width / 2 + 2, instructionY + 2);
+        
+        // Main text
+        ctx.fillStyle = "rgba(180, 180, 180, 0.95)";
+        ctx.fillText(text, width / 2, instructionY);
+      }
+    
     }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle]);
 
     return (
