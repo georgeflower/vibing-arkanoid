@@ -917,7 +917,7 @@ export const Game = () => {
       Math.abs(ball.y - (paddle.y - ball.radius - 5)) < 10 && 
       Math.abs(ball.x - (paddle.x + paddle.width / 2)) < paddle.width / 2 + ball.radius
     );
-    const shouldAnimate = (gameState === "playing" || gameState === "ready") && (waitingBall || ballOnPaddle);
+    const shouldAnimate = gameState === "playing" && (waitingBall || ballOnPaddle);
     
     // Only manage interval when animation state changes
     if (shouldAnimate && !launchAngleIntervalRef.current) {
