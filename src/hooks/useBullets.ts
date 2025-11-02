@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import type { Bullet, Paddle, Brick } from "@/types/game";
+import type { Bullet, Paddle, Brick, Enemy } from "@/types/game";
 import { BULLET_WIDTH, BULLET_HEIGHT, BULLET_SPEED, CANVAS_HEIGHT } from "@/constants/game";
 import { soundManager } from "@/utils/sounds";
 import { getHitColor } from "@/constants/game";
@@ -7,7 +7,8 @@ import { getHitColor } from "@/constants/game";
 export const useBullets = (
   setScore: React.Dispatch<React.SetStateAction<number>>,
   setBricks: React.Dispatch<React.SetStateAction<Brick[]>>,
-  bricks: Brick[]
+  bricks: Brick[],
+  enemies: Enemy[]
 ) => {
   const [bullets, setBullets] = useState<Bullet[]>([]);
 
@@ -39,15 +40,40 @@ export const useBullets = (
     // Move bullets and collect collision information
     setBullets(prev => {
       const movedBullets = prev
-        .map(b => ({ ...b, y: b.y - b.speed }))
-        .filter(b => b.y > 0);
+        .map(b => ({ 
+          ...b, 
+          y: b.isBounced ? b.y + b.speed : b.y - b.speed 
+        }))
+        .filter(b => b.y > 0 && b.y < CANVAS_HEIGHT);
       
       const bulletIndicesHit = new Set<number>();
+      const bulletIndicesToBounce = new Set<number>();
       const brickIndicesToDestroy = new Set<number>();
       
-      // Check all collisions
+      // Check enemy collisions first (only for bullets going up)
       movedBullets.forEach((bullet, bulletIdx) => {
-        if (bulletIndicesHit.has(bulletIdx)) return;
+        if (bulletIndicesHit.has(bulletIdx) || bullet.isBounced) return;
+        
+        enemies.forEach((enemy) => {
+          if (
+            bulletIndicesHit.has(bulletIdx) ||
+            bullet.x + bullet.width <= enemy.x ||
+            bullet.x >= enemy.x + enemy.width ||
+            bullet.y >= enemy.y + enemy.height ||
+            bullet.y + bullet.height <= enemy.y
+          ) {
+            return;
+          }
+          
+          // Collision with enemy - bounce bullet back
+          bulletIndicesToBounce.add(bulletIdx);
+          soundManager.playBounce();
+        });
+      });
+      
+      // Check brick collisions (only for bullets going up)
+      movedBullets.forEach((bullet, bulletIdx) => {
+        if (bulletIndicesHit.has(bulletIdx) || bulletIndicesToBounce.has(bulletIdx) || bullet.isBounced) return;
         
         currentBricks.forEach((brick, brickIdx) => {
           if (
@@ -91,10 +117,17 @@ export const useBullets = (
         );
       }
       
-      // Return bullets that didn't hit anything
-      return movedBullets.filter((_, idx) => !bulletIndicesHit.has(idx));
+      // Return bullets: bounce the ones that hit enemies, remove ones that hit bricks
+      return movedBullets
+        .filter((_, idx) => !bulletIndicesHit.has(idx))
+        .map((bullet, idx) => {
+          if (bulletIndicesToBounce.has(idx)) {
+            return { ...bullet, isBounced: true };
+          }
+          return bullet;
+        });
     });
-  }, [setBricks, setScore]);
+  }, [setBricks, setScore, enemies]);
 
   return {
     bullets,

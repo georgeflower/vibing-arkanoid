@@ -37,6 +37,7 @@ export interface Bullet {
   width: number;
   height: number;
   speed: number;
+  isBounced?: boolean;
 }
 
 export type PowerUpType = "multiball" | "turrets" | "fireball" | "life" | "slowdown" | "paddleExtend" | "paddleShrink";

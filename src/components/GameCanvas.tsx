@@ -195,9 +195,15 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw bullets
       bullets.forEach((bullet) => {
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = "hsl(200, 70%, 50%)";
-        ctx.fillStyle = "hsl(200, 70%, 50%)";
+        if (bullet.isBounced) {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = "hsl(0, 85%, 55%)";
+          ctx.fillStyle = "hsl(0, 85%, 55%)";
+        } else {
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = "hsl(200, 70%, 50%)";
+          ctx.fillStyle = "hsl(200, 70%, 50%)";
+        }
         ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
       });
 

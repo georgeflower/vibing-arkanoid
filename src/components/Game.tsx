@@ -61,7 +61,7 @@ export const Game = () => {
   const { highScores, isHighScore, addHighScore } = useHighScores();
 
   const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives);
-  const { bullets, setBullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks);
+  const { bullets, setBullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks, enemies);
 
   const initBricksForLevel = useCallback((currentLevel: number) => {
     const layoutIndex = ((currentLevel - 1) % 10);
@@ -503,35 +503,44 @@ export const Game = () => {
       };
     }));
 
-    // Check if balls hit enemies
-    balls.forEach(ball => {
-      enemies.forEach(enemy => {
-        if (ball.x + ball.radius > enemy.x &&
-          ball.x - ball.radius < enemy.x + enemy.width &&
-          ball.y + ball.radius > enemy.y &&
-          ball.y - ball.radius < enemy.y + enemy.height) {
-          // Create explosion
-          setExplosions(prev => [...prev, {
-            x: enemy.x + enemy.width / 2,
-            y: enemy.y + enemy.height / 2,
-            frame: 0,
-            maxFrames: 20,
-          }]);
-          // Remove this enemy
-          setEnemies(prev => prev.filter(e => e.id !== enemy.id));
-          // Remove bombs from this enemy
-          setBombs(prev => prev.filter(b => b.enemyId !== enemy.id));
-          // Clear bomb interval for this enemy
-          const interval = bombIntervalsRef.current.get(enemy.id!);
-          if (interval) {
-            clearInterval(interval);
-            bombIntervalsRef.current.delete(enemy.id!);
+    // Check if balls hit enemies (bounce instead of destroy)
+    setBalls(prevBalls => {
+      let ballsUpdated = false;
+      const newBalls = prevBalls.map(ball => {
+        if (ball.waitingToLaunch) return ball;
+        
+        for (const enemy of enemies) {
+          if (ball.x + ball.radius > enemy.x &&
+            ball.x - ball.radius < enemy.x + enemy.width &&
+            ball.y + ball.radius > enemy.y &&
+            ball.y - ball.radius < enemy.y + enemy.height) {
+            // Bounce the ball
+            soundManager.playBounce();
+            ballsUpdated = true;
+            
+            // Determine which side was hit and bounce accordingly
+            const ballCenterX = ball.x;
+            const ballCenterY = ball.y;
+            const enemyCenterX = enemy.x + enemy.width / 2;
+            const enemyCenterY = enemy.y + enemy.height / 2;
+            
+            const dx = ballCenterX - enemyCenterX;
+            const dy = ballCenterY - enemyCenterY;
+            
+            // Bounce based on which side was hit
+            if (Math.abs(dx) > Math.abs(dy)) {
+              // Hit from left or right
+              return { ...ball, dx: -ball.dx };
+            } else {
+              // Hit from top or bottom
+              return { ...ball, dy: -ball.dy };
+            }
           }
-          setScore(prev => prev + 500);
-          soundManager.playExplosion();
-          toast.success("Enemy destroyed! +500");
         }
+        return ball;
       });
+      
+      return ballsUpdated ? newBalls : prevBalls;
     });
 
     // Update explosions
@@ -581,8 +590,11 @@ export const Game = () => {
                 speed: baseSpeed,
                 id: nextBallId.current++,
                 isFireball: false,
+                waitingToLaunch: true,
               };
               setBalls([resetBall]);
+              setLaunchAngle(-60);
+              launchAngleDirectionRef.current = 1;
               setPowerUps([]);
               setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
               setTimer(0);
@@ -590,6 +602,61 @@ export const Game = () => {
               setExplosions([]);
               setGameState("ready");
               toast.error(`Bomb hit! ${newLives} lives remaining. Click to continue.`);
+            }
+            return newLives;
+          });
+        }
+      });
+    }
+
+    // Check bounced bullet-paddle collision
+    if (paddle) {
+      bullets.forEach(bullet => {
+        if (bullet.isBounced &&
+          bullet.x + bullet.width > paddle.x &&
+          bullet.x < paddle.x + paddle.width &&
+          bullet.y + bullet.height > paddle.y &&
+          bullet.y < paddle.y + paddle.height) {
+          // Bounced bullet hit paddle - lose a life
+          soundManager.playLoseLife();
+          setBullets(prev => prev.filter(b => b !== bullet));
+          
+          setLives((prev) => {
+            const newLives = prev - 1;
+            
+            if (newLives <= 0) {
+              setGameState("gameOver");
+              soundManager.stopBackgroundMusic();
+              toast.error("Game Over!");
+              
+              if (isHighScore(score)) {
+                setShowHighScoreEntry(true);
+                soundManager.playHighScoreMusic();
+              }
+            } else {
+              // Reset ball and clear power-ups, but wait for click to continue
+              const baseSpeed = 3 * speedMultiplier;
+              const resetBall: Ball = {
+                x: CANVAS_WIDTH / 2,
+                y: CANVAS_HEIGHT - 60,
+                dx: baseSpeed,
+                dy: -baseSpeed,
+                radius: BALL_RADIUS,
+                speed: baseSpeed,
+                id: nextBallId.current++,
+                isFireball: false,
+                waitingToLaunch: true,
+              };
+              setBalls([resetBall]);
+              setLaunchAngle(-60);
+              launchAngleDirectionRef.current = 1;
+              setPowerUps([]);
+              setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
+              setTimer(0);
+              setLastEnemySpawnTime(0);
+              setExplosions([]);
+              setGameState("ready");
+              toast.error(`Bullet hit! ${newLives} lives remaining. Click to continue.`);
             }
             return newLives;
           });
