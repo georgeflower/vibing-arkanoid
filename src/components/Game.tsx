@@ -278,16 +278,24 @@ export const Game = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'n' || e.key === 'N') {
+        nextLevel();
+      }
+    };
+
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
     canvas.addEventListener("click", handleClick);
+    window.addEventListener("keydown", handleKeyPress);
 
     return () => {
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("touchmove", handleTouchMove);
       canvas.removeEventListener("click", handleClick);
+      window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [handleMouseMove, handleTouchMove, handleClick]);
+  }, [handleMouseMove, handleTouchMove, handleClick, nextLevel]);
 
   const checkCollision = useCallback(() => {
     if (!paddle || balls.length === 0) return;
