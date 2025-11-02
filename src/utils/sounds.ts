@@ -30,11 +30,13 @@ class SoundManager {
       }
     });
 
-    // If no track is playing yet, pick a random starting track
-    const noTrackPlaying = this.musicTracks.every(track => !track || track.paused || track.currentTime === 0);
-    if (noTrackPlaying) {
-      this.currentTrackIndex = Math.floor(Math.random() * this.trackUrls.length);
-    }
+    // Always pick a different track from the current one
+    let newTrackIndex;
+    do {
+      newTrackIndex = Math.floor(Math.random() * this.trackUrls.length);
+    } while (newTrackIndex === this.currentTrackIndex && this.trackUrls.length > 1);
+    
+    this.currentTrackIndex = newTrackIndex;
 
     // Initialize track if not already loaded
     if (!this.musicTracks[this.currentTrackIndex]) {
