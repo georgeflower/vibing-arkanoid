@@ -496,10 +496,10 @@ export const Game = () => {
       let newDx = enemy.dx;
       let newDy = enemy.dy;
       
-      // Sphere enemies have more random movement
-      if (enemy.type === "sphere") {
+      // Sphere and Pyramid enemies have more random movement
+      if (enemy.type === "sphere" || enemy.type === "pyramid") {
         // Add some randomness to movement
-        if (Math.random() < 0.05) {
+        if (Math.random() < (enemy.type === "pyramid" ? 0.08 : 0.05)) {
           const randomAngle = (Math.random() - 0.5) * Math.PI / 4;
           const currentAngle = Math.atan2(newDy, newDx);
           const newAngle = currentAngle + randomAngle;
@@ -527,9 +527,9 @@ export const Game = () => {
         y: newY,
         dx: newDx,
         dy: newDy,
-        rotationX: enemy.rotationX + (enemy.type === "sphere" ? 0.08 : 0.05),
-        rotationY: enemy.rotationY + (enemy.type === "sphere" ? 0.12 : 0.08),
-        rotationZ: enemy.rotationZ + (enemy.type === "sphere" ? 0.06 : 0.03),
+        rotationX: enemy.rotationX + (enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" ? 0.08 : 0.05),
+        rotationY: enemy.rotationY + (enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" ? 0.12 : 0.08),
+        rotationZ: enemy.rotationZ + (enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" ? 0.06 : 0.03),
       };
     }));
 
@@ -565,7 +565,57 @@ export const Game = () => {
             }
             
             // Handle enemy destruction/damage
-            if (enemy.type === "sphere") {
+            if (enemy.type === "pyramid") {
+              const currentHits = enemy.hits || 0;
+              if (currentHits === 0) {
+                // First hit - change color to yellow
+                soundManager.playBounce();
+                toast.warning("Pyramid hit! 2 more hits needed");
+                setEnemies(prev => prev.map(e => 
+                  e.id === enemy.id ? {
+                    ...e,
+                    hits: 1,
+                  } : e
+                ));
+              } else if (currentHits === 1) {
+                // Second hit - change color to red, make it angry and faster
+                soundManager.playBounce();
+                toast.warning("Pyramid is angry! 1 more hit!");
+                setEnemies(prev => prev.map(e => 
+                  e.id === enemy.id ? {
+                    ...e,
+                    hits: 2,
+                    isAngry: true,
+                    speed: e.speed * 1.5,
+                    dx: e.dx * 1.5,
+                    dy: e.dy * 1.5,
+                  } : e
+                ));
+              } else {
+                // Third hit - destroy it
+                setExplosions(prev => [...prev, {
+                  x: enemy.x + enemy.width / 2,
+                  y: enemy.y + enemy.height / 2,
+                  frame: 0,
+                  maxFrames: 20,
+                }]);
+                soundManager.playExplosion();
+                setScore(s => s + 300);
+                toast.success("Pyramid destroyed! +300 points");
+                
+                // Remove enemy
+                setEnemies(prev => prev.filter(e => e.id !== enemy.id));
+                
+                // Clear bomb interval
+                if (enemy.id !== undefined) {
+                  const interval = bombIntervalsRef.current.get(enemy.id);
+                  if (interval) {
+                    clearInterval(interval);
+                    bombIntervalsRef.current.delete(enemy.id);
+                  }
+                }
+              }
+            } else if (enemy.type === "sphere") {
               const currentHits = enemy.hits || 0;
               if (currentHits === 0) {
                 // First hit - make it angry and faster
@@ -645,8 +695,16 @@ export const Game = () => {
       frame: exp.frame + 1,
     })).filter(exp => exp.frame < exp.maxFrames));
 
-    // Update bombs and rockets (no magnetic pull)
+    // Update bombs and rockets (pyramid bullets move in straight lines with angle)
     setBombs(prev => prev.map(bomb => {
+      if (bomb.type === "pyramidBullet" && bomb.dx !== undefined) {
+        // Pyramid bullets move in straight line at angle
+        return {
+          ...bomb,
+          x: bomb.x + (bomb.dx || 0),
+          y: bomb.y + bomb.speed,
+        };
+      }
       return {
         ...bomb,
         y: bomb.y + bomb.speed,
@@ -840,12 +898,40 @@ export const Game = () => {
         const speedIncrease = 1 + (enemySpawnCount * 0.3); // 30% faster each spawn
         const enemyId = nextEnemyId.current++;
         
-        // Determine enemy type - sphere enemies from level 3+
-        const enemyType: "cube" | "sphere" = level >= 3 && Math.random() > 0.5 ? "sphere" : "cube";
+        // Determine enemy type - sphere from level 3+, pyramid from level 7+
+        let enemyType: "cube" | "sphere" | "pyramid";
+        if (level >= 7 && Math.random() < 0.3) {
+          enemyType = "pyramid";
+        } else if (level >= 3 && Math.random() > 0.5) {
+          enemyType = "sphere";
+        } else {
+          enemyType = "cube";
+        }
         
         let newEnemy: Enemy;
         
-        if (enemyType === "sphere") {
+        if (enemyType === "pyramid") {
+          // Pyramid enemy - very slow random movement, 3 hits to destroy
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 1 * speedIncrease; // Very slow
+          newEnemy = {
+            id: enemyId,
+            type: "pyramid",
+            x: Math.random() * (CANVAS_WIDTH - 40),
+            y: 50 + Math.random() * 50,
+            width: 40,
+            height: 40,
+            rotation: 0,
+            rotationX: Math.random() * Math.PI,
+            rotationY: Math.random() * Math.PI,
+            rotationZ: Math.random() * Math.PI,
+            speed: speed,
+            dx: Math.cos(angle) * speed,
+            dy: Math.sin(angle) * speed,
+            hits: 0,
+            isAngry: false,
+          };
+        } else if (enemyType === "sphere") {
           // Sphere enemy - random movement pattern
           const angle = Math.random() * Math.PI * 2;
           const speed = 2.5 * speedIncrease; // Slightly faster
@@ -890,7 +976,8 @@ export const Game = () => {
         setEnemies(prev => [...prev, newEnemy]);
         setLastEnemySpawnTime(timer);
         setEnemySpawnCount(prev => prev + 1);
-        toast.warning(`${enemyType === "sphere" ? "Sphere" : "Cube"} enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
+        const enemyName = enemyType === "sphere" ? "Sphere" : enemyType === "pyramid" ? "Pyramid" : "Cube";
+        toast.warning(`${enemyName} enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
 
         // Start dropping projectiles for this enemy
         const projectileInterval = setInterval(() => {
@@ -902,18 +989,36 @@ export const Game = () => {
               return currentEnemies;
             }
             
-            const newProjectile: Bomb = {
-              x: currentEnemy.x + currentEnemy.width / 2 - 5,
-              y: currentEnemy.y + currentEnemy.height,
-              width: 10,
-              height: 10,
-              speed: 3,
-              enemyId: enemyId,
-              type: currentEnemy.type === "sphere" ? "rocket" : "bomb",
-              dx: 0, // Initialize horizontal velocity for rockets
-            };
-            soundManager.playBombDropSound();
-            setBombs(prev => [...prev, newProjectile]);
+            // Pyramid enemies shoot bullets in random angles
+            if (currentEnemy.type === "pyramid") {
+              const randomAngle = (Math.random() * 160 - 80) * (Math.PI / 180); // -80 to +80 degrees
+              const bulletSpeed = 4;
+              const newBullet: Bomb = {
+                x: currentEnemy.x + currentEnemy.width / 2 - 4,
+                y: currentEnemy.y + currentEnemy.height,
+                width: 8,
+                height: 12,
+                speed: bulletSpeed,
+                enemyId: enemyId,
+                type: "pyramidBullet",
+                dx: Math.sin(randomAngle) * bulletSpeed,
+              };
+              soundManager.playPyramidBulletSound();
+              setBombs(prev => [...prev, newBullet]);
+            } else {
+              const newProjectile: Bomb = {
+                x: currentEnemy.x + currentEnemy.width / 2 - 5,
+                y: currentEnemy.y + currentEnemy.height,
+                width: 10,
+                height: 10,
+                speed: 3,
+                enemyId: enemyId,
+                type: currentEnemy.type === "sphere" ? "rocket" : "bomb",
+                dx: 0, // Initialize horizontal velocity for rockets
+              };
+              soundManager.playBombDropSound();
+              setBombs(prev => [...prev, newProjectile]);
+            }
             return currentEnemies;
           });
         }, 2000);

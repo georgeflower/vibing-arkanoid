@@ -393,6 +393,131 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.arc(centerX, centerY + 8, 6, 0.2 * Math.PI, 0.8 * Math.PI);
             ctx.stroke();
           }
+        } else if (singleEnemy.type === "pyramid") {
+          // Draw 3D spinning pyramid with retro style
+          const size = singleEnemy.width;
+          
+          // Determine color based on hits
+          let baseHue = 280; // Purple/magenta for no hits
+          if (singleEnemy.hits === 1) {
+            baseHue = 50; // Yellow for 1 hit
+          } else if (singleEnemy.hits === 2) {
+            baseHue = 0; // Red for 2 hits (angry)
+          }
+          
+          // Blink effect when angry
+          let colorIntensity = 60;
+          if (singleEnemy.isAngry) {
+            const blinkPhase = Math.floor(Date.now() / 150) % 2;
+            colorIntensity = blinkPhase === 0 ? 75 : 50;
+          }
+          
+          // Simple 3D projection
+          const cos = Math.cos(singleEnemy.rotationY);
+          const sin = Math.sin(singleEnemy.rotationY);
+          const cosX = Math.cos(singleEnemy.rotationX);
+          const sinX = Math.sin(singleEnemy.rotationX);
+          
+          // Define pyramid vertices: 4 base points + 1 apex
+          const vertices = [
+            [-1, 1, -1],  // base back-left
+            [1, 1, -1],   // base back-right
+            [1, 1, 1],    // base front-right
+            [-1, 1, 1],   // base front-left
+            [0, -1, 0]    // apex (top)
+          ];
+          
+          // Project 3D vertices to 2D
+          const projected = vertices.map(([x, y, z]) => {
+            // Apply rotation
+            const rx = x;
+            const ry = y * cosX - z * sinX;
+            const rz = y * sinX + z * cosX;
+            
+            const rx2 = rx * cos - rz * sin;
+            const rz2 = rx * sin + rz * cos;
+            
+            // Apply size and position
+            return [
+              centerX + rx2 * size / 2,
+              centerY + ry * size / 2,
+              rz2
+            ];
+          });
+          
+          // Define pyramid faces
+          const faces = [
+            { indices: [0, 1, 4], color: `hsl(${baseHue}, ${colorIntensity}%, 40%)` }, // back face
+            { indices: [1, 2, 4], color: `hsl(${baseHue}, ${colorIntensity}%, 50%)` }, // right face
+            { indices: [2, 3, 4], color: `hsl(${baseHue}, ${colorIntensity}%, 60%)` }, // front face
+            { indices: [3, 0, 4], color: `hsl(${baseHue}, ${colorIntensity}%, 45%)` }, // left face
+            { indices: [0, 1, 2, 3], color: `hsl(${baseHue}, ${colorIntensity}%, 35%)` }  // base
+          ];
+          
+          // Sort faces by average z-depth
+          const sortedFaces = faces.map(face => ({
+            ...face,
+            avgZ: face.indices.reduce((sum, i) => sum + projected[i][2], 0) / face.indices.length
+          })).sort((a, b) => a.avgZ - b.avgZ);
+          
+          // Draw each face
+          sortedFaces.forEach(face => {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = `hsl(${baseHue}, ${colorIntensity}%, 55%)`;
+            ctx.fillStyle = face.color;
+            ctx.beginPath();
+            ctx.moveTo(projected[face.indices[0]][0], projected[face.indices[0]][1]);
+            face.indices.forEach(i => {
+              ctx.lineTo(projected[i][0], projected[i][1]);
+            });
+            ctx.closePath();
+            ctx.fill();
+            
+            // Add edge lines with retro style
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Add retro scanline texture
+            if (face.indices.length === 3) {
+              ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+              ctx.lineWidth = 1;
+              for (let i = 0; i < 3; i++) {
+                const t = (i + 1) / 4;
+                const x1 = projected[face.indices[0]][0] * (1 - t) + projected[face.indices[2]][0] * t;
+                const y1 = projected[face.indices[0]][1] * (1 - t) + projected[face.indices[2]][1] * t;
+                const x2 = projected[face.indices[1]][0] * (1 - t) + projected[face.indices[2]][0] * t;
+                const y2 = projected[face.indices[1]][1] * (1 - t) + projected[face.indices[2]][1] * t;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+              }
+            }
+          });
+          
+          // Draw angry eyes when angry
+          if (singleEnemy.isAngry) {
+            ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = "rgba(255, 0, 0, 0.8)";
+            
+            // Angry eyes (small triangles)
+            ctx.beginPath();
+            ctx.moveTo(centerX - 10, centerY - 5);
+            ctx.lineTo(centerX - 5, centerY - 5);
+            ctx.lineTo(centerX - 7, centerY);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(centerX + 10, centerY - 5);
+            ctx.lineTo(centerX + 5, centerY - 5);
+            ctx.lineTo(centerX + 7, centerY);
+            ctx.closePath();
+            ctx.fill();
+          }
         } else {
           // Draw cube enemy
           const size = singleEnemy.width;
@@ -520,7 +645,26 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.translate(bombCenterX, bombCenterY);
         ctx.rotate((bombRotation * Math.PI) / 180);
         
-        if (bomb.type === "rocket") {
+        if (bomb.type === "pyramidBullet") {
+          // Draw pyramid bullet - elongated diamond shape
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = "hsl(280, 70%, 55%)";
+          ctx.fillStyle = "hsl(280, 70%, 55%)";
+          ctx.beginPath();
+          ctx.moveTo(0, -bomb.height / 2); // top
+          ctx.lineTo(bomb.width / 2, 0); // right
+          ctx.lineTo(0, bomb.height / 2); // bottom
+          ctx.lineTo(-bomb.width / 2, 0); // left
+          ctx.closePath();
+          ctx.fill();
+          
+          // Bullet highlight
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+          ctx.beginPath();
+          ctx.arc(-1, -2, bomb.width / 5, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (bomb.type === "rocket") {
           // Draw yellow rocket (from sphere)
           ctx.shadowBlur = 8;
           ctx.shadowColor = "hsl(50, 85%, 55%)";

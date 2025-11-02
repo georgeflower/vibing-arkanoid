@@ -53,7 +53,7 @@ export interface PowerUp {
   active: boolean;
 }
 
-export type EnemyType = "cube" | "sphere";
+export type EnemyType = "cube" | "sphere" | "pyramid";
 
 export interface Enemy {
   id?: number;
@@ -73,7 +73,7 @@ export interface Enemy {
   isAngry?: boolean; // For sphere enemies after first hit
 }
 
-export type ProjectileType = "bomb" | "rocket";
+export type ProjectileType = "bomb" | "rocket" | "pyramidBullet";
 
 export interface Bomb {
   x: number;

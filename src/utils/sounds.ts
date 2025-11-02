@@ -306,6 +306,28 @@ class SoundManager {
     oscillator.stop(ctx.currentTime + 0.1);
   }
 
+  playPyramidBulletSound() {
+    const audioContext = this.getAudioContext();
+    if (!audioContext) return;
+
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Swooshing pew sound - sweep from high to mid with wave modulation
+    oscillator.type = "sawtooth";
+    oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.15);
+    
+    gainNode.gain.setValueAtTime(0.12, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.15);
+  }
+
   playExtraLifeSound() {
     const audio = new Audio('/extra_life.mp3');
     audio.volume = 0.5;
