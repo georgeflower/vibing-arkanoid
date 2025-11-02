@@ -22,6 +22,12 @@ class SoundManager {
   playBackgroundMusic(level: number = 1) {
     if (!this.musicEnabled) return;
 
+    // If no track is playing yet, pick a random starting track
+    const noTrackPlaying = this.musicTracks.every(track => !track || track.paused || track.currentTime === 0);
+    if (noTrackPlaying) {
+      this.currentTrackIndex = Math.floor(Math.random() * this.trackUrls.length);
+    }
+
     // Initialize track if not already loaded
     if (!this.musicTracks[this.currentTrackIndex]) {
       const audio = new Audio(this.trackUrls[this.currentTrackIndex]);
