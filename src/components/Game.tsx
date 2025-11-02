@@ -49,11 +49,13 @@ export const Game = () => {
   const [explosions, setExplosions] = useState<Explosion[]>([]);
   const [enemySpawnCount, setEnemySpawnCount] = useState(0);
   const [lastEnemySpawnTime, setLastEnemySpawnTime] = useState(0);
+  const [launchAngle, setLaunchAngle] = useState(0);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
   const nextEnemyId = useRef(1);
   const timerIntervalRef = useRef<NodeJS.Timeout>();
   const bombIntervalsRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
+  const launchAngleIntervalRef = useRef<NodeJS.Timeout>();
 
   const { highScores, isHighScore, addHighScore } = useHighScores();
 
@@ -100,7 +102,7 @@ export const Game = () => {
       hasTurrets: false,
     });
 
-    // Initialize ball with speed multiplier
+    // Initialize ball with speed multiplier - waiting to launch
     const baseSpeed = 3;
     const initialBall: Ball = {
       x: CANVAS_WIDTH / 2,
@@ -111,8 +113,10 @@ export const Game = () => {
       speed: baseSpeed,
       id: nextBallId.current++,
       isFireball: false,
+      waitingToLaunch: true,
     };
     setBalls([initialBall]);
+    setLaunchAngle(0);
 
     // Initialize bricks for level 1
     setBricks(initBricksForLevel(1));
@@ -161,7 +165,7 @@ export const Game = () => {
       hasTurrets: false,
     });
 
-    // Initialize ball with new speed
+    // Initialize ball with new speed - waiting to launch
     const baseSpeed = 3 * newSpeedMultiplier;
     const initialBall: Ball = {
       x: CANVAS_WIDTH / 2,
@@ -172,8 +176,10 @@ export const Game = () => {
       speed: baseSpeed,
       id: nextBallId.current++,
       isFireball: false,
+      waitingToLaunch: true,
     };
     setBalls([initialBall]);
+    setLaunchAngle(0);
     
     // Initialize bricks for new level
     setBricks(initBricksForLevel(newLevel));
@@ -239,11 +245,31 @@ export const Game = () => {
 
     if (!paddle || gameState !== "playing") return;
 
+    // Check if ball is waiting to launch
+    const waitingBall = balls.find(ball => ball.waitingToLaunch);
+    if (waitingBall) {
+      // Launch ball in the direction of the current angle
+      setBalls(prev => prev.map(ball => {
+        if (ball.waitingToLaunch) {
+          const speed = ball.speed;
+          const angle = (launchAngle * Math.PI) / 180;
+          return {
+            ...ball,
+            dx: speed * Math.sin(angle),
+            dy: -speed * Math.cos(angle),
+            waitingToLaunch: false,
+          };
+        }
+        return ball;
+      }));
+      return;
+    }
+
     // Fire turrets
     if (paddle.hasTurrets) {
       fireBullets(paddle);
     }
-  }, [paddle, gameState, fireBullets, bricks, nextLevel]);
+  }, [paddle, gameState, fireBullets, bricks, nextLevel, balls, launchAngle]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -389,8 +415,10 @@ export const Game = () => {
               speed: baseSpeed,
               id: nextBallId.current++,
               isFireball: false,
+              waitingToLaunch: true,
             };
             setBalls([resetBall]);
+            setLaunchAngle(0);
             setPowerUps([]);
             setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
             setTimer(0);
@@ -416,12 +444,22 @@ export const Game = () => {
     // Update background animation
     setBackgroundPhase(prev => (prev + 1) % 360);
 
-    // Update balls
-    setBalls(prev => prev.map(ball => ({
-      ...ball,
-      x: ball.x + ball.dx * speedMultiplier,
-      y: ball.y + ball.dy * speedMultiplier,
-    })));
+    // Update balls (only if not waiting to launch)
+    setBalls(prev => prev.map(ball => {
+      if (ball.waitingToLaunch && paddle) {
+        // Keep ball attached to paddle
+        return {
+          ...ball,
+          x: paddle.x + paddle.width / 2,
+          y: paddle.y - ball.radius - 5,
+        };
+      }
+      return {
+        ...ball,
+        x: ball.x + ball.dx * speedMultiplier,
+        y: ball.y + ball.dy * speedMultiplier,
+      };
+    }));
 
     // Update power-ups
     updatePowerUps();
@@ -666,6 +704,34 @@ export const Game = () => {
     }
   }, [timer, gameState, lastEnemySpawnTime, enemySpawnCount, level]);
 
+  // Animate launch angle indicator
+  useEffect(() => {
+    const waitingBall = balls.find(ball => ball.waitingToLaunch);
+    if (gameState === "playing" && waitingBall) {
+      if (launchAngleIntervalRef.current) {
+        clearInterval(launchAngleIntervalRef.current);
+      }
+      launchAngleIntervalRef.current = setInterval(() => {
+        setLaunchAngle(prev => {
+          // Sweep from -60 to 60 degrees
+          let newAngle = prev + 2;
+          if (newAngle > 60) newAngle = -60;
+          return newAngle;
+        });
+      }, 20);
+    } else {
+      if (launchAngleIntervalRef.current) {
+        clearInterval(launchAngleIntervalRef.current);
+      }
+    }
+
+    return () => {
+      if (launchAngleIntervalRef.current) {
+        clearInterval(launchAngleIntervalRef.current);
+      }
+    };
+  }, [gameState, balls]);
+
   const handleStart = () => {
     if (gameState === "ready") {
       // Check if this is level completion (all bricks destroyed)
@@ -744,6 +810,7 @@ export const Game = () => {
               level={level}
               backgroundPhase={backgroundPhase}
               explosions={explosions}
+              launchAngle={launchAngle}
             />
           </div>
 

@@ -17,10 +17,11 @@ interface GameCanvasProps {
   level: number;
   backgroundPhase: number;
   explosions: Explosion[];
+  launchAngle: number;
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
     const bgRotationRef = useRef(0);
@@ -144,6 +145,37 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fillStyle = "hsla(30, 85%, 55%, 0.25)";
           ctx.beginPath();
           ctx.arc(ball.x, ball.y, ball.radius * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Draw launch indicator if ball is waiting to launch
+        if (ball.waitingToLaunch) {
+          const angle = (launchAngle * Math.PI) / 180;
+          const lineLength = 60;
+          const endX = ball.x + Math.sin(angle) * lineLength;
+          const endY = ball.y - Math.cos(angle) * lineLength;
+          
+          // Draw line
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = "hsl(120, 70%, 50%)";
+          ctx.strokeStyle = "hsl(120, 70%, 50%)";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(ball.x, ball.y);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+          
+          // Draw arrow head
+          const arrowSize = 8;
+          const arrowAngle1 = angle + Math.PI * 0.75;
+          const arrowAngle2 = angle - Math.PI * 0.75;
+          
+          ctx.fillStyle = "hsl(120, 70%, 50%)";
+          ctx.beginPath();
+          ctx.moveTo(endX, endY);
+          ctx.lineTo(endX + Math.cos(arrowAngle1) * arrowSize, endY + Math.sin(arrowAngle1) * arrowSize);
+          ctx.lineTo(endX + Math.cos(arrowAngle2) * arrowSize, endY + Math.sin(arrowAngle2) * arrowSize);
+          ctx.closePath();
           ctx.fill();
         }
       });
@@ -343,7 +375,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fillText("YOU WON!", width / 2, height / 2);
         }
       }
-    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions]);
+    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle]);
 
     return (
       <canvas

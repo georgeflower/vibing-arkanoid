@@ -20,6 +20,7 @@ export interface Ball {
   speed: number;
   id: number;
   isFireball?: boolean;
+  waitingToLaunch?: boolean;
 }
 
 export interface Paddle {
