@@ -31,7 +31,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
   ],
-  
+
   // Level 2: Diamond
   [
     [false, false, false, false, false, false, true, true, false, false, false, false, false, false],
@@ -53,7 +53,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
   ],
-  
+
   // Level 3: Heart Pattern
   [
     [false, false, false, true, true, true, false, false, true, true, true, false, false, false],
@@ -75,7 +75,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
   ],
-  
+
   // Level 4: Full Dense Grid
   [
     [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
@@ -97,7 +97,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
   ],
-  
+
   // Level 5: Pyramid
   [
     [false, false, false, false, false, false, true, true, false, false, false, false, false, false],
@@ -119,7 +119,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
   ],
-  
+
   // Level 6: Checkerboard
   [
     [true, false, true, false, true, false, true, false, true, false, true, false, true, false],
@@ -141,7 +141,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
   ],
-  
+
   // Level 7: X Pattern
   [
     [true, true, false, false, false, false, false, false, false, false, false, false, true, true],
@@ -163,7 +163,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
   ],
-  
+
   // Level 8: Dense Grid
   [
     [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
@@ -185,7 +185,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
   ],
-  
+
   // Level 9: Full Grid
   [
     [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
@@ -207,7 +207,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
     [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
   ],
-  
+
   // Level 10: With Indestructible Frame (2 = indestructible)
   [
     [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
@@ -227,6 +227,6 @@ export const levelLayouts: (boolean | number)[][][] = [
     [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
     [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
     [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
-    [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+    [2, 2, 2, true, true, true, true, true, true, true, true, 2, 2, 2],
   ],
 ];
