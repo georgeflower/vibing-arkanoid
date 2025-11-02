@@ -4,6 +4,7 @@ import { GameUI } from "./GameUI";
 import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
+import { MusicSettings } from "./MusicSettings";
 import { toast } from "sonner";
 import { Maximize2, Minimize2 } from "lucide-react";
 import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion } from "@/types/game";
@@ -1067,8 +1068,22 @@ export const Game = () => {
       }
     };
 
+    const handleWheel = (e: WheelEvent) => {
+      if (e.deltaY < 0) {
+        // Scroll up = left
+        setLaunchAngle(prev => Math.max(prev - 3, -80));
+      } else if (e.deltaY > 0) {
+        // Scroll down = right
+        setLaunchAngle(prev => Math.min(prev + 3, 80));
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("wheel", handleWheel);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("wheel", handleWheel);
+    };
   }, [gameState, balls]);
 
   const handleStart = () => {
@@ -1152,21 +1167,6 @@ export const Game = () => {
         <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} />
       ) : (
         <>
-          {/* Fullscreen button */}
-          {!showHighScoreEntry && (
-            <button
-              onClick={toggleFullscreen}
-              className="absolute top-4 right-4 amiga-box px-3 py-2 hover:bg-muted/50 transition-colors z-50 flex items-center gap-2"
-              title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-            >
-              {isFullscreen ? (
-                <Minimize2 size={16} style={{ color: 'hsl(0, 0%, 85%)' }} />
-              ) : (
-                <Maximize2 size={16} style={{ color: 'hsl(0, 0%, 85%)' }} />
-              )}
-            </button>
-          )}
-
           <h1 className="text-4xl retro-pixel-text tracking-wider" style={{ 
             color: 'hsl(0, 0%, 85%)',
             textShadow: '3px 3px 0px hsl(0, 0%, 30%), 0 0 20px hsl(210, 60%, 55%, 0.3)'
@@ -1182,9 +1182,24 @@ export const Game = () => {
             />
           ) : (
             <>
+              {/* Control buttons above playable area */}
+              <div className="flex gap-4 w-full max-w-[1200px] justify-between items-center mb-2">
+                <MusicSettings gameState={gameState} setGameState={setGameState} />
+                <div className="flex-1"></div>
+                <button
+                  onClick={toggleFullscreen}
+                  className="amiga-box px-3 py-2 hover:bg-muted/50 transition-colors flex items-center gap-2"
+                  title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+                >
+                  {isFullscreen ? (
+                    <Minimize2 size={16} style={{ color: 'hsl(0, 0%, 85%)' }} />
+                  ) : (
+                    <Maximize2 size={16} style={{ color: 'hsl(0, 0%, 85%)' }} />
+                  )}
+                </button>
+              </div>
+
               <div className={`flex gap-6 items-center justify-center ${isFullscreen ? 'w-full' : ''}`}>
-                <GameUI score={score} lives={lives} level={level} timer={timer} speed={speedMultiplier} gameState={gameState} setGameState={setGameState} />
-          
                 <div className={`game-glow rounded-lg overflow-hidden ${isFullscreen ? 'game-canvas-wrapper' : ''}`}>
                   <GameCanvas
                     ref={canvasRef}
@@ -1203,6 +1218,58 @@ export const Game = () => {
                     explosions={explosions}
                     launchAngle={launchAngle}
                   />
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  {/* Score */}
+                  <div className="amiga-box px-4 py-3 min-w-[140px]">
+                    <div className="text-[10px] retro-pixel-text mb-2 text-center" style={{ color: 'hsl(0, 0%, 60%)' }}>
+                      SCORE
+                    </div>
+                    <div className="text-xl retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
+                      {score.toString().padStart(6, "0")}
+                    </div>
+                  </div>
+
+                  {/* Level */}
+                  <div className="amiga-box px-4 py-3 min-w-[140px]">
+                    <div className="text-[10px] retro-pixel-text mb-2 text-center" style={{ color: 'hsl(30, 75%, 55%)' }}>
+                      LEVEL
+                    </div>
+                    <div className="text-xl retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
+                      {level.toString().padStart(2, "0")}
+                    </div>
+                  </div>
+
+                  {/* Lives */}
+                  <div className="amiga-box px-4 py-3 min-w-[140px]">
+                    <div className="text-[10px] retro-pixel-text mb-2 text-center" style={{ color: 'hsl(0, 70%, 55%)' }}>
+                      LIVES
+                    </div>
+                    <div className="text-xl retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
+                      {lives}
+                    </div>
+                  </div>
+
+                  {/* Timer */}
+                  <div className="amiga-box px-4 py-3 min-w-[140px]">
+                    <div className="text-[10px] retro-pixel-text mb-2 text-center" style={{ color: 'hsl(210, 60%, 55%)' }}>
+                      TIMER
+                    </div>
+                    <div className="text-xl retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
+                      {timer}s
+                    </div>
+                  </div>
+
+                  {/* Speed */}
+                  <div className="amiga-box px-4 py-3 min-w-[140px]">
+                    <div className="text-[10px] retro-pixel-text mb-2 text-center" style={{ color: 'hsl(120, 50%, 50%)' }}>
+                      SPEED
+                    </div>
+                    <div className="text-xl retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
+                      {Math.round(speedMultiplier * 100)}%
+                    </div>
+                  </div>
                 </div>
               </div>
 
