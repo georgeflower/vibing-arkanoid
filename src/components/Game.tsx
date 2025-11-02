@@ -350,17 +350,23 @@ export const Game = () => {
           return null;
         }
 
-        // Brick collision
+        // Brick collision (expand collision area to cover padding gaps)
         setBricks((prevBricks) => {
           let brickHit = false;
           const newBricks = prevBricks.map((brick) => {
+            // Expand brick collision box by half padding on each side
+            const collisionX = brick.x - BRICK_PADDING / 2;
+            const collisionY = brick.y - BRICK_PADDING / 2;
+            const collisionWidth = brick.width + BRICK_PADDING;
+            const collisionHeight = brick.height + BRICK_PADDING;
+            
             if (
               !brickHit &&
               brick.visible &&
-              newBall.x + newBall.radius > brick.x &&
-              newBall.x - newBall.radius < brick.x + brick.width &&
-              newBall.y + newBall.radius > brick.y &&
-              newBall.y - newBall.radius < brick.y + brick.height
+              newBall.x + newBall.radius > collisionX &&
+              newBall.x - newBall.radius < collisionX + collisionWidth &&
+              newBall.y + newBall.radius > collisionY &&
+              newBall.y - newBall.radius < collisionY + collisionHeight
             ) {
               brickHit = true;
               

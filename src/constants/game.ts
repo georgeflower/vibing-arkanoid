@@ -7,7 +7,7 @@ export const BRICK_ROWS = 18;
 export const BRICK_COLS = 14;
 export const BRICK_WIDTH = 60;
 export const BRICK_HEIGHT = 20;
-export const BRICK_PADDING = 1;
+export const BRICK_PADDING = 5;
 export const BRICK_OFFSET_TOP = 80;
 export const BRICK_OFFSET_LEFT = (CANVAS_WIDTH - (BRICK_COLS * BRICK_WIDTH)) / 2;
 
