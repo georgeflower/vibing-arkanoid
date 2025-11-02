@@ -353,6 +353,13 @@ export const Game = () => {
         // Brick collision (expand collision area to cover padding gaps)
         setBricks((prevBricks) => {
           let brickHit = false;
+          
+          // Check cooldown - prevent hitting multiple bricks too quickly
+          const now = Date.now();
+          if (newBall.lastHitTime && now - newBall.lastHitTime < 10) {
+            return prevBricks;
+          }
+          
           const newBricks = prevBricks.map((brick) => {
             // Expand brick collision box by half padding on each side
             const collisionX = brick.x - BRICK_PADDING / 2;
@@ -360,15 +367,21 @@ export const Game = () => {
             const collisionWidth = brick.width + BRICK_PADDING;
             const collisionHeight = brick.height + BRICK_PADDING;
             
+            // Expand ball collision radius slightly (add 1 pixel)
+            const expandedRadius = newBall.radius + 1;
+            
             if (
               !brickHit &&
               brick.visible &&
-              newBall.x + newBall.radius > collisionX &&
-              newBall.x - newBall.radius < collisionX + collisionWidth &&
-              newBall.y + newBall.radius > collisionY &&
-              newBall.y - newBall.radius < collisionY + collisionHeight
+              newBall.x + expandedRadius > collisionX &&
+              newBall.x - expandedRadius < collisionX + collisionWidth &&
+              newBall.y + expandedRadius > collisionY &&
+              newBall.y - expandedRadius < collisionY + collisionHeight
             ) {
               brickHit = true;
+              
+              // Set hit cooldown
+              newBall.lastHitTime = now;
               
               // Indestructible bricks - just bounce off
               if (brick.isIndestructible) {
