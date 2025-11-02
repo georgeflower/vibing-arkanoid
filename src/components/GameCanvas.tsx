@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useRef } from "react";
 import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion } from "@/types/game";
 import { powerUpImages } from "@/utils/powerUpImages";
 import paddleImg from "@/assets/paddle.png";
+import paddleTurretsImg from "@/assets/paddle-turrets.png";
 
 interface GameCanvasProps {
   width: number;
@@ -24,6 +25,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
   ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
+    const paddleTurretsImageRef = useRef<HTMLImageElement | null>(null);
     const bgRotationRef = useRef(0);
     const bgZoomRef = useRef(1);
     const rotationSpeedRef = useRef(0.5);
@@ -42,6 +44,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       const paddleImage = new Image();
       paddleImage.src = paddleImg;
       paddleImageRef.current = paddleImage;
+      
+      const paddleTurretsImage = new Image();
+      paddleTurretsImage.src = paddleTurretsImg;
+      paddleTurretsImageRef.current = paddleTurretsImage;
     }, []);
 
     useEffect(() => {
@@ -102,7 +108,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw paddle
       if (paddle) {
-        const img = paddleImageRef.current;
+        // Use turret image if paddle has turrets, otherwise regular paddle
+        const img = paddle.hasTurrets ? paddleTurretsImageRef.current : paddleImageRef.current;
+        
         if (img && img.complete) {
           ctx.shadowBlur = 12;
           ctx.shadowColor = "hsl(200, 70%, 50%)";
@@ -207,14 +215,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
       });
 
-      // Draw turrets on paddle
-      if (paddle && paddle.hasTurrets) {
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = "hsl(30, 85%, 55%)";
-        ctx.fillStyle = "hsl(30, 85%, 55%)";
-        ctx.fillRect(paddle.x + 5, paddle.y - 10, 8, 10);
-        ctx.fillRect(paddle.x + paddle.width - 13, paddle.y - 10, 8, 10);
-      }
+      // Turrets are now part of the paddle image, no need to draw separately
 
       // Draw enemies (cubes and spheres)
       enemy.forEach((singleEnemy) => {
