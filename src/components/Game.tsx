@@ -367,8 +367,8 @@ export const Game = () => {
             const collisionWidth = brick.width + BRICK_PADDING;
             const collisionHeight = brick.height + BRICK_PADDING;
             
-            // Expand ball collision radius slightly (add 1 pixel)
-            const expandedRadius = newBall.radius + 1;
+            // Reduce ball collision radius slightly (subtract 2 pixels)
+            const expandedRadius = newBall.radius - 2;
             
             if (
               !brickHit &&
