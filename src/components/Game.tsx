@@ -1180,7 +1180,7 @@ export const Game = () => {
             />
           ) : (
             <>
-              <GameUI score={score} lives={lives} level={level} timer={timer} speed={speedMultiplier} />
+              <GameUI score={score} lives={lives} level={level} timer={timer} speed={speedMultiplier} gameState={gameState} setGameState={setGameState} />
           
           <div className={`game-glow rounded-lg overflow-hidden ${isFullscreen ? 'game-canvas-wrapper' : ''}`}>
             <GameCanvas

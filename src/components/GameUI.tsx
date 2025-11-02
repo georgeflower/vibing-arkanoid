@@ -1,4 +1,5 @@
 import { MusicSettings } from "./MusicSettings";
+import type { GameState } from "@/types/game";
 
 interface GameUIProps {
   score: number;
@@ -6,12 +7,14 @@ interface GameUIProps {
   level: number;
   timer: number;
   speed: number;
+  gameState: GameState;
+  setGameState: React.Dispatch<React.SetStateAction<GameState>>;
 }
 
-export const GameUI = ({ score, lives, level, timer, speed }: GameUIProps) => {
+export const GameUI = ({ score, lives, level, timer, speed, gameState, setGameState }: GameUIProps) => {
   return (
     <>
-      <MusicSettings />
+      <MusicSettings gameState={gameState} setGameState={setGameState} />
       <div className="flex gap-8 items-start">
         {/* Score */}
         <div className="amiga-box px-4 py-3">
