@@ -35,8 +35,13 @@ class SoundManager {
   }
 
   private handleTrackEnd() {
-    // Move to next track and play it continuously
-    this.currentTrackIndex = (this.currentTrackIndex + 1) % this.trackUrls.length;
+    // Pick a random track (ensure it's different from current track)
+    let newTrackIndex;
+    do {
+      newTrackIndex = Math.floor(Math.random() * this.trackUrls.length);
+    } while (newTrackIndex === this.currentTrackIndex && this.trackUrls.length > 1);
+    
+    this.currentTrackIndex = newTrackIndex;
     
     // Play next song immediately if music is enabled
     if (this.musicEnabled) {

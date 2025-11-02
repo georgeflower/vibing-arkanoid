@@ -635,35 +635,11 @@ export const Game = () => {
       frame: exp.frame + 1,
     })).filter(exp => exp.frame < exp.maxFrames));
 
-    // Update bombs and rockets with magnetic behavior
+    // Update bombs and rockets (no magnetic pull)
     setBombs(prev => prev.map(bomb => {
-      let newX = bomb.x;
-      let newY = bomb.y + bomb.speed;
-      let newDx = bomb.dx || 0;
-      
-      // Rockets have magnetic behavior towards paddle when in bottom 30% (5% attraction)
-      if (bomb.type === "rocket" && paddle) {
-        const bottomThreshold = CANVAS_HEIGHT * 0.7; // Bottom 30% of screen
-        
-        if (bomb.y >= bottomThreshold) {
-          // 5% attraction towards paddle when in bottom 30%
-          const paddleCenterX = paddle.x + paddle.width / 2;
-          const toPaddleX = paddleCenterX - bomb.x;
-          newDx += toPaddleX * 0.05;
-          
-          // Apply horizontal movement
-          newX += newDx;
-          
-          // Clamp to canvas bounds
-          newX = Math.max(0, Math.min(CANVAS_WIDTH - bomb.width, newX));
-        }
-      }
-      
       return {
         ...bomb,
-        x: newX,
-        y: newY,
-        dx: newDx,
+        y: bomb.y + bomb.speed,
       };
     }).filter(bomb => bomb.y < CANVAS_HEIGHT));
 
@@ -711,7 +687,12 @@ export const Game = () => {
               setPaddle(prev => prev ? { ...prev, hasTurrets: false } : null);
               setTimer(0);
               setLastEnemySpawnTime(0);
+              setEnemies([]); // Clear all enemies
+              setBombs([]); // Clear all bombs
               setExplosions([]);
+              // Clear all bomb intervals
+              bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+              bombIntervalsRef.current.clear();
               setGameState("ready");
               toast.error(`Bomb hit! ${newLives} lives remaining. Click to continue.`);
             }

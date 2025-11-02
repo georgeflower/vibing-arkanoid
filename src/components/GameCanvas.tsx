@@ -106,10 +106,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         }
       });
 
-      // Draw paddle
+      // Draw paddle (always use regular paddle image, turrets drawn separately)
       if (paddle) {
-        // Use turret image if paddle has turrets, otherwise regular paddle
-        const img = paddle.hasTurrets ? paddleTurretsImageRef.current : paddleImageRef.current;
+        const img = paddleImageRef.current;
         
         if (img && img.complete) {
           ctx.shadowBlur = 12;
