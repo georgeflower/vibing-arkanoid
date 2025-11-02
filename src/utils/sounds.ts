@@ -76,14 +76,14 @@ class SoundManager {
     oscillator.connect(gainNode);
     gainNode.connect(ctx.destination);
 
-    oscillator.frequency.value = 400;
-    oscillator.type = 'square';
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
     
-    gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    gainNode.gain.setValueAtTime(0.08, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
 
     oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.15);
+    oscillator.stop(ctx.currentTime + 0.05);
   }
 
   playPowerUp() {

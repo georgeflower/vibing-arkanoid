@@ -43,23 +43,43 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       ctx.fillStyle = "hsl(220, 25%, 12%)";
       ctx.fillRect(0, 0, width, height);
 
-      // Draw bricks
+      // Draw bricks with 16-bit Turrican 2 style texture
       bricks.forEach((brick) => {
         if (brick.visible) {
-          // Glow effect (softer for retro look)
+          // Base brick color with glow
           ctx.shadowBlur = 8;
           ctx.shadowColor = brick.color;
           ctx.fillStyle = brick.color;
           ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
           
-          // Inner highlight
+          // Top highlight
           ctx.shadowBlur = 0;
-          ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
-          ctx.fillRect(brick.x, brick.y, brick.width, brick.height / 3);
+          ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+          ctx.fillRect(brick.x, brick.y, brick.width, 3);
+          
+          // Left highlight
+          ctx.fillRect(brick.x, brick.y, 3, brick.height);
+          
+          // Bottom shadow
+          ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+          ctx.fillRect(brick.x, brick.y + brick.height - 3, brick.width, 3);
+          
+          // Right shadow
+          ctx.fillRect(brick.x + brick.width - 3, brick.y, 3, brick.height);
+          
+          // 16-bit pixel pattern texture (Turrican 2 style)
+          ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+          for (let py = brick.y + 4; py < brick.y + brick.height - 4; py += 4) {
+            for (let px = brick.x + 4; px < brick.x + brick.width - 4; px += 4) {
+              if ((px + py) % 8 === 0) {
+                ctx.fillRect(px, py, 2, 2);
+              }
+            }
+          }
           
           // Draw hit counter for multi-hit bricks
           if (brick.maxHits > 1) {
-            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
             ctx.font = "bold 12px monospace";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
