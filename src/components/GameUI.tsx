@@ -8,7 +8,7 @@ interface GameUIProps {
 
 export const GameUI = ({ score, lives, level, timer, speed }: GameUIProps) => {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-row gap-4 flex-wrap justify-center">
       {/* Score */}
       <div className="amiga-box px-4 py-3 min-w-[140px]">
         <div className="text-[10px] retro-pixel-text mb-2 text-center" style={{ color: 'hsl(0, 0%, 60%)' }}>
