@@ -115,29 +115,47 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.fillStyle = brick.color;
             ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
             
-            // Top highlight
+            // Retro Amiga beveled border (thick edges)
             ctx.shadowBlur = 0;
-            ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
-            ctx.fillRect(brick.x, brick.y, brick.width, 3);
             
-            // Left highlight
-            ctx.fillRect(brick.x, brick.y, 3, brick.height);
+            // Top bevel (light)
+            ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+            ctx.fillRect(brick.x, brick.y, brick.width, 2);
+            ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+            ctx.fillRect(brick.x, brick.y + 2, brick.width, 2);
             
-            // Bottom shadow
+            // Left bevel (light)
+            ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+            ctx.fillRect(brick.x, brick.y, 2, brick.height);
+            ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+            ctx.fillRect(brick.x + 2, brick.y, 2, brick.height);
+            
+            // Bottom bevel (dark)
+            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+            ctx.fillRect(brick.x, brick.y + brick.height - 2, brick.width, 2);
             ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-            ctx.fillRect(brick.x, brick.y + brick.height - 3, brick.width, 3);
+            ctx.fillRect(brick.x, brick.y + brick.height - 4, brick.width, 2);
             
-            // Right shadow
-            ctx.fillRect(brick.x + brick.width - 3, brick.y, 3, brick.height);
+            // Right bevel (dark)
+            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+            ctx.fillRect(brick.x + brick.width - 2, brick.y, 2, brick.height);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+            ctx.fillRect(brick.x + brick.width - 4, brick.y, 2, brick.height);
             
-            // 16-bit pixel pattern texture (Turrican 2 style)
-            ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
-            for (let py = brick.y + 4; py < brick.y + brick.height - 4; py += 4) {
-              for (let px = brick.x + 4; px < brick.x + brick.width - 4; px += 4) {
-                if ((px + py) % 8 === 0) {
-                  ctx.fillRect(px, py, 2, 2);
+            // Classic Amiga checkerboard dither pattern (center area)
+            ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+            for (let py = brick.y + 4; py < brick.y + brick.height - 4; py += 2) {
+              for (let px = brick.x + 4; px < brick.x + brick.width - 4; px += 2) {
+                if ((px + py) % 4 === 0) {
+                  ctx.fillRect(px, py, 1, 1);
                 }
               }
+            }
+            
+            // Amiga-style horizontal scan lines
+            ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+            for (let py = brick.y + 5; py < brick.y + brick.height - 4; py += 3) {
+              ctx.fillRect(brick.x + 4, py, brick.width - 8, 1);
             }
             
             // Draw hit counter for multi-hit bricks
