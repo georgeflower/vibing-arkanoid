@@ -1499,12 +1499,6 @@ export const Game = () => {
                 </div>
               </div>
 
-              {/* High Score Table Below Frame */}
-              {!isFullscreen && highScores.length > 0 && (
-                <div className="mt-6">
-                  <HighScoreTable scores={highScores} />
-                </div>
-              )}
             </div>
           )}
         </>
