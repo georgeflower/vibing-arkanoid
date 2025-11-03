@@ -312,6 +312,10 @@ export const Game = () => {
       } else if (e.key === "m" || e.key === "M") {
         const enabled = soundManager.toggleMute();
         toast.success(enabled ? "Music on" : "Music muted");
+      } else if (e.key === "0") {
+        // Clear level and advance
+        nextLevel();
+        toast.success("Level skipped!");
       }
     };
 
