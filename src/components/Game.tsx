@@ -371,10 +371,14 @@ export const Game = () => {
 
             const newBricks = prevBricks.map((brick) => {
               // Expand collision box to cover padding gaps
-              const collisionX = brick.x; //- BRICK_PADDING / 2;
-              const collisionY = brick.y; //- BRICK_PADDING / 2;
-              const collisionWidth = brick.width; //+ BRICK_PADDING;
-              const collisionHeight = brick.height; //+ BRICK_PADDING;
+              const collisionX = brick.x;
+              -BRICK_PADDING / 2;
+              const collisionY = brick.y;
+              -BRICK_PADDING / 2;
+              const collisionWidth = brick.width;
+              +BRICK_PADDING;
+              const collisionHeight = brick.height;
+              +BRICK_PADDING;
 
               const expandedRadius = newBall.radius;
 
