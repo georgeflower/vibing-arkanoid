@@ -831,21 +831,32 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         // Amiga retro demo style - grey blockish pixelated text
         ctx.shadowBlur = 0;
         ctx.fillStyle = "rgba(160, 160, 160, 0.95)";
-        ctx.font = "bold 20px 'Courier New', monospace";
+        ctx.font = "bold 16px 'Courier New', monospace";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         
         // Draw with pixel-like effect by drawing twice with slight offset
-        const instructionY = height * 0.85;
-        const text = "USE A AND D OR LEFT AND RIGHT TO CHANGE THE ANGLE";
+        const instructionY1 = height * 0.80;
+        const instructionY2 = height * 0.85;
+        const instructionY3 = height * 0.90;
+        const text1 = "USE A AND D OR LEFT AND RIGHT TO CHANGE THE ANGLE";
+        const text2 = "MUSIC: N - NEXT | P - PREVIOUS | M - MUTE/UNMUTE";
         
-        // Shadow for depth
+        // Shadow for depth - line 1
         ctx.fillStyle = "rgba(80, 80, 80, 0.8)";
-        ctx.fillText(text, width / 2 + 2, instructionY + 2);
+        ctx.fillText(text1, width / 2 + 2, instructionY1 + 2);
         
-        // Main text
+        // Main text - line 1
         ctx.fillStyle = "rgba(180, 180, 180, 0.95)";
-        ctx.fillText(text, width / 2, instructionY);
+        ctx.fillText(text1, width / 2, instructionY1);
+        
+        // Shadow for depth - line 2
+        ctx.fillStyle = "rgba(80, 80, 80, 0.8)";
+        ctx.fillText(text2, width / 2 + 2, instructionY2 + 2);
+        
+        // Main text - line 2
+        ctx.fillStyle = "rgba(180, 180, 180, 0.95)";
+        ctx.fillText(text2, width / 2, instructionY2);
       }
     
     }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle]);

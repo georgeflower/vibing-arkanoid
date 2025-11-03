@@ -363,6 +363,40 @@ class SoundManager {
   isMusicPlaying(): boolean {
     return this.musicTracks.some(track => track && !track.paused && track.currentTime > 0);
   }
+
+  nextTrack() {
+    const wasPlaying = this.isMusicPlaying();
+    if (!wasPlaying && !this.musicEnabled) return;
+
+    this.stopBackgroundMusic();
+    this.currentTrackIndex = (this.currentTrackIndex + 1) % this.trackUrls.length;
+    
+    if (this.musicEnabled) {
+      this.playBackgroundMusic();
+    }
+  }
+
+  previousTrack() {
+    const wasPlaying = this.isMusicPlaying();
+    if (!wasPlaying && !this.musicEnabled) return;
+
+    this.stopBackgroundMusic();
+    this.currentTrackIndex = (this.currentTrackIndex - 1 + this.trackUrls.length) % this.trackUrls.length;
+    
+    if (this.musicEnabled) {
+      this.playBackgroundMusic();
+    }
+  }
+
+  toggleMute() {
+    this.musicEnabled = !this.musicEnabled;
+    if (!this.musicEnabled) {
+      this.stopBackgroundMusic();
+    } else {
+      this.playBackgroundMusic();
+    }
+    return this.musicEnabled;
+  }
 }
 
 export const soundManager = new SoundManager();

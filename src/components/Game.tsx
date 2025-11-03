@@ -4,7 +4,6 @@ import { GameUI } from "./GameUI";
 import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
-import { MusicSettings } from "./MusicSettings";
 import { toast } from "sonner";
 import { Maximize2, Minimize2 } from "lucide-react";
 import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion } from "@/types/game";
@@ -304,7 +303,14 @@ export const Game = () => {
 
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === "n" || e.key === "N") {
-        nextLevel();
+        soundManager.nextTrack();
+        toast.success("Next track");
+      } else if (e.key === "p" || e.key === "P") {
+        soundManager.previousTrack();
+        toast.success("Previous track");
+      } else if (e.key === "m" || e.key === "M") {
+        const enabled = soundManager.toggleMute();
+        toast.success(enabled ? "Music on" : "Music muted");
       }
     };
 
@@ -1308,8 +1314,6 @@ export const Game = () => {
             <>
               {/* Control buttons and stats above playable area */}
               <div className="flex gap-4 w-full max-w-[1200px] justify-between items-center mb-2">
-                <MusicSettings gameState={gameState} setGameState={setGameState} />
-
                 {/* Score, Level, Lives, Timer, Speed in horizontal row */}
                 <div className="flex gap-3 flex-1 justify-center">
                   {/* Score */}
