@@ -8,14 +8,19 @@ const powerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life",
 
 export const usePowerUps = (
   currentLevel: number,
-  setLives: React.Dispatch<React.SetStateAction<number>>
+  setLives: React.Dispatch<React.SetStateAction<number>>,
+  timer: number = 0
 ) => {
   const [powerUps, setPowerUps] = useState<PowerUp[]>([]);
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
   const fireballTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const createPowerUp = useCallback((brick: Brick): PowerUp | null => {
-    if (Math.random() > POWERUP_DROP_CHANCE) return null;
+    // Increase drop chance by 5% every 30 seconds
+    const timeBonus = Math.floor(timer / 30) * 0.05;
+    const adjustedDropChance = Math.min(0.5, POWERUP_DROP_CHANCE + timeBonus); // Cap at 50%
+    
+    if (Math.random() > adjustedDropChance) return null;
 
     let availableTypes = [...powerUpTypes];
     
@@ -36,7 +41,7 @@ export const usePowerUps = (
       speed: POWERUP_FALL_SPEED,
       active: true,
     };
-  }, [currentLevel, extraLifeUsedLevels]);
+  }, [currentLevel, extraLifeUsedLevels, timer]);
 
   const updatePowerUps = useCallback(() => {
     setPowerUps(prev => 

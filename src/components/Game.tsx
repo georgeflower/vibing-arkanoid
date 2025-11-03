@@ -64,7 +64,7 @@ export const Game = () => {
 
   const { highScores, isHighScore, addHighScore } = useHighScores();
 
-  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives);
+  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives, timer);
   const { bullets, setBullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks, enemies);
 
   const initBricksForLevel = useCallback((currentLevel: number) => {
@@ -714,18 +714,29 @@ export const Game = () => {
     );
 
     // Check ball-enemy collisions and destroy enemies immediately
+    const hitEnemiesThisFrame = new Set<number>(); // Track which enemies were hit this frame
     setBalls((prevBalls) => {
       let ballsUpdated = false;
       const newBalls = prevBalls.map((ball) => {
         if (ball.waitingToLaunch) return ball;
 
         for (const enemy of enemies) {
+          // Skip if this enemy was already hit this frame
+          if (hitEnemiesThisFrame.has(enemy.id || -1)) {
+            continue;
+          }
+          
           if (
             ball.x + ball.radius > enemy.x &&
             ball.x - ball.radius < enemy.x + enemy.width &&
             ball.y + ball.radius > enemy.y &&
             ball.y - ball.radius < enemy.y + enemy.height
           ) {
+            // Mark this enemy as hit in this frame
+            if (enemy.id !== undefined) {
+              hitEnemiesThisFrame.add(enemy.id);
+            }
+            
             // Change ball trajectory immediately
             const ballCenterX = ball.x;
             const ballCenterY = ball.y;
@@ -1132,7 +1143,7 @@ export const Game = () => {
       const spawnInterval = Math.max(15, 30 - (level - 1) * 5);
 
       if (timer - lastEnemySpawnTime >= spawnInterval) {
-        const speedIncrease = 1 + enemySpawnCount * 0.3; // 30% faster each spawn
+        const speedIncrease = Math.min(2.0, 1 + enemySpawnCount * 0.3); // 30% faster each spawn, capped at 200%
         const enemyId = nextEnemyId.current++;
 
         // Determine enemy type - sphere from level 3+, pyramid from level 6+

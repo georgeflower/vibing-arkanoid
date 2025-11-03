@@ -347,7 +347,7 @@ class SoundManager {
   }
 
   playShrinkSound() {
-    const audio = new Audio('/shrink.mp3');
+    const audio = new Audio('/smaller.mp3');
     audio.volume = 0.5;
     audio.play().catch(err => console.log('Shrink sound failed:', err));
   }
