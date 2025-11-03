@@ -264,22 +264,74 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         }
       });
 
-      // Draw power-ups
+      // Draw power-ups as 3D spinning cubes with rounded corners
       powerUps.forEach((powerUp) => {
         if (!powerUp.active) return;
 
         const img = loadedImagesRef.current[powerUp.type];
-        if (img && img.complete) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "hsl(280, 60%, 55%)";
-          ctx.drawImage(img, powerUp.x, powerUp.y, powerUp.width, powerUp.height);
-        } else {
-          // Fallback to colored square while image loads
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "hsl(280, 60%, 55%)";
-          ctx.fillStyle = "hsl(280, 60%, 55%)";
-          ctx.fillRect(powerUp.x, powerUp.y, powerUp.width, powerUp.height);
+        const size = powerUp.width; // Square power-up
+        const depth = 10; // 3D depth
+        const cornerRadius = 4;
+        
+        // Calculate rotation based on y position for spinning effect
+        const rotation = (powerUp.y * 2) % 360;
+        const rotationRad = (rotation * Math.PI) / 180;
+        
+        ctx.save();
+        ctx.translate(powerUp.x + size / 2, powerUp.y + size / 2);
+        
+        // Calculate 3D projection
+        const cos = Math.cos(rotationRad);
+        const sin = Math.sin(rotationRad);
+        
+        // Draw back face (darker grey)
+        ctx.fillStyle = "hsl(0, 0%, 35%)";
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+        ctx.beginPath();
+        ctx.roundRect(-size / 2 + sin * depth, -size / 2, size, size, cornerRadius);
+        ctx.fill();
+        
+        // Draw side face (medium grey) - only visible when rotated
+        if (sin > 0) {
+          ctx.fillStyle = "hsl(0, 0%, 50%)";
+          ctx.shadowBlur = 0;
+          ctx.beginPath();
+          ctx.moveTo(-size / 2, -size / 2);
+          ctx.lineTo(-size / 2 + sin * depth, -size / 2);
+          ctx.lineTo(-size / 2 + sin * depth, size / 2);
+          ctx.lineTo(-size / 2, size / 2);
+          ctx.closePath();
+          ctx.fill();
         }
+        
+        // Draw front face (light grey with rounded corners)
+        ctx.fillStyle = "hsl(0, 0%, 70%)";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "hsl(280, 60%, 55%)";
+        ctx.beginPath();
+        ctx.roundRect(-size / 2, -size / 2, size, size, cornerRadius);
+        ctx.fill();
+        
+        // Draw the icon on the front face
+        if (img && img.complete) {
+          ctx.shadowBlur = 0;
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(-size / 2, -size / 2, size, size, cornerRadius);
+          ctx.clip();
+          ctx.drawImage(img, -size / 2, -size / 2, size, size);
+          ctx.restore();
+        }
+        
+        // Add subtle highlight for 3D effect
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+        ctx.beginPath();
+        ctx.roundRect(-size / 2, -size / 2, size, size / 3, [cornerRadius, cornerRadius, 0, 0]);
+        ctx.fill();
+        
+        ctx.restore();
       });
 
       // Draw bullets
