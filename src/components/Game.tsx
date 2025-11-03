@@ -383,24 +383,68 @@ export const Game = () => {
                 // Set hit cooldown
                 newBall.lastHitTime = now;
 
+                // Calculate which side was hit by checking penetration depth
+                const leftPenetration = (newBall.x + newBall.radius) - brick.x;
+                const rightPenetration = (brick.x + brick.width) - (newBall.x - newBall.radius);
+                const topPenetration = (newBall.y + newBall.radius) - brick.y;
+                const bottomPenetration = (brick.y + brick.height) - (newBall.y - newBall.radius);
+                
+                const minHorizontal = Math.min(leftPenetration, rightPenetration);
+                const minVertical = Math.min(topPenetration, bottomPenetration);
+                
+                // Determine collision side and move ball out
+                const hitFromSide = minHorizontal < minVertical;
+
                 // Indestructible bricks - just bounce off
                 if (brick.isIndestructible) {
-                  newBall.dy = -newBall.dy;
+                  if (hitFromSide) {
+                    newBall.dx = -newBall.dx;
+                    // Move ball out horizontally
+                    if (leftPenetration < rightPenetration) {
+                      newBall.x = brick.x - newBall.radius - 1;
+                    } else {
+                      newBall.x = brick.x + brick.width + newBall.radius + 1;
+                    }
+                  } else {
+                    newBall.dy = -newBall.dy;
+                    // Move ball out vertically
+                    if (topPenetration < bottomPenetration) {
+                      newBall.y = brick.y - newBall.radius - 1;
+                    } else {
+                      newBall.y = brick.y + brick.height + newBall.radius + 1;
+                    }
+                  }
                   // Add slight random angle variation (±1 degree) to horizontal direction
-                  const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180); // ±1 degree in radians
+                  const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180);
                   const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-                  newBall.dx += speed * Math.sin(angleVariation) * 0.1; // Small adjustment
+                  newBall.dx += speed * Math.sin(angleVariation) * 0.1;
                   soundManager.playBounce();
                   return brick;
                 }
 
                 // Only bounce if not fireball
                 if (!newBall.isFireball) {
-                  newBall.dy = -newBall.dy;
+                  if (hitFromSide) {
+                    newBall.dx = -newBall.dx;
+                    // Move ball out horizontally
+                    if (leftPenetration < rightPenetration) {
+                      newBall.x = brick.x - newBall.radius - 1;
+                    } else {
+                      newBall.x = brick.x + brick.width + newBall.radius + 1;
+                    }
+                  } else {
+                    newBall.dy = -newBall.dy;
+                    // Move ball out vertically
+                    if (topPenetration < bottomPenetration) {
+                      newBall.y = brick.y - newBall.radius - 1;
+                    } else {
+                      newBall.y = brick.y + brick.height + newBall.radius + 1;
+                    }
+                  }
                   // Add slight random angle variation (±1 degree) to horizontal direction
-                  const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180); // ±1 degree in radians
+                  const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180);
                   const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-                  newBall.dx += speed * Math.sin(angleVariation) * 0.1; // Small adjustment
+                  newBall.dx += speed * Math.sin(angleVariation) * 0.1;
                 }
 
                 soundManager.playBrickHit();
