@@ -1212,7 +1212,7 @@ export const Game = () => {
               <div className="flex gap-4 w-full max-w-[1200px] justify-between items-center mb-2">
                 <MusicSettings gameState={gameState} setGameState={setGameState} />
                 
-                {/* Score, Level, Lives in horizontal row */}
+                {/* Score, Level, Lives, Timer, Speed in horizontal row */}
                 <div className="flex gap-3 flex-1 justify-center">
                   {/* Score */}
                   <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[100px]">
@@ -1243,6 +1243,26 @@ export const Game = () => {
                       {lives}
                     </div>
                   </div>
+
+                  {/* Timer */}
+                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[80px]">
+                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: 'hsl(210, 60%, 55%)' }}>
+                      TIMER
+                    </div>
+                    <div className="text-base retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
+                      {timer}s
+                    </div>
+                  </div>
+
+                  {/* Speed */}
+                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[80px]">
+                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: 'hsl(120, 50%, 50%)' }}>
+                      SPEED
+                    </div>
+                    <div className="text-base retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
+                      {Math.round(speedMultiplier * 100)}%
+                    </div>
+                  </div>
                 </div>
                 
                 <button
@@ -1258,49 +1278,24 @@ export const Game = () => {
                 </button>
               </div>
 
-              <div className={`flex gap-6 items-center justify-center ${isFullscreen ? 'w-full' : ''}`}>
-                <div className={`game-glow rounded-lg overflow-hidden ${isFullscreen ? 'game-canvas-wrapper' : ''}`}>
-                  <GameCanvas
-                    ref={canvasRef}
-                    width={CANVAS_WIDTH}
-                    height={CANVAS_HEIGHT}
-                    bricks={bricks}
-                    balls={balls}
-                    paddle={paddle}
-                    gameState={gameState}
-                    powerUps={powerUps}
-                    bullets={bullets}
-                    enemy={enemies}
-                    bombs={bombs}
-                    level={level}
-                    backgroundPhase={backgroundPhase}
-                    explosions={explosions}
-                    launchAngle={launchAngle}
-                  />
-                </div>
-
-                {/* Timer and Speed on the right */}
-                <div className="flex flex-col gap-3">
-                  {/* Timer */}
-                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[100px]">
-                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: 'hsl(210, 60%, 55%)' }}>
-                      TIMER
-                    </div>
-                    <div className="text-base retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
-                      {timer}s
-                    </div>
-                  </div>
-
-                  {/* Speed */}
-                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[100px]">
-                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: 'hsl(120, 50%, 50%)' }}>
-                      SPEED
-                    </div>
-                    <div className="text-base retro-pixel-text text-center" style={{ color: 'hsl(0, 0%, 85%)' }}>
-                      {Math.round(speedMultiplier * 100)}%
-                    </div>
-                  </div>
-                </div>
+              <div className={`game-glow rounded-lg overflow-hidden ${isFullscreen ? 'game-canvas-wrapper' : ''}`}>
+                <GameCanvas
+                  ref={canvasRef}
+                  width={CANVAS_WIDTH}
+                  height={CANVAS_HEIGHT}
+                  bricks={bricks}
+                  balls={balls}
+                  paddle={paddle}
+                  gameState={gameState}
+                  powerUps={powerUps}
+                  bullets={bullets}
+                  enemy={enemies}
+                  bombs={bombs}
+                  level={level}
+                  backgroundPhase={backgroundPhase}
+                  explosions={explosions}
+                  launchAngle={launchAngle}
+                />
               </div>
 
           <div className="flex gap-4">
