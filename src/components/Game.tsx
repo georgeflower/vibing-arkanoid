@@ -335,6 +335,18 @@ export const Game = () => {
   const checkCollision = useCallback(() => {
     if (!paddle || balls.length === 0) return;
 
+    // Helper to add random angle variation (±2 degrees)
+    const addAngleVariation = (dx: number, dy: number) => {
+      const angle = Math.atan2(dy, dx);
+      const speed = Math.sqrt(dx * dx + dy * dy);
+      const variation = (Math.random() - 0.5) * (4 * Math.PI / 180); // ±2 degrees
+      const newAngle = angle + variation;
+      return {
+        dx: speed * Math.cos(newAngle),
+        dy: speed * Math.sin(newAngle),
+      };
+    };
+
     setBalls((prevBalls) => {
       let updatedBalls = prevBalls
         .map((ball) => {
@@ -343,9 +355,15 @@ export const Game = () => {
           // Wall collision
           if (newBall.x + newBall.dx > CANVAS_WIDTH - newBall.radius || newBall.x + newBall.dx < newBall.radius) {
             newBall.dx = -newBall.dx;
+            const varied = addAngleVariation(newBall.dx, newBall.dy);
+            newBall.dx = varied.dx;
+            newBall.dy = varied.dy;
           }
           if (newBall.y + newBall.dy < newBall.radius) {
             newBall.dy = -newBall.dy;
+            const varied = addAngleVariation(newBall.dx, newBall.dy);
+            newBall.dx = varied.dx;
+            newBall.dy = varied.dy;
           }
 
           // Paddle collision
@@ -362,6 +380,11 @@ export const Game = () => {
             const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
             newBall.dx = speed * Math.sin(angle);
             newBall.dy = -speed * Math.cos(angle);
+            
+            // Add random variation
+            const varied = addAngleVariation(newBall.dx, newBall.dy);
+            newBall.dx = varied.dx;
+            newBall.dy = varied.dy;
           }
 
           // Bottom collision (lose life)
@@ -489,10 +512,10 @@ export const Game = () => {
                       newBall.y = brick.y + brick.height + newBall.radius + 1;
                     }
                   }
-                  // Add slight random angle variation (±1 degree) to horizontal direction
-                  const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180);
-                  const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-                  newBall.dx += speed * Math.sin(angleVariation) * 0.1;
+                  // Add random angle variation
+                  const varied = addAngleVariation(newBall.dx, newBall.dy);
+                  newBall.dx = varied.dx;
+                  newBall.dy = varied.dy;
                   soundManager.playBounce();
                   return brick;
                 }
@@ -516,10 +539,10 @@ export const Game = () => {
                       newBall.y = brick.y + brick.height + newBall.radius + 1;
                     }
                   }
-                  // Add slight random angle variation (±1 degree) to horizontal direction
-                  const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180);
-                  const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-                  newBall.dx += speed * Math.sin(angleVariation) * 0.1;
+                  // Add random angle variation
+                  const varied = addAngleVariation(newBall.dx, newBall.dy);
+                  newBall.dx = varied.dx;
+                  newBall.dy = varied.dy;
                 }
 
                 soundManager.playBrickHit();
