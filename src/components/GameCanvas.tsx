@@ -67,8 +67,6 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           // Indestructible bricks - steel appearance
           if (brick.isIndestructible) {
             // Steel base color
-            ctx.shadowBlur = 6;
-            ctx.shadowColor = '#666666';
             ctx.fillStyle = '#555555';
             ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
             
@@ -109,9 +107,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
               ctx.stroke();
             }
           } else {
-            // Normal brick - Base brick color with glow
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = brick.color;
+            // Normal brick - Base brick color
             ctx.fillStyle = brick.color;
             ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
             
