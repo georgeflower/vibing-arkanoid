@@ -81,11 +81,18 @@ export const Game = () => {
           const hasPowerUp = isIndestructible ? false : Math.random() < POWERUP_DROP_CHANCE;
           const maxHits = isIndestructible ? 1 : getBrickHits(currentLevel, row);
           const baseColor = isIndestructible ? "#333333" : levelColors[row % levelColors.length];
+          
+          // Indestructible bricks are bigger (no padding), so they take up the space including padding
+          const brickWidth = isIndestructible ? BRICK_WIDTH + BRICK_PADDING * 2 : BRICK_WIDTH;
+          const brickHeight = isIndestructible ? BRICK_HEIGHT + BRICK_PADDING * 2 : BRICK_HEIGHT;
+          const xPos = col * (BRICK_WIDTH + BRICK_PADDING) + BRICK_OFFSET_LEFT - (isIndestructible ? BRICK_PADDING : 0);
+          const yPos = row * (BRICK_HEIGHT + BRICK_PADDING) + BRICK_OFFSET_TOP - (isIndestructible ? BRICK_PADDING : 0);
+          
           newBricks.push({
-            x: col * (BRICK_WIDTH + BRICK_PADDING) + BRICK_OFFSET_LEFT,
-            y: row * (BRICK_HEIGHT + BRICK_PADDING) + BRICK_OFFSET_TOP,
-            width: BRICK_WIDTH,
-            height: BRICK_HEIGHT,
+            x: xPos,
+            y: yPos,
+            width: brickWidth,
+            height: brickHeight,
             color: baseColor,
             visible: true,
             points: isIndestructible ? 0 : (BRICK_ROWS - row) * 10 * maxHits,
