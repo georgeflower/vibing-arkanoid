@@ -380,6 +380,72 @@ export const Game = () => {
               return prevBricks;
             }
 
+            // First check for padding collisions between indestructible bricks
+            const indestructibleBricks = prevBricks.filter(b => b.isIndestructible && b.visible);
+            for (const brick of indestructibleBricks) {
+              // Check for adjacent indestructible bricks and create invisible walls in padding
+              const rightNeighbor = indestructibleBricks.find(
+                b => b.x === brick.x + brick.width + BRICK_PADDING && 
+                     Math.abs(b.y - brick.y) < 1
+              );
+              const bottomNeighbor = indestructibleBricks.find(
+                b => b.y === brick.y + brick.height + BRICK_PADDING && 
+                     Math.abs(b.x - brick.x) < 1
+              );
+
+              // Check horizontal padding (between brick and right neighbor)
+              if (rightNeighbor) {
+                const paddingLeft = brick.x + brick.width;
+                const paddingRight = rightNeighbor.x;
+                const paddingTop = brick.y;
+                const paddingBottom = brick.y + brick.height;
+
+                if (
+                  newBall.x + newBall.radius > paddingLeft &&
+                  newBall.x - newBall.radius < paddingRight &&
+                  newBall.y + newBall.radius > paddingTop &&
+                  newBall.y - newBall.radius < paddingBottom
+                ) {
+                  // Ball is in horizontal padding - bounce horizontally
+                  newBall.dx = -newBall.dx;
+                  if (newBall.x < paddingLeft + BRICK_PADDING / 2) {
+                    newBall.x = paddingLeft - newBall.radius - 1;
+                  } else {
+                    newBall.x = paddingRight + newBall.radius + 1;
+                  }
+                  newBall.lastHitTime = now;
+                  soundManager.playBounce();
+                  return prevBricks;
+                }
+              }
+
+              // Check vertical padding (between brick and bottom neighbor)
+              if (bottomNeighbor) {
+                const paddingTop = brick.y + brick.height;
+                const paddingBottom = bottomNeighbor.y;
+                const paddingLeft = brick.x;
+                const paddingRight = brick.x + brick.width;
+
+                if (
+                  newBall.x + newBall.radius > paddingLeft &&
+                  newBall.x - newBall.radius < paddingRight &&
+                  newBall.y + newBall.radius > paddingTop &&
+                  newBall.y - newBall.radius < paddingBottom
+                ) {
+                  // Ball is in vertical padding - bounce vertically
+                  newBall.dy = -newBall.dy;
+                  if (newBall.y < paddingTop + BRICK_PADDING / 2) {
+                    newBall.y = paddingTop - newBall.radius - 1;
+                  } else {
+                    newBall.y = paddingBottom + newBall.radius + 1;
+                  }
+                  newBall.lastHitTime = now;
+                  soundManager.playBounce();
+                  return prevBricks;
+                }
+              }
+            }
+
             const newBricks = prevBricks.map((brick) => {
               if (
                 !brickHit &&
