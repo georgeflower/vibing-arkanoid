@@ -61,6 +61,7 @@ export const Game = () => {
   const bombIntervalsRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
   const launchAngleIntervalRef = useRef<NodeJS.Timeout>();
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
+  const timerStartedRef = useRef(false);
 
   const { highScores, isHighScore, addHighScore } = useHighScores();
 
@@ -145,6 +146,7 @@ export const Game = () => {
     setGameState("ready");
     setPowerUps([]);
     setTimer(0);
+    timerStartedRef.current = false;
     setEnemies([]);
     setBombs([]);
     setBackgroundPhase(0);
@@ -165,6 +167,7 @@ export const Game = () => {
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
     }
+    timerStartedRef.current = false;
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
 
@@ -281,6 +284,18 @@ export const Game = () => {
     if (waitingBall) {
       // Launch ball in the direction of the current angle
       setShowInstructions(false);
+      
+      // Start timer on first ball launch
+      if (!timerStartedRef.current) {
+        timerStartedRef.current = true;
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+        }
+        timerIntervalRef.current = setInterval(() => {
+          setTimer((prev) => prev + 1);
+        }, 1000);
+      }
+      
       setBalls((prev) =>
         prev.map((ball) => {
           if (ball.waitingToLaunch) {
@@ -1109,20 +1124,13 @@ export const Game = () => {
     };
   }, [gameState, gameLoop]);
 
-  // Separate useEffect for timer management
+  // Separate useEffect for timer management - only clear when not playing
   useEffect(() => {
-    if (gameState === "playing") {
-      // Start timer
+    if (gameState !== "playing") {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
       }
-      timerIntervalRef.current = setInterval(() => {
-        setTimer((prev) => prev + 1);
-      }, 1000);
-    } else {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
+      timerStartedRef.current = false;
       bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
       bombIntervalsRef.current.clear();
     }
