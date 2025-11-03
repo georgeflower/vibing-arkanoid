@@ -33,14 +33,6 @@ class SoundManager {
       }
     });
 
-    // Always pick a different track from the current one
-    let newTrackIndex;
-    do {
-      newTrackIndex = Math.floor(Math.random() * this.trackUrls.length);
-    } while (newTrackIndex === this.currentTrackIndex && this.trackUrls.length > 1);
-    
-    this.currentTrackIndex = newTrackIndex;
-
     // Initialize track if not already loaded
     if (!this.musicTracks[this.currentTrackIndex]) {
       const audio = new Audio(this.trackUrls[this.currentTrackIndex]);
@@ -54,18 +46,18 @@ class SoundManager {
   }
 
   private handleTrackEnd() {
-    // Pick a random track (ensure it's different from current track)
-    let newTrackIndex;
-    do {
-      newTrackIndex = Math.floor(Math.random() * this.trackUrls.length);
-    } while (newTrackIndex === this.currentTrackIndex && this.trackUrls.length > 1);
-    
-    this.currentTrackIndex = newTrackIndex;
+    // Move to next track in sequence
+    this.currentTrackIndex = (this.currentTrackIndex + 1) % this.trackUrls.length;
     
     // Play next song immediately if music is enabled
     if (this.musicEnabled) {
       this.playBackgroundMusic();
     }
+  }
+
+  initializeRandomTrack() {
+    // Only used at game start to pick random first track
+    this.currentTrackIndex = Math.floor(Math.random() * this.trackUrls.length);
   }
 
   pauseBackgroundMusic() {
@@ -365,9 +357,6 @@ class SoundManager {
   }
 
   nextTrack() {
-    const wasPlaying = this.isMusicPlaying();
-    if (!wasPlaying && !this.musicEnabled) return;
-
     this.stopBackgroundMusic();
     this.currentTrackIndex = (this.currentTrackIndex + 1) % this.trackUrls.length;
     
@@ -377,9 +366,6 @@ class SoundManager {
   }
 
   previousTrack() {
-    const wasPlaying = this.isMusicPlaying();
-    if (!wasPlaying && !this.musicEnabled) return;
-
     this.stopBackgroundMusic();
     this.currentTrackIndex = (this.currentTrackIndex - 1 + this.trackUrls.length) % this.trackUrls.length;
     
@@ -391,7 +377,7 @@ class SoundManager {
   toggleMute() {
     this.musicEnabled = !this.musicEnabled;
     if (!this.musicEnabled) {
-      this.stopBackgroundMusic();
+      this.pauseBackgroundMusic();
     } else {
       this.playBackgroundMusic();
     }

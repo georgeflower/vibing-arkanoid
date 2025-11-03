@@ -259,6 +259,7 @@ export const Game = () => {
         // Start game - start music only if not already playing
         setGameState("playing");
         if (!soundManager.isMusicPlaying()) {
+          soundManager.initializeRandomTrack();
           soundManager.playBackgroundMusic(level);
         }
         toast.success("Click again to launch!");
