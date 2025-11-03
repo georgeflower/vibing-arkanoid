@@ -1368,7 +1368,7 @@ export const Game = () => {
   return (
     <div
       ref={fullscreenContainerRef}
-      className={`flex flex-col items-center justify-center gap-6 p-4 ${
+      className={`flex items-center justify-center p-4 ${
         isFullscreen ? "min-h-screen bg-background" : "min-h-screen"
       }`}
     >
@@ -1376,144 +1376,136 @@ export const Game = () => {
         <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} />
       ) : (
         <>
-          <h1
-            className="text-4xl retro-pixel-text tracking-wider"
-            style={{
-              color: "hsl(0, 0%, 85%)",
-              textShadow: "3px 3px 0px hsl(0, 0%, 30%), 0 0 20px hsl(210, 60%, 55%, 0.3)",
-            }}
-          >
-            VIBING ARKANOID
-          </h1>
-
           {showHighScoreEntry ? (
             <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} />
           ) : (
-            <>
-              {/* Control buttons and stats above playable area */}
-              <div className="flex gap-4 w-full max-w-[1200px] justify-between items-center mb-2">
-                {/* Score, Level, Lives, Timer, Speed in horizontal row */}
-                <div className="flex gap-3 flex-1 justify-center">
+            <div className="metal-frame">
+              {/* Title Bar */}
+              <div className="metal-title-bar">
+                <h1 className="text-3xl retro-pixel-text tracking-widest text-center" style={{ color: "hsl(0, 0%, 95%)", textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}>
+                  VIBING ARKANOID
+                </h1>
+              </div>
+
+              {/* Stats Bar */}
+              <div className="metal-stats-bar">
+                <div className="stats-container">
                   {/* Score */}
-                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[100px]">
-                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: "hsl(0, 0%, 60%)" }}>
-                      SCORE
-                    </div>
-                    <div className="text-base retro-pixel-text text-center" style={{ color: "hsl(0, 0%, 85%)" }}>
-                      {score.toString().padStart(6, "0")}
-                    </div>
+                  <div className="stat-box">
+                    <div className="stat-label" style={{ color: "hsl(180, 70%, 60%)" }}>SCORE</div>
+                    <div className="stat-value">{score.toString().padStart(6, "0")}</div>
                   </div>
 
                   {/* Level */}
-                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[80px]">
-                    <div
-                      className="text-[8px] retro-pixel-text mb-1 text-center"
-                      style={{ color: "hsl(30, 75%, 55%)" }}
-                    >
-                      LEVEL
-                    </div>
-                    <div className="text-base retro-pixel-text text-center" style={{ color: "hsl(0, 0%, 85%)" }}>
-                      {level.toString().padStart(2, "0")}
-                    </div>
+                  <div className="stat-box">
+                    <div className="stat-label" style={{ color: "hsl(30, 75%, 55%)" }}>LEVEL</div>
+                    <div className="stat-value">{level.toString().padStart(2, "0")}</div>
                   </div>
 
                   {/* Lives */}
-                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[80px]">
-                    <div className="text-[8px] retro-pixel-text mb-1 text-center" style={{ color: "hsl(0, 70%, 55%)" }}>
-                      LIVES
-                    </div>
-                    <div className="text-base retro-pixel-text text-center" style={{ color: "hsl(0, 0%, 85%)" }}>
-                      {lives}
-                    </div>
+                  <div className="stat-box">
+                    <div className="stat-label" style={{ color: "hsl(0, 70%, 55%)" }}>LIVES</div>
+                    <div className="stat-value">{lives}</div>
                   </div>
 
                   {/* Timer */}
-                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[80px]">
-                    <div
-                      className="text-[8px] retro-pixel-text mb-1 text-center"
-                      style={{ color: "hsl(210, 60%, 55%)" }}
-                    >
-                      TIMER
-                    </div>
-                    <div className="text-base retro-pixel-text text-center" style={{ color: "hsl(0, 0%, 85%)" }}>
-                      {timer}s
-                    </div>
+                  <div className="stat-box">
+                    <div className="stat-label" style={{ color: "hsl(210, 60%, 55%)" }}>TIMER</div>
+                    <div className="stat-value">{timer}s</div>
                   </div>
 
                   {/* Speed */}
-                  <div className="bg-transparent border border-border/30 rounded-lg px-3 py-2 min-w-[80px]">
-                    <div
-                      className="text-[8px] retro-pixel-text mb-1 text-center"
-                      style={{ color: "hsl(120, 50%, 50%)" }}
-                    >
-                      SPEED
-                    </div>
-                    <div className="text-base retro-pixel-text text-center" style={{ color: "hsl(0, 0%, 85%)" }}>
-                      {Math.round(speedMultiplier * 100)}%
-                    </div>
+                  <div className="stat-box">
+                    <div className="stat-label" style={{ color: "hsl(120, 50%, 50%)" }}>SPEED</div>
+                    <div className="stat-value">{Math.round(speedMultiplier * 100)}%</div>
                   </div>
                 </div>
 
                 <button
                   onClick={toggleFullscreen}
-                  className="amiga-box px-3 py-2 hover:bg-muted/50 transition-colors flex items-center gap-2"
+                  className="fullscreen-btn"
                   title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
                 >
-                  {isFullscreen ? (
-                    <Minimize2 size={16} style={{ color: "hsl(0, 0%, 85%)" }} />
-                  ) : (
-                    <Maximize2 size={16} style={{ color: "hsl(0, 0%, 85%)" }} />
-                  )}
+                  {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                 </button>
               </div>
 
-              <div className={`game-glow rounded-lg overflow-hidden ${isFullscreen ? "game-canvas-wrapper" : ""}`}>
-                <GameCanvas
-                  ref={canvasRef}
-                  width={CANVAS_WIDTH}
-                  height={CANVAS_HEIGHT}
-                  bricks={bricks}
-                  balls={balls}
-                  paddle={paddle}
-                  gameState={gameState}
-                  powerUps={powerUps}
-                  bullets={bullets}
-                  enemy={enemies}
-                  bombs={bombs}
-                  level={level}
-                  backgroundPhase={backgroundPhase}
-                  explosions={explosions}
-                  launchAngle={launchAngle}
-                />
+              {/* Main Content with Side Panels */}
+              <div className="metal-main-content">
+                {/* Left Panel */}
+                <div className="metal-side-panel metal-side-panel-left">
+                  <div className="panel-decoration"></div>
+                  <div className="panel-decoration"></div>
+                  <div className="panel-decoration"></div>
+                </div>
+
+                {/* Game Canvas */}
+                <div className="metal-game-area">
+                  <div className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}>
+                    <GameCanvas
+                      ref={canvasRef}
+                      width={CANVAS_WIDTH}
+                      height={CANVAS_HEIGHT}
+                      bricks={bricks}
+                      balls={balls}
+                      paddle={paddle}
+                      gameState={gameState}
+                      powerUps={powerUps}
+                      bullets={bullets}
+                      enemy={enemies}
+                      bombs={bombs}
+                      level={level}
+                      backgroundPhase={backgroundPhase}
+                      explosions={explosions}
+                      launchAngle={launchAngle}
+                    />
+                  </div>
+                </div>
+
+                {/* Right Panel */}
+                <div className="metal-side-panel metal-side-panel-right">
+                  <div className="panel-decoration"></div>
+                  <div className="panel-decoration"></div>
+                  <div className="panel-decoration"></div>
+                </div>
               </div>
 
-              <div className="flex gap-4">
-                {gameState === "ready" && (
-                  <button
-                    onClick={handleStart}
-                    className="amiga-box px-8 py-3 retro-pixel-text hover:bg-muted/50 transition-all text-sm"
-                    style={{ color: "hsl(0, 0%, 85%)" }}
-                  >
-                    {bricks.every((brick) => !brick.visible) && level > 0 ? "NEXT LEVEL" : "START GAME"}
-                  </button>
-                )}
-                {(gameState === "gameOver" || gameState === "won") && (
-                  <button
-                    onClick={handleRestart}
-                    className="amiga-box px-8 py-3 retro-pixel-text hover:bg-muted/50 transition-all text-sm"
-                    style={{ color: "hsl(0, 0%, 85%)" }}
-                  >
-                    PLAY AGAIN
-                  </button>
-                )}
+              {/* Bottom Controls */}
+              <div className="metal-bottom-bar">
+                <div className="flex gap-4 justify-center items-center">
+                  {gameState === "ready" && (
+                    <button
+                      onClick={handleStart}
+                      className="amiga-box px-8 py-3 retro-pixel-text hover:bg-muted/50 transition-all text-sm"
+                      style={{ color: "hsl(0, 0%, 85%)" }}
+                    >
+                      {bricks.every((brick) => !brick.visible) && level > 0 ? "NEXT LEVEL" : "START GAME"}
+                    </button>
+                  )}
+                  {(gameState === "gameOver" || gameState === "won") && (
+                    <button
+                      onClick={handleRestart}
+                      className="amiga-box px-8 py-3 retro-pixel-text hover:bg-muted/50 transition-all text-sm"
+                      style={{ color: "hsl(0, 0%, 85%)" }}
+                    >
+                      PLAY AGAIN
+                    </button>
+                  )}
+                  {gameState === "playing" && (
+                    <div className="retro-pixel-text text-xs" style={{ color: "hsl(0, 0%, 60%)" }}>
+                      Move your mouse or touch to control the paddle
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="retro-pixel-text text-xs" style={{ color: "hsl(0, 0%, 60%)" }}>
-                Move your mouse or touch to control the paddle
-              </div>
-
-              {!isFullscreen && highScores.length > 0 && <HighScoreTable scores={highScores} />}
-            </>
+              {/* High Score Table Below Frame */}
+              {!isFullscreen && highScores.length > 0 && (
+                <div className="mt-6">
+                  <HighScoreTable scores={highScores} />
+                </div>
+              )}
+            </div>
           )}
         </>
       )}
