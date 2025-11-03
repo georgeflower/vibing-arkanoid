@@ -76,11 +76,11 @@ export const useBullets = (
         if (bulletIndicesHit.has(bulletIdx) || bulletIndicesToBounce.has(bulletIdx) || bullet.isBounced) return;
         
         currentBricks.forEach((brick, brickIdx) => {
-          // Use actual brick dimensions (no expansion to cover padding)
-          const collisionX = brick.x;
-          const collisionY = brick.y;
-          const collisionWidth = brick.width;
-          const collisionHeight = brick.height;
+          // Expand collision box to cover padding gaps
+          const collisionX = brick.x - BRICK_PADDING / 2;
+          const collisionY = brick.y - BRICK_PADDING / 2;
+          const collisionWidth = brick.width + BRICK_PADDING;
+          const collisionHeight = brick.height + BRICK_PADDING;
           
           if (
             bulletIndicesHit.has(bulletIdx) ||
