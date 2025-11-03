@@ -363,9 +363,9 @@ export const Game = () => {
           setBricks((prevBricks) => {
             let brickHit = false;
 
-            // Check cooldown - prevent hitting multiple bricks too quickly
+            // Check cooldown - prevent hitting multiple bricks at the same time
             const now = Date.now();
-            if (newBall.lastHitTime && now - newBall.lastHitTime < 10) {
+            if (newBall.lastHitTime && now - newBall.lastHitTime < 50) {
               return prevBricks;
             }
 

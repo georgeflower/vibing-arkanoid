@@ -71,7 +71,20 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           if (brick.isIndestructible) {
             // Steel base color
             ctx.fillStyle = '#555555';
-            ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+            
+            // Draw hexagonal shape with 4px cut corners
+            const cornerSize = 4;
+            ctx.beginPath();
+            ctx.moveTo(brick.x + cornerSize, brick.y);
+            ctx.lineTo(brick.x + brick.width - cornerSize, brick.y);
+            ctx.lineTo(brick.x + brick.width, brick.y + cornerSize);
+            ctx.lineTo(brick.x + brick.width, brick.y + brick.height - cornerSize);
+            ctx.lineTo(brick.x + brick.width - cornerSize, brick.y + brick.height);
+            ctx.lineTo(brick.x + cornerSize, brick.y + brick.height);
+            ctx.lineTo(brick.x, brick.y + brick.height - cornerSize);
+            ctx.lineTo(brick.x, brick.y + cornerSize);
+            ctx.closePath();
+            ctx.fill();
             
             // Metallic highlight
             ctx.shadowBlur = 0;
@@ -112,7 +125,20 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           } else {
             // Normal brick - Base brick color
             ctx.fillStyle = brick.color;
-            ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+            
+            // Draw hexagonal shape with 4px cut corners
+            const cornerSize = 4;
+            ctx.beginPath();
+            ctx.moveTo(brick.x + cornerSize, brick.y);
+            ctx.lineTo(brick.x + brick.width - cornerSize, brick.y);
+            ctx.lineTo(brick.x + brick.width, brick.y + cornerSize);
+            ctx.lineTo(brick.x + brick.width, brick.y + brick.height - cornerSize);
+            ctx.lineTo(brick.x + brick.width - cornerSize, brick.y + brick.height);
+            ctx.lineTo(brick.x + cornerSize, brick.y + brick.height);
+            ctx.lineTo(brick.x, brick.y + brick.height - cornerSize);
+            ctx.lineTo(brick.x, brick.y + cornerSize);
+            ctx.closePath();
+            ctx.fill();
             
             // Top highlight
             ctx.shadowBlur = 0;
