@@ -397,38 +397,22 @@ export const Game = () => {
 
                 // Indestructible bricks - just bounce off
                 if (brick.isIndestructible) {
-                  // Calculate center of brick
-                  const brickCenterX = brick.x + brick.width / 2;
-                  const brickCenterY = brick.y + brick.height / 2;
-                  
-                  // Calculate angle from brick center to ball
-                  const dx = newBall.x - brickCenterX;
-                  const dy = newBall.y - brickCenterY;
-                  const distance = Math.sqrt(dx * dx + dy * dy);
-                  
-                  // Normalize direction and apply stronger bounce
+                  newBall.dy = -newBall.dy;
+                  // Add slight random angle variation (±1 degree) to horizontal direction
+                  const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180); // ±1 degree in radians
                   const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-                  newBall.dx = (dx / distance) * speed * 1.2;
-                  newBall.dy = (dy / distance) * speed * 1.2;
+                  newBall.dx += speed * Math.sin(angleVariation) * 0.1; // Small adjustment
                   soundManager.playBounce();
                   return brick;
                 }
 
                 // Only bounce if not fireball
                 if (!newBall.isFireball) {
-                  // Calculate center of brick
-                  const brickCenterX = brick.x + brick.width / 2;
-                  const brickCenterY = brick.y + brick.height / 2;
-                  
-                  // Calculate angle from brick center to ball
-                  const dx = newBall.x - brickCenterX;
-                  const dy = newBall.y - brickCenterY;
-                  const distance = Math.sqrt(dx * dx + dy * dy);
-                  
-                  // Normalize direction and apply stronger bounce
+                  newBall.dy = -newBall.dy;
+                  // Add slight random angle variation (±1 degree) to horizontal direction
+                  const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180); // ±1 degree in radians
                   const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-                  newBall.dx = (dx / distance) * speed * 1.2;
-                  newBall.dy = (dy / distance) * speed * 1.2;
+                  newBall.dx += speed * Math.sin(angleVariation) * 0.1; // Small adjustment
                 }
 
                 soundManager.playBrickHit();
