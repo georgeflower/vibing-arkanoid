@@ -125,7 +125,7 @@ export const Game = () => {
       rotation: 0,
     };
     setBalls([initialBall]);
-    setLaunchAngle(-60); // Start from left side
+    setLaunchAngle(-20); // Start from left side
     launchAngleDirectionRef.current = 1; // Move right initially
     setShowInstructions(true); // Show instructions for new game
 
@@ -190,7 +190,7 @@ export const Game = () => {
       waitingToLaunch: true,
     };
     setBalls([initialBall]);
-    setLaunchAngle(-60); // Start from left side
+    setLaunchAngle(-20); // Start from left side
     launchAngleDirectionRef.current = 1; // Move right initially
     setShowInstructions(true); // Show instructions for new level
 
@@ -381,16 +381,14 @@ export const Game = () => {
             }
 
             // First check for padding collisions between indestructible bricks
-            const indestructibleBricks = prevBricks.filter(b => b.isIndestructible && b.visible);
+            const indestructibleBricks = prevBricks.filter((b) => b.isIndestructible && b.visible);
             for (const brick of indestructibleBricks) {
               // Check for adjacent indestructible bricks and create invisible walls in padding
               const rightNeighbor = indestructibleBricks.find(
-                b => b.x === brick.x + brick.width + BRICK_PADDING && 
-                     Math.abs(b.y - brick.y) < 1
+                (b) => b.x === brick.x + brick.width + BRICK_PADDING && Math.abs(b.y - brick.y) < 1,
               );
               const bottomNeighbor = indestructibleBricks.find(
-                b => b.y === brick.y + brick.height + BRICK_PADDING && 
-                     Math.abs(b.x - brick.x) < 1
+                (b) => b.y === brick.y + brick.height + BRICK_PADDING && Math.abs(b.x - brick.x) < 1,
               );
 
               // Check horizontal padding (between brick and right neighbor)
@@ -461,14 +459,14 @@ export const Game = () => {
                 newBall.lastHitTime = now;
 
                 // Calculate which side was hit by checking penetration depth
-                const leftPenetration = (newBall.x + newBall.radius) - brick.x;
-                const rightPenetration = (brick.x + brick.width) - (newBall.x - newBall.radius);
-                const topPenetration = (newBall.y + newBall.radius) - brick.y;
-                const bottomPenetration = (brick.y + brick.height) - (newBall.y - newBall.radius);
-                
+                const leftPenetration = newBall.x + newBall.radius - brick.x;
+                const rightPenetration = brick.x + brick.width - (newBall.x - newBall.radius);
+                const topPenetration = newBall.y + newBall.radius - brick.y;
+                const bottomPenetration = brick.y + brick.height - (newBall.y - newBall.radius);
+
                 const minHorizontal = Math.min(leftPenetration, rightPenetration);
                 const minVertical = Math.min(topPenetration, bottomPenetration);
-                
+
                 // Determine collision side and move ball out
                 const hitFromSide = minHorizontal < minVertical;
 
