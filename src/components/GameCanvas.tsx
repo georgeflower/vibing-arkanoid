@@ -35,18 +35,19 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     
     // Load power-up images and paddle image
     useEffect(() => {
+      const cacheBuster = `?t=${Date.now()}`;
       Object.entries(powerUpImages).forEach(([type, src]) => {
         const img = new Image();
-        img.src = src;
+        img.src = src + cacheBuster;
         loadedImagesRef.current[type] = img;
       });
       
       const paddleImage = new Image();
-      paddleImage.src = paddleImg;
+      paddleImage.src = paddleImg + cacheBuster;
       paddleImageRef.current = paddleImage;
       
       const paddleTurretsImage = new Image();
-      paddleTurretsImage.src = paddleTurretsImg;
+      paddleTurretsImage.src = paddleTurretsImg + cacheBuster;
       paddleTurretsImageRef.current = paddleTurretsImage;
     }, []);
 
