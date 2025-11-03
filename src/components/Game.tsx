@@ -550,9 +550,11 @@ export const Game = () => {
                   }
                 }
 
-                // Increase ball speed slightly with each brick hit
-                newBall.dx *= 1.005;
-                newBall.dy *= 1.005;
+                // Increase ball speed slightly with each brick hit (but not for indestructible bricks)
+                if (!brick.isIndestructible) {
+                  newBall.dx *= 1.005;
+                  newBall.dy *= 1.005;
+                }
 
                 return updatedBrick;
               }
