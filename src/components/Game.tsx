@@ -363,9 +363,9 @@ export const Game = () => {
           setBricks((prevBricks) => {
             let brickHit = false;
 
-            // Check cooldown - prevent hitting multiple bricks at the same time
+            // Check cooldown - prevent hitting multiple bricks too quickly
             const now = Date.now();
-            if (newBall.lastHitTime && now - newBall.lastHitTime < 50) {
+            if (newBall.lastHitTime && now - newBall.lastHitTime < 10) {
               return prevBricks;
             }
 
@@ -382,13 +382,6 @@ export const Game = () => {
 
                 // Set hit cooldown
                 newBall.lastHitTime = now;
-
-                // Move ball 3 pixels in opposite direction
-                const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-                const normalizedDx = newBall.dx / speed;
-                const normalizedDy = newBall.dy / speed;
-                newBall.x -= normalizedDx * 3;
-                newBall.y -= normalizedDy * 3;
 
                 // Indestructible bricks - just bounce off
                 if (brick.isIndestructible) {
