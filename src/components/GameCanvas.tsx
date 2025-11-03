@@ -64,6 +64,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       // Draw bricks with 16-bit Turrican 2 style texture
       bricks.forEach((brick) => {
         if (brick.visible) {
+          // Reset shadow to prevent bleeding from other elements
+          ctx.shadowBlur = 0;
+          
           // Indestructible bricks - steel appearance
           if (brick.isIndestructible) {
             // Steel base color
