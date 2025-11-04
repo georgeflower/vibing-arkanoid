@@ -141,6 +141,10 @@ class SoundManager {
   playIntroMusic() {
     if (!this.musicEnabled) return;
     
+    // Stop all other music first
+    this.stopBackgroundMusic();
+    this.stopHighScoreMusic();
+    
     if (!this.introMusic) {
       this.introMusic = new Audio('/sound_2.mp3');
       this.introMusic.loop = true;
