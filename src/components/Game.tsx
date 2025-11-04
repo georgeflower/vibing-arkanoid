@@ -422,9 +422,18 @@ export const Game = () => {
       if (e.key === "n" || e.key === "N") {
         soundManager.nextTrack();
         toast.success("Next track");
-      } else if (e.key === "p" || e.key === "P") {
+      } else if (e.key === "b" || e.key === "B") {
         soundManager.previousTrack();
         toast.success("Previous track");
+      } else if (e.key === "p" || e.key === "P") {
+        // Toggle pause
+        if (gameState === "playing") {
+          setGameState("paused");
+          toast.success("Game paused");
+        } else if (gameState === "paused") {
+          setGameState("playing");
+          toast.success("Game resumed");
+        }
       } else if (e.key === "m" || e.key === "M") {
         const enabled = soundManager.toggleMute();
         toast.success(enabled ? "Music on" : "Music muted");
@@ -446,7 +455,7 @@ export const Game = () => {
       canvas.removeEventListener("click", handleClick);
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [handleMouseMove, handleTouchMove, handleClick, nextLevel]);
+  }, [handleMouseMove, handleTouchMove, handleClick, nextLevel, gameState]);
 
   const checkCollision = useCallback(() => {
     if (!paddle || balls.length === 0) return;
