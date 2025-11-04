@@ -82,6 +82,19 @@ const MetalBalls = () => {
     });
   });
 
+  const colors = [
+    "#ff00ff", // Magenta
+    "#00ffff", // Cyan
+    "#ffff00", // Yellow
+    "#ff0080", // Hot pink
+    "#00ff80", // Spring green
+    "#ff8000", // Orange
+    "#8000ff", // Purple
+    "#00ff00", // Lime
+    "#ff0000", // Red
+    "#0080ff", // Blue
+  ];
+
   return (
     <group ref={groupRef}>
       {Array.from({ length: 10 }).map((_, i) => (
@@ -96,9 +109,11 @@ const MetalBalls = () => {
         >
           <sphereGeometry args={[0.4, 32, 32]} />
           <meshStandardMaterial
-            map={texture}
-            metalness={1.0}
-            roughness={0.1}
+            color={colors[i]}
+            metalness={0.7}
+            roughness={0.2}
+            emissive={colors[i]}
+            emissiveIntensity={0.5}
             envMapIntensity={1.5}
           />
         </mesh>
