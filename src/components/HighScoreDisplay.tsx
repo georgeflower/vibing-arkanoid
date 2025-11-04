@@ -71,6 +71,8 @@ const MetalBalls = () => {
             if (el) ballsRef.current[i] = el;
           }}
           position={[i - 4.5, 0, 0]}
+          castShadow
+          receiveShadow
         >
           <sphereGeometry args={[0.4, 32, 32]} />
           <meshStandardMaterial
@@ -107,7 +109,7 @@ const RetroDonut = () => {
   });
 
   return (
-    <mesh ref={meshRef}>
+    <mesh ref={meshRef} castShadow receiveShadow>
       <torusGeometry args={[2, 0.8, 8, 16]} />
       <meshStandardMaterial
         color="#c0c0c0"
@@ -121,13 +123,44 @@ const RetroDonut = () => {
   );
 };
 
+// Shadow Plane Component
+const ShadowPlane = () => {
+  return (
+    <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -3, 0]}>
+      <planeGeometry args={[50, 50]} />
+      <shadowMaterial opacity={0.3} />
+    </mesh>
+  );
+};
+
 // 3D Scene Component
 const Scene3D = () => {
   return (
     <>
-      <ambientLight intensity={0.3} />
-      <pointLight position={[10, 10, 10]} intensity={1} color="#00ffff" />
-      <pointLight position={[-10, -10, -10]} intensity={0.5} color="#ff00ff" />
+      <ambientLight intensity={0.4} />
+      <directionalLight
+        position={[5, 8, 5]}
+        intensity={1.5}
+        castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-far={50}
+        shadow-camera-left={-10}
+        shadow-camera-right={10}
+        shadow-camera-top={10}
+        shadow-camera-bottom={-10}
+      />
+      <pointLight position={[10, 10, 10]} intensity={1.2} color="#00ffff" castShadow />
+      <pointLight position={[-10, 5, -10]} intensity={0.8} color="#ff00ff" />
+      <spotLight
+        position={[0, 10, 0]}
+        angle={0.5}
+        penumbra={1}
+        intensity={1}
+        castShadow
+        color="#ffffff"
+      />
+      <ShadowPlane />
       <MetalBalls />
       <RetroDonut />
     </>
@@ -231,6 +264,7 @@ export const HighScoreDisplay = ({ scores, onClose }: HighScoreDisplayProps) => 
         <Canvas
           camera={{ position: [0, 0, 10], fov: 50 }}
           style={{ background: 'transparent' }}
+          shadows
         >
           <Scene3D />
         </Canvas>
