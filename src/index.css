@@ -102,8 +102,8 @@ All colors MUST be HSL.
   }
 
   .game-canvas-wrapper canvas {
-    max-width: 95vw;
-    max-height: 85vh;
+    max-width: calc(100vw - 200px);
+    max-height: calc(100vh - 100px);
     width: auto !important;
     height: auto !important;
     object-fit: contain;
@@ -111,37 +111,17 @@ All colors MUST be HSL.
 
   /* Responsive canvas scaling for non-fullscreen */
   .game-glow canvas {
-    max-width: 100%;
-    max-height: 100%;
+    max-width: calc(100vw - 240px);
+    max-height: calc(100vh - 200px);
     width: auto !important;
     height: auto !important;
     object-fit: contain;
-    display: block;
-    margin: 0 auto;
   }
 
   /* Mobile adjustments */
   @media (max-width: 768px) {
     .game-glow canvas {
-      max-width: 100%;
-      max-height: 100%;
-    }
-    
-    .game-canvas-wrapper canvas {
-      max-width: 98vw;
-      max-height: 80vh;
-    }
-  }
-  
-  @media (max-width: 480px) {
-    .game-glow canvas {
-      max-width: 100%;
-      max-height: 100%;
-    }
-    
-    .game-canvas-wrapper canvas {
-      max-width: 100vw;
-      max-height: 75vh;
+      max-width: calc(100vw - 40px);
     }
   }
 
@@ -336,7 +316,7 @@ All colors MUST be HSL.
 
 .metal-main-content {
   display: flex;
-  gap: 0;
+  gap: 8px;
   margin-bottom: 6px;
   flex: 1;
   overflow: hidden;
@@ -345,26 +325,15 @@ All colors MUST be HSL.
 .metal-side-panel {
   background: linear-gradient(180deg, hsl(210, 15%, 38%) 0%, hsl(210, 15%, 30%) 100%);
   border: 3px ridge hsl(210, 15%, 50%);
-  border-radius: 0;
+  border-radius: 4px;
   width: 60px;
   display: flex;
   flex-direction: column;
   gap: 15px;
   padding: 15px 8px;
   box-shadow: 
-    inset 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-.metal-side-panel-left {
-  border-right: none;
-  border-top-left-radius: 4px;
-  border-bottom-left-radius: 4px;
-}
-
-.metal-side-panel-right {
-  border-left: none;
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
+    inset 0 1px 2px rgba(0, 0, 0, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .panel-decoration {
@@ -378,27 +347,16 @@ All colors MUST be HSL.
 .metal-game-area {
   flex: 1;
   background: linear-gradient(180deg, hsl(210, 15%, 30%) 0%, hsl(210, 15%, 22%) 100%);
-  border-top: 4px ridge hsl(210, 15%, 50%);
-  border-bottom: 4px ridge hsl(210, 15%, 50%);
-  border-left: none;
-  border-right: none;
-  border-radius: 0;
-  padding: 8px 0;
+  border: 4px ridge hsl(210, 15%, 50%);
+  border-radius: 4px;
+  padding: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.6);
-  min-height: 0;
-}
-
-.game-glow {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    inset 0 2px 4px rgba(0, 0, 0, 0.6),
+    0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .metal-bottom-bar {
@@ -454,10 +412,6 @@ All colors MUST be HSL.
     padding: 6px 8px;
     margin-bottom: 4px;
   }
-  
-  .metal-main-content {
-    gap: 0;
-  }
 }
 
 @media (max-width: 768px) {
@@ -468,12 +422,6 @@ All colors MUST be HSL.
   
   .metal-side-panel {
     display: none;
-  }
-  
-  .metal-game-area {
-    border-left: 4px ridge hsl(210, 15%, 50%);
-    border-right: 4px ridge hsl(210, 15%, 50%);
-    padding: 6px;
   }
   
   .stats-container {
@@ -506,6 +454,10 @@ All colors MUST be HSL.
     gap: 4px;
   }
   
+  .metal-game-area {
+    padding: 4px;
+  }
+  
   .metal-bottom-bar {
     padding: 8px;
   }
@@ -516,14 +468,6 @@ All colors MUST be HSL.
 }
 
 @media (max-width: 480px) {
-  .metal-frame {
-    padding: 3px;
-  }
-  
-  .metal-game-area {
-    padding: 4px;
-  }
-  
   .stat-box {
     min-width: 48px;
     padding: 2px 4px;
@@ -539,19 +483,5 @@ All colors MUST be HSL.
   
   .stats-container {
     gap: 3px;
-  }
-  
-  .metal-title-bar {
-    padding: 4px 6px;
-    margin-bottom: 2px;
-  }
-  
-  .metal-stats-bar {
-    padding: 3px 4px;
-    margin-bottom: 2px;
-  }
-  
-  .metal-bottom-bar {
-    padding: 6px;
   }
 }
