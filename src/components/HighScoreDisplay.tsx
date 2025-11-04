@@ -11,29 +11,23 @@ interface HighScoreDisplayProps {
 // 3D Metal Balls Component
 const MetalBalls = () => {
   const groupRef = useRef<THREE.Group>(null);
-  const [phase, setPhase] = useState(0); // 0: wave, 1: whirlpool, 2: random
-  const timeRef = useRef(0);
   const ballsRef = useRef<THREE.Mesh[]>([]);
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
     
-    timeRef.current += delta;
-    const time = timeRef.current;
-
-    // Change phase based on time
-    if (time < 10) {
-      setPhase(0); // Wave
-    } else if (time < 20) {
-      setPhase(1); // Whirlpool
-    } else if (time < 30) {
-      setPhase(2); // Random
-    }
-
-    // Disappear after 30 seconds
-    if (time >= 30) {
-      groupRef.current.visible = false;
-      return;
+    const time = state.clock.getElapsedTime();
+    
+    // Loop through phases continuously (30 second cycle)
+    const cycleTime = time % 30;
+    let phase = 0;
+    
+    if (cycleTime < 10) {
+      phase = 0; // Wave
+    } else if (cycleTime < 20) {
+      phase = 1; // Whirlpool
+    } else {
+      phase = 2; // Random
     }
 
     ballsRef.current.forEach((ball, i) => {
@@ -57,12 +51,12 @@ const MetalBalls = () => {
         ball.rotation.x = time * 2;
         ball.rotation.y = time;
       } else {
-        // Random motion
-        ball.position.x += (Math.random() - 0.5) * 0.1;
-        ball.position.y += (Math.random() - 0.5) * 0.1;
-        ball.position.z += (Math.random() - 0.5) * 0.1;
-        ball.rotation.x += 0.1;
-        ball.rotation.y += 0.05;
+        // Smooth random motion using sine waves
+        ball.position.x = (i - 4.5) + Math.sin(time + i) * 3;
+        ball.position.y = Math.cos(time * 1.5 + i * 0.5) * 2;
+        ball.position.z = Math.sin(time * 0.8 + i * 0.3) * 2;
+        ball.rotation.x = time + i;
+        ball.rotation.y = time * 0.7 + i;
       }
     });
   });
@@ -77,14 +71,14 @@ const MetalBalls = () => {
           }}
           position={[i - 4.5, 0, 0]}
         >
-          <sphereGeometry args={[0.4, 8, 8]} />
+          <sphereGeometry args={[0.4, 12, 12]} />
           <meshStandardMaterial
-            color="#c0c0c0"
+            color="#e8e8e8"
             metalness={1.0}
-            roughness={0.2}
-            emissive="#888888"
-            emissiveIntensity={0.2}
-            flatShading
+            roughness={0.05}
+            emissive="#ffffff"
+            emissiveIntensity={0.1}
+            envMapIntensity={2.0}
           />
         </mesh>
       ))}
@@ -95,32 +89,23 @@ const MetalBalls = () => {
 // 3D Retro Donut Component
 const RetroDonut = () => {
   const meshRef = useRef<THREE.Mesh>(null);
-  const timeRef = useRef(30); // Start after balls disappear
-  const [visible, setVisible] = useState(false);
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     if (!meshRef.current) return;
     
-    timeRef.current += delta;
-    const time = timeRef.current - 30;
-
-    if (time >= 0) {
-      setVisible(true);
-      
-      // Spinning
-      meshRef.current.rotation.x += 0.02;
-      meshRef.current.rotation.y += 0.03;
-      
-      // Zooming in and out
-      const scale = 1 + Math.sin(time * 1.5) * 0.5;
-      meshRef.current.scale.set(scale, scale, scale);
-      
-      // Slight movement
-      meshRef.current.position.y = Math.sin(time * 0.5) * 0.5;
-    }
+    const time = state.clock.getElapsedTime();
+    
+    // Spinning
+    meshRef.current.rotation.x += 0.02;
+    meshRef.current.rotation.y += 0.03;
+    
+    // Zooming in and out
+    const scale = 1 + Math.sin(time * 1.5) * 0.5;
+    meshRef.current.scale.set(scale, scale, scale);
+    
+    // Slight movement
+    meshRef.current.position.y = Math.sin(time * 0.5) * 0.5;
   });
-
-  if (!visible) return null;
 
   return (
     <mesh ref={meshRef}>
@@ -151,13 +136,102 @@ const Scene3D = () => {
 };
 
 export const HighScoreDisplay = ({ scores, onClose }: HighScoreDisplayProps) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationId: number;
+    let time = 0;
+
+    // Animated starfield and geometric patterns
+    const animate = () => {
+      time += 0.02;
+
+      // Clear with dark blue background
+      ctx.fillStyle = "hsl(220, 25%, 8%)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Animated grid pattern
+      ctx.strokeStyle = "hsla(280, 60%, 55%, 0.15)";
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 20; i++) {
+        const offset = (time * 50 + i * 40) % canvas.height;
+        ctx.beginPath();
+        ctx.moveTo(0, offset);
+        ctx.lineTo(canvas.width, offset);
+        ctx.stroke();
+      }
+
+      // Moving vertical lines
+      ctx.strokeStyle = "hsla(200, 70%, 50%, 0.15)";
+      for (let i = 0; i < 15; i++) {
+        const offset = (time * 30 + i * 60) % canvas.width;
+        ctx.beginPath();
+        ctx.moveTo(offset, 0);
+        ctx.lineTo(offset, canvas.height);
+        ctx.stroke();
+      }
+
+      // Floating circles
+      for (let i = 0; i < 5; i++) {
+        const x = canvas.width / 2 + Math.sin(time + i) * 200;
+        const y = canvas.height / 2 + Math.cos(time * 0.7 + i) * 150;
+        const radius = 30 + Math.sin(time * 2 + i) * 10;
+        
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = i % 2 === 0 ? "hsl(330, 70%, 55%)" : "hsl(200, 70%, 50%)";
+        ctx.strokeStyle = i % 2 === 0 ? "hsla(330, 70%, 55%, 0.3)" : "hsla(200, 70%, 50%, 0.3)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Rotating squares
+      ctx.shadowBlur = 15;
+      for (let i = 0; i < 3; i++) {
+        const x = canvas.width / 2 + Math.cos(time * 0.5 + i * 2) * 250;
+        const y = canvas.height / 2 + Math.sin(time * 0.5 + i * 2) * 150;
+        
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(time + i);
+        ctx.strokeStyle = "hsla(280, 60%, 55%, 0.4)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-20, -20, 40, 40);
+        ctx.restore();
+      }
+
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+    };
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
+      <canvas
+        ref={canvasRef}
+        width={window.innerWidth}
+        height={window.innerHeight}
+        className="absolute inset-0"
+      />
+      
       <div className="absolute inset-0">
         <Canvas
           camera={{ position: [0, 0, 10], fov: 50 }}
-          style={{ background: 'hsl(220, 25%, 8%)' }}
+          style={{ background: 'transparent' }}
         >
           <Scene3D />
         </Canvas>
