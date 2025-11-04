@@ -14,6 +14,9 @@ const MetalBalls = () => {
   const groupRef = useRef<THREE.Group>(null);
   const ballsRef = useRef<THREE.Mesh[]>([]);
   const texture = useLoader(THREE.TextureLoader, metalBallTexture);
+  const previousPositions = useRef<THREE.Vector3[]>(
+    Array.from({ length: 10 }, () => new THREE.Vector3())
+  );
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
@@ -23,13 +26,17 @@ const MetalBalls = () => {
     // Loop through phases continuously (30 second cycle)
     const cycleTime = time % 30;
     let phase = 0;
+    let transitionProgress = 0;
     
     if (cycleTime < 10) {
       phase = 0; // Wave
+      transitionProgress = Math.min(cycleTime / 2, 1); // Fade in over 2 seconds
     } else if (cycleTime < 20) {
       phase = 1; // Whirlpool
+      transitionProgress = Math.min((cycleTime - 10) / 2, 1);
     } else {
       phase = 2; // Random
+      transitionProgress = Math.min((cycleTime - 20) / 2, 1);
     }
 
     ballsRef.current.forEach((ball, i) => {
@@ -40,25 +47,38 @@ const MetalBalls = () => {
       ball.rotation.y += 0.02;
       ball.rotation.z += 0.01;
 
+      let targetPos = new THREE.Vector3();
+
       if (phase === 0) {
         // Wave motion
         const waveY = Math.sin(time * 2 + i * 0.5) * 2;
-        ball.position.set(i - 4.5, waveY, 0);
+        targetPos.set(i - 4.5, waveY, 0);
       } else if (phase === 1) {
         // Whirlpool
         const angle = (time * 2 + i * 0.6) % (Math.PI * 2);
         const radius = 3 + Math.sin(time + i) * 1;
-        ball.position.set(
+        targetPos.set(
           Math.cos(angle) * radius,
           Math.sin(time * 3 + i) * 2,
           Math.sin(angle) * radius
         );
       } else {
         // Smooth random motion using sine waves
-        ball.position.x = (i - 4.5) + Math.sin(time + i) * 3;
-        ball.position.y = Math.cos(time * 1.5 + i * 0.5) * 2;
-        ball.position.z = Math.sin(time * 0.8 + i * 0.3) * 2;
+        targetPos.set(
+          (i - 4.5) + Math.sin(time + i) * 3,
+          Math.cos(time * 1.5 + i * 0.5) * 2,
+          Math.sin(time * 0.8 + i * 0.3) * 2
+        );
       }
+
+      // Smooth transition using lerp
+      if (!previousPositions.current[i]) {
+        previousPositions.current[i] = ball.position.clone();
+      }
+      
+      const lerpFactor = Math.min(delta * 2, 1) * transitionProgress;
+      ball.position.lerp(targetPos, lerpFactor);
+      previousPositions.current[i].copy(ball.position);
     });
   });
 
@@ -90,22 +110,30 @@ const MetalBalls = () => {
 // 3D Retro Donut Component
 const RetroDonut = () => {
   const meshRef = useRef<THREE.Mesh>(null);
+  const [opacity, setOpacity] = useState(0);
 
   useFrame((state) => {
     if (!meshRef.current) return;
     
     const time = state.clock.getElapsedTime();
     
-    // Spinning
-    meshRef.current.rotation.x += 0.02;
-    meshRef.current.rotation.y += 0.03;
+    // Fade in after 5 seconds, reach full opacity by 7 seconds
+    const fadeInProgress = Math.min(Math.max((time - 5) / 2, 0), 1);
+    setOpacity(fadeInProgress);
     
-    // Zooming in and out
-    const scale = 1 + Math.sin(time * 1.5) * 0.5;
-    meshRef.current.scale.set(scale, scale, scale);
-    
-    // Slight movement
-    meshRef.current.position.y = Math.sin(time * 0.5) * 0.5;
+    if (fadeInProgress > 0) {
+      // Spinning
+      meshRef.current.rotation.x += 0.02;
+      meshRef.current.rotation.y += 0.03;
+      
+      // Zooming in and out
+      const baseScale = 0.5 + fadeInProgress * 0.5; // Start smaller
+      const scale = baseScale + Math.sin(time * 1.5) * 0.5;
+      meshRef.current.scale.set(scale, scale, scale);
+      
+      // Slight movement
+      meshRef.current.position.y = Math.sin(time * 0.5) * 0.5;
+    }
   });
 
   return (
@@ -116,8 +144,10 @@ const RetroDonut = () => {
         metalness={0.8}
         roughness={0.3}
         emissive="#ff00ff"
-        emissiveIntensity={0.4}
+        emissiveIntensity={0.4 * opacity}
         flatShading
+        transparent
+        opacity={opacity}
       />
     </mesh>
   );
