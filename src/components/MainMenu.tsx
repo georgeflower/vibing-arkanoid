@@ -8,6 +8,7 @@ import type { GameSettings, Difficulty } from "@/types/game";
 import startScreenImg from "@/assets/start-screen.png";
 import { useHighScores } from "@/hooks/useHighScores";
 import { HighScoreDisplay } from "./HighScoreDisplay";
+import { soundManager } from "@/utils/sounds";
 
 interface MainMenuProps {
   onStartGame: (settings: GameSettings) => void;
@@ -91,7 +92,11 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           </div>
 
           <Button
-            onClick={() => setShowInstructions(false)}
+            onClick={() => {
+              soundManager.playMenuClick();
+              setShowInstructions(false);
+            }}
+            onMouseEnter={() => soundManager.playMenuHover()}
             className="w-full mt-6 bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white"
           >
             Back to Menu
@@ -120,7 +125,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             <Label className="text-white text-lg">Starting Lives: {startingLives}</Label>
             <Slider
               value={[startingLives]}
-              onValueChange={(value) => setStartingLives(value[0])}
+              onValueChange={(value) => {
+                setStartingLives(value[0]);
+                soundManager.playSliderChange();
+              }}
               min={1}
               max={10}
               step={1}
@@ -131,7 +139,13 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           {/* Difficulty */}
           <div className="space-y-2">
             <Label className="text-white text-lg">Difficulty</Label>
-            <RadioGroup value={difficulty} onValueChange={(value) => setDifficulty(value as Difficulty)}>
+            <RadioGroup 
+              value={difficulty} 
+              onValueChange={(value) => {
+                setDifficulty(value as Difficulty);
+                soundManager.playMenuClick();
+              }}
+            >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="normal" id="normal" />
                 <Label htmlFor="normal" className="text-white cursor-pointer">Normal</Label>
@@ -142,21 +156,29 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   Godlike (No extra lives, harder enemies)
                 </Label>
               </div>
-          </RadioGroup>
+            </RadioGroup>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="space-y-3 mt-8">
           <Button
-            onClick={handleStart}
+            onClick={() => {
+              soundManager.playMenuClick();
+              handleStart();
+            }}
+            onMouseEnter={() => soundManager.playMenuHover()}
             className="w-full bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white text-xl py-6"
           >
             Start Game
           </Button>
           
           <Button
-            onClick={() => setShowInstructions(true)}
+            onClick={() => {
+              soundManager.playMenuClick();
+              setShowInstructions(true);
+            }}
+            onMouseEnter={() => soundManager.playMenuHover()}
             variant="outline"
             className="w-full border-[hsl(200,70%,50%)] text-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,50%)] hover:text-white"
           >
@@ -164,7 +186,11 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           </Button>
           
           <Button
-            onClick={() => setShowHighScores(true)}
+            onClick={() => {
+              soundManager.playMenuClick();
+              setShowHighScores(true);
+            }}
+            onMouseEnter={() => soundManager.playMenuHover()}
             variant="outline"
             className="w-full border-[hsl(200,70%,50%)] text-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,50%)] hover:text-white"
           >
