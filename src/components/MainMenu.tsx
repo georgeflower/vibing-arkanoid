@@ -20,17 +20,16 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const [showInstructions, setShowInstructions] = useState(false);
 
-  // Play intro music when menu loads
+  // Play background music when menu loads
   useEffect(() => {
-    soundManager.playIntroMusic();
+    soundManager.playBackgroundMusic();
     
     return () => {
-      soundManager.stopIntroMusic();
+      soundManager.pauseBackgroundMusic();
     };
   }, []);
 
   const handleStart = () => {
-    soundManager.stopIntroMusic();
     soundManager.playUIClick();
     const settings: GameSettings = {
       startingLives,

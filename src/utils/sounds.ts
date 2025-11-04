@@ -4,11 +4,11 @@ class SoundManager {
   private musicTracks: HTMLAudioElement[] = [];
   private currentTrackIndex = 0;
   private highScoreMusic: HTMLAudioElement | null = null;
-  private introMusic: HTMLAudioElement | null = null;
   private musicEnabled = true;
   private sfxEnabled = true;
-  private activeMusicType: 'intro' | 'background' | 'highscore' | null = null;
+  private activeMusicType: 'background' | 'highscore' | null = null;
   private trackUrls = [
+    '/sound_2.mp3',
     '/Pixel_Frenzy-2.mp3',
     '/level_3.mp3',
     '/level_4.mp3',
@@ -36,7 +36,6 @@ class SoundManager {
   private stopAllMusic() {
     // Stop all music types to ensure only one plays at a time
     this.stopBackgroundMusic();
-    this.stopIntroMusic();
     this.stopHighScoreMusic();
     this.activeMusicType = null;
   }
@@ -87,17 +86,6 @@ class SoundManager {
     }
   }
 
-  pauseIntroMusic() {
-    if (this.introMusic) {
-      this.introMusic.pause();
-    }
-  }
-
-  resumeIntroMusic() {
-    if (!this.musicEnabled || !this.introMusic) return;
-    this.introMusic.play().catch(err => console.log('Resume intro music failed:', err));
-  }
-
   pauseHighScoreMusic() {
     if (this.highScoreMusic) {
       this.highScoreMusic.pause();
@@ -123,13 +111,10 @@ class SoundManager {
     if (!enabled) {
       // Pause all music instead of stopping
       this.pauseBackgroundMusic();
-      this.pauseIntroMusic();
       this.pauseHighScoreMusic();
     } else {
       // Resume only the active music type
-      if (this.activeMusicType === 'intro') {
-        this.resumeIntroMusic();
-      } else if (this.activeMusicType === 'background') {
+      if (this.activeMusicType === 'background') {
         this.resumeBackgroundMusic();
       } else if (this.activeMusicType === 'highscore') {
         this.resumeHighScoreMusic();
@@ -167,6 +152,7 @@ class SoundManager {
 
   getTrackNames(): string[] {
     return [
+      'Sound 2',
       'Pixel Frenzy',
       'Level 3',
       'Level 4',
@@ -183,28 +169,6 @@ class SoundManager {
       'Desert Chip Atari 2',
       'Desert Chip Atari 2-2'
     ];
-  }
-
-  playIntroMusic() {
-    if (!this.musicEnabled) return;
-    
-    // Stop all other music first
-    this.stopAllMusic();
-    this.activeMusicType = 'intro';
-    
-    if (!this.introMusic) {
-      this.introMusic = new Audio('/sound_2.mp3');
-      this.introMusic.loop = true;
-      this.introMusic.volume = 0.3;
-    }
-    this.introMusic.play().catch(err => console.log('Intro music play failed:', err));
-  }
-
-  stopIntroMusic() {
-    if (this.introMusic) {
-      this.introMusic.pause();
-      this.introMusic.currentTime = 0;
-    }
   }
 
   // UI Sound effects

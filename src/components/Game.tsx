@@ -371,8 +371,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (isLevelComplete) {
         nextLevel();
       } else {
-        // Start game - stop intro music and start game music
-        soundManager.stopIntroMusic();
+        // Start game
         setGameState("playing");
         if (!soundManager.isMusicPlaying()) {
           soundManager.initializeRandomTrack();
