@@ -76,11 +76,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives, timer, settings.difficulty);
   const { bullets, setBullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks, enemies);
 
-  // Initialize sound settings
+  // Initialize sound settings - always enabled
   useEffect(() => {
-    soundManager.setMusicEnabled(settings.musicEnabled);
-    soundManager.setSfxEnabled(settings.soundEffectsEnabled);
-  }, [settings.musicEnabled, settings.soundEffectsEnabled]);
+    soundManager.setMusicEnabled(true);
+    soundManager.setSfxEnabled(true);
+  }, []);
 
   // Bonus letter drop logic - each letter drops on specific levels
   const letterLevels: Record<BonusLetterType, number[]> = {

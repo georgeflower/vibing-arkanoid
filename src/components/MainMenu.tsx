@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { GameSettings, Difficulty } from "@/types/game";
 import startScreenImg from "@/assets/start-screen.png";
+import { useHighScores } from "@/hooks/useHighScores";
+import { HighScoreDisplay } from "./HighScoreDisplay";
 
 interface MainMenuProps {
   onStartGame: (settings: GameSettings) => void;
@@ -14,20 +15,27 @@ interface MainMenuProps {
 
 export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [startingLives, setStartingLives] = useState(3);
-  const [musicEnabled, setMusicEnabled] = useState(true);
-  const [soundEffectsEnabled, setSoundEffectsEnabled] = useState(true);
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const [showInstructions, setShowInstructions] = useState(false);
+  const [showHighScores, setShowHighScores] = useState(false);
+  const { highScores } = useHighScores();
 
   const handleStart = () => {
     const settings: GameSettings = {
       startingLives,
-      musicEnabled,
-      soundEffectsEnabled,
       difficulty,
     };
     onStartGame(settings);
   };
+
+  if (showHighScores) {
+    return (
+      <HighScoreDisplay 
+        scores={highScores} 
+        onClose={() => setShowHighScores(false)} 
+      />
+    );
+  }
 
   if (showInstructions) {
     return (
@@ -134,27 +142,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   Godlike (No extra lives, harder enemies)
                 </Label>
               </div>
-            </RadioGroup>
-          </div>
-
-          {/* Music Toggle */}
-          <div className="flex items-center justify-between">
-            <Label htmlFor="music" className="text-white text-lg">Music</Label>
-            <Switch
-              id="music"
-              checked={musicEnabled}
-              onCheckedChange={setMusicEnabled}
-            />
-          </div>
-
-          {/* Sound Effects Toggle */}
-          <div className="flex items-center justify-between">
-            <Label htmlFor="sfx" className="text-white text-lg">Sound Effects</Label>
-            <Switch
-              id="sfx"
-              checked={soundEffectsEnabled}
-              onCheckedChange={setSoundEffectsEnabled}
-            />
+          </RadioGroup>
           </div>
         </div>
 
@@ -173,6 +161,14 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             className="w-full border-[hsl(200,70%,50%)] text-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,50%)] hover:text-white"
           >
             Instructions
+          </Button>
+          
+          <Button
+            onClick={() => setShowHighScores(true)}
+            variant="outline"
+            className="w-full border-[hsl(200,70%,50%)] text-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,50%)] hover:text-white"
+          >
+            High Scores
           </Button>
         </div>
       </Card>

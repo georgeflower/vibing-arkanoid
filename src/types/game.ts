@@ -113,7 +113,5 @@ export type Difficulty = "normal" | "godlike";
 
 export interface GameSettings {
   startingLives: number;
-  musicEnabled: boolean;
-  soundEffectsEnabled: boolean;
   difficulty: Difficulty;
 }
