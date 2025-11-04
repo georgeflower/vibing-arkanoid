@@ -838,35 +838,17 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.restore();
       });
 
-      // Draw collected letters on the sides
+      // Draw collected letters at top center
       const letterOrder: BonusLetterType[] = ["Q", "U", "M", "R", "A", "N"];
-      const leftLetters = ["Q", "U", "M"];
-      const rightLetters = ["R", "A", "N"];
+      const size = 40;
+      const spacing = 10;
+      const totalWidth = letterOrder.length * size + (letterOrder.length - 1) * spacing;
+      const startX = (width - totalWidth) / 2;
+      const y = 30;
       
-      // Left side letters
-      leftLetters.forEach((letter, index) => {
+      letterOrder.forEach((letter, index) => {
         const img = bonusLetterImagesRef.current[letter];
-        const x = 20;
-        const y = 250 + index * 70;
-        const size = 50;
-        const isCollected = collectedLetters.has(letter as BonusLetterType);
-        
-        ctx.save();
-        
-        if (img && img.complete) {
-          ctx.globalAlpha = isCollected ? 1 : 0.3;
-          ctx.drawImage(img, x, y, size, size);
-        }
-        
-        ctx.restore();
-      });
-      
-      // Right side letters
-      rightLetters.forEach((letter, index) => {
-        const img = bonusLetterImagesRef.current[letter];
-        const x = width - 70;
-        const y = 250 + index * 70;
-        const size = 50;
+        const x = startX + index * (size + spacing);
         const isCollected = collectedLetters.has(letter as BonusLetterType);
         
         ctx.save();
