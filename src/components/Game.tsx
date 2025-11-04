@@ -39,6 +39,22 @@ interface GameProps {
 }
 
 export const Game = ({ settings, onReturnToMenu }: GameProps) => {
+  // Detect Mac and apply 10% scale reduction
+  const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform) || /Macintosh/.test(navigator.userAgent);
+  const scaleFactor = isMac ? 0.9 : 1;
+  
+  // Scale all game constants for Mac
+  const SCALED_CANVAS_WIDTH = CANVAS_WIDTH * scaleFactor;
+  const SCALED_CANVAS_HEIGHT = CANVAS_HEIGHT * scaleFactor;
+  const SCALED_PADDLE_WIDTH = PADDLE_WIDTH * scaleFactor;
+  const SCALED_PADDLE_HEIGHT = PADDLE_HEIGHT * scaleFactor;
+  const SCALED_BALL_RADIUS = BALL_RADIUS * scaleFactor;
+  const SCALED_BRICK_WIDTH = BRICK_WIDTH * scaleFactor;
+  const SCALED_BRICK_HEIGHT = BRICK_HEIGHT * scaleFactor;
+  const SCALED_BRICK_PADDING = BRICK_PADDING * scaleFactor;
+  const SCALED_BRICK_OFFSET_TOP = BRICK_OFFSET_TOP * scaleFactor;
+  const SCALED_BRICK_OFFSET_LEFT = (SCALED_CANVAS_WIDTH - (BRICK_COLS * SCALED_BRICK_WIDTH + (BRICK_COLS - 1) * SCALED_BRICK_PADDING)) / 2;
+  
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(settings.startingLives);
@@ -160,7 +176,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
 
         // Check if letter went off screen (missed)
-        if (letter.y > CANVAS_HEIGHT) {
+        if (letter.y > SCALED_CANVAS_HEIGHT) {
           return false;
         }
 
@@ -187,10 +203,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const baseColor = isIndestructible ? "#333333" : levelColors[row % levelColors.length];
           
           // Indestructible bricks are bigger (no padding), so they take up the space including padding
-          const brickWidth = isIndestructible ? BRICK_WIDTH + BRICK_PADDING * 2 : BRICK_WIDTH;
-          const brickHeight = isIndestructible ? BRICK_HEIGHT + BRICK_PADDING * 2 : BRICK_HEIGHT;
-          const xPos = col * (BRICK_WIDTH + BRICK_PADDING) + BRICK_OFFSET_LEFT - (isIndestructible ? BRICK_PADDING : 0);
-          const yPos = row * (BRICK_HEIGHT + BRICK_PADDING) + BRICK_OFFSET_TOP - (isIndestructible ? BRICK_PADDING : 0);
+          const brickWidth = isIndestructible ? SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING * 2 : SCALED_BRICK_WIDTH;
+          const brickHeight = isIndestructible ? SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING * 2 : SCALED_BRICK_HEIGHT;
+          const xPos = col * (SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_LEFT - (isIndestructible ? SCALED_BRICK_PADDING : 0);
+          const yPos = row * (SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_TOP - (isIndestructible ? SCALED_BRICK_PADDING : 0);
           
           newBricks.push({
             x: xPos,
@@ -214,21 +230,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const initGame = useCallback(() => {
     // Initialize paddle
     setPaddle({
-      x: CANVAS_WIDTH / 2 - PADDLE_WIDTH / 2,
-      y: CANVAS_HEIGHT - 60,
-      width: PADDLE_WIDTH,
-      height: PADDLE_HEIGHT,
+      x: SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2,
+      y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+      width: SCALED_PADDLE_WIDTH,
+      height: SCALED_PADDLE_HEIGHT,
       hasTurrets: false,
     });
 
     // Initialize ball with speed multiplier - waiting to launch
     const baseSpeed = 3;
     const initialBall: Ball = {
-      x: CANVAS_WIDTH / 2,
-      y: CANVAS_HEIGHT - 60,
+      x: SCALED_CANVAS_WIDTH / 2,
+      y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
       dx: baseSpeed,
       dy: -baseSpeed,
-      radius: BALL_RADIUS,
+      radius: SCALED_BALL_RADIUS,
       speed: baseSpeed,
       id: nextBallId.current++,
       isFireball: false,
@@ -284,21 +300,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Reset paddle
     setPaddle({
-      x: CANVAS_WIDTH / 2 - PADDLE_WIDTH / 2,
-      y: CANVAS_HEIGHT - 60,
-      width: PADDLE_WIDTH,
-      height: PADDLE_HEIGHT,
+      x: SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2,
+      y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+      width: SCALED_PADDLE_WIDTH,
+      height: SCALED_PADDLE_HEIGHT,
       hasTurrets: false,
     });
 
     // Initialize ball with new speed - waiting to launch (capped at 175%)
     const baseSpeed = 3 * Math.min(newSpeedMultiplier, 1.75);
     const initialBall: Ball = {
-      x: CANVAS_WIDTH / 2,
-      y: CANVAS_HEIGHT - 60,
+      x: SCALED_CANVAS_WIDTH / 2,
+      y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
       dx: baseSpeed,
       dy: -baseSpeed,
-      radius: BALL_RADIUS,
+      radius: SCALED_BALL_RADIUS,
       speed: baseSpeed,
       id: nextBallId.current++,
       isFireball: false,
@@ -341,9 +357,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (!canvasRef.current || !paddle || gameState !== "playing") return;
 
       const rect = canvasRef.current.getBoundingClientRect();
-      const scaleX = CANVAS_WIDTH / rect.width;
+      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
       const mouseX = (e.clientX - rect.left) * scaleX;
-      const newX = Math.max(0, Math.min(CANVAS_WIDTH - paddle.width, mouseX - paddle.width / 2));
+      const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, mouseX - paddle.width / 2));
 
       setPaddle((prev) => (prev ? { ...prev, x: newX } : null));
     },
@@ -356,9 +372,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       e.preventDefault();
       const rect = canvasRef.current.getBoundingClientRect();
-      const scaleX = CANVAS_WIDTH / rect.width;
+      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
       const touchX = (e.touches[0].clientX - rect.left) * scaleX;
-      const newX = Math.max(0, Math.min(CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
+      const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
 
       setPaddle((prev) => (prev ? { ...prev, x: newX } : null));
     },
@@ -479,7 +495,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           let newBall = { ...ball };
 
           // Wall collision
-          if (newBall.x + newBall.dx > CANVAS_WIDTH - newBall.radius || newBall.x + newBall.dx < newBall.radius) {
+          if (newBall.x + newBall.dx > SCALED_CANVAS_WIDTH - newBall.radius || newBall.x + newBall.dx < newBall.radius) {
             newBall.dx = -newBall.dx;
           }
           if (newBall.y + newBall.dy < newBall.radius) {
@@ -503,7 +519,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
 
           // Bottom collision (lose life)
-          if (newBall.y + newBall.dy > CANVAS_HEIGHT - newBall.radius) {
+          if (newBall.y + newBall.dy > SCALED_CANVAS_HEIGHT - newBall.radius) {
             // Remove this ball
             return null;
           }
@@ -523,10 +539,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             for (const brick of indestructibleBricks) {
               // Check for adjacent indestructible bricks and create invisible walls in padding
               const rightNeighbor = indestructibleBricks.find(
-                (b) => b.x === brick.x + brick.width + BRICK_PADDING && Math.abs(b.y - brick.y) < 1,
+                (b) => b.x === brick.x + brick.width + SCALED_BRICK_PADDING && Math.abs(b.y - brick.y) < 1,
               );
               const bottomNeighbor = indestructibleBricks.find(
-                (b) => b.y === brick.y + brick.height + BRICK_PADDING && Math.abs(b.x - brick.x) < 1,
+                (b) => b.y === brick.y + brick.height + SCALED_BRICK_PADDING && Math.abs(b.x - brick.x) < 1,
               );
 
               // Check horizontal padding (between brick and right neighbor)
@@ -544,7 +560,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 ) {
                   // Ball is in horizontal padding - bounce horizontally
                   newBall.dx = -newBall.dx;
-                  if (newBall.x < paddingLeft + BRICK_PADDING / 2) {
+                  if (newBall.x < paddingLeft + SCALED_BRICK_PADDING / 2) {
                     newBall.x = paddingLeft - newBall.radius - 1;
                   } else {
                     newBall.x = paddingRight + newBall.radius + 1;
@@ -570,7 +586,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 ) {
                   // Ball is in vertical padding - bounce vertically
                   newBall.dy = -newBall.dy;
-                  if (newBall.y < paddingTop + BRICK_PADDING / 2) {
+                  if (newBall.y < paddingTop + SCALED_BRICK_PADDING / 2) {
                     newBall.y = paddingTop - newBall.radius - 1;
                   } else {
                     newBall.y = paddingBottom + newBall.radius + 1;
@@ -739,11 +755,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             // Reset ball and clear power-ups, but wait for click to continue
             const baseSpeed = 3;
             const resetBall: Ball = {
-              x: CANVAS_WIDTH / 2,
-              y: CANVAS_HEIGHT - 60,
+              x: SCALED_CANVAS_WIDTH / 2,
+              y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
               dx: baseSpeed,
               dy: -baseSpeed,
-              radius: BALL_RADIUS,
+              radius: SCALED_BALL_RADIUS,
               speed: baseSpeed,
               id: nextBallId.current++,
               isFireball: false,
@@ -754,7 +770,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             launchAngleDirectionRef.current = 1; // Move right initially
             setShowInstructions(true); // Show instructions when resetting ball
             setPowerUps([]);
-            setPaddle((prev) => (prev ? { ...prev, hasTurrets: false, width: PADDLE_WIDTH } : null));
+            setPaddle((prev) => (prev ? { ...prev, hasTurrets: false, width: SCALED_PADDLE_WIDTH } : null));
             setBullets([]); // Clear all bullets
             // Only reset speed if it's slower than base speed
             if (speedMultiplier < 1) {
@@ -841,13 +857,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
 
         // Bounce off walls
-        if (newX <= 0 || newX >= CANVAS_WIDTH - enemy.width) {
+        if (newX <= 0 || newX >= SCALED_CANVAS_WIDTH - enemy.width) {
           newDx = -enemy.dx;
-          newX = Math.max(0, Math.min(CANVAS_WIDTH - enemy.width, newX));
+          newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - enemy.width, newX));
         }
 
         // Bounce off top and 60% boundary
-        const maxY = CANVAS_HEIGHT * 0.6;
+        const maxY = SCALED_CANVAS_HEIGHT * 0.6;
         if (newY <= 0 || newY >= maxY - enemy.height) {
           newDy = -enemy.dy;
           newY = Math.max(0, Math.min(maxY - enemy.height, newY));
@@ -1091,7 +1107,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             y: bomb.y + bomb.speed,
           };
         })
-        .filter((bomb) => bomb.y < CANVAS_HEIGHT),
+        .filter((bomb) => bomb.y < SCALED_CANVAS_HEIGHT),
     );
 
     // Check bomb-paddle collision
@@ -1123,11 +1139,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               // Reset ball and clear power-ups, but wait for click to continue
               const baseSpeed = 3;
               const resetBall: Ball = {
-                x: CANVAS_WIDTH / 2,
-                y: CANVAS_HEIGHT - 60,
+                x: SCALED_CANVAS_WIDTH / 2,
+                y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
                 dx: baseSpeed,
                 dy: -baseSpeed,
-                radius: BALL_RADIUS,
+                radius: SCALED_BALL_RADIUS,
                 speed: baseSpeed,
                 id: nextBallId.current++,
                 isFireball: false,
@@ -1138,7 +1154,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               launchAngleDirectionRef.current = 1;
               setShowInstructions(true); // Show instructions when resetting ball
               setPowerUps([]);
-              setPaddle((prev) => (prev ? { ...prev, hasTurrets: false, width: PADDLE_WIDTH } : null));
+              setPaddle((prev) => (prev ? { ...prev, hasTurrets: false, width: SCALED_PADDLE_WIDTH } : null));
               setBullets([]); // Clear all bullets
               // Only reset speed if it's slower than base speed
               if (speedMultiplier < 1) {
@@ -1191,11 +1207,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               // Reset ball and clear power-ups, but wait for click to continue
               const baseSpeed = 3;
               const resetBall: Ball = {
-                x: CANVAS_WIDTH / 2,
-                y: CANVAS_HEIGHT - 60,
+                x: SCALED_CANVAS_WIDTH / 2,
+                y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
                 dx: baseSpeed,
                 dy: -baseSpeed,
-                radius: BALL_RADIUS,
+                radius: SCALED_BALL_RADIUS,
                 speed: baseSpeed,
                 id: nextBallId.current++,
                 isFireball: false,
@@ -1206,7 +1222,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               launchAngleDirectionRef.current = 1;
               setShowInstructions(true); // Show instructions when resetting ball
               setPowerUps([]);
-              setPaddle((prev) => (prev ? { ...prev, hasTurrets: false, width: PADDLE_WIDTH } : null));
+              setPaddle((prev) => (prev ? { ...prev, hasTurrets: false, width: SCALED_PADDLE_WIDTH } : null));
               setBullets([]); // Clear all bullets
               // Only reset speed if it's slower than base speed
               if (speedMultiplier < 1) {
@@ -1339,7 +1355,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           newEnemy = {
             id: enemyId,
             type: "pyramid",
-            x: Math.random() * (CANVAS_WIDTH - 40),
+            x: Math.random() * (SCALED_CANVAS_WIDTH - 40),
             y: 50 + Math.random() * 50,
             width: 40,
             height: 40,
@@ -1360,7 +1376,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           newEnemy = {
             id: enemyId,
             type: "sphere",
-            x: Math.random() * (CANVAS_WIDTH - 40),
+            x: Math.random() * (SCALED_CANVAS_WIDTH - 40),
             y: 50 + Math.random() * 50,
             width: 35,
             height: 35,
@@ -1381,7 +1397,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           newEnemy = {
             id: enemyId,
             type: "cube",
-            x: Math.random() * (CANVAS_WIDTH - 40),
+            x: Math.random() * (SCALED_CANVAS_WIDTH - 40),
             y: 50 + Math.random() * 50,
             width: 30,
             height: 30,
@@ -1657,8 +1673,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   <div className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}>
                     <GameCanvas
                       ref={canvasRef}
-                      width={CANVAS_WIDTH}
-                      height={CANVAS_HEIGHT}
+                      width={SCALED_CANVAS_WIDTH}
+                      height={SCALED_CANVAS_HEIGHT}
                       bricks={bricks}
                       balls={balls}
                       paddle={paddle}
