@@ -4,6 +4,7 @@ import { GameUI } from "./GameUI";
 import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
+import { EndScreen } from "./EndScreen";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Maximize2, Minimize2, Home } from "lucide-react";
@@ -49,6 +50,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [showHighScoreEntry, setShowHighScoreEntry] = useState(false);
   const [showHighScoreDisplay, setShowHighScoreDisplay] = useState(false);
+  const [showEndScreen, setShowEndScreen] = useState(false);
+  const [beatLevel50Completed, setBeatLevel50Completed] = useState(false);
   const [timer, setTimer] = useState(0);
   const [enemies, setEnemies] = useState<Enemy[]>([]);
   const [bombs, setBombs] = useState<Bomb[]>([]);
@@ -696,7 +699,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               // Check if player beat level 50
               if (level >= 50) {
                 setScore((prev) => prev + 1000000);
+                setBeatLevel50Completed(true);
                 setGameState("won");
+                setShowEndScreen(true);
+                soundManager.stopBackgroundMusic();
                 toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
               } else {
                 setGameState("ready"); // Wait for click to start next level
@@ -1503,15 +1509,30 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     soundManager.stopHighScoreMusic();
     setShowHighScoreEntry(false);
     setShowHighScoreDisplay(false);
+    setShowEndScreen(false);
+    setBeatLevel50Completed(false);
     initGame();
     toast("Game Reset!");
   }, [initGame]);
 
   const handleHighScoreSubmit = (name: string) => {
-    addHighScore(name, score, level, settings.difficulty, level >= 50);
+    addHighScore(name, score, level, settings.difficulty, beatLevel50Completed);
     setShowHighScoreEntry(false);
     setShowHighScoreDisplay(true);
     toast.success("High score saved!");
+  };
+
+  const handleEndScreenContinue = () => {
+    setShowEndScreen(false);
+    // Check if it's a high score
+    if (isHighScore(score)) {
+      setShowHighScoreEntry(true);
+      soundManager.playHighScoreMusic();
+      toast.success("New High Score!");
+    } else {
+      // Show high score display even if not a high score
+      setShowHighScoreDisplay(true);
+    }
   };
 
   const handleCloseHighScoreDisplay = () => {
@@ -1553,7 +1574,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         isFullscreen ? "min-h-screen bg-background" : "min-h-screen"
       }`}
     >
-      {showHighScoreDisplay ? (
+      {showEndScreen ? (
+        <EndScreen onContinue={handleEndScreenContinue} />
+      ) : showHighScoreDisplay ? (
         <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} />
       ) : (
         <>
