@@ -215,7 +215,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Initialize paddle
     setPaddle({
       x: CANVAS_WIDTH / 2 - PADDLE_WIDTH / 2,
-      y: CANVAS_HEIGHT - 40,
+      y: CANVAS_HEIGHT - 60,
       width: PADDLE_WIDTH,
       height: PADDLE_HEIGHT,
       hasTurrets: false,
@@ -285,7 +285,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Reset paddle
     setPaddle({
       x: CANVAS_WIDTH / 2 - PADDLE_WIDTH / 2,
-      y: CANVAS_HEIGHT - 40,
+      y: CANVAS_HEIGHT - 60,
       width: PADDLE_WIDTH,
       height: PADDLE_HEIGHT,
       hasTurrets: false,
