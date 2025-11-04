@@ -55,7 +55,6 @@ export const Game = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
-  const [missedLetters, setMissedLetters] = useState<Set<BonusLetterType>>(new Set());
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
@@ -71,38 +70,44 @@ export const Game = () => {
   const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives, timer);
   const { bullets, setBullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks, enemies);
 
-  // Bonus letter drop logic
-  const letterOrder: BonusLetterType[] = ["Q", "U", "M", "R", "A", "N"];
-  const firstDropLevels = [4, 6, 7, 8, 9, 10];
-  const secondDropLevels = [11, 12, 13, 14, 15, 16];
+  // Bonus letter drop logic - each letter drops on specific levels
+  const letterLevels: Record<BonusLetterType, number[]> = {
+    Q: [4, 11],
+    U: [6, 12],
+    M: [7, 13],
+    R: [8, 14],
+    A: [9, 15],
+    N: [10, 16],
+  };
 
   const dropBonusLetter = useCallback((x: number, y: number) => {
-    // Determine which letter should drop next
-    const nextLetterIndex = collectedLetters.size + missedLetters.size;
-    if (nextLetterIndex >= letterOrder.length) return; // All letters dropped
-
-    const nextLetter = letterOrder[nextLetterIndex];
-    
-    // Check if this letter should drop on this level
-    const shouldDropFirst = firstDropLevels.includes(level) && !missedLetters.has(nextLetter) && !collectedLetters.has(nextLetter);
-    const shouldDropSecond = secondDropLevels.includes(level) && missedLetters.has(nextLetter) && !collectedLetters.has(nextLetter);
-    
-    if (shouldDropFirst || shouldDropSecond) {
-      setBonusLetters((prev) => [
-        ...prev,
-        {
-          x: x - 15,
-          y: y,
-          width: 30,
-          height: 30,
-          type: nextLetter,
-          speed: 2,
-          active: true,
-        },
-      ]);
-      toast(`Bonus letter ${nextLetter} dropped!`, { icon: "🎯" });
+    // Check each letter to see if it should drop on this level
+    for (const letter of Object.keys(letterLevels) as BonusLetterType[]) {
+      const levels = letterLevels[letter];
+      
+      // Drop if: current level matches AND letter hasn't been collected yet
+      if (levels.includes(level) && !collectedLetters.has(letter)) {
+        // Check if this letter is already falling
+        const alreadyFalling = bonusLetters.some(bl => bl.type === letter && bl.active);
+        if (alreadyFalling) continue;
+        
+        setBonusLetters((prev) => [
+          ...prev,
+          {
+            x: x - 15,
+            y: y,
+            width: 30,
+            height: 30,
+            type: letter,
+            speed: 2,
+            active: true,
+          },
+        ]);
+        toast(`Bonus letter ${letter} dropped!`, { icon: "🎯" });
+        break; // Only drop one letter at a time
+      }
     }
-  }, [level, collectedLetters, missedLetters]);
+  }, [level, collectedLetters, bonusLetters]);
 
   const checkBonusLetterCollision = useCallback(() => {
     if (!paddle) return;
@@ -141,12 +146,6 @@ export const Game = () => {
 
         // Check if letter went off screen (missed)
         if (letter.y > CANVAS_HEIGHT) {
-          setMissedLetters((prevMissed) => {
-            const newMissed = new Set(prevMissed);
-            newMissed.add(letter.type);
-            return newMissed;
-          });
-          toast.warning(`Letter ${letter.type} missed! Second chance on levels 11-16`);
           return false;
         }
 
@@ -244,7 +243,6 @@ export const Game = () => {
     setLastEnemySpawnTime(0);
     setBonusLetters([]);
     setCollectedLetters(new Set());
-    setMissedLetters(new Set());
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
   }, [setPowerUps, initBricksForLevel]);
