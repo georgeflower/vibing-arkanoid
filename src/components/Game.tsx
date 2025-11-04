@@ -170,7 +170,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, [paddle]);
 
   const initBricksForLevel = useCallback((currentLevel: number) => {
-    const layoutIndex = (currentLevel - 1) % 10;
+    const layoutIndex = Math.min((currentLevel - 1), levelLayouts.length - 1);
     const layout = levelLayouts[layoutIndex];
     const levelColors = getBrickColors(currentLevel);
 
@@ -693,8 +693,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             // Check win condition (don't count indestructible bricks)
             if (newBricks.every((brick) => !brick.visible || brick.isIndestructible)) {
               soundManager.playWin();
-              setGameState("ready"); // Wait for click to start next level
-              toast.success(`Level ${level} Complete! Click to continue.`);
+              
+              // Check if player beat level 50
+              if (level >= 50) {
+                setScore((prev) => prev + 1000000);
+                setGameState("won");
+                soundManager.stopBackgroundMusic();
+                toast.success("🎉 GAME COMPLETED! +1,000,000 BONUS!");
+                
+                if (isHighScore(score + 1000000)) {
+                  setShowHighScoreEntry(true);
+                  soundManager.playHighScoreMusic();
+                }
+              } else {
+                setGameState("ready"); // Wait for click to start next level
+                toast.success(`Level ${level} Complete! Click to continue.`);
+              }
             }
 
             return newBricks;
@@ -1501,7 +1515,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, [initGame]);
 
   const handleHighScoreSubmit = (name: string) => {
-    addHighScore(name, score, level);
+    addHighScore(name, score, level, settings.difficulty, level >= 50);
     setShowHighScoreEntry(false);
     setShowHighScoreDisplay(true);
     toast.success("High score saved!");

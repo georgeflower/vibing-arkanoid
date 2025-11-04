@@ -1,5 +1,5 @@
 interface HighScoreTableProps {
-  scores: Array<{ name: string; score: number; level: number }>;
+  scores: Array<{ name: string; score: number; level: number; difficulty?: "normal" | "godlike"; beatLevel50?: boolean }>;
 }
 
 export const HighScoreTable = ({ scores }: HighScoreTableProps) => {
@@ -15,8 +15,14 @@ export const HighScoreTable = ({ scores }: HighScoreTableProps) => {
             className="flex justify-between items-center font-mono text-lg px-3 py-2 bg-slate-800/50 rounded border border-cyan-500/20"
           >
             <span className="text-cyan-300 w-8">{index + 1}.</span>
-            <span className="text-pink-400 font-bold w-16 text-center">
+            <span className="text-pink-400 font-bold flex items-center gap-1">
+              {entry.beatLevel50 && <span className="text-yellow-400">👑</span>}
               {entry.name}
+              {entry.difficulty === "godlike" && (
+                <span className="text-red-500 text-[10px] font-bold tracking-tighter" style={{ fontFamily: 'monospace' }}>
+                  GOD-MODE
+                </span>
+              )}
             </span>
             <span className="text-amber-300 flex-1 text-right">
               {entry.score.toLocaleString()}
