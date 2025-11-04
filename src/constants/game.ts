@@ -1,5 +1,5 @@
-export const CANVAS_WIDTH = 1000;
-export const CANVAS_HEIGHT = 800;
+export const CANVAS_WIDTH = 800;
+export const CANVAS_HEIGHT = 600;
 export const PADDLE_WIDTH = 120;
 export const PADDLE_HEIGHT = 14;
 export const BALL_RADIUS = 6;
