@@ -18,7 +18,7 @@ const MetalBalls = () => {
   const previousPositions = useRef<THREE.Vector3[]>(
     Array.from({ length: 10 }, () => new THREE.Vector3())
   );
-  const velocityRef = useRef({ x: 0.05, y: 0.03, z: 0.04 });
+  const velocityRef = useRef({ x: 0.015, y: 0.01, z: 0.012 });
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
@@ -128,8 +128,6 @@ const MetalBalls = () => {
             if (el) ballsRef.current[i] = el;
           }}
           position={[i - 4.5, 0, 0]}
-          castShadow
-          receiveShadow
         >
           <sphereGeometry args={[0.4, 32, 32]} />
           <meshStandardMaterial
@@ -150,7 +148,7 @@ const MetalBalls = () => {
 const RetroDonut = () => {
   const meshRef = useRef<THREE.Mesh>(null);
   const [opacity, setOpacity] = useState(0);
-  const velocityRef = useRef({ x: 0.04, y: 0.035, z: 0.045 });
+  const velocityRef = useRef({ x: 0.012, y: 0.01, z: 0.013 });
 
   useFrame((state) => {
     if (!meshRef.current) return;
@@ -196,7 +194,7 @@ const RetroDonut = () => {
   });
 
   return (
-    <mesh ref={meshRef} castShadow receiveShadow>
+    <mesh ref={meshRef}>
       <torusGeometry args={[2, 0.8, 32, 64]} />
       <meshStandardMaterial
         color="#ffffff"
@@ -212,16 +210,6 @@ const RetroDonut = () => {
   );
 };
 
-// Shadow Plane Component
-const ShadowPlane = () => {
-  return (
-    <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -3, 0]}>
-      <planeGeometry args={[50, 50]} />
-      <shadowMaterial opacity={0.3} />
-    </mesh>
-  );
-};
-
 // 3D Scene Component
 const Scene3D = () => {
   return (
@@ -231,26 +219,16 @@ const Scene3D = () => {
       <directionalLight
         position={[5, 8, 5]}
         intensity={1.5}
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-far={50}
-        shadow-camera-left={-10}
-        shadow-camera-right={10}
-        shadow-camera-top={10}
-        shadow-camera-bottom={-10}
       />
-      <pointLight position={[10, 10, 10]} intensity={1.2} color="#00ffff" castShadow />
+      <pointLight position={[10, 10, 10]} intensity={1.2} color="#00ffff" />
       <pointLight position={[-10, 5, -10]} intensity={0.8} color="#ff00ff" />
       <spotLight
         position={[0, 10, 0]}
         angle={0.5}
         penumbra={1}
         intensity={1}
-        castShadow
         color="#ffffff"
       />
-      <ShadowPlane />
       <MetalBalls />
       <RetroDonut />
     </>
@@ -400,7 +378,6 @@ export const HighScoreDisplay = ({ scores, onClose }: HighScoreDisplayProps) => 
         <Canvas
           camera={{ position: [0, 0, 10], fov: 50 }}
           style={{ background: 'transparent' }}
-          shadows
         >
           <Scene3D />
         </Canvas>
