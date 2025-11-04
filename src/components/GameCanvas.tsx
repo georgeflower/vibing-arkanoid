@@ -811,7 +811,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.restore();
       });
 
-      // Draw bonus letters as 3D spheres with letter images
+      // Draw bonus letters as 3D flipping rounded squares with retro texture
       bonusLetters.forEach((letter) => {
         if (!letter.active) return;
 
@@ -821,19 +821,69 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.save();
         ctx.translate(letter.x + size / 2, letter.y + size / 2);
         
-        // Draw sphere with glow
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = "hsl(280, 90%, 60%)";
+        // Calculate rotation based on y position for slow flip-down animation (Amiga/Atari style)
+        const rotationX = ((letter.y * 0.8) % 360) * (Math.PI / 180);
         
-        if (img && img.complete) {
-          ctx.drawImage(img, -size / 2, -size / 2, size, size);
-        } else {
-          // Fallback circle if image not loaded
-          ctx.fillStyle = "hsl(280, 90%, 60%)";
-          ctx.beginPath();
-          ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
-          ctx.fill();
+        // 3D projection - simulate flip down
+        const scaleY = Math.abs(Math.cos(rotationX));
+        const offsetY = Math.sin(rotationX) * size * 0.3;
+        
+        // Draw 3D rounded square with retro 16-bit gray pixel texture
+        const cornerRadius = 6;
+        
+        // Shadow for depth
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+        ctx.fillStyle = "hsl(0, 0%, 20%)";
+        ctx.beginPath();
+        ctx.roundRect(-size / 2, -size / 2 * scaleY + offsetY + 3, size, size * scaleY, cornerRadius);
+        ctx.fill();
+        
+        // Main face - gray base
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "hsl(0, 0%, 50%)";
+        ctx.fillStyle = "hsl(0, 0%, 60%)";
+        ctx.beginPath();
+        ctx.roundRect(-size / 2, -size / 2 * scaleY + offsetY, size, size * scaleY, cornerRadius);
+        ctx.fill();
+        
+        // Add 16-bit retro pixel pattern
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+        for (let py = -size / 2; py < size / 2; py += 3) {
+          for (let px = -size / 2; px < size / 2; px += 3) {
+            if ((px + py) % 6 === 0) {
+              ctx.fillRect(px, py * scaleY + offsetY, 2, 2 * scaleY);
+            }
+          }
         }
+        
+        // Darker pixel pattern for depth
+        ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+        for (let py = -size / 2; py < size / 2; py += 4) {
+          for (let px = -size / 2; px < size / 2; px += 4) {
+            if ((px - py) % 8 === 0) {
+              ctx.fillRect(px, py * scaleY + offsetY, 1, 1 * scaleY);
+            }
+          }
+        }
+        
+        // Draw the letter icon on the face (only when visible)
+        if (img && img.complete && scaleY > 0.2) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(-size / 2, -size / 2 * scaleY + offsetY, size, size * scaleY, cornerRadius);
+          ctx.clip();
+          ctx.globalAlpha = 0.9;
+          ctx.drawImage(img, -size / 2, -size / 2 * scaleY + offsetY, size, size * scaleY);
+          ctx.restore();
+        }
+        
+        // Highlight for 3D effect
+        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.beginPath();
+        ctx.roundRect(-size / 2, -size / 2 * scaleY + offsetY, size, size * scaleY * 0.3, [cornerRadius, cornerRadius, 0, 0]);
+        ctx.fill();
         
         ctx.restore();
       });
@@ -852,10 +902,61 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         const isCollected = collectedLetters.has(letter as BonusLetterType);
         
         ctx.save();
+        ctx.translate(x + size / 2, y + size / 2);
         
+        const cornerRadius = 5;
+        
+        // Shadow for depth
+        if (isCollected) {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+        }
+        
+        // Main face - gray base
+        ctx.fillStyle = isCollected ? "hsl(0, 0%, 60%)" : "hsl(0, 0%, 30%)";
+        ctx.beginPath();
+        ctx.roundRect(-size / 2, -size / 2, size, size, cornerRadius);
+        ctx.fill();
+        
+        // Add 16-bit retro pixel pattern if collected
+        if (isCollected) {
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+          for (let py = -size / 2; py < size / 2; py += 3) {
+            for (let px = -size / 2; px < size / 2; px += 3) {
+              if ((px + py) % 6 === 0) {
+                ctx.fillRect(px, py, 2, 2);
+              }
+            }
+          }
+          
+          ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+          for (let py = -size / 2; py < size / 2; py += 4) {
+            for (let px = -size / 2; px < size / 2; px += 4) {
+              if ((px - py) % 8 === 0) {
+                ctx.fillRect(px, py, 1, 1);
+              }
+            }
+          }
+        }
+        
+        // Draw letter icon
         if (img && img.complete) {
-          ctx.globalAlpha = isCollected ? 1 : 0.3;
-          ctx.drawImage(img, x, y, size, size);
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(-size / 2, -size / 2, size, size, cornerRadius);
+          ctx.clip();
+          ctx.globalAlpha = isCollected ? 0.9 : 0.3;
+          ctx.drawImage(img, -size / 2, -size / 2, size, size);
+          ctx.restore();
+        }
+        
+        // Highlight for 3D effect
+        if (isCollected) {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+          ctx.beginPath();
+          ctx.roundRect(-size / 2, -size / 2, size, size * 0.3, [cornerRadius, cornerRadius, 0, 0]);
+          ctx.fill();
         }
         
         ctx.restore();
