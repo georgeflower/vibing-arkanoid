@@ -378,11 +378,12 @@ All colors MUST be HSL.
 .metal-game-area {
   flex: 1;
   background: linear-gradient(180deg, hsl(210, 15%, 30%) 0%, hsl(210, 15%, 22%) 100%);
-  border: 4px ridge hsl(210, 15%, 50%);
+  border-top: 4px ridge hsl(210, 15%, 50%);
+  border-bottom: 4px ridge hsl(210, 15%, 50%);
+  border-left: none;
+  border-right: none;
   border-radius: 0;
-  border-left: 2px ridge hsl(210, 15%, 50%);
-  border-right: 2px ridge hsl(210, 15%, 50%);
-  padding: 8px;
+  padding: 8px 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -469,6 +470,12 @@ All colors MUST be HSL.
     display: none;
   }
   
+  .metal-game-area {
+    border-left: 4px ridge hsl(210, 15%, 50%);
+    border-right: 4px ridge hsl(210, 15%, 50%);
+    padding: 6px;
+  }
+  
   .stats-container {
     gap: 4px;
   }
@@ -499,10 +506,6 @@ All colors MUST be HSL.
     gap: 4px;
   }
   
-  .metal-game-area {
-    padding: 6px;
-  }
-  
   .metal-bottom-bar {
     padding: 8px;
   }
@@ -515,6 +518,10 @@ All colors MUST be HSL.
 @media (max-width: 480px) {
   .metal-frame {
     padding: 3px;
+  }
+  
+  .metal-game-area {
+    padding: 4px;
   }
   
   .stat-box {
@@ -532,10 +539,6 @@ All colors MUST be HSL.
   
   .stats-container {
     gap: 3px;
-  }
-  
-  .metal-game-area {
-    padding: 4px;
   }
   
   .metal-title-bar {
