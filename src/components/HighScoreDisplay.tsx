@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
 import { Canvas, useFrame, useLoader } from "@react-three/fiber";
+import { Environment } from "@react-three/drei";
 import * as THREE from "three";
 import metalBallTexture from "@/assets/metal-ball-texture.png";
 
@@ -153,14 +154,14 @@ const RetroDonut = () => {
 
   return (
     <mesh ref={meshRef} castShadow receiveShadow>
-      <torusGeometry args={[2, 0.8, 8, 16]} />
+      <torusGeometry args={[2, 0.8, 32, 64]} />
       <meshStandardMaterial
-        color="#c0c0c0"
-        metalness={0.8}
-        roughness={0.3}
+        color="#ffffff"
+        metalness={1.0}
+        roughness={0.0}
         emissive="#ff00ff"
-        emissiveIntensity={0.4 * opacity}
-        flatShading
+        emissiveIntensity={0.2 * opacity}
+        envMapIntensity={3.0}
         transparent
         opacity={opacity}
       />
@@ -182,6 +183,7 @@ const ShadowPlane = () => {
 const Scene3D = () => {
   return (
     <>
+      <Environment preset="city" />
       <ambientLight intensity={0.4} />
       <directionalLight
         position={[5, 8, 5]}
