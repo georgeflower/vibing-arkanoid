@@ -76,6 +76,36 @@ class SoundManager {
     this.musicTracks.forEach(track => track?.pause());
   }
 
+  resumeBackgroundMusic() {
+    if (!this.musicEnabled) return;
+    const currentTrack = this.musicTracks[this.currentTrackIndex];
+    if (currentTrack) {
+      currentTrack.play().catch(err => console.log('Resume audio failed:', err));
+    }
+  }
+
+  pauseIntroMusic() {
+    if (this.introMusic) {
+      this.introMusic.pause();
+    }
+  }
+
+  resumeIntroMusic() {
+    if (!this.musicEnabled || !this.introMusic) return;
+    this.introMusic.play().catch(err => console.log('Resume intro music failed:', err));
+  }
+
+  pauseHighScoreMusic() {
+    if (this.highScoreMusic) {
+      this.highScoreMusic.pause();
+    }
+  }
+
+  resumeHighScoreMusic() {
+    if (!this.musicEnabled || !this.highScoreMusic) return;
+    this.highScoreMusic.play().catch(err => console.log('Resume high score music failed:', err));
+  }
+
   stopBackgroundMusic() {
     this.musicTracks.forEach(track => {
       if (track) {
@@ -88,7 +118,15 @@ class SoundManager {
   setMusicEnabled(enabled: boolean) {
     this.musicEnabled = enabled;
     if (!enabled) {
-      this.stopAllMusic();
+      // Pause all music instead of stopping
+      this.pauseBackgroundMusic();
+      this.pauseIntroMusic();
+      this.pauseHighScoreMusic();
+    } else {
+      // Resume whichever music was playing
+      this.resumeBackgroundMusic();
+      this.resumeIntroMusic();
+      this.resumeHighScoreMusic();
     }
   }
 

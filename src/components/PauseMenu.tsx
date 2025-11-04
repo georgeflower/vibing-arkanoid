@@ -18,10 +18,6 @@ export const PauseMenu = ({ onResume, onReturnToMenu }: PauseMenuProps) => {
     soundManager.playUIToggle();
     setMusicEnabled(checked);
     soundManager.setMusicEnabled(checked);
-    if (checked) {
-      // Resume game music (will auto-stop all other music types)
-      soundManager.playBackgroundMusic();
-    }
   };
 
   const handleSfxToggle = (checked: boolean) => {
