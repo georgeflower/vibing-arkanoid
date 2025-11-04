@@ -163,15 +163,15 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   return (
     <div 
-      className="min-h-screen w-full flex items-center justify-center p-4 bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)]"
+      className="min-h-screen w-full flex items-end justify-center pb-12 p-4 bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)]"
       style={{ backgroundImage: `url(${startScreenImg})` }}
     >
-      <Card className="max-w-md w-full p-8 bg-black/60 backdrop-blur-sm border-[hsl(200,70%,50%)]">
+      <Card className="max-w-sm w-full p-6 bg-black/60 backdrop-blur-sm border-[hsl(200,70%,50%)]">
         {/* Settings */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Starting Lives */}
           <div className="space-y-2">
-            <Label className="text-white text-lg">Starting Lives: {startingLives}</Label>
+            <Label className="text-white text-base">Starting Lives: {startingLives}</Label>
             <Slider
               value={[startingLives]}
               onValueChange={(value) => {
@@ -187,7 +187,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
           {/* Difficulty */}
           <div className="space-y-2">
-            <Label className="text-white text-lg">Difficulty</Label>
+            <Label className="text-white text-base">Difficulty</Label>
             <RadioGroup 
               value={difficulty} 
               onValueChange={(value) => {
@@ -210,14 +210,14 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
         </div>
 
         {/* Action Buttons */}
-        <div className="space-y-3 mt-8">
+        <div className="space-y-2 mt-6">
           <Button
             onClick={() => {
               soundManager.playMenuClick();
               handleStart();
             }}
             onMouseEnter={() => soundManager.playMenuHover()}
-            className="w-full bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white text-xl py-6"
+            className="w-full bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white text-lg py-4"
           >
             Start Game
           </Button>
