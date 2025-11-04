@@ -35,33 +35,38 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   };
 
   if (showHighScores) {
-    return (
-      <HighScoreDisplay 
-        scores={highScores} 
-        onClose={() => setShowHighScores(false)} 
-      />
-    );
+    return <HighScoreDisplay scores={highScores} onClose={() => setShowHighScores(false)} />;
   }
 
   if (showAbout) {
     return (
       <div className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
         <Card className="w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">About Vibing Arkanoid</h2>
-          
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">
+            About Vibing Arkanoid
+          </h2>
+
           <div className="space-y-2 sm:space-y-3 md:space-y-4 text-white">
             <p className="text-xs sm:text-sm md:text-base leading-relaxed">
-              Welcome to <span className="text-[hsl(200,70%,50%)] font-bold">Vibing Arkanoid</span> - the most electrifying brick-breaking experience ever created! This isn't just another Breakout clone - it's a pulsating, neon-drenched journey through 50 levels of pure arcade bliss.
+              Welcome to <span className="text-[hsl(200,70%,50%)] font-bold">Vibing Arkanoid</span> - the most
+              electrifying brick-breaking experience ever created! This isn't just another Breakout clone - it's a
+              pulsating, retro-drenched journey through 50 levels of pure arcade bliss.
             </p>
-            
+
             <p className="text-xs sm:text-sm md:text-base leading-relaxed">
-              Featuring an authentic retro aesthetic with modern gameplay mechanics, power-ups that actually matter, enemies that fight back, and a soundtrack that'll make your speakers weep with joy. Collect the legendary <span className="text-[hsl(330,100%,65%)] font-bold">Q-U-M-R-A-N</span> bonus letters for massive rewards!
+              Featuring an authentic retro aesthetic with modern gameplay mechanics, power-ups that actually matter,
+              enemies that fight back, and a soundtrack that'll make your speakers weep with joy. Collect the legendary{" "}
+              <span className="text-[hsl(330,100%,65%)] font-bold">Q-U-M-R-A-N</span> bonus letters for massive rewards!
             </p>
 
             <div className="bg-black/30 p-3 sm:p-4 md:p-5 rounded-lg border border-[hsl(200,70%,50%)]/30">
-              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">Vibe Coded to Perfection</h3>
+              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">
+                Vibe Coded to Perfection
+              </h3>
               <p className="text-xs sm:text-sm leading-relaxed">
-                This game is the result of pure <span className="text-[hsl(330,100%,65%)] font-bold">vibe coding</span> - that magical state where code flows like music and creativity knows no bounds. Every pixel, every sound effect, every level was crafted with passion and energy.
+                This game is the result of pure <span className="text-[hsl(330,100%,65%)] font-bold">vibe coding</span>{" "}
+                - that magical state where code flows like music and creativity knows no bounds. Every pixel, every
+                sound effect, every level was crafted with passion and energy.
               </p>
             </div>
 
@@ -71,7 +76,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 <span className="text-[hsl(200,70%,50%)] font-bold text-lg sm:text-xl md:text-2xl">Qumran</span>
               </p>
               <p className="text-xs sm:text-sm text-gray-400 mt-1">
-                Game Design • Programming • Music Production • Vibe Engineering
+                Game Design • Programming • Music Viber • Vibe Engineering
               </p>
             </div>
 
@@ -97,7 +102,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showPressToStart) {
     return (
-      <div 
+      <div
         className="min-h-screen w-full flex items-center justify-center bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)] cursor-pointer"
         style={{ backgroundImage: `url(${startScreenImg})` }}
         onClick={() => {
@@ -125,19 +130,37 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
     return (
       <div className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
         <Card className="w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">Instructions</h2>
-          
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">
+            Instructions
+          </h2>
+
           <div className="space-y-2 sm:space-y-3 md:space-y-4 text-white">
             <div>
               <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">Controls</h3>
               <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
-                <li><span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">←→</span> or <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">A/D</span> - Move paddle</li>
-                <li><span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">Space</span> - Launch ball / Fire bullets</li>
-                <li><span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">P</span> - Pause game</li>
-                <li><span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">N</span> - Next music track</li>
-                <li><span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">B</span> - Previous music track</li>
-                <li><span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">M</span> - Toggle music</li>
-                <li><span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">S</span> - Toggle sound effects</li>
+                <li>
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">←→</span> or{" "}
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">A/D</span> - Move paddle
+                </li>
+                <li>
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">Space</span> - Launch ball / Fire
+                  bullets
+                </li>
+                <li>
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">P</span> - Pause game
+                </li>
+                <li>
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">N</span> - Next music track
+                </li>
+                <li>
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">B</span> - Previous music track
+                </li>
+                <li>
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">M</span> - Toggle music
+                </li>
+                <li>
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">S</span> - Toggle sound effects
+                </li>
               </ul>
             </div>
 
@@ -155,21 +178,42 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             <div>
               <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">Power-ups</h3>
               <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
-                <li><span className="text-[hsl(330,100%,65%)]">Multiball</span> - Split ball into three</li>
-                <li><span className="text-[hsl(30,100%,60%)]">Turrets</span> - Add cannons to paddle</li>
-                <li><span className="text-[hsl(30,100%,60%)]">Fireball</span> - Ball destroys everything</li>
-                <li><span className="text-[hsl(0,100%,60%)]">Extra Life</span> - Gain one life</li>
-                <li><span className="text-[hsl(200,100%,60%)]">Slowdown</span> - Slow ball speed</li>
-                <li><span className="text-[hsl(120,60%,45%)]">Extend</span> - Wider paddle</li>
-                <li><span className="text-[hsl(0,75%,55%)]">Shrink</span> - Smaller paddle</li>
+                <li>
+                  <span className="text-[hsl(330,100%,65%)]">Multiball</span> - Split ball into three
+                </li>
+                <li>
+                  <span className="text-[hsl(30,100%,60%)]">Turrets</span> - Add cannons to paddle
+                </li>
+                <li>
+                  <span className="text-[hsl(30,100%,60%)]">Fireball</span> - Ball destroys everything
+                </li>
+                <li>
+                  <span className="text-[hsl(0,100%,60%)]">Extra Life</span> - Gain one life
+                </li>
+                <li>
+                  <span className="text-[hsl(200,100%,60%)]">Slowdown</span> - Slow ball speed
+                </li>
+                <li>
+                  <span className="text-[hsl(120,60%,45%)]">Extend</span> - Wider paddle
+                </li>
+                <li>
+                  <span className="text-[hsl(0,75%,55%)]">Shrink</span> - Smaller paddle
+                </li>
               </ul>
             </div>
 
             <div>
-              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">Difficulty Modes</h3>
+              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">
+                Difficulty Modes
+              </h3>
               <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
-                <li><span className="text-[hsl(120,60%,45%)]">Normal</span> - Standard gameplay with power-ups</li>
-                <li><span className="text-[hsl(0,85%,55%)]">Godlike</span> - No extra life power-ups, faster enemy spawns, more enemy fire</li>
+                <li>
+                  <span className="text-[hsl(120,60%,45%)]">Normal</span> - Standard gameplay with power-ups
+                </li>
+                <li>
+                  <span className="text-[hsl(0,85%,55%)]">Godlike</span> - No extra life power-ups, faster enemy spawns,
+                  more enemy fire
+                </li>
               </ul>
             </div>
           </div>
@@ -190,13 +234,11 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   }
 
   return (
-    <div 
+    <div
       className="min-h-screen w-full flex items-center justify-center p-4 bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)] relative"
       style={{ backgroundImage: `url(${startScreenImg})` }}
     >
-      <div className="absolute top-4 right-4 text-white/60 text-xs font-mono">
-        v{GAME_VERSION}
-      </div>
+      <div className="absolute top-4 right-4 text-white/60 text-xs font-mono">v{GAME_VERSION}</div>
       <Card className="max-w-sm w-full p-6 bg-black/60 backdrop-blur-sm border-[hsl(200,70%,50%)]">
         {/* Settings */}
         <div className="space-y-4">
@@ -219,8 +261,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           {/* Difficulty */}
           <div className="space-y-2">
             <Label className="text-white text-base">Difficulty</Label>
-            <RadioGroup 
-              value={difficulty} 
+            <RadioGroup
+              value={difficulty}
               onValueChange={(value) => {
                 setDifficulty(value as Difficulty);
                 soundManager.playMenuClick();
@@ -228,7 +270,9 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="normal" id="normal" />
-                <Label htmlFor="normal" className="text-white cursor-pointer">Normal</Label>
+                <Label htmlFor="normal" className="text-white cursor-pointer">
+                  Normal
+                </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="godlike" id="godlike" />
@@ -252,7 +296,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           >
             Start Game
           </Button>
-          
+
           <Button
             onClick={() => {
               soundManager.playMenuClick();
@@ -264,7 +308,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           >
             Instructions
           </Button>
-          
+
           <Button
             onClick={() => {
               soundManager.playMenuClick();
