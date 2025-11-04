@@ -370,6 +370,48 @@ class SoundManager {
     audio.play().catch(err => console.log('Shrink sound failed:', err));
   }
 
+  playBonusLetterPickup() {
+    const ctx = this.getAudioContext();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    // "Duuuip" - robotic blip sound
+    oscillator.frequency.setValueAtTime(600, ctx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.15);
+    oscillator.type = 'square';
+    
+    gainNode.gain.setValueAtTime(0.25, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.15);
+  }
+
+  playBonusComplete() {
+    const ctx = this.getAudioContext();
+    // Victory fanfare - triumphant ascending notes
+    [0, 0.15, 0.3, 0.45, 0.6].forEach((time, i) => {
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      const freq = [523, 659, 784, 1047, 1319][i]; // C5, E5, G5, C6, E6
+      oscillator.frequency.value = freq;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, ctx.currentTime + time);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + time + 0.4);
+
+      oscillator.start(ctx.currentTime + time);
+      oscillator.stop(ctx.currentTime + time + 0.4);
+    });
+  }
+
   isMusicPlaying(): boolean {
     return this.musicTracks.some(track => track && !track.paused && track.currentTime > 0);
   }

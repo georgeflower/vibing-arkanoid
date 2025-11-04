@@ -6,7 +6,7 @@ import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { toast } from "sonner";
 import { Maximize2, Minimize2 } from "lucide-react";
-import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion } from "@/types/game";
+import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType } from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
 import {
   CANVAS_WIDTH,
@@ -53,6 +53,9 @@ export const Game = () => {
   const [launchAngle, setLaunchAngle] = useState(-60);
   const [showInstructions, setShowInstructions] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
+  const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
+  const [missedLetters, setMissedLetters] = useState<Set<BonusLetterType>>(new Set());
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
@@ -67,6 +70,92 @@ export const Game = () => {
 
   const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives, timer);
   const { bullets, setBullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks, enemies);
+
+  // Bonus letter drop logic
+  const letterOrder: BonusLetterType[] = ["Q", "U", "M", "R", "A", "N"];
+  const firstDropLevels = [4, 6, 7, 8, 9, 10];
+  const secondDropLevels = [11, 12, 13, 14, 15, 16];
+
+  const dropBonusLetter = useCallback((x: number, y: number) => {
+    // Determine which letter should drop next
+    const nextLetterIndex = collectedLetters.size + missedLetters.size;
+    if (nextLetterIndex >= letterOrder.length) return; // All letters dropped
+
+    const nextLetter = letterOrder[nextLetterIndex];
+    
+    // Check if this letter should drop on this level
+    const shouldDropFirst = firstDropLevels.includes(level) && !missedLetters.has(nextLetter) && !collectedLetters.has(nextLetter);
+    const shouldDropSecond = secondDropLevels.includes(level) && missedLetters.has(nextLetter) && !collectedLetters.has(nextLetter);
+    
+    if (shouldDropFirst || shouldDropSecond) {
+      setBonusLetters((prev) => [
+        ...prev,
+        {
+          x: x - 15,
+          y: y,
+          width: 30,
+          height: 30,
+          type: nextLetter,
+          speed: 2,
+          active: true,
+        },
+      ]);
+      toast(`Bonus letter ${nextLetter} dropped!`, { icon: "🎯" });
+    }
+  }, [level, collectedLetters, missedLetters]);
+
+  const checkBonusLetterCollision = useCallback(() => {
+    if (!paddle) return;
+
+    setBonusLetters((prev) => {
+      const updated = prev.filter((letter) => {
+        if (!letter.active) return false;
+
+        // Check collision with paddle
+        if (
+          letter.x + letter.width > paddle.x &&
+          letter.x < paddle.x + paddle.width &&
+          letter.y + letter.height > paddle.y &&
+          letter.y < paddle.y + paddle.height
+        ) {
+          // Letter collected
+          setCollectedLetters((prevCollected) => {
+            const newCollected = new Set(prevCollected);
+            newCollected.add(letter.type);
+            
+            // Check if all letters collected
+            if (newCollected.size === 6) {
+              setScore((s) => s + 500000);
+              setLives((l) => l + 10);
+              soundManager.playBonusComplete();
+              toast.success("QUMRAN Complete! +10 Lives & +500,000 Points!", { duration: 5000 });
+            } else {
+              soundManager.playBonusLetterPickup();
+              toast.success(`Letter ${letter.type} collected!`);
+            }
+            
+            return newCollected;
+          });
+          return false;
+        }
+
+        // Check if letter went off screen (missed)
+        if (letter.y > CANVAS_HEIGHT) {
+          setMissedLetters((prevMissed) => {
+            const newMissed = new Set(prevMissed);
+            newMissed.add(letter.type);
+            return newMissed;
+          });
+          toast.warning(`Letter ${letter.type} missed! Second chance on levels 11-16`);
+          return false;
+        }
+
+        return true;
+      });
+
+      return updated;
+    });
+  }, [paddle]);
 
   const initBricksForLevel = useCallback((currentLevel: number) => {
     const layoutIndex = (currentLevel - 1) % 10;
@@ -153,6 +242,9 @@ export const Game = () => {
     setExplosions([]);
     setEnemySpawnCount(0);
     setLastEnemySpawnTime(0);
+    setBonusLetters([]);
+    setCollectedLetters(new Set());
+    setMissedLetters(new Set());
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
   }, [setPowerUps, initBricksForLevel]);
@@ -214,6 +306,8 @@ export const Game = () => {
     setExplosions([]);
     setEnemySpawnCount(0);
     setLastEnemySpawnTime(0);
+    setBonusLetters([]);
+    // Don't reset collected letters between levels
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
     setGameState("playing");
@@ -679,6 +773,17 @@ export const Game = () => {
     // Update power-ups
     updatePowerUps();
 
+    // Update bonus letters
+    setBonusLetters((prev) =>
+      prev.map((letter) => ({
+        ...letter,
+        y: letter.y + letter.speed,
+      })),
+    );
+
+    // Check bonus letter collisions
+    checkBonusLetterCollision();
+
     // Update bullets
     updateBullets(bricks);
 
@@ -817,21 +922,24 @@ export const Game = () => {
                     maxFrames: 20,
                   },
                 ]);
-                soundManager.playExplosion();
-                setScore((s) => s + 300);
-                toast.success("Pyramid destroyed! +300 points");
+              soundManager.playExplosion();
+              setScore((s) => s + 300);
+              toast.success("Pyramid destroyed! +300 points");
 
-                // Remove enemy
-                setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
+              // Check for bonus letter drop
+              dropBonusLetter(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
 
-                // Clear bomb interval
-                if (enemy.id !== undefined) {
-                  const interval = bombIntervalsRef.current.get(enemy.id);
-                  if (interval) {
-                    clearInterval(interval);
-                    bombIntervalsRef.current.delete(enemy.id);
-                  }
+              // Remove enemy
+              setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
+
+              // Clear bomb interval
+              if (enemy.id !== undefined) {
+                const interval = bombIntervalsRef.current.get(enemy.id);
+                if (interval) {
+                  clearInterval(interval);
+                  bombIntervalsRef.current.delete(enemy.id);
                 }
+              }
               }
             } else if (enemy.type === "sphere") {
               const currentHits = enemy.hits || 0;
@@ -868,6 +976,9 @@ export const Game = () => {
                 setScore((s) => s + 200);
                 toast.success("Sphere enemy destroyed! +200 points");
 
+                // Check for bonus letter drop
+                dropBonusLetter(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+
                 // Remove enemy
                 setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
 
@@ -894,6 +1005,9 @@ export const Game = () => {
               soundManager.playExplosion();
               setScore((s) => s + 100);
               toast.success("Enemy destroyed! +100 points");
+
+              // Check for bonus letter drop
+              dropBonusLetter(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
 
               // Remove enemy
               setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
@@ -1477,6 +1591,8 @@ export const Game = () => {
                       backgroundPhase={backgroundPhase}
                       explosions={explosions}
                       launchAngle={launchAngle}
+                      bonusLetters={bonusLetters}
+                      collectedLetters={collectedLetters}
                     />
                   </div>
                 </div>

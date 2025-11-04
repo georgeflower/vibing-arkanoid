@@ -88,6 +88,18 @@ export interface Bomb {
   dx?: number; // For rockets with magnetic behavior
 }
 
+export type BonusLetterType = "Q" | "U" | "M" | "R" | "A" | "N";
+
+export interface BonusLetter {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  type: BonusLetterType;
+  speed: number;
+  active: boolean;
+}
+
 export interface Explosion {
   x: number;
   y: number;

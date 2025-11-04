@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useRef } from "react";
-import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion } from "@/types/game";
+import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType } from "@/types/game";
 import { powerUpImages } from "@/utils/powerUpImages";
+import { bonusLetterImages } from "@/utils/bonusLetterImages";
 import paddleImg from "@/assets/paddle.png";
 import paddleTurretsImg from "@/assets/paddle-turrets.png";
 
@@ -19,11 +20,14 @@ interface GameCanvasProps {
   backgroundPhase: number;
   explosions: Explosion[];
   launchAngle: number;
+  bonusLetters: BonusLetter[];
+  collectedLetters: Set<BonusLetterType>;
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
+    const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
     const paddleTurretsImageRef = useRef<HTMLImageElement | null>(null);
     const bgRotationRef = useRef(0);
@@ -33,13 +37,19 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const zoomDirectionRef = useRef(1);
     const dashOffsetRef = useRef(0);
     
-    // Load power-up images and paddle image
+    // Load power-up images, bonus letter images, and paddle image
     useEffect(() => {
       const cacheBuster = `?t=${Date.now()}`;
       Object.entries(powerUpImages).forEach(([type, src]) => {
         const img = new Image();
         img.src = src + cacheBuster;
         loadedImagesRef.current[type] = img;
+      });
+      
+      Object.entries(bonusLetterImages).forEach(([type, src]) => {
+        const img = new Image();
+        img.src = src + cacheBuster;
+        bonusLetterImagesRef.current[type] = img;
       });
       
       const paddleImage = new Image();
@@ -801,6 +811,74 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.restore();
       });
 
+      // Draw bonus letters as 3D spheres with letter images
+      bonusLetters.forEach((letter) => {
+        if (!letter.active) return;
+
+        const img = bonusLetterImagesRef.current[letter.type];
+        const size = letter.width;
+        
+        ctx.save();
+        ctx.translate(letter.x + size / 2, letter.y + size / 2);
+        
+        // Draw sphere with glow
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "hsl(280, 90%, 60%)";
+        
+        if (img && img.complete) {
+          ctx.drawImage(img, -size / 2, -size / 2, size, size);
+        } else {
+          // Fallback circle if image not loaded
+          ctx.fillStyle = "hsl(280, 90%, 60%)";
+          ctx.beginPath();
+          ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        
+        ctx.restore();
+      });
+
+      // Draw collected letters on the sides
+      const letterOrder: BonusLetterType[] = ["Q", "U", "M", "R", "A", "N"];
+      const leftLetters = ["Q", "U", "M"];
+      const rightLetters = ["R", "A", "N"];
+      
+      // Left side letters
+      leftLetters.forEach((letter, index) => {
+        const img = bonusLetterImagesRef.current[letter];
+        const x = 20;
+        const y = 250 + index * 70;
+        const size = 50;
+        const isCollected = collectedLetters.has(letter as BonusLetterType);
+        
+        ctx.save();
+        
+        if (img && img.complete) {
+          ctx.globalAlpha = isCollected ? 1 : 0.3;
+          ctx.drawImage(img, x, y, size, size);
+        }
+        
+        ctx.restore();
+      });
+      
+      // Right side letters
+      rightLetters.forEach((letter, index) => {
+        const img = bonusLetterImagesRef.current[letter];
+        const x = width - 70;
+        const y = 250 + index * 70;
+        const size = 50;
+        const isCollected = collectedLetters.has(letter as BonusLetterType);
+        
+        ctx.save();
+        
+        if (img && img.complete) {
+          ctx.globalAlpha = isCollected ? 1 : 0.3;
+          ctx.drawImage(img, x, y, size, size);
+        }
+        
+        ctx.restore();
+      });
+
       // Game state overlay
       if (gameState !== "playing") {
         ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
@@ -860,7 +938,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillText(text2, width / 2, instructionY2);
       }
     
-    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle]);
+    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters]);
 
     return (
       <canvas
