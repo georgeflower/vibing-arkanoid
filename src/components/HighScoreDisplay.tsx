@@ -18,17 +18,34 @@ const MetalBalls = () => {
   const previousPositions = useRef<THREE.Vector3[]>(
     Array.from({ length: 10 }, () => new THREE.Vector3())
   );
+  const velocityRef = useRef({ x: 0.05, y: 0.03, z: 0.04 });
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
     
     const time = state.clock.getElapsedTime();
     
-    // Move the entire group around the screen slowly (60 second cycle)
-    const screenTime = time * 0.1; // Slow movement
-    groupRef.current.position.x = Math.sin(screenTime) * 6;
-    groupRef.current.position.y = Math.cos(screenTime * 0.7) * 4;
-    groupRef.current.position.z = Math.sin(screenTime * 0.5) * 3;
+    // Move the entire group around with bouncing boundaries
+    const bounds = { x: 8, y: 5, z: 6 };
+    
+    // Update position based on velocity
+    groupRef.current.position.x += velocityRef.current.x;
+    groupRef.current.position.y += velocityRef.current.y;
+    groupRef.current.position.z += velocityRef.current.z;
+    
+    // Bounce off edges with smooth direction change
+    if (Math.abs(groupRef.current.position.x) > bounds.x) {
+      velocityRef.current.x *= -1;
+      groupRef.current.position.x = Math.sign(groupRef.current.position.x) * bounds.x;
+    }
+    if (Math.abs(groupRef.current.position.y) > bounds.y) {
+      velocityRef.current.y *= -1;
+      groupRef.current.position.y = Math.sign(groupRef.current.position.y) * bounds.y;
+    }
+    if (Math.abs(groupRef.current.position.z) > bounds.z) {
+      velocityRef.current.z *= -1;
+      groupRef.current.position.z = Math.sign(groupRef.current.position.z) * bounds.z;
+    }
     
     // Loop through phases continuously (30 second cycle)
     const cycleTime = time % 30;
@@ -37,7 +54,7 @@ const MetalBalls = () => {
     
     if (cycleTime < 10) {
       phase = 0; // Wave
-      transitionProgress = Math.min(cycleTime / 2, 1); // Fade in over 2 seconds
+      transitionProgress = Math.min(cycleTime / 2, 1);
     } else if (cycleTime < 20) {
       phase = 1; // Whirlpool
       transitionProgress = Math.min((cycleTime - 10) / 2, 1);
@@ -133,6 +150,7 @@ const MetalBalls = () => {
 const RetroDonut = () => {
   const meshRef = useRef<THREE.Mesh>(null);
   const [opacity, setOpacity] = useState(0);
+  const velocityRef = useRef({ x: 0.04, y: 0.035, z: 0.045 });
 
   useFrame((state) => {
     if (!meshRef.current) return;
@@ -144,18 +162,34 @@ const RetroDonut = () => {
     setOpacity(fadeInProgress);
     
     if (fadeInProgress > 0) {
-      // Move around the screen slowly (offset from balls, 50 second cycle)
-      const screenTime = time * 0.12;
-      meshRef.current.position.x = Math.cos(screenTime * 1.3) * 7;
-      meshRef.current.position.y = Math.sin(screenTime * 0.9) * 4.5;
-      meshRef.current.position.z = Math.cos(screenTime * 0.6) * 4;
+      // Move around with bouncing boundaries
+      const bounds = { x: 9, y: 6, z: 7 };
+      
+      // Update position based on velocity
+      meshRef.current.position.x += velocityRef.current.x;
+      meshRef.current.position.y += velocityRef.current.y;
+      meshRef.current.position.z += velocityRef.current.z;
+      
+      // Bounce off edges
+      if (Math.abs(meshRef.current.position.x) > bounds.x) {
+        velocityRef.current.x *= -1;
+        meshRef.current.position.x = Math.sign(meshRef.current.position.x) * bounds.x;
+      }
+      if (Math.abs(meshRef.current.position.y) > bounds.y) {
+        velocityRef.current.y *= -1;
+        meshRef.current.position.y = Math.sign(meshRef.current.position.y) * bounds.y;
+      }
+      if (Math.abs(meshRef.current.position.z) > bounds.z) {
+        velocityRef.current.z *= -1;
+        meshRef.current.position.z = Math.sign(meshRef.current.position.z) * bounds.z;
+      }
       
       // Spinning
       meshRef.current.rotation.x += 0.02;
       meshRef.current.rotation.y += 0.03;
       
-      // Zooming in and out
-      const baseScale = 0.5 + fadeInProgress * 0.5; // Start smaller
+      // Zooming in and out with scale
+      const baseScale = 0.5 + fadeInProgress * 0.5;
       const scale = baseScale + Math.sin(time * 1.5) * 0.5;
       meshRef.current.scale.set(scale, scale, scale);
     }
@@ -265,10 +299,46 @@ export const HighScoreDisplay = ({ scores, onClose }: HighScoreDisplayProps) => 
         ctx.stroke();
       }
 
-      // Floating circles
+      // Pattern cycling (40 second cycle)
+      const patternTime = time % 40;
+      let pattern = 0;
+      let patternTransition = 0;
+      
+      if (patternTime < 13.33) {
+        pattern = 0; // Circular orbit
+        patternTransition = Math.min(patternTime / 2, 1);
+      } else if (patternTime < 26.66) {
+        pattern = 1; // Figure-8
+        patternTransition = Math.min((patternTime - 13.33) / 2, 1);
+      } else {
+        pattern = 2; // Spiral
+        patternTransition = Math.min((patternTime - 26.66) / 2, 1);
+      }
+
+      // Floating circles with different patterns
       for (let i = 0; i < 5; i++) {
-        const x = canvas.width / 2 + Math.sin(time + i) * 200;
-        const y = canvas.height / 2 + Math.cos(time * 0.7 + i) * 150;
+        let x, y;
+        
+        if (pattern === 0) {
+          // Circular orbit
+          const angle = time * 0.5 + i * (Math.PI * 2 / 5);
+          const radius = 250 + Math.sin(time + i) * 50;
+          x = canvas.width / 2 + Math.cos(angle) * radius;
+          y = canvas.height / 2 + Math.sin(angle) * radius;
+        } else if (pattern === 1) {
+          // Figure-8 pattern
+          const t = time * 0.5 + i * 0.8;
+          const scale = 200 + Math.sin(time + i) * 30;
+          x = canvas.width / 2 + Math.sin(t) * scale;
+          y = canvas.height / 2 + Math.sin(t * 2) * scale * 0.7;
+        } else {
+          // Spiral pattern
+          const spiralT = time * 0.4 + i * 0.6;
+          const spiralRadius = 100 + (spiralT % 10) * 20;
+          x = canvas.width / 2 + Math.cos(spiralT) * spiralRadius;
+          y = canvas.height / 2 + Math.sin(spiralT) * spiralRadius;
+        }
+        
         const radius = 30 + Math.sin(time * 2 + i) * 10;
         
         ctx.shadowBlur = 20;
@@ -280,11 +350,21 @@ export const HighScoreDisplay = ({ scores, onClose }: HighScoreDisplayProps) => 
         ctx.stroke();
       }
 
-      // Rotating squares
+      // Rotating squares with varied patterns
       ctx.shadowBlur = 15;
       for (let i = 0; i < 3; i++) {
-        const x = canvas.width / 2 + Math.cos(time * 0.5 + i * 2) * 250;
-        const y = canvas.height / 2 + Math.sin(time * 0.5 + i * 2) * 150;
+        let x, y;
+        
+        if (pattern === 0) {
+          x = canvas.width / 2 + Math.cos(time * 0.5 + i * 2) * 250;
+          y = canvas.height / 2 + Math.sin(time * 0.5 + i * 2) * 150;
+        } else if (pattern === 1) {
+          x = canvas.width / 2 + Math.sin(time * 0.6 + i * 1.5) * 280;
+          y = canvas.height / 2 + Math.cos(time * 0.8 + i * 1.5) * 180;
+        } else {
+          x = canvas.width / 2 + Math.cos(time * 0.4 + i * 2.5) * (200 + i * 30);
+          y = canvas.height / 2 + Math.sin(time * 0.4 + i * 2.5) * (150 + i * 20);
+        }
         
         ctx.save();
         ctx.translate(x, y);
