@@ -160,17 +160,11 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-4">
-      <Card className="max-w-md w-full p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
-        {/* Title Image */}
-        <div className="mb-8">
-          <img 
-            src={startScreenImg} 
-            alt="Breakout Game" 
-            className="w-full h-auto rounded-lg shadow-lg"
-          />
-        </div>
-
+    <div 
+      className="min-h-screen w-full flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${startScreenImg})` }}
+    >
+      <Card className="max-w-md w-full p-8 bg-black/60 backdrop-blur-sm border-[hsl(200,70%,50%)]">
         {/* Settings */}
         <div className="space-y-6">
           {/* Starting Lives */}
