@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -10,21 +11,26 @@ interface PauseMenuProps {
 }
 
 export const PauseMenu = ({ onResume, onReturnToMenu }: PauseMenuProps) => {
-  const musicEnabled = soundManager.getMusicEnabled();
-  const sfxEnabled = soundManager.getSfxEnabled();
+  const [musicEnabled, setMusicEnabled] = useState(soundManager.getMusicEnabled());
+  const [sfxEnabled, setSfxEnabled] = useState(soundManager.getSfxEnabled());
 
   const handleMusicToggle = (checked: boolean) => {
     soundManager.playUIToggle();
+    setMusicEnabled(checked);
     soundManager.setMusicEnabled(checked);
     if (checked) {
+      // Stop intro music and resume game music
+      soundManager.stopIntroMusic();
       soundManager.playBackgroundMusic();
     } else {
       soundManager.stopBackgroundMusic();
+      soundManager.stopIntroMusic();
     }
   };
 
   const handleSfxToggle = (checked: boolean) => {
     soundManager.playUIToggle();
+    setSfxEnabled(checked);
     soundManager.setSfxEnabled(checked);
   };
 
