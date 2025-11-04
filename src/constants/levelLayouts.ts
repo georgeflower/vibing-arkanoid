@@ -280,7 +280,7 @@ export const levelLayouts: (boolean | number)[][][] = [
 
   // Level 13: Maze Pattern
   [
-    [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [2, true, true, true, true, 2, true, true, true, true, true, true, true, 2],
     [2, true, 2, 2, true, 2, true, 2, 2, 2, 2, 2, true, 2],
     [2, true, 2, true, true, true, true, true, true, true, true, 2, true, 2],
@@ -294,7 +294,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [2, true, true, true, true, 2, true, 2, true, true, true, 2, true, 2],
     [2, true, 2, 2, true, 2, true, 2, true, 2, 2, 2, true, 2],
     [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
-    [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
@@ -669,7 +669,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [2, true, true, 2, true, true, true, true, true, true, 2, true, true, 2],
     [2, true, true, 2, 2, 2, 2, 2, 2, 2, 2, true, true, 2],
     [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
-    [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
   ],
