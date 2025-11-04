@@ -24,6 +24,12 @@ const MetalBalls = () => {
     
     const time = state.clock.getElapsedTime();
     
+    // Move the entire group around the screen slowly (60 second cycle)
+    const screenTime = time * 0.1; // Slow movement
+    groupRef.current.position.x = Math.sin(screenTime) * 6;
+    groupRef.current.position.y = Math.cos(screenTime * 0.7) * 4;
+    groupRef.current.position.z = Math.sin(screenTime * 0.5) * 3;
+    
     // Loop through phases continuously (30 second cycle)
     const cycleTime = time % 30;
     let phase = 0;
@@ -138,6 +144,12 @@ const RetroDonut = () => {
     setOpacity(fadeInProgress);
     
     if (fadeInProgress > 0) {
+      // Move around the screen slowly (offset from balls, 50 second cycle)
+      const screenTime = time * 0.12;
+      meshRef.current.position.x = Math.cos(screenTime * 1.3) * 7;
+      meshRef.current.position.y = Math.sin(screenTime * 0.9) * 4.5;
+      meshRef.current.position.z = Math.cos(screenTime * 0.6) * 4;
+      
       // Spinning
       meshRef.current.rotation.x += 0.02;
       meshRef.current.rotation.y += 0.03;
@@ -146,9 +158,6 @@ const RetroDonut = () => {
       const baseScale = 0.5 + fadeInProgress * 0.5; // Start smaller
       const scale = baseScale + Math.sin(time * 1.5) * 0.5;
       meshRef.current.scale.set(scale, scale, scale);
-      
-      // Slight movement
-      meshRef.current.position.y = Math.sin(time * 0.5) * 0.5;
     }
   });
 
