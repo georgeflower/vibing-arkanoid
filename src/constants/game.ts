@@ -1,5 +1,5 @@
 export const CANVAS_WIDTH = 1000;
-export const CANVAS_HEIGHT = 800;
+export const CANVAS_HEIGHT = 700;
 export const PADDLE_WIDTH = 120;
 export const PADDLE_HEIGHT = 14;
 export const BALL_RADIUS = 6;
@@ -24,47 +24,47 @@ export const BULLET_SPEED = 7;
 export const colorPalettes = [
   // Palette 1: Classic Amiga (levels 1-5)
   [
-    "hsl(0, 75%, 55%)",    // red
-    "hsl(30, 85%, 55%)",   // orange
-    "hsl(45, 90%, 55%)",   // yellow
-    "hsl(200, 70%, 50%)",  // blue
-    "hsl(280, 60%, 55%)",  // purple
-    "hsl(330, 70%, 55%)",  // pink
-    "hsl(120, 60%, 45%)",  // green
-    "hsl(180, 65%, 50%)",  // cyan
+    "hsl(0, 75%, 55%)", // red
+    "hsl(30, 85%, 55%)", // orange
+    "hsl(45, 90%, 55%)", // yellow
+    "hsl(200, 70%, 50%)", // blue
+    "hsl(280, 60%, 55%)", // purple
+    "hsl(330, 70%, 55%)", // pink
+    "hsl(120, 60%, 45%)", // green
+    "hsl(180, 65%, 50%)", // cyan
   ],
   // Palette 2: Hot Metal (levels 6-10)
   [
-    "hsl(15, 90%, 60%)",   // bright red-orange
-    "hsl(350, 85%, 55%)",  // crimson
-    "hsl(40, 95%, 60%)",   // gold
-    "hsl(25, 90%, 50%)",   // rust
-    "hsl(0, 85%, 45%)",    // deep red
-    "hsl(35, 90%, 55%)",   // amber
-    "hsl(10, 80%, 50%)",   // burnt orange
-    "hsl(45, 85%, 50%)",   // bronze
+    "hsl(15, 90%, 60%)", // bright red-orange
+    "hsl(350, 85%, 55%)", // crimson
+    "hsl(40, 95%, 60%)", // gold
+    "hsl(25, 90%, 50%)", // rust
+    "hsl(0, 85%, 45%)", // deep red
+    "hsl(35, 90%, 55%)", // amber
+    "hsl(10, 80%, 50%)", // burnt orange
+    "hsl(45, 85%, 50%)", // bronze
   ],
   // Palette 3: Neon City (levels 11-15)
   [
-    "hsl(300, 90%, 60%)",  // magenta
-    "hsl(180, 85%, 55%)",  // cyan
-    "hsl(280, 90%, 65%)",  // electric purple
-    "hsl(190, 85%, 60%)",  // bright cyan
-    "hsl(320, 85%, 60%)",  // hot pink
-    "hsl(170, 80%, 55%)",  // turquoise
-    "hsl(290, 85%, 55%)",  // violet
-    "hsl(200, 90%, 60%)",  // sky blue
+    "hsl(300, 90%, 60%)", // magenta
+    "hsl(180, 85%, 55%)", // cyan
+    "hsl(280, 90%, 65%)", // electric purple
+    "hsl(190, 85%, 60%)", // bright cyan
+    "hsl(320, 85%, 60%)", // hot pink
+    "hsl(170, 80%, 55%)", // turquoise
+    "hsl(290, 85%, 55%)", // violet
+    "hsl(200, 90%, 60%)", // sky blue
   ],
   // Palette 4: Jungle (levels 16-20)
   [
-    "hsl(120, 70%, 50%)",  // green
-    "hsl(90, 75%, 45%)",   // lime
-    "hsl(150, 65%, 45%)",  // emerald
-    "hsl(60, 80%, 50%)",   // yellow-green
-    "hsl(140, 70%, 40%)",  // forest
-    "hsl(75, 70%, 45%)",   // chartreuse
-    "hsl(160, 60%, 45%)",  // sea green
-    "hsl(100, 65%, 50%)",  // grass
+    "hsl(120, 70%, 50%)", // green
+    "hsl(90, 75%, 45%)", // lime
+    "hsl(150, 65%, 45%)", // emerald
+    "hsl(60, 80%, 50%)", // yellow-green
+    "hsl(140, 70%, 40%)", // forest
+    "hsl(75, 70%, 45%)", // chartreuse
+    "hsl(160, 60%, 45%)", // sea green
+    "hsl(100, 65%, 50%)", // grass
   ],
 ];
 
