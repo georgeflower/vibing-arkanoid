@@ -841,10 +841,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       // Draw collected letters at top center
       const letterOrder: BonusLetterType[] = ["Q", "U", "M", "R", "A", "N"];
       const size = 40;
-      const spacing = 10;
+      const spacing = 20;
       const totalWidth = letterOrder.length * size + (letterOrder.length - 1) * spacing;
       const startX = (width - totalWidth) / 2;
-      const y = 30;
+      const y = 10;
       
       letterOrder.forEach((letter, index) => {
         const img = bonusLetterImagesRef.current[letter];
