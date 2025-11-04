@@ -7,6 +7,7 @@ class SoundManager {
   private musicEnabled = true;
   private sfxEnabled = true;
   private activeMusicType: 'background' | 'highscore' | null = null;
+  private isTransitioning = false; // Prevent multiple simultaneous track changes
   private trackUrls = [
     '/sound_2.mp3',
     '/Pixel_Frenzy-2.mp3',
@@ -41,7 +42,7 @@ class SoundManager {
   }
 
   playBackgroundMusic(level: number = 1) {
-    if (!this.musicEnabled) return;
+    if (!this.musicEnabled || this.isTransitioning) return;
 
     // Stop all other music types first
     this.stopAllMusic();
@@ -55,18 +56,33 @@ class SoundManager {
       this.musicTracks[this.currentTrackIndex] = audio;
     }
 
-    // Play current track
-    this.musicTracks[this.currentTrackIndex]?.play().catch(err => console.log('Audio play failed:', err));
+    // Ensure current track is at the beginning and other tracks are stopped
+    const currentTrack = this.musicTracks[this.currentTrackIndex];
+    if (currentTrack) {
+      currentTrack.currentTime = 0;
+      currentTrack.play().catch(err => console.log('Audio play failed:', err));
+    }
   }
 
   private handleTrackEnd() {
+    // Prevent multiple simultaneous track transitions
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+
+    // Stop all tracks to prevent overlap
+    this.stopBackgroundMusic();
+
     // Move to next track in sequence
     this.currentTrackIndex = (this.currentTrackIndex + 1) % this.trackUrls.length;
     
-    // Play next song immediately if music is enabled
-    if (this.musicEnabled) {
-      this.playBackgroundMusic();
-    }
+    // Small delay to ensure previous track is fully stopped
+    setTimeout(() => {
+      this.isTransitioning = false;
+      // Play next song immediately if music is enabled
+      if (this.musicEnabled && this.activeMusicType === 'background') {
+        this.playBackgroundMusic();
+      }
+    }, 100);
   }
 
   initializeRandomTrack() {
@@ -98,6 +114,7 @@ class SoundManager {
   }
 
   stopBackgroundMusic() {
+    this.isTransitioning = false; // Reset transition flag
     this.musicTracks.forEach(track => {
       if (track) {
         track.pause();
@@ -123,6 +140,8 @@ class SoundManager {
   }
 
   setCurrentTrack(trackIndex: number) {
+    if (this.isTransitioning) return;
+    
     const wasPlaying = this.musicTracks[this.currentTrackIndex] && 
                        !this.musicTracks[this.currentTrackIndex].paused;
     
@@ -130,7 +149,8 @@ class SoundManager {
     this.currentTrackIndex = trackIndex;
     
     if (wasPlaying && this.musicEnabled) {
-      this.playBackgroundMusic();
+      // Small delay to ensure clean transition
+      setTimeout(() => this.playBackgroundMusic(), 50);
     }
   }
 
@@ -524,21 +544,33 @@ class SoundManager {
   }
 
   nextTrack() {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    
     this.stopBackgroundMusic();
     this.currentTrackIndex = (this.currentTrackIndex + 1) % this.trackUrls.length;
     
-    if (this.musicEnabled) {
-      this.playBackgroundMusic();
-    }
+    setTimeout(() => {
+      this.isTransitioning = false;
+      if (this.musicEnabled) {
+        this.playBackgroundMusic();
+      }
+    }, 100);
   }
 
   previousTrack() {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    
     this.stopBackgroundMusic();
     this.currentTrackIndex = (this.currentTrackIndex - 1 + this.trackUrls.length) % this.trackUrls.length;
     
-    if (this.musicEnabled) {
-      this.playBackgroundMusic();
-    }
+    setTimeout(() => {
+      this.isTransitioning = false;
+      if (this.musicEnabled) {
+        this.playBackgroundMusic();
+      }
+    }, 100);
   }
 
   toggleMute() {
