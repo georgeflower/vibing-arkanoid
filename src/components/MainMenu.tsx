@@ -22,6 +22,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [showInstructions, setShowInstructions] = useState(false);
   const [showHighScores, setShowHighScores] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [showPressToStart, setShowPressToStart] = useState(true);
   const { highScores } = useHighScores();
 
   const handleStart = () => {
@@ -89,6 +90,28 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             Back to Menu
           </Button>
         </Card>
+      </div>
+    );
+  }
+
+  if (showPressToStart) {
+    return (
+      <div 
+        className="min-h-screen w-full flex items-center justify-center bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)] cursor-pointer"
+        style={{ backgroundImage: `url(${startScreenImg})` }}
+        onClick={() => {
+          soundManager.playMenuClick();
+          setShowPressToStart(false);
+        }}
+        onKeyDown={() => {
+          soundManager.playMenuClick();
+          setShowPressToStart(false);
+        }}
+        tabIndex={0}
+      >
+        <div className="text-center animate-pulse">
+          <p className="text-white text-2xl font-bold">Press key/mouse to continue</p>
+        </div>
       </div>
     );
   }
@@ -163,7 +186,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   return (
     <div 
-      className="min-h-screen w-full flex items-end justify-center pb-12 p-4 bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)]"
+      className="min-h-screen w-full flex items-center justify-center p-4 bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)]"
       style={{ backgroundImage: `url(${startScreenImg})` }}
     >
       <Card className="max-w-sm w-full p-6 bg-black/60 backdrop-blur-sm border-[hsl(200,70%,50%)]">
