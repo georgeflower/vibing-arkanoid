@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import * as THREE from "three";
+import metalBallTexture from "@/assets/metal-ball-texture.png";
 
 interface HighScoreDisplayProps {
   scores: Array<{ name: string; score: number; level: number; difficulty?: string; beatLevel50?: boolean }>;
@@ -12,6 +13,7 @@ interface HighScoreDisplayProps {
 const MetalBalls = () => {
   const groupRef = useRef<THREE.Group>(null);
   const ballsRef = useRef<THREE.Mesh[]>([]);
+  const texture = useLoader(THREE.TextureLoader, metalBallTexture);
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
@@ -33,12 +35,15 @@ const MetalBalls = () => {
     ballsRef.current.forEach((ball, i) => {
       if (!ball) return;
 
+      // Continuous spinning for all balls
+      ball.rotation.x += 0.03;
+      ball.rotation.y += 0.02;
+      ball.rotation.z += 0.01;
+
       if (phase === 0) {
         // Wave motion
         const waveY = Math.sin(time * 2 + i * 0.5) * 2;
         ball.position.set(i - 4.5, waveY, 0);
-        ball.rotation.x = time;
-        ball.rotation.y = time * 0.5;
       } else if (phase === 1) {
         // Whirlpool
         const angle = (time * 2 + i * 0.6) % (Math.PI * 2);
@@ -48,15 +53,11 @@ const MetalBalls = () => {
           Math.sin(time * 3 + i) * 2,
           Math.sin(angle) * radius
         );
-        ball.rotation.x = time * 2;
-        ball.rotation.y = time;
       } else {
         // Smooth random motion using sine waves
         ball.position.x = (i - 4.5) + Math.sin(time + i) * 3;
         ball.position.y = Math.cos(time * 1.5 + i * 0.5) * 2;
         ball.position.z = Math.sin(time * 0.8 + i * 0.3) * 2;
-        ball.rotation.x = time + i;
-        ball.rotation.y = time * 0.7 + i;
       }
     });
   });
@@ -71,14 +72,12 @@ const MetalBalls = () => {
           }}
           position={[i - 4.5, 0, 0]}
         >
-          <sphereGeometry args={[0.4, 12, 12]} />
+          <sphereGeometry args={[0.4, 32, 32]} />
           <meshStandardMaterial
-            color="#e8e8e8"
+            map={texture}
             metalness={1.0}
-            roughness={0.05}
-            emissive="#ffffff"
-            emissiveIntensity={0.1}
-            envMapIntensity={2.0}
+            roughness={0.1}
+            envMapIntensity={1.5}
           />
         </mesh>
       ))}
