@@ -10,6 +10,7 @@ import { useHighScores } from "@/hooks/useHighScores";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { soundManager } from "@/utils/sounds";
 import { useNavigate } from "react-router-dom";
+import { GAME_VERSION } from "@/constants/version";
 
 interface MainMenuProps {
   onStartGame: (settings: GameSettings) => void;
@@ -190,9 +191,12 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   return (
     <div 
-      className="min-h-screen w-full flex items-center justify-center p-4 bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)]"
+      className="min-h-screen w-full flex items-center justify-center p-4 bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)] relative"
       style={{ backgroundImage: `url(${startScreenImg})` }}
     >
+      <div className="absolute top-4 right-4 text-white/60 text-xs font-mono">
+        v{GAME_VERSION}
+      </div>
       <Card className="max-w-sm w-full p-6 bg-black/60 backdrop-blur-sm border-[hsl(200,70%,50%)]">
         {/* Settings */}
         <div className="space-y-4">
