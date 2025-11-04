@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import type { PowerUp, PowerUpType, Ball, Paddle, Brick } from "@/types/game";
+import type { PowerUp, PowerUpType, Ball, Paddle, Brick, Difficulty } from "@/types/game";
 import { POWERUP_SIZE, POWERUP_FALL_SPEED, POWERUP_DROP_CHANCE, CANVAS_HEIGHT, FIREBALL_DURATION } from "@/constants/game";
 import { toast } from "sonner";
 import { soundManager } from "@/utils/sounds";
@@ -9,7 +9,8 @@ const powerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life",
 export const usePowerUps = (
   currentLevel: number,
   setLives: React.Dispatch<React.SetStateAction<number>>,
-  timer: number = 0
+  timer: number = 0,
+  difficulty: Difficulty = "normal"
 ) => {
   const [powerUps, setPowerUps] = useState<PowerUp[]>([]);
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
@@ -24,10 +25,15 @@ export const usePowerUps = (
 
     let availableTypes = [...powerUpTypes];
     
-    // Extra life only once per 5 levels
-    const levelGroup = Math.floor(currentLevel / 5);
-    if (extraLifeUsedLevels.includes(levelGroup)) {
+    // In godlike mode, never drop extra lives
+    if (difficulty === "godlike") {
       availableTypes = availableTypes.filter(t => t !== "life");
+    } else {
+      // Extra life only once per 5 levels in normal mode
+      const levelGroup = Math.floor(currentLevel / 5);
+      if (extraLifeUsedLevels.includes(levelGroup)) {
+        availableTypes = availableTypes.filter(t => t !== "life");
+      }
     }
 
     const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
@@ -41,7 +47,7 @@ export const usePowerUps = (
       speed: POWERUP_FALL_SPEED,
       active: true,
     };
-  }, [currentLevel, extraLifeUsedLevels, timer]);
+  }, [currentLevel, extraLifeUsedLevels, timer, difficulty]);
 
   const updatePowerUps = useCallback(() => {
     setPowerUps(prev => 

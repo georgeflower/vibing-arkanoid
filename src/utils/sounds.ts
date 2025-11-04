@@ -5,6 +5,7 @@ class SoundManager {
   private currentTrackIndex = 0;
   private highScoreMusic: HTMLAudioElement | null = null;
   private musicEnabled = true;
+  private sfxEnabled = true;
   private trackUrls = [
     '/Pixel_Frenzy-2.mp3',
     '/sound_2.mp3',
@@ -93,6 +94,14 @@ class SoundManager {
     return this.musicEnabled;
   }
 
+  setSfxEnabled(enabled: boolean) {
+    this.sfxEnabled = enabled;
+  }
+
+  getSfxEnabled(): boolean {
+    return this.sfxEnabled;
+  }
+
   setCurrentTrack(trackIndex: number) {
     const wasPlaying = this.musicTracks[this.currentTrackIndex] && 
                        !this.musicTracks[this.currentTrackIndex].paused;
@@ -148,6 +157,7 @@ class SoundManager {
   }
 
   playBounce() {
+    if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
@@ -166,6 +176,7 @@ class SoundManager {
   }
 
   playBrickHit() {
+    if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
@@ -184,6 +195,7 @@ class SoundManager {
   }
 
   playPowerUp() {
+    if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
@@ -203,6 +215,7 @@ class SoundManager {
   }
 
   playShoot() {
+    if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
@@ -222,6 +235,7 @@ class SoundManager {
   }
 
   playLoseLife() {
+    if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
@@ -241,6 +255,7 @@ class SoundManager {
   }
 
   playWin() {
+    if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
     [0, 0.1, 0.2, 0.3].forEach((time, i) => {
       const oscillator = ctx.createOscillator();
@@ -262,6 +277,7 @@ class SoundManager {
   }
 
   playExplosion() {
+    if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
     // Low rumble explosion sound
     const oscillator = ctx.createOscillator();
@@ -288,24 +304,28 @@ class SoundManager {
 
   // Power-up specific sounds
   playMultiballSound() {
+    if (!this.sfxEnabled) return;
     const audio = new Audio('/multiball.mp3');
     audio.volume = 0.5;
     audio.play().catch(err => console.log('Multiball sound failed:', err));
   }
 
   playTurretsSound() {
+    if (!this.sfxEnabled) return;
     const audio = new Audio('/turrets.mp3');
     audio.volume = 0.5;
     audio.play().catch(err => console.log('Turrets sound failed:', err));
   }
 
   playFireballSound() {
+    if (!this.sfxEnabled) return;
     const audio = new Audio('/fireball.mp3');
     audio.volume = 0.5;
     audio.play().catch(err => console.log('Fireball sound failed:', err));
   }
 
   playBombDropSound() {
+    if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
@@ -325,6 +345,7 @@ class SoundManager {
   }
 
   playPyramidBulletSound() {
+    if (!this.sfxEnabled) return;
     const audioContext = this.getAudioContext();
     if (!audioContext) return;
 
@@ -347,30 +368,35 @@ class SoundManager {
   }
 
   playExtraLifeSound() {
+    if (!this.sfxEnabled) return;
     const audio = new Audio('/extra_life.mp3');
     audio.volume = 0.5;
     audio.play().catch(err => console.log('Extra life sound failed:', err));
   }
 
   playSlowerSound() {
+    if (!this.sfxEnabled) return;
     const audio = new Audio('/slower.mp3');
     audio.volume = 0.5;
     audio.play().catch(err => console.log('Slower sound failed:', err));
   }
 
   playWiderSound() {
+    if (!this.sfxEnabled) return;
     const audio = new Audio('/wider.mp3');
     audio.volume = 0.5;
     audio.play().catch(err => console.log('Wider sound failed:', err));
   }
 
   playShrinkSound() {
+    if (!this.sfxEnabled) return;
     const audio = new Audio('/smaller.mp3');
     audio.volume = 0.5;
     audio.play().catch(err => console.log('Shrink sound failed:', err));
   }
 
   playBonusLetterPickup() {
+    if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
@@ -391,6 +417,7 @@ class SoundManager {
   }
 
   playBonusComplete() {
+    if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
     // Victory fanfare - triumphant ascending notes
     [0, 0.15, 0.3, 0.45, 0.6].forEach((time, i) => {

@@ -4,9 +4,10 @@ import { GameUI } from "./GameUI";
 import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Maximize2, Minimize2 } from "lucide-react";
-import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType } from "@/types/game";
+import { Maximize2, Minimize2, Home } from "lucide-react";
+import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, GameSettings } from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
 import {
   CANVAS_WIDTH,
@@ -31,10 +32,15 @@ import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
 import { soundManager } from "@/utils/sounds";
 
-export const Game = () => {
+interface GameProps {
+  settings: GameSettings;
+  onReturnToMenu: () => void;
+}
+
+export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(3);
+  const [lives, setLives] = useState(settings.startingLives);
   const [level, setLevel] = useState(1);
   const [gameState, setGameState] = useState<GameState>("ready");
   const [bricks, setBricks] = useState<Brick[]>([]);
@@ -67,8 +73,14 @@ export const Game = () => {
 
   const { highScores, isHighScore, addHighScore } = useHighScores();
 
-  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives, timer);
+  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives, timer, settings.difficulty);
   const { bullets, setBullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks, enemies);
+
+  // Initialize sound settings
+  useEffect(() => {
+    soundManager.setMusicEnabled(settings.musicEnabled);
+    soundManager.setSfxEnabled(settings.soundEffectsEnabled);
+  }, [settings.musicEnabled, settings.soundEffectsEnabled]);
 
   // Bonus letter drop logic - each letter drops on specific levels
   const letterLevels: Record<BonusLetterType, number[]> = {
@@ -1283,8 +1295,12 @@ export const Game = () => {
   // Enemy spawn at regular intervals
   useEffect(() => {
     if (gameState === "playing" && timer > 0) {
-      // Spawn interval decreases with level (30s at level 1, 20s at level 2, 15s at level 3+)
-      const spawnInterval = Math.max(15, 30 - (level - 1) * 5);
+      // Spawn interval decreases with level
+      // Normal: 30s at level 1, 20s at level 2, 15s at level 3+
+      // Godlike: 20s at level 1, 12s at level 2, 8s at level 3+
+      const baseInterval = settings.difficulty === "godlike" ? 20 : 30;
+      const minInterval = settings.difficulty === "godlike" ? 8 : 15;
+      const spawnInterval = Math.max(minInterval, baseInterval - (level - 1) * (settings.difficulty === "godlike" ? 4 : 5));
 
       if (timer - lastEnemySpawnTime >= spawnInterval) {
         const speedIncrease = Math.min(2.0, 1 + enemySpawnCount * 0.3); // 30% faster each spawn, capped at 200%
@@ -1372,6 +1388,8 @@ export const Game = () => {
         toast.warning(`${enemyName} enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
 
         // Start dropping projectiles for this enemy
+        // Normal: fire every 2 seconds, Godlike: fire every 1.2 seconds
+        const fireInterval = settings.difficulty === "godlike" ? 1200 : 2000;
         const projectileInterval = setInterval(() => {
           setEnemies((currentEnemies) => {
             const currentEnemy = currentEnemies.find((e) => e.id === enemyId);
@@ -1413,11 +1431,11 @@ export const Game = () => {
             }
             return currentEnemies;
           });
-        }, 2000);
+        }, fireInterval);
         bombIntervalsRef.current.set(enemyId, projectileInterval);
       }
     }
-  }, [timer, gameState, lastEnemySpawnTime, enemySpawnCount, level]);
+  }, [timer, gameState, lastEnemySpawnTime, enemySpawnCount, level, settings.difficulty]);
 
   // Keyboard controls for launch angle
   useEffect(() => {
@@ -1576,13 +1594,22 @@ export const Game = () => {
                   </div>
                 </div>
 
-                <button
-                  onClick={toggleFullscreen}
-                  className="fullscreen-btn"
-                  title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-                >
-                  {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={onReturnToMenu}
+                    className="fullscreen-btn"
+                    title="Return to Main Menu"
+                  >
+                    <Home size={18} />
+                  </button>
+                  <button
+                    onClick={toggleFullscreen}
+                    className="fullscreen-btn"
+                    title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                  >
+                    {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                  </button>
+                </div>
               </div>
 
               {/* Main Content with Side Panels */}

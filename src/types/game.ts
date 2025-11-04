@@ -108,3 +108,12 @@ export interface Explosion {
 }
 
 export type GameState = "ready" | "playing" | "paused" | "gameOver" | "won";
+
+export type Difficulty = "normal" | "godlike";
+
+export interface GameSettings {
+  startingLives: number;
+  musicEnabled: boolean;
+  soundEffectsEnabled: boolean;
+  difficulty: Difficulty;
+}
