@@ -5,7 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { GameSettings, Difficulty } from "@/types/game";
-import startScreenImg from "@/assets/start-screen.png";
+import startScreenImg from "@/assets/start-screen-new.png";
 import { useHighScores } from "@/hooks/useHighScores";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { soundManager } from "@/utils/sounds";
@@ -19,6 +19,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const [showInstructions, setShowInstructions] = useState(false);
   const [showHighScores, setShowHighScores] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const { highScores } = useHighScores();
 
   const handleStart = () => {
@@ -35,6 +36,58 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
         scores={highScores} 
         onClose={() => setShowHighScores(false)} 
       />
+    );
+  }
+
+  if (showAbout) {
+    return (
+      <div className="min-h-screen w-full bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-4">
+        <Card className="max-w-2xl w-full p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
+          <h2 className="text-3xl font-bold mb-6 text-center text-[hsl(200,70%,50%)]">About Vibing Arkanoid</h2>
+          
+          <div className="space-y-4 text-white">
+            <p className="text-lg leading-relaxed">
+              Welcome to <span className="text-[hsl(200,70%,50%)] font-bold">Vibing Arkanoid</span> - the most electrifying brick-breaking experience ever created! This isn't just another Breakout clone - it's a pulsating, neon-drenched journey through 50 levels of pure arcade bliss.
+            </p>
+            
+            <p className="text-lg leading-relaxed">
+              Featuring an authentic retro aesthetic with modern gameplay mechanics, power-ups that actually matter, enemies that fight back, and a soundtrack that'll make your speakers weep with joy. Collect the legendary <span className="text-[hsl(330,100%,65%)] font-bold">Q-U-M-R-A-N</span> bonus letters for massive rewards!
+            </p>
+
+            <div className="bg-black/30 p-4 rounded-lg border border-[hsl(200,70%,50%)]/30">
+              <h3 className="font-bold text-xl mb-2 text-[hsl(200,70%,50%)]">Vibe Coded to Perfection</h3>
+              <p className="text-base leading-relaxed">
+                This game is the result of pure <span className="text-[hsl(330,100%,65%)] font-bold">vibe coding</span> - that magical state where code flows like music and creativity knows no bounds. Every pixel, every sound effect, every level was crafted with passion and energy.
+              </p>
+            </div>
+
+            <div className="bg-black/30 p-4 rounded-lg border border-[hsl(330,100%,65%)]/30">
+              <h3 className="font-bold text-xl mb-2 text-[hsl(330,100%,65%)]">Created By</h3>
+              <p className="text-base leading-relaxed">
+                <span className="text-[hsl(200,70%,50%)] font-bold text-2xl">Qumran</span>
+              </p>
+              <p className="text-sm text-gray-400 mt-1">
+                Game Design • Programming • Music Production • Vibe Engineering
+              </p>
+            </div>
+
+            <p className="text-center text-sm text-gray-500 italic mt-6">
+              "In the zone, riding the wave of pure creativity." - The Vibe Coding Manifesto
+            </p>
+          </div>
+
+          <Button
+            onClick={() => {
+              soundManager.playMenuClick();
+              setShowAbout(false);
+            }}
+            onMouseEnter={() => soundManager.playMenuHover()}
+            className="w-full mt-6 bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white"
+          >
+            Back to Menu
+          </Button>
+        </Card>
+      </div>
     );
   }
 
@@ -195,6 +248,18 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             className="w-full border-[hsl(200,70%,50%)] text-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,50%)] hover:text-white"
           >
             High Scores
+          </Button>
+
+          <Button
+            onClick={() => {
+              soundManager.playMenuClick();
+              setShowAbout(true);
+            }}
+            onMouseEnter={() => soundManager.playMenuHover()}
+            variant="outline"
+            className="w-full border-[hsl(200,70%,50%)] text-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,50%)] hover:text-white"
+          >
+            About
           </Button>
         </div>
       </Card>
