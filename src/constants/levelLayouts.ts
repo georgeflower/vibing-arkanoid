@@ -14,22 +14,22 @@ export const getBrickHits = (level: number, row: number): number => {
 };
 
 export const levelLayouts: (boolean | number)[][][] = [
-  // Level 1: Classic Rows
+  // Level 1
   [
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true, true],
+    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
@@ -368,8 +368,8 @@ export const levelLayouts: (boolean | number)[][][] = [
 
   // Level 17: Tunnel
   [
-     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
-   [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [2, 2, true, true, true, true, true, true, true, true, true, true, 2, 2],
     [2, 2, true, true, true, true, true, true, true, true, true, true, 2, 2],
     [2, 2, true, true, false, false, false, false, false, false, true, true, 2, 2],
@@ -579,7 +579,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [true, true, 2, 2, 2, true, true, true, true, 2, 2, 2, true, true],
     [true, true, 2, 2, 2, 2, true, true, 2, 2, 2, 2, true, true],
     [true, true, true, 2, 2, 2, false, false, 2, 2, 2, true, true, true],
-    [false, true, true, true, 2,false,false, 2, 2, 2, true, true, true, false],
+    [false, true, true, true, 2, false, false, 2, 2, 2, true, true, true, false],
     [false, false, true, true, true, true, true, true, true, true, true, true, false, false],
     [false, false, false, true, true, true, true, true, true, true, true, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
@@ -660,7 +660,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
     [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
     [2, true, true, 2, 2, 2, 2, 2, 2, 2, 2, true, true, 2],
-    [2, true, true,true, true, true, true, true, true, true, 2, true, true, 2],
+    [2, true, true, true, true, true, true, true, true, true, 2, true, true, 2],
     [2, true, true, true, true, true, true, true, true, true, 2, true, true, 2],
     [2, true, true, true, true, true, true, true, true, true, 2, true, true, 2],
     [2, true, true, true, true, true, 2, 2, true, true, 2, true, true, 2],
@@ -803,7 +803,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [2, true, true, 2, 2, 2, 2, 2, 2, 2, 2, true, true, 2],
     [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
     [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
-    [2, 2, 2, false,false, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+    [2, 2, 2, false, false, 2, 2, 2, 2, 2, 2, 2, 2, 2],
   ],
 
   // Level 37: Dense Grid
@@ -966,7 +966,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
     [2, true, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, true, 2],
     [2, true, 2, true, true, true, true, true, true, true, true, 2, true, 2],
-    [2, true,true, true, true, true, true, true, true, true, true, 2, true, 2],
+    [2, true, true, true, true, true, true, true, true, true, true, 2, true, 2],
     [2, true, true, true, true, true, true, true, true, true, true, 2, true, 2],
     [2, true, true, true, true, true, true, true, true, true, true, 2, true, 2],
     [2, true, 2, true, true, true, true, true, true, true, true, true, true, 2],
@@ -1021,7 +1021,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
     [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
     [2, true, true, true, true, true, true, true, true, true, true, true, true, 2],
-    [2, 2, 2, 2, 2, 2,false, false, false, false, 2, 2, 2, 2],
+    [2, 2, 2, 2, 2, 2, false, false, false, false, 2, 2, 2, 2],
   ],
 
   [
