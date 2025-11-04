@@ -366,19 +366,72 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     [gameState, paddle],
   );
 
+  const activeTouchRef = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback(
+    (e: TouchEvent) => {
+      if (!canvasRef.current || !paddle) return;
+      
+      e.preventDefault();
+      // Track the first touch for paddle control
+      if (e.touches.length > 0 && activeTouchRef.current === null) {
+        activeTouchRef.current = e.touches[0].identifier;
+        
+        // Update paddle position immediately on touch start
+        const rect = canvasRef.current.getBoundingClientRect();
+        const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+        const touchX = (e.touches[0].clientX - rect.left) * scaleX;
+        const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
+        setPaddle((prev) => (prev ? { ...prev, x: newX } : null));
+      }
+    },
+    [paddle],
+  );
+
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
-      if (!canvasRef.current || !paddle || gameState !== "playing") return;
+      if (!canvasRef.current || !paddle) return;
 
       e.preventDefault();
+      
+      // Only track the first touch that was registered
+      let activeTouch = null;
+      for (let i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === activeTouchRef.current) {
+          activeTouch = e.touches[i];
+          break;
+        }
+      }
+      
+      // If no active touch found, use the first touch
+      if (!activeTouch && e.touches.length > 0) {
+        activeTouch = e.touches[0];
+        activeTouchRef.current = activeTouch.identifier;
+      }
+      
+      if (!activeTouch) return;
+
       const rect = canvasRef.current.getBoundingClientRect();
       const scaleX = SCALED_CANVAS_WIDTH / rect.width;
-      const touchX = (e.touches[0].clientX - rect.left) * scaleX;
+      const touchX = (activeTouch.clientX - rect.left) * scaleX;
       const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
 
       setPaddle((prev) => (prev ? { ...prev, x: newX } : null));
     },
-    [gameState, paddle],
+    [paddle],
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: TouchEvent) => {
+      // Clear active touch when it ends
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === activeTouchRef.current) {
+          activeTouchRef.current = null;
+          break;
+        }
+      }
+    },
+    [],
   );
 
   const handleClick = useCallback(() => {
@@ -474,12 +527,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     };
 
     canvas.addEventListener("mousemove", handleMouseMove);
+    canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
     canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+    canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
     canvas.addEventListener("click", handleClick);
     window.addEventListener("keydown", handleKeyPress);
 
     return () => {
       canvas.removeEventListener("mousemove", handleMouseMove);
+      canvas.removeEventListener("touchstart", handleTouchStart);
+      canvas.removeEventListener("touchend", handleTouchEnd);
       canvas.removeEventListener("touchmove", handleTouchMove);
       canvas.removeEventListener("click", handleClick);
       window.removeEventListener("keydown", handleKeyPress);
