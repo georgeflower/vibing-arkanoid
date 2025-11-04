@@ -274,72 +274,106 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         }
       });
 
-      // Draw power-ups as 3D spinning cubes with rounded corners
+      // Draw power-ups with 3D flip-down rotation (Amiga/Atari style)
       powerUps.forEach((powerUp) => {
         if (!powerUp.active) return;
 
         const img = loadedImagesRef.current[powerUp.type];
         const size = powerUp.width; // Square power-up
-        const depth = 10; // 3D depth
         const cornerRadius = 4;
         
-        // Calculate rotation based on y position for spinning effect
-        const rotation = (powerUp.y * 2) % 360;
-        const rotationRad = (rotation * Math.PI) / 180;
+        // Slow flip-down rotation based on y position (Amiga/Atari feel)
+        const rotationX = (powerUp.y * 0.8) % (Math.PI * 2); // Slow vertical flip
+        const scaleY = Math.cos(rotationX); // Vertical squash for flip effect
         
         ctx.save();
         ctx.translate(powerUp.x + size / 2, powerUp.y + size / 2);
         
-        // Calculate 3D projection
-        const cos = Math.cos(rotationRad);
-        const sin = Math.sin(rotationRad);
-        
-        // Draw back face (darker grey)
-        ctx.fillStyle = "hsl(0, 0%, 35%)";
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-        ctx.beginPath();
-        ctx.roundRect(-size / 2 + sin * depth, -size / 2, size, size, cornerRadius);
-        ctx.fill();
-        
-        // Draw side face (medium grey) - only visible when rotated
-        if (sin > 0) {
-          ctx.fillStyle = "hsl(0, 0%, 50%)";
-          ctx.shadowBlur = 0;
-          ctx.beginPath();
-          ctx.moveTo(-size / 2, -size / 2);
-          ctx.lineTo(-size / 2 + sin * depth, -size / 2);
-          ctx.lineTo(-size / 2 + sin * depth, size / 2);
-          ctx.lineTo(-size / 2, size / 2);
-          ctx.closePath();
-          ctx.fill();
-        }
-        
-        // Draw front face (light grey with rounded corners)
-        ctx.fillStyle = "hsl(0, 0%, 70%)";
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "hsl(280, 60%, 55%)";
-        ctx.beginPath();
-        ctx.roundRect(-size / 2, -size / 2, size, size, cornerRadius);
-        ctx.fill();
-        
-        // Draw the icon on the front face
-        if (img && img.complete) {
-          ctx.shadowBlur = 0;
+        // Draw back face when flipped (darker grey)
+        if (scaleY < 0) {
           ctx.save();
+          ctx.scale(1, Math.abs(scaleY));
+          
+          ctx.fillStyle = "hsl(0, 0%, 35%)";
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
           ctx.beginPath();
           ctx.roundRect(-size / 2, -size / 2, size, size, cornerRadius);
-          ctx.clip();
-          ctx.drawImage(img, -size / 2, -size / 2, size, size);
+          ctx.fill();
+          
+          // 16-bit pixel texture (grey retro pattern)
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+          for (let py = -size / 2 + 2; py < size / 2 - 2; py += 3) {
+            for (let px = -size / 2 + 2; px < size / 2 - 2; px += 3) {
+              if ((px + py) % 6 === 0) {
+                ctx.fillRect(px, py, 2, 2);
+              }
+            }
+          }
+          
+          ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+          for (let py = -size / 2 + 3; py < size / 2 - 3; py += 3) {
+            for (let px = -size / 2 + 3; px < size / 2 - 3; px += 3) {
+              if ((px - py) % 6 === 0) {
+                ctx.fillRect(px, py, 1, 1);
+              }
+            }
+          }
+          
+          ctx.restore();
+        } else {
+          // Draw front face (light grey with rounded corners)
+          ctx.save();
+          ctx.scale(1, scaleY);
+          
+          ctx.fillStyle = "hsl(0, 0%, 70%)";
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = "hsl(280, 60%, 55%)";
+          ctx.beginPath();
+          ctx.roundRect(-size / 2, -size / 2, size, size, cornerRadius);
+          ctx.fill();
+          
+          // 16-bit pixel texture (grey retro pattern)
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+          for (let py = -size / 2 + 2; py < size / 2 - 2; py += 3) {
+            for (let px = -size / 2 + 2; px < size / 2 - 2; px += 3) {
+              if ((px + py) % 6 === 0) {
+                ctx.fillRect(px, py, 2, 2);
+              }
+            }
+          }
+          
+          ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+          for (let py = -size / 2 + 3; py < size / 2 - 3; py += 3) {
+            for (let px = -size / 2 + 3; px < size / 2 - 3; px += 3) {
+              if ((px - py) % 6 === 0) {
+                ctx.fillRect(px, py, 1, 1);
+              }
+            }
+          }
+          
+          // Draw the icon on the front face
+          if (img && img.complete) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(-size / 2, -size / 2, size, size, cornerRadius);
+            ctx.clip();
+            ctx.globalAlpha = 0.9;
+            ctx.drawImage(img, -size / 2, -size / 2, size, size);
+            ctx.restore();
+          }
+          
+          // Add subtle highlight for 3D effect
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+          ctx.beginPath();
+          ctx.roundRect(-size / 2, -size / 2, size, size / 3, [cornerRadius, cornerRadius, 0, 0]);
+          ctx.fill();
+          
           ctx.restore();
         }
-        
-        // Add subtle highlight for 3D effect
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
-        ctx.beginPath();
-        ctx.roundRect(-size / 2, -size / 2, size, size / 3, [cornerRadius, cornerRadius, 0, 0]);
-        ctx.fill();
         
         ctx.restore();
       });
