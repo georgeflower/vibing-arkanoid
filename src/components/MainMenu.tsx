@@ -41,37 +41,37 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showAbout) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-4">
-        <Card className="max-w-2xl w-full p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
-          <h2 className="text-3xl font-bold mb-6 text-center text-[hsl(200,70%,50%)]">About Vibing Arkanoid</h2>
+      <div className="min-h-screen w-full bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-y-auto">
+        <Card className="w-full max-w-5xl p-6 sm:p-8 md:p-12 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)] my-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 text-center text-[hsl(200,70%,50%)]">About Vibing Arkanoid</h2>
           
-          <div className="space-y-4 text-white">
-            <p className="text-lg leading-relaxed">
+          <div className="space-y-4 md:space-y-6 text-white">
+            <p className="text-base sm:text-lg md:text-xl leading-relaxed">
               Welcome to <span className="text-[hsl(200,70%,50%)] font-bold">Vibing Arkanoid</span> - the most electrifying brick-breaking experience ever created! This isn't just another Breakout clone - it's a pulsating, neon-drenched journey through 50 levels of pure arcade bliss.
             </p>
             
-            <p className="text-lg leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl leading-relaxed">
               Featuring an authentic retro aesthetic with modern gameplay mechanics, power-ups that actually matter, enemies that fight back, and a soundtrack that'll make your speakers weep with joy. Collect the legendary <span className="text-[hsl(330,100%,65%)] font-bold">Q-U-M-R-A-N</span> bonus letters for massive rewards!
             </p>
 
-            <div className="bg-black/30 p-4 rounded-lg border border-[hsl(200,70%,50%)]/30">
-              <h3 className="font-bold text-xl mb-2 text-[hsl(200,70%,50%)]">Vibe Coded to Perfection</h3>
-              <p className="text-base leading-relaxed">
+            <div className="bg-black/30 p-4 md:p-6 rounded-lg border border-[hsl(200,70%,50%)]/30">
+              <h3 className="font-bold text-lg sm:text-xl md:text-2xl mb-2 text-[hsl(200,70%,50%)]">Vibe Coded to Perfection</h3>
+              <p className="text-sm sm:text-base md:text-lg leading-relaxed">
                 This game is the result of pure <span className="text-[hsl(330,100%,65%)] font-bold">vibe coding</span> - that magical state where code flows like music and creativity knows no bounds. Every pixel, every sound effect, every level was crafted with passion and energy.
               </p>
             </div>
 
-            <div className="bg-black/30 p-4 rounded-lg border border-[hsl(330,100%,65%)]/30">
-              <h3 className="font-bold text-xl mb-2 text-[hsl(330,100%,65%)]">Created By</h3>
-              <p className="text-base leading-relaxed">
-                <span className="text-[hsl(200,70%,50%)] font-bold text-2xl">Qumran</span>
+            <div className="bg-black/30 p-4 md:p-6 rounded-lg border border-[hsl(330,100%,65%)]/30">
+              <h3 className="font-bold text-lg sm:text-xl md:text-2xl mb-2 text-[hsl(330,100%,65%)]">Created By</h3>
+              <p className="text-base sm:text-lg md:text-2xl leading-relaxed">
+                <span className="text-[hsl(200,70%,50%)] font-bold text-xl sm:text-2xl md:text-3xl">Qumran</span>
               </p>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-xs sm:text-sm md:text-base text-gray-400 mt-1">
                 Game Design • Programming • Music Production • Vibe Engineering
               </p>
             </div>
 
-            <p className="text-center text-sm text-gray-500 italic mt-6">
+            <p className="text-center text-xs sm:text-sm md:text-base text-gray-500 italic mt-6">
               "In the zone, riding the wave of pure creativity." - The Vibe Coding Manifesto
             </p>
           </div>
@@ -82,7 +82,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
               setShowAbout(false);
             }}
             onMouseEnter={() => soundManager.playMenuHover()}
-            className="w-full mt-6 bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white"
+            className="w-full mt-6 bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white text-base sm:text-lg py-4 sm:py-6"
           >
             Back to Menu
           </Button>
@@ -93,14 +93,14 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showInstructions) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-4">
-        <Card className="max-w-2xl w-full p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
-          <h2 className="text-3xl font-bold mb-6 text-center text-[hsl(200,70%,50%)]">Instructions</h2>
+      <div className="min-h-screen w-full bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-y-auto">
+        <Card className="w-full max-w-5xl p-6 sm:p-8 md:p-12 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)] my-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 text-center text-[hsl(200,70%,50%)]">Instructions</h2>
           
-          <div className="space-y-4 text-white">
+          <div className="space-y-4 md:space-y-6 text-white">
             <div>
-              <h3 className="font-bold text-xl mb-2 text-[hsl(200,70%,50%)]">Controls</h3>
-              <ul className="list-disc list-inside space-y-1">
+              <h3 className="font-bold text-lg sm:text-xl md:text-2xl mb-3 text-[hsl(200,70%,50%)]">Controls</h3>
+              <ul className="list-disc list-inside space-y-2 text-sm sm:text-base md:text-lg">
                 <li><span className="font-mono bg-black/30 px-2 py-1 rounded">←→</span> or <span className="font-mono bg-black/30 px-2 py-1 rounded">A/D</span> - Move paddle</li>
                 <li><span className="font-mono bg-black/30 px-2 py-1 rounded">Space</span> - Launch ball / Fire bullets</li>
                 <li><span className="font-mono bg-black/30 px-2 py-1 rounded">P</span> - Pause game</li>
@@ -112,8 +112,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             </div>
 
             <div>
-              <h3 className="font-bold text-xl mb-2 text-[hsl(200,70%,50%)]">Gameplay</h3>
-              <ul className="list-disc list-inside space-y-1">
+              <h3 className="font-bold text-lg sm:text-xl md:text-2xl mb-3 text-[hsl(200,70%,50%)]">Gameplay</h3>
+              <ul className="list-disc list-inside space-y-2 text-sm sm:text-base md:text-lg">
                 <li>Break all bricks to advance to the next level</li>
                 <li>Collect power-ups for special abilities</li>
                 <li>Collect bonus letters Q-U-M-R-A-N for massive rewards</li>
@@ -123,8 +123,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             </div>
 
             <div>
-              <h3 className="font-bold text-xl mb-2 text-[hsl(200,70%,50%)]">Power-ups</h3>
-              <ul className="list-disc list-inside space-y-1">
+              <h3 className="font-bold text-lg sm:text-xl md:text-2xl mb-3 text-[hsl(200,70%,50%)]">Power-ups</h3>
+              <ul className="list-disc list-inside space-y-2 text-sm sm:text-base md:text-lg">
                 <li><span className="text-[hsl(330,100%,65%)]">Multiball</span> - Split ball into three</li>
                 <li><span className="text-[hsl(30,100%,60%)]">Turrets</span> - Add cannons to paddle</li>
                 <li><span className="text-[hsl(30,100%,60%)]">Fireball</span> - Ball destroys everything</li>
@@ -136,8 +136,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             </div>
 
             <div>
-              <h3 className="font-bold text-xl mb-2 text-[hsl(200,70%,50%)]">Difficulty Modes</h3>
-              <ul className="list-disc list-inside space-y-1">
+              <h3 className="font-bold text-lg sm:text-xl md:text-2xl mb-3 text-[hsl(200,70%,50%)]">Difficulty Modes</h3>
+              <ul className="list-disc list-inside space-y-2 text-sm sm:text-base md:text-lg">
                 <li><span className="text-[hsl(120,60%,45%)]">Normal</span> - Standard gameplay with power-ups</li>
                 <li><span className="text-[hsl(0,85%,55%)]">Godlike</span> - No extra life power-ups, faster enemy spawns, more enemy fire</li>
               </ul>
@@ -150,7 +150,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
               setShowInstructions(false);
             }}
             onMouseEnter={() => soundManager.playMenuHover()}
-            className="w-full mt-6 bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white"
+            className="w-full mt-6 bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white text-base sm:text-lg py-4 sm:py-6"
           >
             Back to Menu
           </Button>
