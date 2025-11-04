@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 
 interface HighScoreDisplayProps {
-  scores: Array<{ name: string; score: number; level: number }>;
+  scores: Array<{ name: string; score: number; level: number; difficulty?: string; beatLevel50?: boolean }>;
   onClose: () => void;
 }
 
@@ -118,8 +118,14 @@ export const HighScoreDisplay = ({ scores, onClose }: HighScoreDisplayProps) => 
                 }}
               >
                 <span className="text-cyan-300 w-16 font-bold">{index + 1}.</span>
-                <span className="text-pink-400 font-bold w-24 text-center text-3xl tracking-widest">
-                  {entry.name}
+                <span className="text-pink-400 font-bold text-center text-3xl tracking-widest flex items-center gap-2">
+                  {entry.beatLevel50 && <span className="text-4xl">👑</span>}
+                  <span>{entry.name}</span>
+                  {entry.difficulty === "godlike" && (
+                    <span className="text-red-500 text-sm font-bold" style={{ fontFamily: 'monospace', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                      GOD-MODE
+                    </span>
+                  )}
                 </span>
                 <span className="text-amber-300 flex-1 text-right font-bold">
                   {entry.score.toLocaleString()}
