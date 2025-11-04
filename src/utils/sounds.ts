@@ -108,18 +108,6 @@ class SoundManager {
 
   setMusicEnabled(enabled: boolean) {
     this.musicEnabled = enabled;
-    if (!enabled) {
-      // Pause all music instead of stopping
-      this.pauseBackgroundMusic();
-      this.pauseHighScoreMusic();
-    } else {
-      // Resume only the active music type
-      if (this.activeMusicType === 'background') {
-        this.resumeBackgroundMusic();
-      } else if (this.activeMusicType === 'highscore') {
-        this.resumeHighScoreMusic();
-      }
-    }
   }
 
   getMusicEnabled(): boolean {

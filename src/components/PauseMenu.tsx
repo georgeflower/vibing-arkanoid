@@ -16,8 +16,8 @@ export const PauseMenu = ({ onResume, onReturnToMenu }: PauseMenuProps) => {
 
   const handleMusicToggle = (checked: boolean) => {
     soundManager.playUIToggle();
-    setMusicEnabled(checked);
-    soundManager.setMusicEnabled(checked);
+    const enabled = soundManager.toggleMute();
+    setMusicEnabled(enabled);
   };
 
   const handleSfxToggle = (checked: boolean) => {

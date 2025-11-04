@@ -165,8 +165,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
               checked={musicEnabled}
               onCheckedChange={(checked) => {
                 soundManager.playUIToggle();
-                setMusicEnabled(checked);
-                soundManager.setMusicEnabled(checked);
+                const enabled = soundManager.toggleMute();
+                setMusicEnabled(enabled);
               }}
             />
           </div>
