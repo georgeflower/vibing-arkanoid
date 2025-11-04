@@ -839,7 +839,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       const spacing = 20;
       const totalWidth = letterOrder.length * size + (letterOrder.length - 1) * spacing;
       const startX = (width - totalWidth) / 2;
-      const y = 10;
+      const y = 20;
       
       letterOrder.forEach((letter, index) => {
         const img = bonusLetterImagesRef.current[letter];
