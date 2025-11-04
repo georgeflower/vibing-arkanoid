@@ -1570,8 +1570,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   return (
     <div
       ref={fullscreenContainerRef}
-      className={`flex items-center justify-center p-4 ${
-        isFullscreen ? "min-h-screen bg-background" : "min-h-screen"
+      className={`flex items-center justify-center ${
+        isFullscreen ? "h-screen bg-background overflow-hidden" : "h-screen overflow-hidden"
       }`}
     >
       {showEndScreen ? (
@@ -1586,8 +1586,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             <div className="metal-frame">
               {/* Title Bar */}
               <div className="metal-title-bar">
-                <h1 className="text-3xl retro-pixel-text tracking-widest text-center" style={{ color: "hsl(0, 0%, 95%)", textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}>
-                  VIBING ARKANOID
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl retro-pixel-text tracking-widest text-center" style={{ color: "hsl(0, 0%, 95%)", textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}>
+                  Vibing Arkanoid
                 </h1>
               </div>
 
