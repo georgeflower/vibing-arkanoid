@@ -47,7 +47,7 @@ export const MusicSettings = ({ gameState, setGameState }: MusicSettingsProps) =
 
   const handleMusicToggle = (enabled: boolean) => {
     setMusicEnabled(enabled);
-    soundManager.toggleMute();
+    soundManager.setMusicEnabled(enabled);
   };
 
   const handleTrackChange = (value: string) => {

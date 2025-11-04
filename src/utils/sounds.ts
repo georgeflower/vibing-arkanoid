@@ -6,11 +6,9 @@ class SoundManager {
   private highScoreMusic: HTMLAudioElement | null = null;
   private musicEnabled = true;
   private sfxEnabled = true;
-  private activeMusicType: 'background' | 'highscore' | null = null;
-  private isTransitioning = false; // Prevent multiple simultaneous track changes
   private trackUrls = [
-    '/sound_2.mp3',
     '/Pixel_Frenzy-2.mp3',
+    '/sound_2.mp3',
     '/level_3.mp3',
     '/level_4.mp3',
     '/level_5.mp3',
@@ -34,19 +32,16 @@ class SoundManager {
     return this.audioContext;
   }
 
-  private stopAllMusic() {
-    // Stop all music types to ensure only one plays at a time
-    this.stopBackgroundMusic();
-    this.stopHighScoreMusic();
-    this.activeMusicType = null;
-  }
-
   playBackgroundMusic(level: number = 1) {
-    if (!this.musicEnabled || this.isTransitioning) return;
+    if (!this.musicEnabled) return;
 
-    // Stop all other music types first
-    this.stopAllMusic();
-    this.activeMusicType = 'background';
+    // Stop all currently playing tracks first
+    this.musicTracks.forEach((track, index) => {
+      if (track && !track.paused) {
+        track.pause();
+        track.currentTime = 0;
+      }
+    });
 
     // Initialize track if not already loaded
     if (!this.musicTracks[this.currentTrackIndex]) {
@@ -56,33 +51,18 @@ class SoundManager {
       this.musicTracks[this.currentTrackIndex] = audio;
     }
 
-    // Ensure current track is at the beginning and other tracks are stopped
-    const currentTrack = this.musicTracks[this.currentTrackIndex];
-    if (currentTrack) {
-      currentTrack.currentTime = 0;
-      currentTrack.play().catch(err => console.log('Audio play failed:', err));
-    }
+    // Play current track
+    this.musicTracks[this.currentTrackIndex]?.play().catch(err => console.log('Audio play failed:', err));
   }
 
   private handleTrackEnd() {
-    // Prevent multiple simultaneous track transitions
-    if (this.isTransitioning) return;
-    this.isTransitioning = true;
-
-    // Stop all tracks to prevent overlap
-    this.stopBackgroundMusic();
-
     // Move to next track in sequence
     this.currentTrackIndex = (this.currentTrackIndex + 1) % this.trackUrls.length;
     
-    // Small delay to ensure previous track is fully stopped
-    setTimeout(() => {
-      this.isTransitioning = false;
-      // Play next song immediately if music is enabled
-      if (this.musicEnabled && this.activeMusicType === 'background') {
-        this.playBackgroundMusic();
-      }
-    }, 100);
+    // Play next song immediately if music is enabled
+    if (this.musicEnabled) {
+      this.playBackgroundMusic();
+    }
   }
 
   initializeRandomTrack() {
@@ -94,27 +74,7 @@ class SoundManager {
     this.musicTracks.forEach(track => track?.pause());
   }
 
-  resumeBackgroundMusic() {
-    if (!this.musicEnabled) return;
-    const currentTrack = this.musicTracks[this.currentTrackIndex];
-    if (currentTrack) {
-      currentTrack.play().catch(err => console.log('Resume audio failed:', err));
-    }
-  }
-
-  pauseHighScoreMusic() {
-    if (this.highScoreMusic) {
-      this.highScoreMusic.pause();
-    }
-  }
-
-  resumeHighScoreMusic() {
-    if (!this.musicEnabled || !this.highScoreMusic) return;
-    this.highScoreMusic.play().catch(err => console.log('Resume high score music failed:', err));
-  }
-
   stopBackgroundMusic() {
-    this.isTransitioning = false; // Reset transition flag
     this.musicTracks.forEach(track => {
       if (track) {
         track.pause();
@@ -125,6 +85,9 @@ class SoundManager {
 
   setMusicEnabled(enabled: boolean) {
     this.musicEnabled = enabled;
+    if (!enabled) {
+      this.stopBackgroundMusic();
+    }
   }
 
   getMusicEnabled(): boolean {
@@ -140,8 +103,6 @@ class SoundManager {
   }
 
   setCurrentTrack(trackIndex: number) {
-    if (this.isTransitioning) return;
-    
     const wasPlaying = this.musicTracks[this.currentTrackIndex] && 
                        !this.musicTracks[this.currentTrackIndex].paused;
     
@@ -149,8 +110,7 @@ class SoundManager {
     this.currentTrackIndex = trackIndex;
     
     if (wasPlaying && this.musicEnabled) {
-      // Small delay to ensure clean transition
-      setTimeout(() => this.playBackgroundMusic(), 50);
+      this.playBackgroundMusic();
     }
   }
 
@@ -160,8 +120,8 @@ class SoundManager {
 
   getTrackNames(): string[] {
     return [
-      'Sound 2',
       'Pixel Frenzy',
+      'Sound 2',
       'Level 3',
       'Level 4',
       'Level 5',
@@ -179,68 +139,8 @@ class SoundManager {
     ];
   }
 
-  // UI Sound effects
-  playUIClick() {
-    if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
-
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.05);
-  }
-
-  playUIToggle() {
-    if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    oscillator.frequency.setValueAtTime(600, ctx.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.08);
-    oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0.12, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
-
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.08);
-  }
-
-  playUISlider() {
-    if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    oscillator.frequency.value = 400;
-    oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0.08, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.03);
-
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.03);
-  }
-
   playHighScoreMusic() {
-    this.stopAllMusic(); // Stop all other music
-    this.activeMusicType = 'highscore';
+    this.stopBackgroundMusic(); // Stop game music
     if (!this.highScoreMusic) {
       this.highScoreMusic = new Audio('/High_score.mp3');
       this.highScoreMusic.loop = true;
@@ -544,33 +444,21 @@ class SoundManager {
   }
 
   nextTrack() {
-    if (this.isTransitioning) return;
-    this.isTransitioning = true;
-    
     this.stopBackgroundMusic();
     this.currentTrackIndex = (this.currentTrackIndex + 1) % this.trackUrls.length;
     
-    setTimeout(() => {
-      this.isTransitioning = false;
-      if (this.musicEnabled) {
-        this.playBackgroundMusic();
-      }
-    }, 100);
+    if (this.musicEnabled) {
+      this.playBackgroundMusic();
+    }
   }
 
   previousTrack() {
-    if (this.isTransitioning) return;
-    this.isTransitioning = true;
-    
     this.stopBackgroundMusic();
     this.currentTrackIndex = (this.currentTrackIndex - 1 + this.trackUrls.length) % this.trackUrls.length;
     
-    setTimeout(() => {
-      this.isTransitioning = false;
-      if (this.musicEnabled) {
-        this.playBackgroundMusic();
-      }
-    }, 100);
+    if (this.musicEnabled) {
+      this.playBackgroundMusic();
+    }
   }
 
   toggleMute() {

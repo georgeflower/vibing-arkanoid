@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { GameSettings, Difficulty } from "@/types/game";
 import startScreenImg from "@/assets/start-screen.png";
-import { soundManager } from "@/utils/sounds";
 
 interface MainMenuProps {
   onStartGame: (settings: GameSettings) => void;
@@ -20,17 +19,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const [showInstructions, setShowInstructions] = useState(false);
 
-  // Play background music when menu loads
-  useEffect(() => {
-    soundManager.playBackgroundMusic();
-    
-    return () => {
-      soundManager.pauseBackgroundMusic();
-    };
-  }, []);
-
   const handleStart = () => {
-    soundManager.playUIClick();
     const settings: GameSettings = {
       startingLives,
       musicEnabled,
@@ -94,10 +83,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           </div>
 
           <Button
-            onClick={() => {
-              soundManager.playUIClick();
-              setShowInstructions(false);
-            }}
+            onClick={() => setShowInstructions(false)}
             className="w-full mt-6 bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white"
           >
             Back to Menu
@@ -126,10 +112,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             <Label className="text-white text-lg">Starting Lives: {startingLives}</Label>
             <Slider
               value={[startingLives]}
-              onValueChange={(value) => {
-                soundManager.playUISlider();
-                setStartingLives(value[0]);
-              }}
+              onValueChange={(value) => setStartingLives(value[0])}
               min={1}
               max={10}
               step={1}
@@ -140,10 +123,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           {/* Difficulty */}
           <div className="space-y-2">
             <Label className="text-white text-lg">Difficulty</Label>
-            <RadioGroup value={difficulty} onValueChange={(value) => {
-              soundManager.playUIClick();
-              setDifficulty(value as Difficulty);
-            }}>
+            <RadioGroup value={difficulty} onValueChange={(value) => setDifficulty(value as Difficulty)}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="normal" id="normal" />
                 <Label htmlFor="normal" className="text-white cursor-pointer">Normal</Label>
@@ -163,11 +143,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             <Switch
               id="music"
               checked={musicEnabled}
-              onCheckedChange={(checked) => {
-                soundManager.playUIToggle();
-                const enabled = soundManager.toggleMute();
-                setMusicEnabled(enabled);
-              }}
+              onCheckedChange={setMusicEnabled}
             />
           </div>
 
@@ -177,10 +153,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             <Switch
               id="sfx"
               checked={soundEffectsEnabled}
-              onCheckedChange={(checked) => {
-                soundManager.playUIToggle();
-                setSoundEffectsEnabled(checked);
-              }}
+              onCheckedChange={setSoundEffectsEnabled}
             />
           </div>
         </div>
@@ -195,10 +168,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           </Button>
           
           <Button
-            onClick={() => {
-              soundManager.playUIClick();
-              setShowInstructions(true);
-            }}
+            onClick={() => setShowInstructions(true)}
             variant="outline"
             className="w-full border-[hsl(200,70%,50%)] text-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,50%)] hover:text-white"
           >

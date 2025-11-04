@@ -4,7 +4,6 @@ import { GameUI } from "./GameUI";
 import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
-import { PauseMenu } from "./PauseMenu";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Maximize2, Minimize2, Home } from "lucide-react";
@@ -170,7 +169,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, [paddle]);
 
   const initBricksForLevel = useCallback((currentLevel: number) => {
-    const layoutIndex = Math.min((currentLevel - 1), levelLayouts.length - 1);
+    const layoutIndex = (currentLevel - 1) % 10;
     const layout = levelLayouts[layoutIndex];
     const levelColors = getBrickColors(currentLevel);
 
@@ -371,7 +370,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (isLevelComplete) {
         nextLevel();
       } else {
-        // Start game
+        // Start game - start music only if not already playing
         setGameState("playing");
         if (!soundManager.isMusicPlaying()) {
           soundManager.initializeRandomTrack();
@@ -693,22 +692,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             // Check win condition (don't count indestructible bricks)
             if (newBricks.every((brick) => !brick.visible || brick.isIndestructible)) {
               soundManager.playWin();
-              
-              // Check if player beat level 50
-              if (level >= 50) {
-                setScore((prev) => prev + 1000000);
-                setGameState("won");
-                soundManager.stopBackgroundMusic();
-                toast.success("🎉 GAME COMPLETED! +1,000,000 BONUS!");
-                
-                if (isHighScore(score + 1000000)) {
-                  setShowHighScoreEntry(true);
-                  soundManager.playHighScoreMusic();
-                }
-              } else {
-                setGameState("ready"); // Wait for click to start next level
-                toast.success(`Level ${level} Complete! Click to continue.`);
-              }
+              setGameState("ready"); // Wait for click to start next level
+              toast.success(`Level ${level} Complete! Click to continue.`);
             }
 
             return newBricks;
@@ -1515,7 +1500,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, [initGame]);
 
   const handleHighScoreSubmit = (name: string) => {
-    addHighScore(name, score, level, settings.difficulty, level >= 50);
+    addHighScore(name, score, level);
     setShowHighScoreEntry(false);
     setShowHighScoreDisplay(true);
     toast.success("High score saved!");
@@ -1658,20 +1643,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       bonusLetters={bonusLetters}
                       collectedLetters={collectedLetters}
                     />
-                    
-                    {/* Pause Menu Overlay */}
-                    {gameState === "paused" && (
-                      <PauseMenu
-                        onResume={() => {
-                          setGameState("playing");
-                          toast.success("Game resumed");
-                        }}
-                        onReturnToMenu={() => {
-                          soundManager.stopBackgroundMusic();
-                          onReturnToMenu();
-                        }}
-                      />
-                    )}
                   </div>
                 </div>
 
