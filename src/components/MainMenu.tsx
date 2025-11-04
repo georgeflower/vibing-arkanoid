@@ -9,12 +9,14 @@ import startScreenImg from "@/assets/start-screen-new.png";
 import { useHighScores } from "@/hooks/useHighScores";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { soundManager } from "@/utils/sounds";
+import { useNavigate } from "react-router-dom";
 
 interface MainMenuProps {
   onStartGame: (settings: GameSettings) => void;
 }
 
 export const MainMenu = ({ onStartGame }: MainMenuProps) => {
+  const navigate = useNavigate();
   const [startingLives, setStartingLives] = useState(3);
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const [showInstructions, setShowInstructions] = useState(false);
@@ -254,6 +256,18 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             className="w-full border-[hsl(200,70%,50%)] text-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,50%)] hover:text-white"
           >
             About
+          </Button>
+
+          <Button
+            onClick={() => {
+              soundManager.playMenuClick();
+              navigate("/level-editor");
+            }}
+            onMouseEnter={() => soundManager.playMenuHover()}
+            variant="outline"
+            className="w-full border-[hsl(330,100%,65%)] text-[hsl(330,100%,65%)] hover:bg-[hsl(330,100%,65%)] hover:text-white"
+          >
+            Level Editor
           </Button>
         </div>
       </Card>
