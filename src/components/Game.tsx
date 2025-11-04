@@ -1245,11 +1245,26 @@ export const Game = () => {
     };
   }, [gameState, gameLoop]);
 
-  // Separate useEffect for timer management - only clear when not playing
+  // Separate useEffect for timer management - handle pause/resume
   useEffect(() => {
-    if (gameState !== "playing") {
+    if (gameState === "playing" && timerStartedRef.current) {
+      // Resume timer if it was started and we're playing
+      if (!timerIntervalRef.current) {
+        timerIntervalRef.current = setInterval(() => {
+          setTimer((prev) => prev + 1);
+        }, 1000);
+      }
+    } else if (gameState === "paused") {
+      // Pause: clear interval but keep timerStartedRef true
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = undefined;
+      }
+    } else if (gameState !== "playing") {
+      // Game over or not started: clear everything
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = undefined;
       }
       timerStartedRef.current = false;
       bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
