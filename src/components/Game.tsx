@@ -80,6 +80,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
+  const [isPointerLocked, setIsPointerLocked] = useState(false);
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
@@ -354,16 +355,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
-      if (!canvasRef.current || !paddle || gameState !== "playing") return;
+      if (!canvasRef.current || !paddle) return;
 
-      const rect = canvasRef.current.getBoundingClientRect();
-      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
-      const mouseX = (e.clientX - rect.left) * scaleX;
-      const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, mouseX - paddle.width / 2));
-
-      setPaddle((prev) => (prev ? { ...prev, x: newX } : null));
+      // Use movementX when pointer is locked, otherwise use absolute position
+      if (isPointerLocked) {
+        const sensitivity = 1.5;
+        const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, paddle.x + e.movementX * sensitivity));
+        setPaddle((prev) => (prev ? { ...prev, x: newX } : null));
+      } else if (gameState === "playing") {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+        const mouseX = (e.clientX - rect.left) * scaleX;
+        const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, mouseX - paddle.width / 2));
+        setPaddle((prev) => (prev ? { ...prev, x: newX } : null));
+      }
     },
-    [gameState, paddle],
+    [gameState, paddle, isPointerLocked, SCALED_CANVAS_WIDTH],
   );
 
   const activeTouchRef = useRef<number | null>(null);
@@ -435,6 +442,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   );
 
   const handleClick = useCallback(() => {
+    // Request pointer lock on canvas click
+    if (canvasRef.current && document.pointerLockElement !== canvasRef.current) {
+      canvasRef.current.requestPointerLock();
+    }
+
     // If game is ready, start the game first
     if (gameState === "ready" && bricks.length > 0) {
       const isLevelComplete = bricks.every((brick) => !brick.visible) && bricks.length > 0;
@@ -501,7 +513,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (!canvas) return;
 
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === "n" || e.key === "N") {
+      if (e.key === "Escape") {
+        // Exit pointer lock
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
+      } else if (e.key === "n" || e.key === "N") {
         soundManager.nextTrack();
         toast.success("Next track");
       } else if (e.key === "b" || e.key === "B") {
@@ -526,12 +543,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     };
 
+    const handlePointerLockChange = () => {
+      setIsPointerLocked(document.pointerLockElement === canvas);
+    };
+
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
     canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
     canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
     canvas.addEventListener("click", handleClick);
     window.addEventListener("keydown", handleKeyPress);
+    document.addEventListener("pointerlockchange", handlePointerLockChange);
 
     return () => {
       canvas.removeEventListener("mousemove", handleMouseMove);
@@ -540,6 +562,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       canvas.removeEventListener("touchmove", handleTouchMove);
       canvas.removeEventListener("click", handleClick);
       window.removeEventListener("keydown", handleKeyPress);
+      document.removeEventListener("pointerlockchange", handlePointerLockChange);
     };
   }, [handleMouseMove, handleTouchMove, handleClick, nextLevel, gameState]);
 
@@ -1781,7 +1804,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   )}
                   {gameState === "playing" && (
                     <div className="retro-pixel-text text-xs" style={{ color: "hsl(0, 0%, 60%)" }}>
-                      Move your mouse or touch to control the paddle
+                      Move your mouse or touch to control the paddle • Press ESC to release mouse • Click canvas to recapture
                     </div>
                   )}
                 </div>
