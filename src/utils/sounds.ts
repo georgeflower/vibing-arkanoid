@@ -7,6 +7,7 @@ class SoundManager {
   private introMusic: HTMLAudioElement | null = null;
   private musicEnabled = true;
   private sfxEnabled = true;
+  private activeMusicType: 'intro' | 'background' | 'highscore' | null = null;
   private trackUrls = [
     '/Pixel_Frenzy-2.mp3',
     '/level_3.mp3',
@@ -37,6 +38,7 @@ class SoundManager {
     this.stopBackgroundMusic();
     this.stopIntroMusic();
     this.stopHighScoreMusic();
+    this.activeMusicType = null;
   }
 
   playBackgroundMusic(level: number = 1) {
@@ -44,6 +46,7 @@ class SoundManager {
 
     // Stop all other music types first
     this.stopAllMusic();
+    this.activeMusicType = 'background';
 
     // Initialize track if not already loaded
     if (!this.musicTracks[this.currentTrackIndex]) {
@@ -123,10 +126,14 @@ class SoundManager {
       this.pauseIntroMusic();
       this.pauseHighScoreMusic();
     } else {
-      // Resume whichever music was playing
-      this.resumeBackgroundMusic();
-      this.resumeIntroMusic();
-      this.resumeHighScoreMusic();
+      // Resume only the active music type
+      if (this.activeMusicType === 'intro') {
+        this.resumeIntroMusic();
+      } else if (this.activeMusicType === 'background') {
+        this.resumeBackgroundMusic();
+      } else if (this.activeMusicType === 'highscore') {
+        this.resumeHighScoreMusic();
+      }
     }
   }
 
@@ -183,6 +190,7 @@ class SoundManager {
     
     // Stop all other music first
     this.stopAllMusic();
+    this.activeMusicType = 'intro';
     
     if (!this.introMusic) {
       this.introMusic = new Audio('/sound_2.mp3');
@@ -260,6 +268,7 @@ class SoundManager {
 
   playHighScoreMusic() {
     this.stopAllMusic(); // Stop all other music
+    this.activeMusicType = 'highscore';
     if (!this.highScoreMusic) {
       this.highScoreMusic = new Audio('/High_score.mp3');
       this.highScoreMusic.loop = true;
