@@ -79,11 +79,12 @@ const MetalBalls = () => {
         >
           <sphereGeometry args={[0.4, 8, 8]} />
           <meshStandardMaterial
-            color="#aaaaaa"
-            metalness={0.9}
-            roughness={0.1}
-            emissive="#444444"
-            emissiveIntensity={0.3}
+            color="#c0c0c0"
+            metalness={1.0}
+            roughness={0.2}
+            emissive="#888888"
+            emissiveIntensity={0.2}
+            flatShading
           />
         </mesh>
       ))}
@@ -125,9 +126,11 @@ const RetroDonut = () => {
     <mesh ref={meshRef}>
       <torusGeometry args={[2, 0.8, 8, 16]} />
       <meshStandardMaterial
-        color="#ff00ff"
+        color="#c0c0c0"
+        metalness={0.8}
+        roughness={0.3}
         emissive="#ff00ff"
-        emissiveIntensity={0.5}
+        emissiveIntensity={0.4}
         flatShading
       />
     </mesh>
@@ -161,7 +164,7 @@ export const HighScoreDisplay = ({ scores, onClose }: HighScoreDisplayProps) => 
       </div>
       
       <div className="relative z-10 w-full max-w-3xl px-4">
-        <div className="retro-border bg-slate-900/95 rounded-lg p-12 backdrop-blur-sm">
+        <div className="retro-border bg-slate-900/40 rounded-lg p-12 backdrop-blur-sm">
           <h1 className="text-6xl font-bold text-center mb-8 font-mono animate-pulse">
             <span className="retro-title">HIGH SCORES</span>
           </h1>
