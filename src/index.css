@@ -102,8 +102,8 @@ All colors MUST be HSL.
   }
 
   .game-canvas-wrapper canvas {
-    max-width: calc(100vw - 200px);
-    max-height: calc(100vh - 100px);
+    max-width: 95vw;
+    max-height: 85vh;
     width: auto !important;
     height: auto !important;
     object-fit: contain;
@@ -111,17 +111,37 @@ All colors MUST be HSL.
 
   /* Responsive canvas scaling for non-fullscreen */
   .game-glow canvas {
-    max-width: calc(100vw - 240px);
-    max-height: calc(100vh - 200px);
+    max-width: 100%;
+    max-height: 100%;
     width: auto !important;
     height: auto !important;
     object-fit: contain;
+    display: block;
+    margin: 0 auto;
   }
 
   /* Mobile adjustments */
   @media (max-width: 768px) {
     .game-glow canvas {
-      max-width: calc(100vw - 40px);
+      max-width: 100%;
+      max-height: 100%;
+    }
+    
+    .game-canvas-wrapper canvas {
+      max-width: 98vw;
+      max-height: 80vh;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .game-glow canvas {
+      max-width: 100%;
+      max-height: 100%;
+    }
+    
+    .game-canvas-wrapper canvas {
+      max-width: 100vw;
+      max-height: 75vh;
     }
   }
 
@@ -357,6 +377,15 @@ All colors MUST be HSL.
   box-shadow: 
     inset 0 2px 4px rgba(0, 0, 0, 0.6),
     0 2px 4px rgba(0, 0, 0, 0.3);
+  min-height: 0;
+}
+
+.game-glow {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .metal-bottom-bar {
@@ -455,7 +484,7 @@ All colors MUST be HSL.
   }
   
   .metal-game-area {
-    padding: 4px;
+    padding: 6px;
   }
   
   .metal-bottom-bar {
@@ -468,6 +497,10 @@ All colors MUST be HSL.
 }
 
 @media (max-width: 480px) {
+  .metal-frame {
+    padding: 3px;
+  }
+  
   .stat-box {
     min-width: 48px;
     padding: 2px 4px;
@@ -483,5 +516,23 @@ All colors MUST be HSL.
   
   .stats-container {
     gap: 3px;
+  }
+  
+  .metal-game-area {
+    padding: 4px;
+  }
+  
+  .metal-title-bar {
+    padding: 4px 6px;
+    margin-bottom: 2px;
+  }
+  
+  .metal-stats-bar {
+    padding: 3px 4px;
+    margin-bottom: 2px;
+  }
+  
+  .metal-bottom-bar {
+    padding: 6px;
   }
 }
