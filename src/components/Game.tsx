@@ -75,7 +75,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [explosions, setExplosions] = useState<Explosion[]>([]);
   const [enemySpawnCount, setEnemySpawnCount] = useState(0);
   const [lastEnemySpawnTime, setLastEnemySpawnTime] = useState(0);
-  const [launchAngle, setLaunchAngle] = useState(-60);
+  const [launchAngle, setLaunchAngle] = useState(-20);
   const [showInstructions, setShowInstructions] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
@@ -823,7 +823,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               waitingToLaunch: true,
             };
             setBalls([resetBall]);
-            setLaunchAngle(-60); // Start from left side
+            setLaunchAngle(-20); // Start from left side
             launchAngleDirectionRef.current = 1; // Move right initially
             setShowInstructions(true); // Show instructions when resetting ball
             setPowerUps([]);
@@ -1207,7 +1207,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 waitingToLaunch: true,
               };
               setBalls([resetBall]);
-              setLaunchAngle(-60);
+              setLaunchAngle(-20);
               launchAngleDirectionRef.current = 1;
               setShowInstructions(true); // Show instructions when resetting ball
               setPowerUps([]);
@@ -1275,7 +1275,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 waitingToLaunch: true,
               };
               setBalls([resetBall]);
-              setLaunchAngle(-60);
+              setLaunchAngle(-20);
               launchAngleDirectionRef.current = 1;
               setShowInstructions(true); // Show instructions when resetting ball
               setPowerUps([]);
