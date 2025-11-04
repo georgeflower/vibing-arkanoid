@@ -32,16 +32,18 @@ class SoundManager {
     return this.audioContext;
   }
 
+  private stopAllMusic() {
+    // Stop all music types to ensure only one plays at a time
+    this.stopBackgroundMusic();
+    this.stopIntroMusic();
+    this.stopHighScoreMusic();
+  }
+
   playBackgroundMusic(level: number = 1) {
     if (!this.musicEnabled) return;
 
-    // Stop all currently playing tracks first
-    this.musicTracks.forEach((track, index) => {
-      if (track && !track.paused) {
-        track.pause();
-        track.currentTime = 0;
-      }
-    });
+    // Stop all other music types first
+    this.stopAllMusic();
 
     // Initialize track if not already loaded
     if (!this.musicTracks[this.currentTrackIndex]) {
@@ -86,7 +88,7 @@ class SoundManager {
   setMusicEnabled(enabled: boolean) {
     this.musicEnabled = enabled;
     if (!enabled) {
-      this.stopBackgroundMusic();
+      this.stopAllMusic();
     }
   }
 
@@ -142,8 +144,7 @@ class SoundManager {
     if (!this.musicEnabled) return;
     
     // Stop all other music first
-    this.stopBackgroundMusic();
-    this.stopHighScoreMusic();
+    this.stopAllMusic();
     
     if (!this.introMusic) {
       this.introMusic = new Audio('/sound_2.mp3');
@@ -220,7 +221,7 @@ class SoundManager {
   }
 
   playHighScoreMusic() {
-    this.stopBackgroundMusic(); // Stop game music
+    this.stopAllMusic(); // Stop all other music
     if (!this.highScoreMusic) {
       this.highScoreMusic = new Audio('/High_score.mp3');
       this.highScoreMusic.loop = true;

@@ -19,12 +19,8 @@ export const PauseMenu = ({ onResume, onReturnToMenu }: PauseMenuProps) => {
     setMusicEnabled(checked);
     soundManager.setMusicEnabled(checked);
     if (checked) {
-      // Stop intro music and resume game music
-      soundManager.stopIntroMusic();
+      // Resume game music (will auto-stop all other music types)
       soundManager.playBackgroundMusic();
-    } else {
-      soundManager.stopBackgroundMusic();
-      soundManager.stopIntroMusic();
     }
   };
 
