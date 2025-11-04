@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { GameSettings, Difficulty } from "@/types/game";
 import startScreenImg from "@/assets/start-screen.png";
+import { soundManager } from "@/utils/sounds";
 
 interface MainMenuProps {
   onStartGame: (settings: GameSettings) => void;
@@ -19,7 +20,18 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const [showInstructions, setShowInstructions] = useState(false);
 
+  // Play intro music when menu loads
+  useEffect(() => {
+    soundManager.playIntroMusic();
+    
+    return () => {
+      soundManager.stopIntroMusic();
+    };
+  }, []);
+
   const handleStart = () => {
+    soundManager.stopIntroMusic();
+    soundManager.playUIClick();
     const settings: GameSettings = {
       startingLives,
       musicEnabled,
@@ -83,7 +95,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           </div>
 
           <Button
-            onClick={() => setShowInstructions(false)}
+            onClick={() => {
+              soundManager.playUIClick();
+              setShowInstructions(false);
+            }}
             className="w-full mt-6 bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white"
           >
             Back to Menu
@@ -112,7 +127,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             <Label className="text-white text-lg">Starting Lives: {startingLives}</Label>
             <Slider
               value={[startingLives]}
-              onValueChange={(value) => setStartingLives(value[0])}
+              onValueChange={(value) => {
+                soundManager.playUISlider();
+                setStartingLives(value[0]);
+              }}
               min={1}
               max={10}
               step={1}
@@ -123,7 +141,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           {/* Difficulty */}
           <div className="space-y-2">
             <Label className="text-white text-lg">Difficulty</Label>
-            <RadioGroup value={difficulty} onValueChange={(value) => setDifficulty(value as Difficulty)}>
+            <RadioGroup value={difficulty} onValueChange={(value) => {
+              soundManager.playUIClick();
+              setDifficulty(value as Difficulty);
+            }}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="normal" id="normal" />
                 <Label htmlFor="normal" className="text-white cursor-pointer">Normal</Label>
@@ -143,7 +164,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             <Switch
               id="music"
               checked={musicEnabled}
-              onCheckedChange={setMusicEnabled}
+              onCheckedChange={(checked) => {
+                soundManager.playUIToggle();
+                setMusicEnabled(checked);
+              }}
             />
           </div>
 
@@ -153,7 +177,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             <Switch
               id="sfx"
               checked={soundEffectsEnabled}
-              onCheckedChange={setSoundEffectsEnabled}
+              onCheckedChange={(checked) => {
+                soundManager.playUIToggle();
+                setSoundEffectsEnabled(checked);
+              }}
             />
           </div>
         </div>
@@ -168,7 +195,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           </Button>
           
           <Button
-            onClick={() => setShowInstructions(true)}
+            onClick={() => {
+              soundManager.playUIClick();
+              setShowInstructions(true);
+            }}
             variant="outline"
             className="w-full border-[hsl(200,70%,50%)] text-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,50%)] hover:text-white"
           >

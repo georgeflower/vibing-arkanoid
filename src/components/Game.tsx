@@ -4,6 +4,7 @@ import { GameUI } from "./GameUI";
 import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
+import { PauseMenu } from "./PauseMenu";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Maximize2, Minimize2, Home } from "lucide-react";
@@ -1643,6 +1644,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       bonusLetters={bonusLetters}
                       collectedLetters={collectedLetters}
                     />
+                    
+                    {/* Pause Menu Overlay */}
+                    {gameState === "paused" && (
+                      <PauseMenu
+                        onResume={() => {
+                          setGameState("playing");
+                          toast.success("Game resumed");
+                        }}
+                        onReturnToMenu={() => {
+                          soundManager.stopBackgroundMusic();
+                          onReturnToMenu();
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
 

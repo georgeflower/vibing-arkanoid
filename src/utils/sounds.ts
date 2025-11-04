@@ -4,11 +4,11 @@ class SoundManager {
   private musicTracks: HTMLAudioElement[] = [];
   private currentTrackIndex = 0;
   private highScoreMusic: HTMLAudioElement | null = null;
+  private introMusic: HTMLAudioElement | null = null;
   private musicEnabled = true;
   private sfxEnabled = true;
   private trackUrls = [
     '/Pixel_Frenzy-2.mp3',
-    '/sound_2.mp3',
     '/level_3.mp3',
     '/level_4.mp3',
     '/level_5.mp3',
@@ -121,7 +121,6 @@ class SoundManager {
   getTrackNames(): string[] {
     return [
       'Pixel Frenzy',
-      'Sound 2',
       'Level 3',
       'Level 4',
       'Level 5',
@@ -137,6 +136,83 @@ class SoundManager {
       'Desert Chip Atari 2',
       'Desert Chip Atari 2-2'
     ];
+  }
+
+  playIntroMusic() {
+    if (!this.musicEnabled) return;
+    
+    if (!this.introMusic) {
+      this.introMusic = new Audio('/sound_2.mp3');
+      this.introMusic.loop = true;
+      this.introMusic.volume = 0.3;
+    }
+    this.introMusic.play().catch(err => console.log('Intro music play failed:', err));
+  }
+
+  stopIntroMusic() {
+    if (this.introMusic) {
+      this.introMusic.pause();
+      this.introMusic.currentTime = 0;
+    }
+  }
+
+  // UI Sound effects
+  playUIClick() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.05);
+  }
+
+  playUIToggle() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    oscillator.frequency.setValueAtTime(600, ctx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.08);
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.12, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.08);
+  }
+
+  playUISlider() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    oscillator.frequency.value = 400;
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.08, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.03);
+
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.03);
   }
 
   playHighScoreMusic() {
