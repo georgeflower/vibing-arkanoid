@@ -14,26 +14,26 @@ export const getBrickHits = (level: number, row: number): number => {
 };
 
 export const levelLayouts: (boolean | number)[][][] = [
-  // Level 1
+    // Level 1
   [
+    [false, false, true, true, true, true, true, true, true, true, true, true, false, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, false, false, true, true, false, false, true, true, true, false],
+    [false, true, true, true, false, false, true, true, false, false, true, true, true, false],
     [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
     [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
     [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
-    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
-    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
-    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
-    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
-    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
-    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
-    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
-    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
-    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
-    [false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, false, false, false, false, false, false, false, false, false, false, true, false],
+    [false, true, false, true, true, false, true, true, false, true, true, false, true, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false]
   ],
 
   // Level 2: Diamond
