@@ -161,7 +161,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   return (
     <div 
-      className="min-h-screen w-full flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat"
+      className="min-h-screen w-full flex items-center justify-center p-4 bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)]"
       style={{ backgroundImage: `url(${startScreenImg})` }}
     >
       <Card className="max-w-md w-full p-8 bg-black/60 backdrop-blur-sm border-[hsl(200,70%,50%)]">
