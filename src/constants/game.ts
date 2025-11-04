@@ -1,9 +1,9 @@
 export const CANVAS_WIDTH = 850;
-export const CANVAS_HEIGHT = 610;
+export const CANVAS_HEIGHT = 650;
 export const PADDLE_WIDTH = 120;
 export const PADDLE_HEIGHT = 14;
 export const BALL_RADIUS = 6;
-export const BRICK_ROWS = 16;
+export const BRICK_ROWS = 14;
 export const BRICK_COLS = 13;
 export const BRICK_WIDTH = 55;
 export const BRICK_HEIGHT = 20;
