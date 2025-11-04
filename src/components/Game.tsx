@@ -277,7 +277,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     bombIntervalsRef.current.clear();
 
     const newLevel = level + 1;
-    const newSpeedMultiplier = Math.min(2.0, 1 + (newLevel - 1) * 0.05); // 5% faster per level, max 200%
+    const newSpeedMultiplier = Math.min(1.75, 1 + (newLevel - 1) * 0.05); // 5% faster per level, max 175%
 
     setLevel(newLevel);
     setSpeedMultiplier(newSpeedMultiplier);
@@ -291,8 +291,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       hasTurrets: false,
     });
 
-    // Initialize ball with new speed - waiting to launch
-    const baseSpeed = 3 * newSpeedMultiplier;
+    // Initialize ball with new speed - waiting to launch (capped at 175%)
+    const baseSpeed = 3 * Math.min(newSpeedMultiplier, 1.75);
     const initialBall: Ball = {
       x: CANVAS_WIDTH / 2,
       y: CANVAS_HEIGHT - 60,
