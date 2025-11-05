@@ -194,22 +194,22 @@ export const levelLayouts: (boolean | number)[][][] = [
     [2, 2, 2, true, true, true, true, true, true, true, 2, 2, 2],
   ],
 
-  // Level 11: Star Pattern
+  // Level 11
   [
-    [false, false, false, false, false, true, true, false, false, false, false, false, false],
-    [false, false, false, false, true, true, true, true, false, false, false, false, false],
-    [false, false, false, true, true, true, true, true, true, false, false, false, false],
-    [false, false, true, true, true, true, true, true, true, true, false, false, false],
-    [true, true, true, false, false, false, true, false, false, false, true, true, true],
-    [true, true, false, false, false, false, true, false, false, false, false, true, true],
-    [true, false, false, false, false, false, true, false, false, false, false, false, true],
-    [true, true, false, false, false, false, true, false, false, false, false, true, true],
-    [true, true, true, false, false, false, true, false, false, false, true, true, true],
-    [false, false, true, true, true, true, true, true, true, true, false, false, false],
-    [false, false, false, true, true, true, true, true, true, false, false, false, false],
-    [false, false, false, false, true, true, true, true, false, false, false, false, false],
-    [false, false, false, false, false, true, true, false, false, false, false, false, false],
-    [false, false, false, false, false, false, true, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, 2, 2, 2, 2, true, true, true, 2, 2, 2, 2, false],
+    [false, true, false, true, 2, true, true, true, 2, true, false, true, false],
+    [false, true, false, true, 2, true, true, true, 2, true, false, true, false],
+    [false, 2, true, true, true, true, true, true, true, true, true, 2, false],
+    [false, 2, true, true, true, true, true, true, true, true, true, 2, false],
+    [false, 2, true, true, true, 2, 2, 2, true, true, true, 2, false],
+    [false, 2, true, true, true, true, true, true, true, true, true, 2, false],
+    [false, 2, true, true, true, true, true, true, true, true, true, 2, false],
+    [false, 2, true, true, true, true, true, true, true, true, true, 2, false],
+    [false, 2, true, true, 2, true, true, true, 2, true, true, 2, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false],
   ],
 
   // Level 12: Diamond
