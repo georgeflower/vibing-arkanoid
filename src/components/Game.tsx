@@ -5,11 +5,13 @@ import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { EndScreen } from "./EndScreen";
+import { Changelog } from "./Changelog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Maximize2, Minimize2, Home } from "lucide-react";
 import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, GameSettings } from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
+import { GAME_VERSION } from "@/constants/version";
 import {
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
@@ -81,6 +83,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
   const [isPointerLocked, setIsPointerLocked] = useState(false);
+  const [showChangelog, setShowChangelog] = useState(false);
+  const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
@@ -93,7 +97,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   const { highScores, isHighScore, addHighScore } = useHighScores();
 
-  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives, timer, settings.difficulty);
+  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives, timer, settings.difficulty, setBrickHitSpeedAccumulated);
   const { bullets, setBullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks, enemies);
 
   // Initialize sound settings - always enabled
@@ -338,6 +342,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setLastEnemySpawnTime(0);
     setBonusLetters([]);
     // Don't reset collected letters between levels
+    setBrickHitSpeedAccumulated(0); // Reset on level clear
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
     setGameState("playing");
@@ -777,10 +782,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   }
                 }
 
-                // Increase ball speed slightly with each brick hit (but not for indestructible bricks)
-                if (!brick.isIndestructible) {
-                  newBall.dx *= 1.005;
-                  newBall.dy *= 1.005;
+                  // Increase ball speed slightly with each brick hit (but not for indestructible bricks)
+                if (!brick.isIndestructible && updatedBrick.hitsRemaining === 0) {
+                  // Only add speed when brick is fully destroyed
+                  // Cap accumulated speed at 30%
+                  if (brickHitSpeedAccumulated < 0.3) {
+                    const speedIncrease = 0.005;
+                    setBrickHitSpeedAccumulated(prev => Math.min(0.3, prev + speedIncrease));
+                    newBall.dx *= (1 + speedIncrease);
+                    newBall.dy *= (1 + speedIncrease);
+                  }
                 }
 
                 return updatedBrick;
@@ -790,7 +801,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             // Check win condition (don't count indestructible bricks)
             if (newBricks.every((brick) => !brick.visible || brick.isIndestructible)) {
-              soundManager.playWin();
+              // Check if there are any destructible bricks left
+              const hasDestructibleBricks = newBricks.some(brick => !brick.isIndestructible);
+              
+              if (hasDestructibleBricks) {
+                soundManager.playWin();
               
               // Check if player beat level 50
               if (level >= 50) {
@@ -803,6 +818,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               } else {
                 setGameState("ready"); // Wait for click to start next level
                 toast.success(`Level ${level} Complete! Click to continue.`);
+              }
+              } else {
+                // No destructible bricks, just advance to next level
+                soundManager.playWin();
+                if (level >= 50) {
+                  setScore((prev) => prev + 1000000);
+                  setBeatLevel50Completed(true);
+                  setGameState("won");
+                  setShowEndScreen(true);
+                  soundManager.stopBackgroundMusic();
+                  toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
+                } else {
+                  nextLevel(); // Automatically advance since no bricks to destroy
+                }
               }
             }
 
@@ -856,6 +885,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (speedMultiplier < 1) {
               setSpeedMultiplier(1);
             }
+            // Reset accumulated brick hit speed on death
+            setBrickHitSpeedAccumulated(0);
             setTimer(0);
             setEnemies([]);
             setBombs([]);
@@ -1193,6 +1224,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Check bomb-paddle collision
     if (paddle) {
       bombs.forEach((bomb) => {
+        // Check for shield first
+        if (paddle.hasShield && 
+          bomb.x + bomb.width > paddle.x &&
+          bomb.x < paddle.x + paddle.width &&
+          bomb.y + bomb.height > paddle.y - 10 &&
+          bomb.y < paddle.y) {
+          // Bomb hit shield - destroy both
+          soundManager.playBounce();
+          setBombs((prev) => prev.filter((b) => b.enemyId !== bomb.enemyId));
+          setPaddle(prev => prev ? { ...prev, hasShield: false } : null);
+          toast.success("Shield absorbed the hit!");
+          return;
+        }
+        
         if (
           bomb.x + bomb.width > paddle.x &&
           bomb.x < paddle.x + paddle.width &&
@@ -1240,6 +1285,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               if (speedMultiplier < 1) {
                 setSpeedMultiplier(1);
               }
+              // Reset accumulated brick hit speed on death
+              setBrickHitSpeedAccumulated(0);
               setTimer(0);
               setLastEnemySpawnTime(0);
               setEnemies([]); // Clear all enemies
@@ -1260,6 +1307,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Check bounced bullet-paddle collision
     if (paddle) {
       bullets.forEach((bullet) => {
+        // Check for shield first
+        if (paddle.hasShield &&
+          bullet.isBounced &&
+          bullet.x + bullet.width > paddle.x &&
+          bullet.x < paddle.x + paddle.width &&
+          bullet.y + bullet.height > paddle.y - 10 &&
+          bullet.y < paddle.y) {
+          // Bullet hit shield - destroy both
+          soundManager.playBounce();
+          setBullets((prev) => prev.filter((b) => b !== bullet));
+          setPaddle(prev => prev ? { ...prev, hasShield: false } : null);
+          toast.success("Shield absorbed the hit!");
+          return;
+        }
+        
         if (
           bullet.isBounced &&
           bullet.x + bullet.width > paddle.x &&
@@ -1308,6 +1370,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               if (speedMultiplier < 1) {
                 setSpeedMultiplier(1);
               }
+              // Reset accumulated brick hit speed on death
+              setBrickHitSpeedAccumulated(0);
               setTimer(0);
               setLastEnemySpawnTime(0);
               setEnemies([]); // Clear all enemies
@@ -1413,7 +1477,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const spawnInterval = Math.max(minInterval, baseInterval - (level - 1) * (settings.difficulty === "godlike" ? 4 : 5));
 
       if (timer - lastEnemySpawnTime >= spawnInterval) {
-        const speedIncrease = Math.min(2.0, 1 + enemySpawnCount * 0.3); // 30% faster each spawn, capped at 200%
+        // Cap speed increase at 5 enemies (30% * 5 = 150%, so cap at 200%)
+        const speedIncrease = Math.min(2.0, 1 + Math.min(enemySpawnCount, 5) * 0.3);
         const enemyId = nextEnemyId.current++;
 
         // Determine enemy type - sphere from level 3+, pyramid from level 6+
@@ -1498,8 +1563,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         toast.warning(`${enemyName} enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
 
         // Start dropping projectiles for this enemy
-        // Normal: fire every 2 seconds, Godlike: fire every 1.2 seconds
-        const fireInterval = settings.difficulty === "godlike" ? 1200 : 2000;
+        // Set up bomb/rocket drop with random interval (7-12 seconds)
+        const randomInterval = 7000 + Math.random() * 5000; // 7-12 seconds
         const projectileInterval = setInterval(() => {
           setEnemies((currentEnemies) => {
             const currentEnemy = currentEnemies.find((e) => e.id === enemyId);
@@ -1541,7 +1606,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             }
             return currentEnemies;
           });
-        }, fireInterval);
+        }, randomInterval);
         bombIntervalsRef.current.set(enemyId, projectileInterval);
       }
     }
@@ -1676,6 +1741,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} />
       ) : (
         <>
+          {showChangelog && <Changelog onClose={() => setShowChangelog(false)} />}
           {showHighScoreEntry ? (
             <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} />
           ) : (
@@ -1685,6 +1751,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl retro-pixel-text tracking-widest text-center" style={{ color: "hsl(0, 0%, 95%)", textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}>
                   Vibing Arkanoid
                 </h1>
+                <button
+                  onClick={() => setShowChangelog(true)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-cyan-400 transition-colors font-mono"
+                  title="View Changelog"
+                >
+                  v{GAME_VERSION}
+                </button>
               </div>
 
               {/* Stats Bar */}

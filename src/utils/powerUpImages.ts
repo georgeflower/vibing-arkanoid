@@ -5,6 +5,7 @@ import lifeImg from "@/assets/powerup-life.png";
 import slowdownImg from "@/assets/powerup-slowdown.png";
 import extendImg from "@/assets/powerup-extend.png";
 import shrinkImg from "@/assets/powerup-shrink.png";
+import shieldImg from "@/assets/powerup-shield.png";
 import type { PowerUpType } from "@/types/game";
 
 export const powerUpImages: Record<PowerUpType, string> = {
@@ -15,6 +16,7 @@ export const powerUpImages: Record<PowerUpType, string> = {
   slowdown: slowdownImg,
   paddleExtend: extendImg,
   paddleShrink: shrinkImg,
+  shield: shieldImg,
 };
 
 export const powerUpColors: Record<PowerUpType, string> = {
@@ -25,4 +27,5 @@ export const powerUpColors: Record<PowerUpType, string> = {
   slowdown: "hsl(200, 100%, 60%)", // cyan
   paddleExtend: "hsl(120, 60%, 45%)", // green
   paddleShrink: "hsl(0, 75%, 55%)", // red
+  shield: "hsl(280, 100%, 70%)", // purple
 };

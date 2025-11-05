@@ -353,6 +353,20 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
       });
 
+      // Draw shield if paddle has it
+      if (paddle && paddle.hasShield) {
+        const shieldHeight = 5;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "hsl(280, 100%, 70%)";
+        ctx.fillStyle = "hsl(280, 80%, 60%)";
+        ctx.fillRect(paddle.x, paddle.y - shieldHeight - 5, paddle.width, shieldHeight);
+        
+        // Shield highlight
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.fillRect(paddle.x, paddle.y - shieldHeight - 5, paddle.width, 2);
+      }
+
       // Draw turrets if paddle has them
       if (paddle && paddle.hasTurrets) {
         const turretWidth = 10; // Narrower turrets

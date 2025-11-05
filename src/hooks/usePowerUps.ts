@@ -4,13 +4,14 @@ import { POWERUP_SIZE, POWERUP_FALL_SPEED, POWERUP_DROP_CHANCE, CANVAS_HEIGHT, F
 import { toast } from "sonner";
 import { soundManager } from "@/utils/sounds";
 
-const powerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life", "slowdown", "paddleExtend", "paddleShrink"];
+const powerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life", "slowdown", "paddleExtend", "paddleShrink", "shield"];
 
 export const usePowerUps = (
   currentLevel: number,
   setLives: React.Dispatch<React.SetStateAction<number>>,
   timer: number = 0,
-  difficulty: Difficulty = "normal"
+  difficulty: Difficulty = "normal",
+  setBrickHitSpeedAccumulated?: React.Dispatch<React.SetStateAction<number>>
 ) => {
   const [powerUps, setPowerUps] = useState<PowerUp[]>([]);
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
@@ -20,6 +21,19 @@ export const usePowerUps = (
     // Increase drop chance by 5% every 30 seconds
     const timeBonus = Math.floor(timer / 30) * 0.05;
     const adjustedDropChance = Math.min(0.5, POWERUP_DROP_CHANCE + timeBonus); // Cap at 50%
+    
+    // 25% chance to drop turrets at 90+ seconds
+    if (timer >= 90 && Math.random() < 0.25) {
+      return {
+        x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
+        y: brick.y,
+        width: POWERUP_SIZE,
+        height: POWERUP_SIZE,
+        type: "turrets",
+        speed: POWERUP_FALL_SPEED,
+        active: true,
+      };
+    }
     
     if (Math.random() > adjustedDropChance) return null;
 
@@ -138,6 +152,10 @@ export const usePowerUps = (
                 }));
                 return newSpeed;
               });
+              // Reset accumulated brick hit speed on slowdown
+              if (setBrickHitSpeedAccumulated) {
+                setBrickHitSpeedAccumulated(0);
+              }
               toast.success("Speed reduced by 10%!");
               break;
             
@@ -151,6 +169,12 @@ export const usePowerUps = (
               soundManager.playShrinkSound();
               setPaddle(prev => prev ? { ...prev, width: Math.max(60, prev.width - 30) } : null);
               toast.success("Paddle shrunk!");
+              break;
+            
+            case "shield":
+              soundManager.playWiderSound(); // Reuse a suitable sound
+              setPaddle(prev => prev ? { ...prev, hasShield: true } : null);
+              toast.success("Shield activated!");
               break;
           }
 

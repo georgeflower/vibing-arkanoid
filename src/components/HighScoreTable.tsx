@@ -4,7 +4,7 @@ interface HighScoreTableProps {
 
 export const HighScoreTable = ({ scores }: HighScoreTableProps) => {
   return (
-    <div className="bg-slate-900/80 rounded-lg p-6 border-2 border-cyan-500/30 w-full max-w-md">
+    <div className="bg-slate-900/80 rounded-lg p-6 border-2 border-cyan-500/30 w-full max-w-md max-h-[80vh] overflow-y-auto">
       <h2 className="text-3xl font-bold text-center mb-4 text-cyan-400 font-mono">
         HIGH SCORES
       </h2>

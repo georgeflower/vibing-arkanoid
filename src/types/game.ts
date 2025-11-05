@@ -32,6 +32,7 @@ export interface Paddle {
   width: number;
   height: number;
   hasTurrets?: boolean;
+  hasShield?: boolean;
 }
 
 export interface Bullet {
@@ -43,7 +44,7 @@ export interface Bullet {
   isBounced?: boolean;
 }
 
-export type PowerUpType = "multiball" | "turrets" | "fireball" | "life" | "slowdown" | "paddleExtend" | "paddleShrink";
+export type PowerUpType = "multiball" | "turrets" | "fireball" | "life" | "slowdown" | "paddleExtend" | "paddleShrink" | "shield";
 
 export interface PowerUp {
   x: number;
