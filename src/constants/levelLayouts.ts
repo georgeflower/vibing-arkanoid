@@ -140,22 +140,22 @@ export const levelLayouts: (boolean | number)[][][] = [
     [true, true, true, false, false, false, false, false, false, false, true, true, true],
   ],
 
-  // Level 8: Dense Grid
+  // Level 8
   [
+    [false, true, true, true, true, true, true, true, true, true, true, true, false],
+    [true, true, true, true, true, true, true, true, true, true, true, true, true],
+    [true, true, true, true, true, true, true, true, true, true, true, true, true],
+    [true, true, true, true, true, true, true, true, true, true, true, true, true],
+    [true, true, true, true, true, true, true, true, true, true, true, true, true],
+    [2, true, true, true, true, true, true, true, true, true, true, true, 2],
+    [true, 2, true, true, true, true, true, true, true, true, true, 2, true],
+    [2, true, true, true, true, true, 2, true, true, true, true, true, 2],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
+    [false, true, true, true, true, true, true, true, true, true, true, true, false],
   ],
 
   // Level 9: Full Grid
