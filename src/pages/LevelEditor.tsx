@@ -15,7 +15,7 @@ export default function LevelEditor() {
   const [grid, setGrid] = useState<CellValue[][]>([]);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Initialize grid with 18 rows x 14 columns
+  // Initialize grid with 14 rows x 13 columns
   useEffect(() => {
     loadLevel(currentLevel);
   }, []);
@@ -29,8 +29,8 @@ export default function LevelEditor() {
       setHasChanges(false);
     } else {
       // Create empty grid for new levels
-      const emptyGrid = Array.from({ length: 18 }, () => 
-        Array.from({ length: 14 }, () => false as CellValue)
+      const emptyGrid = Array.from({ length: 14 }, () => 
+        Array.from({ length: 13 }, () => false as CellValue)
       );
       setGrid(emptyGrid);
       setHasChanges(false);
@@ -158,8 +158,8 @@ export default function LevelEditor() {
                 <Label className="text-white text-lg">Quick Actions</Label>
                 <Button
                   onClick={() => {
-                    const emptyGrid = Array.from({ length: 18 }, () => 
-                      Array.from({ length: 14 }, () => false as CellValue)
+                    const emptyGrid = Array.from({ length: 14 }, () => 
+                      Array.from({ length: 13 }, () => false as CellValue)
                     );
                     setGrid(emptyGrid);
                     setHasChanges(true);
@@ -171,8 +171,8 @@ export default function LevelEditor() {
                 </Button>
                 <Button
                   onClick={() => {
-                    const fullGrid = Array.from({ length: 18 }, () => 
-                      Array.from({ length: 14 }, () => true as CellValue)
+                    const fullGrid = Array.from({ length: 14 }, () => 
+                      Array.from({ length: 13 }, () => true as CellValue)
                     );
                     setGrid(fullGrid);
                     setHasChanges(true);
