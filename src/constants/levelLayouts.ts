@@ -158,22 +158,22 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, true, true, true, true, true, true, true, true, true, true, true, false],
   ],
 
-  // Level 9: Full Grid
+  // Level 9
   [
+    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
+    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
+    [false, true, true, true, true, true, 2, true, true, true, true, true, false],
+    [true, false, true, true, true, true, 2, true, true, true, true, false, true],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
+    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
+    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
+    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
+    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
+    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
+    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
+    [true, true, true, false, true, true, 2, true, true, false, true, true, true],
+    [true, true, false, true, true, true, 2, true, true, true, false, true, true],
   ],
 
   // Level 10: Indestructible Frame
