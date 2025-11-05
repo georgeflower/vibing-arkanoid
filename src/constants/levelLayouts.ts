@@ -356,20 +356,21 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, false, false, false, false, false, false, false, false, false, false, false, false],
   ],
 
-  // Level 20
+  // Level 20: Final Challenge
   [
     [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
-    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
-    [true, true, 2, 2, 2, true, 2, true, 2, 2, 2, true, true],
-    [2, true, 2, true, 2, true, 2, true, 2, true, 2, true, 2],
-    [2, true, 2, true, 2, true, true, true, 2, true, 2, true, 2],
-    [2, true, 2, true, 2, 2, true, 2, 2, true, 2, true, 2],
-    [2, true, true, true, true, true, true, true, true, true, true, true, 2],
-    [2, true, 2, true, 2, 2, true, 2, 2, true, 2, true, 2],
-    [2, true, 2, true, 2, true, true, true, 2, true, 2, true, 2],
-    [2, true, 2, true, 2, true, 2, true, 2, true, 2, true, 2],
+    [2, true, true, true, true, true, 2, true, true, true, true, true, 2],
+    [2, true, 2, 2, 2, true, 2, true, 2, 2, 2, true, 2],
+    [2, true, 2, false, 2, true, 2, true, 2, false, 2, true, 2],
+    [2, true, 2, false, 2, true, true, true, 2, false, 2, true, 2],
+    [2, true, 2, false, 2, 2, 2, 2, 2, false, 2, true, 2],
+    [2, true, 2, false, false, false, false, false, false, false, 2, true, 2],
+    [2, true, 2, false, 2, 2, 2, 2, 2, false, 2, true, 2],
+    [2, true, 2, false, 2, true, true, true, 2, false, 2, true, 2],
+    [2, true, 2, false, 2, true, 2, true, 2, false, 2, true, 2],
     [2, true, 2, 2, 2, true, 2, true, 2, 2, 2, true, 2],
     [2, true, true, true, true, true, 2, true, true, true, true, true, 2],
-    [2, 2, 2, 2, 2, true, 2, true, 2, 2, 2, 2, 2],
-    [false, false, false, false, false, false, false, false, false, false, false, false, false]
+    [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false],
   ],
+];
