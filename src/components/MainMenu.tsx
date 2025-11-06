@@ -8,7 +8,6 @@ import type { GameSettings, Difficulty } from "@/types/game";
 import startScreenImg from "@/assets/start-screen-new.png";
 import { useHighScores } from "@/hooks/useHighScores";
 import { HighScoreDisplay } from "./HighScoreDisplay";
-import { Changelog } from "./Changelog";
 import { soundManager } from "@/utils/sounds";
 import { useNavigate } from "react-router-dom";
 import { GAME_VERSION } from "@/constants/version";
@@ -25,7 +24,6 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [showHighScores, setShowHighScores] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showPressToStart, setShowPressToStart] = useState(true);
-  const [showChangelog, setShowChangelog] = useState(false);
   const { highScores } = useHighScores();
 
   const handleStart = () => {
@@ -38,10 +36,6 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showHighScores) {
     return <HighScoreDisplay scores={highScores} onClose={() => setShowHighScores(false)} />;
-  }
-
-  if (showChangelog) {
-    return <Changelog onClose={() => setShowChangelog(false)} />;
   }
 
   if (showAbout) {
@@ -145,25 +139,27 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
               <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">Controls</h3>
               <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
                 <li>
-                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">Mouse</span> - Move paddle (click to capture mouse)
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">←→</span> or{" "}
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">A/D</span> - Move paddle
                 </li>
                 <li>
-                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">←→ / A/D / Scroll</span> - Adjust launch angle
-                </li>
-                <li>
-                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">Click / Space</span> - Launch ball / Fire bullets
-                </li>
-                <li>
-                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">ESC</span> - Release mouse capture
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">Space</span> - Launch ball / Fire
+                  bullets
                 </li>
                 <li>
                   <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">P</span> - Pause game
                 </li>
                 <li>
-                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">N / B</span> - Next/Previous music track
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">N</span> - Next music track
+                </li>
+                <li>
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">B</span> - Previous music track
                 </li>
                 <li>
                   <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">M</span> - Toggle music
+                </li>
+                <li>
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">S</span> - Toggle sound effects
                 </li>
               </ul>
             </div>
@@ -175,11 +171,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 <li>Collect power-ups for special abilities</li>
                 <li>Collect bonus letters Q-U-M-R-A-N for massive rewards</li>
                 <li>Watch out for enemies and their projectiles</li>
-                <li>Ball bounces only from top half of paddle</li>
-                <li>If ball doesn't touch paddle for 15s, it auto-diverts</li>
-                <li>After 25s without paddle, closest enemy kamikazes the ball</li>
-                <li>Get extra life every 50,000 score points</li>
-                <li>Powerup drops every 3 enemies destroyed</li>
+                <li>Don't let the ball fall off the screen</li>
               </ul>
             </div>
 
@@ -190,7 +182,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   <span className="text-[hsl(330,100%,65%)]">Multiball</span> - Split ball into three
                 </li>
                 <li>
-                  <span className="text-[hsl(30,100%,60%)]">Turrets</span> - Add cannons to paddle (50% chance at 90s)
+                  <span className="text-[hsl(30,100%,60%)]">Turrets</span> - Add cannons to paddle
                 </li>
                 <li>
                   <span className="text-[hsl(30,100%,60%)]">Fireball</span> - Ball destroys everything
@@ -207,9 +199,6 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 <li>
                   <span className="text-[hsl(0,75%,55%)]">Shrink</span> - Smaller paddle
                 </li>
-                <li>
-                  <span className="text-[hsl(280,80%,60%)]">Shield</span> - Protects paddle from 1 projectile hit
-                </li>
               </ul>
             </div>
 
@@ -219,10 +208,11 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
               </h3>
               <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
                 <li>
-                  <span className="text-[hsl(120,60%,45%)]">Normal</span> - Standard gameplay, speed cap 150%
+                  <span className="text-[hsl(120,60%,45%)]">Normal</span> - Standard gameplay with power-ups
                 </li>
                 <li>
-                  <span className="text-[hsl(0,85%,55%)]">Godlike</span> - No extra life power-ups, speed cap 175%, faster enemies, more enemy fire
+                  <span className="text-[hsl(0,85%,55%)]">Godlike</span> - No extra life power-ups, faster enemy spawns,
+                  more enemy fire
                 </li>
               </ul>
             </div>
@@ -248,16 +238,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
       className="min-h-screen w-full flex items-center justify-center p-4 bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)] relative"
       style={{ backgroundImage: `url(${startScreenImg})` }}
     >
-      <button 
-        onClick={() => {
-          soundManager.playMenuClick();
-          setShowChangelog(true);
-        }}
-        className="absolute top-4 right-4 text-cyan-400 hover:text-cyan-300 text-xs font-mono transition-colors"
-        title="View Changelog"
-      >
-        v{GAME_VERSION}
-      </button>
+      <div className="absolute top-4 right-4 text-white/60 text-xs font-mono">v{GAME_VERSION}</div>
       <Card className="max-w-sm w-full p-6 bg-black/60 backdrop-blur-sm border-[hsl(200,70%,50%)]">
         {/* Settings */}
         <div className="space-y-4">

@@ -22,8 +22,8 @@ export const usePowerUps = (
     const timeBonus = Math.floor(timer / 30) * 0.05;
     const adjustedDropChance = Math.min(0.5, POWERUP_DROP_CHANCE + timeBonus); // Cap at 50%
     
-    // 50% chance to drop turrets at 90+ seconds
-    if (timer >= 90 && Math.random() < 0.5) {
+    // 25% chance to drop turrets at 90+ seconds
+    if (timer >= 90 && Math.random() < 0.25) {
       return {
         x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
         y: brick.y,
@@ -50,17 +50,7 @@ export const usePowerUps = (
       }
     }
 
-    // Make shield less common (weight it lower)
-    const weightedTypes: PowerUpType[] = [];
-    availableTypes.forEach(type => {
-      if (type === "shield") {
-        weightedTypes.push(type); // Add shield once
-      } else {
-        weightedTypes.push(type, type); // Add others twice
-      }
-    });
-
-    const type = weightedTypes[Math.floor(Math.random() * weightedTypes.length)];
+    const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
 
     return {
       x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
@@ -182,7 +172,7 @@ export const usePowerUps = (
               break;
             
             case "shield":
-              soundManager.playShieldSound();
+              soundManager.playWiderSound(); // Reuse a suitable sound
               setPaddle(prev => prev ? { ...prev, hasShield: true } : null);
               toast.success("Shield activated!");
               break;
