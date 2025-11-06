@@ -9,7 +9,18 @@ import { Changelog } from "./Changelog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Maximize2, Minimize2, Home } from "lucide-react";
-import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, GameSettings } from "@/types/game";
+import type {
+  Brick,
+  Ball,
+  Paddle,
+  GameState,
+  Enemy,
+  Bomb,
+  Explosion,
+  BonusLetter,
+  BonusLetterType,
+  GameSettings,
+} from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
 import { GAME_VERSION } from "@/constants/version";
 import {
@@ -44,7 +55,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Detect Mac and apply 10% scale reduction
   const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform) || /Macintosh/.test(navigator.userAgent);
   const scaleFactor = isMac ? 0.9 : 1;
-  
+
   // Scale all game constants for Mac
   const SCALED_CANVAS_WIDTH = CANVAS_WIDTH * scaleFactor;
   const SCALED_CANVAS_HEIGHT = CANVAS_HEIGHT * scaleFactor;
@@ -55,8 +66,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const SCALED_BRICK_HEIGHT = BRICK_HEIGHT * scaleFactor;
   const SCALED_BRICK_PADDING = BRICK_PADDING * scaleFactor;
   const SCALED_BRICK_OFFSET_TOP = BRICK_OFFSET_TOP * scaleFactor;
-  const SCALED_BRICK_OFFSET_LEFT = (SCALED_CANVAS_WIDTH - (BRICK_COLS * SCALED_BRICK_WIDTH + (BRICK_COLS - 1) * SCALED_BRICK_PADDING)) / 2;
-  
+  const SCALED_BRICK_OFFSET_LEFT =
+    (SCALED_CANVAS_WIDTH - (BRICK_COLS * SCALED_BRICK_WIDTH + (BRICK_COLS - 1) * SCALED_BRICK_PADDING)) / 2;
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(settings.startingLives);
@@ -97,7 +109,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   const { highScores, isHighScore, addHighScore } = useHighScores();
 
-  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(level, setLives, timer, settings.difficulty, setBrickHitSpeedAccumulated);
+  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(
+    level,
+    setLives,
+    timer,
+    settings.difficulty,
+    setBrickHitSpeedAccumulated,
+  );
   const { bullets, setBullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks, enemies);
 
   // Initialize sound settings - always enabled
@@ -116,34 +134,37 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     N: [10, 16],
   };
 
-  const dropBonusLetter = useCallback((x: number, y: number) => {
-    // Check each letter to see if it should drop on this level
-    for (const letter of Object.keys(letterLevels) as BonusLetterType[]) {
-      const levels = letterLevels[letter];
-      
-      // Drop if: current level matches AND letter hasn't been collected yet
-      if (levels.includes(level) && !collectedLetters.has(letter)) {
-        // Check if this letter is already falling
-        const alreadyFalling = bonusLetters.some(bl => bl.type === letter && bl.active);
-        if (alreadyFalling) continue;
-        
-        setBonusLetters((prev) => [
-          ...prev,
-          {
-            x: x - 15,
-            y: y,
-            width: 30,
-            height: 30,
-            type: letter,
-            speed: 2,
-            active: true,
-          },
-        ]);
-        toast(`Bonus letter ${letter} dropped!`, { icon: "🎯" });
-        break; // Only drop one letter at a time
+  const dropBonusLetter = useCallback(
+    (x: number, y: number) => {
+      // Check each letter to see if it should drop on this level
+      for (const letter of Object.keys(letterLevels) as BonusLetterType[]) {
+        const levels = letterLevels[letter];
+
+        // Drop if: current level matches AND letter hasn't been collected yet
+        if (levels.includes(level) && !collectedLetters.has(letter)) {
+          // Check if this letter is already falling
+          const alreadyFalling = bonusLetters.some((bl) => bl.type === letter && bl.active);
+          if (alreadyFalling) continue;
+
+          setBonusLetters((prev) => [
+            ...prev,
+            {
+              x: x - 15,
+              y: y,
+              width: 30,
+              height: 30,
+              type: letter,
+              speed: 2,
+              active: true,
+            },
+          ]);
+          toast(`Bonus letter ${letter} dropped!`, { icon: "🎯" });
+          break; // Only drop one letter at a time
+        }
       }
-    }
-  }, [level, collectedLetters, bonusLetters]);
+    },
+    [level, collectedLetters, bonusLetters],
+  );
 
   const checkBonusLetterCollision = useCallback(() => {
     if (!paddle) return;
@@ -163,7 +184,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setCollectedLetters((prevCollected) => {
             const newCollected = new Set(prevCollected);
             newCollected.add(letter.type);
-            
+
             // Check if all letters collected
             if (newCollected.size === 6) {
               setScore((s) => s + 500000);
@@ -174,7 +195,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               soundManager.playBonusLetterPickup();
               toast.success(`Letter ${letter.type} collected!`);
             }
-            
+
             return newCollected;
           });
           return false;
@@ -193,7 +214,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, [paddle]);
 
   const initBricksForLevel = useCallback((currentLevel: number) => {
-    const layoutIndex = Math.min((currentLevel - 1), levelLayouts.length - 1);
+    const layoutIndex = Math.min(currentLevel - 1, levelLayouts.length - 1);
     const layout = levelLayouts[layoutIndex];
     const levelColors = getBrickColors(currentLevel);
 
@@ -206,13 +227,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const hasPowerUp = isIndestructible ? false : Math.random() < POWERUP_DROP_CHANCE;
           const maxHits = isIndestructible ? 1 : getBrickHits(currentLevel, row);
           const baseColor = isIndestructible ? "#333333" : levelColors[row % levelColors.length];
-          
+
           // Indestructible bricks are bigger (no padding), so they take up the space including padding
           const brickWidth = isIndestructible ? SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING * 2 : SCALED_BRICK_WIDTH;
           const brickHeight = isIndestructible ? SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING * 2 : SCALED_BRICK_HEIGHT;
-          const xPos = col * (SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_LEFT - (isIndestructible ? SCALED_BRICK_PADDING : 0);
-          const yPos = row * (SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_TOP - (isIndestructible ? SCALED_BRICK_PADDING : 0);
-          
+          const xPos =
+            col * (SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING) +
+            SCALED_BRICK_OFFSET_LEFT -
+            (isIndestructible ? SCALED_BRICK_PADDING : 0);
+          const yPos =
+            row * (SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING) +
+            SCALED_BRICK_OFFSET_TOP -
+            (isIndestructible ? SCALED_BRICK_PADDING : 0);
+
           newBricks.push({
             x: xPos,
             y: yPos,
@@ -384,12 +411,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const handleTouchStart = useCallback(
     (e: TouchEvent) => {
       if (!canvasRef.current || !paddle) return;
-      
+
       e.preventDefault();
       // Track the first touch for paddle control
       if (e.touches.length > 0 && activeTouchRef.current === null) {
         activeTouchRef.current = e.touches[0].identifier;
-        
+
         // Update paddle position immediately on touch start
         const rect = canvasRef.current.getBoundingClientRect();
         const scaleX = SCALED_CANVAS_WIDTH / rect.width;
@@ -406,7 +433,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (!canvasRef.current || !paddle) return;
 
       e.preventDefault();
-      
+
       // Only track the first touch that was registered
       let activeTouch = null;
       for (let i = 0; i < e.touches.length; i++) {
@@ -415,13 +442,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           break;
         }
       }
-      
+
       // If no active touch found, use the first touch
       if (!activeTouch && e.touches.length > 0) {
         activeTouch = e.touches[0];
         activeTouchRef.current = activeTouch.identifier;
       }
-      
+
       if (!activeTouch) return;
 
       const rect = canvasRef.current.getBoundingClientRect();
@@ -434,18 +461,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     [paddle],
   );
 
-  const handleTouchEnd = useCallback(
-    (e: TouchEvent) => {
-      // Clear active touch when it ends
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === activeTouchRef.current) {
-          activeTouchRef.current = null;
-          break;
-        }
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    // Clear active touch when it ends
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === activeTouchRef.current) {
+        activeTouchRef.current = null;
+        break;
       }
-    },
-    [],
-  );
+    }
+  }, []);
 
   const handleClick = useCallback(() => {
     // Request pointer lock on canvas click
@@ -478,7 +502,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (waitingBall) {
       // Launch ball in the direction of the current angle
       setShowInstructions(false);
-      
+
       // Start timer on first ball launch
       if (!timerStartedRef.current) {
         timerStartedRef.current = true;
@@ -489,7 +513,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setTimer((prev) => prev + 1);
         }, 1000);
       }
-      
+
       setBalls((prev) =>
         prev.map((ball) => {
           if (ball.waitingToLaunch) {
@@ -581,7 +605,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           let newBall = { ...ball };
 
           // Wall collision
-          if (newBall.x + newBall.dx > SCALED_CANVAS_WIDTH - newBall.radius || newBall.x + newBall.dx < newBall.radius) {
+          if (
+            newBall.x + newBall.dx > SCALED_CANVAS_WIDTH - newBall.radius ||
+            newBall.x + newBall.dx < newBall.radius
+          ) {
             newBall.dx = -newBall.dx;
           }
           if (newBall.y + newBall.dy < newBall.radius) {
@@ -783,15 +810,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   }
                 }
 
-                  // Increase ball speed slightly with each brick hit (but not for indestructible bricks)
+                // Increase ball speed slightly with each brick hit (but not for indestructible bricks)
                 if (!brick.isIndestructible && updatedBrick.hitsRemaining === 0) {
                   // Only add speed when brick is fully destroyed
                   // Cap accumulated speed at 30%
                   if (brickHitSpeedAccumulated < 0.3) {
                     const speedIncrease = 0.005;
-                    setBrickHitSpeedAccumulated(prev => Math.min(0.3, prev + speedIncrease));
-                    newBall.dx *= (1 + speedIncrease);
-                    newBall.dy *= (1 + speedIncrease);
+                    setBrickHitSpeedAccumulated((prev) => Math.min(0.3, prev + speedIncrease));
+                    newBall.dx *= 1 + speedIncrease;
+                    newBall.dy *= 1 + speedIncrease;
                   }
                 }
 
@@ -803,23 +830,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             // Check win condition (don't count indestructible bricks)
             if (newBricks.every((brick) => !brick.visible || brick.isIndestructible)) {
               // Check if there are any destructible bricks left
-              const hasDestructibleBricks = newBricks.some(brick => !brick.isIndestructible);
-              
+              const hasDestructibleBricks = newBricks.some((brick) => !brick.isIndestructible);
+
               if (hasDestructibleBricks) {
                 soundManager.playWin();
-              
-              // Check if player beat level 50
-              if (level >= 50) {
-                setScore((prev) => prev + 1000000);
-                setBeatLevel50Completed(true);
-                setGameState("won");
-                setShowEndScreen(true);
-                soundManager.stopBackgroundMusic();
-                toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
-              } else {
-                setGameState("ready"); // Wait for click to start next level
-                toast.success(`Level ${level} Complete! Click to continue.`);
-              }
+
+                // Check if player beat level 50
+                if (level >= 50) {
+                  setScore((prev) => prev + 1000000);
+                  setBeatLevel50Completed(true);
+                  setGameState("won");
+                  setShowEndScreen(true);
+                  soundManager.stopBackgroundMusic();
+                  toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
+                } else {
+                  setGameState("ready"); // Wait for click to start next level
+                  toast.success(`Level ${level} Complete! Click to continue.`);
+                }
               } else {
                 // No destructible bricks, just advance to next level
                 soundManager.playWin();
@@ -1006,7 +1033,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           if (hitEnemiesThisFrame.has(enemy.id || -1)) {
             continue;
           }
-          
+
           if (
             ball.x + ball.radius > enemy.x &&
             ball.x - ball.radius < enemy.x + enemy.width &&
@@ -1017,7 +1044,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (enemy.id !== undefined) {
               hitEnemiesThisFrame.add(enemy.id);
             }
-            
+
             // Change ball trajectory immediately
             const ballCenterX = ball.x;
             const ballCenterY = ball.y;
@@ -1083,24 +1110,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     maxFrames: 20,
                   },
                 ]);
-              soundManager.playExplosion();
-              setScore((s) => s + 300);
-              toast.success("Pyramid destroyed! +300 points");
+                soundManager.playExplosion();
+                setScore((s) => s + 300);
+                toast.success("Pyramid destroyed! +300 points");
 
-              // Check for bonus letter drop
-              dropBonusLetter(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+                // Check for bonus letter drop
+                dropBonusLetter(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
 
-              // Remove enemy
-              setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
+                // Remove enemy
+                setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
 
-              // Clear bomb interval
-              if (enemy.id !== undefined) {
-                const interval = bombIntervalsRef.current.get(enemy.id);
-                if (interval) {
-                  clearInterval(interval);
-                  bombIntervalsRef.current.delete(enemy.id);
+                // Clear bomb interval
+                if (enemy.id !== undefined) {
+                  const interval = bombIntervalsRef.current.get(enemy.id);
+                  if (interval) {
+                    clearInterval(interval);
+                    bombIntervalsRef.current.delete(enemy.id);
+                  }
                 }
-              }
               }
             } else if (enemy.type === "sphere") {
               const currentHits = enemy.hits || 0;
@@ -1226,19 +1253,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (paddle) {
       bombs.forEach((bomb) => {
         // Check for shield first
-        if (paddle.hasShield && 
+        if (
+          paddle.hasShield &&
           bomb.x + bomb.width > paddle.x &&
           bomb.x < paddle.x + paddle.width &&
           bomb.y + bomb.height > paddle.y - 10 &&
-          bomb.y < paddle.y) {
+          bomb.y < paddle.y
+        ) {
           // Bomb hit shield - destroy both
           soundManager.playBounce();
           setBombs((prev) => prev.filter((b) => b.enemyId !== bomb.enemyId));
-          setPaddle(prev => prev ? { ...prev, hasShield: false } : null);
+          setPaddle((prev) => (prev ? { ...prev, hasShield: false } : null));
           toast.success("Shield absorbed the hit!");
           return;
         }
-        
+
         if (
           bomb.x + bomb.width > paddle.x &&
           bomb.x < paddle.x + paddle.width &&
@@ -1309,20 +1338,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (paddle) {
       bullets.forEach((bullet) => {
         // Check for shield first
-        if (paddle.hasShield &&
+        if (
+          paddle.hasShield &&
           bullet.isBounced &&
           bullet.x + bullet.width > paddle.x &&
           bullet.x < paddle.x + paddle.width &&
           bullet.y + bullet.height > paddle.y - 10 &&
-          bullet.y < paddle.y) {
+          bullet.y < paddle.y
+        ) {
           // Bullet hit shield - destroy both
           soundManager.playBounce();
           setBullets((prev) => prev.filter((b) => b !== bullet));
-          setPaddle(prev => prev ? { ...prev, hasShield: false } : null);
+          setPaddle((prev) => (prev ? { ...prev, hasShield: false } : null));
           toast.success("Shield absorbed the hit!");
           return;
         }
-        
+
         if (
           bullet.isBounced &&
           bullet.x + bullet.width > paddle.x &&
@@ -1475,7 +1506,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Godlike: 20s at level 1, 12s at level 2, 8s at level 3+
       const baseInterval = settings.difficulty === "godlike" ? 20 : 30;
       const minInterval = settings.difficulty === "godlike" ? 8 : 15;
-      const spawnInterval = Math.max(minInterval, baseInterval - (level - 1) * (settings.difficulty === "godlike" ? 4 : 5));
+      const spawnInterval = Math.max(
+        minInterval,
+        baseInterval - (level - 1) * (settings.difficulty === "godlike" ? 4 : 5),
+      );
 
       if (timer - lastEnemySpawnTime >= spawnInterval) {
         // Cap speed increase at 5 enemies (30% * 5 = 150%, so cap at 200%)
@@ -1747,6 +1781,81 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} />
           ) : (
             <div className="metal-frame">
+              {/* Title Bar */}
+              <div className="metal-title-bar">
+                <h1
+                  className="text-2xl sm:text-3xl lg:text-4xl retro-pixel-text tracking-widest text-center"
+                  style={{ color: "hsl(0, 0%, 95%)", textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}
+                >
+                  Vibing Arkanoid
+                </h1>
+                <button
+                  onClick={() => setShowChangelog(true)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-cyan-400 transition-colors font-mono"
+                  title="View Changelog"
+                >
+                  v{GAME_VERSION}
+                </button>
+              </div>
+
+              {/* Stats Bar */}
+              <div className="metal-stats-bar">
+                <div className="stats-container">
+                  {/* Score */}
+                  <div className="stat-box">
+                    <div className="stat-label" style={{ color: "hsl(180, 70%, 60%)" }}>
+                      SCORE
+                    </div>
+                    <div className="stat-value">{score.toString().padStart(6, "0")}</div>
+                  </div>
+
+                  {/* Level */}
+                  <div className="stat-box">
+                    <div className="stat-label" style={{ color: "hsl(30, 75%, 55%)" }}>
+                      LEVEL
+                    </div>
+                    <div className="stat-value">{level.toString().padStart(2, "0")}</div>
+                  </div>
+
+                  {/* Lives */}
+                  <div className="stat-box">
+                    <div className="stat-label" style={{ color: "hsl(0, 70%, 55%)" }}>
+                      LIVES
+                    </div>
+                    <div className="stat-value">{lives}</div>
+                  </div>
+
+                  {/* Timer */}
+                  <div className="stat-box">
+                    <div className="stat-label" style={{ color: "hsl(210, 60%, 55%)" }}>
+                      TIMER
+                    </div>
+                    <div className="stat-value">{timer}s</div>
+                  </div>
+
+                  {/* Speed */}
+                  <div className="stat-box">
+                    <div className="stat-label" style={{ color: "hsl(120, 50%, 50%)" }}>
+                      SPEED
+                    </div>
+                    <div className="stat-value">{Math.round(speedMultiplier * 100)}%</div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button onClick={onReturnToMenu} className="fullscreen-btn" title="Return to Main Menu">
+                    <Home size={18} />
+                  </button>
+                  <button
+                    onClick={toggleFullscreen}
+                    className="fullscreen-btn"
+                    title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                  >
+                    {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                  </button>
+                </div>
+              </div>
+
               {/* Main Content with Side Panels */}
               <div className="metal-main-content">
                 {/* Left Panel */}
@@ -1812,12 +1921,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   )}
                   {gameState === "playing" && (
                     <div className="retro-pixel-text text-xs" style={{ color: "hsl(0, 0%, 60%)" }}>
-                      Move your mouse or touch to control the paddle • Press ESC to release mouse • Click canvas to recapture
+                      Move your mouse or touch to control the paddle • Press ESC to release mouse • Click canvas to
+                      recapture
                     </div>
                   )}
                 </div>
               </div>
-
             </div>
           )}
         </>
