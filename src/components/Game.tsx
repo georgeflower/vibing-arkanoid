@@ -298,7 +298,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     bombIntervalsRef.current.clear();
 
     const newLevel = level + 1;
-    const newSpeedMultiplier = Math.min(1.75, 1 + (newLevel - 1) * 0.05); // 5% faster per level, max 175%
+    const maxSpeedMultiplier = settings.difficulty === "godlike" ? 1.75 : 1.5; // 175% godlike, 150% normal
+    const newSpeedMultiplier = Math.min(maxSpeedMultiplier, 1 + (newLevel - 1) * 0.05); // 5% faster per level
 
     setLevel(newLevel);
     setSpeedMultiplier(newSpeedMultiplier);

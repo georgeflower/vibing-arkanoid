@@ -395,6 +395,13 @@ class SoundManager {
     audio.play().catch(err => console.log('Shrink sound failed:', err));
   }
 
+  playShieldSound() {
+    if (!this.sfxEnabled) return;
+    const audio = new Audio('/shield.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(err => console.log('Shield sound failed:', err));
+  }
+
   playBonusLetterPickup() {
     if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
