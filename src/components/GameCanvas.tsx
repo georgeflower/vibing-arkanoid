@@ -353,18 +353,31 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
       });
 
-      // Draw shield if paddle has it
+      // Draw shield if paddle has it - wraps around paddle
       if (paddle && paddle.hasShield) {
-        const shieldHeight = 5;
+        const topHeight = 8;
+        const sideWidth = 3;
+        
         ctx.shadowBlur = 10;
         ctx.shadowColor = "hsl(280, 100%, 70%)";
         ctx.fillStyle = "hsl(280, 80%, 60%)";
-        ctx.fillRect(paddle.x, paddle.y - shieldHeight - 5, paddle.width, shieldHeight);
+        
+        // Top shield (thicker)
+        ctx.fillRect(paddle.x, paddle.y - topHeight - 2, paddle.width, topHeight);
+        
+        // Left side (thin)
+        ctx.fillRect(paddle.x - sideWidth, paddle.y - topHeight, sideWidth, paddle.height + topHeight);
+        
+        // Right side (thin)
+        ctx.fillRect(paddle.x + paddle.width, paddle.y - topHeight, sideWidth, paddle.height + topHeight);
+        
+        // Bottom (thin)
+        ctx.fillRect(paddle.x - sideWidth, paddle.y + paddle.height, paddle.width + sideWidth * 2, sideWidth);
         
         // Shield highlight
         ctx.shadowBlur = 0;
         ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-        ctx.fillRect(paddle.x, paddle.y - shieldHeight - 5, paddle.width, 2);
+        ctx.fillRect(paddle.x, paddle.y - topHeight - 2, paddle.width, 2);
       }
 
       // Draw turrets if paddle has them
