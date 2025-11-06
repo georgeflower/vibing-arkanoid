@@ -1794,7 +1794,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-cyan-400 transition-colors font-mono"
                   title="View Changelog"
                 >
-                  v{GAME_VERSION}
+                  v{GAME_VERSION} - Changelog
                 </button>
               </div>
 
