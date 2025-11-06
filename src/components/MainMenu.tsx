@@ -91,7 +91,11 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             </p>
           </div>
           <button
-            onClick={() => setShowChangelog(true)}
+            onClick={() => {
+              soundManager.playMenuClick();
+              setShowChangelog(true);
+            }}
+            onMouseEnter={() => soundManager.playMenuHover()}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-cyan-400 transition-colors font-mono"
             title="View Changelog"
           >
