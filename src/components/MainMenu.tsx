@@ -96,7 +96,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
               setShowChangelog(true);
             }}
             onMouseEnter={() => soundManager.playMenuHover()}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-cyan-400 transition-colors font-mono"
+            className="w-full mt-3 sm:mt-4 bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white text-sm sm:text-base py-3 sm:py-4"
             title="View Changelog"
           >
             v{GAME_VERSION} - Changelog
