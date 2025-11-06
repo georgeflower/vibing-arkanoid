@@ -145,13 +145,16 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
               <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">Controls</h3>
               <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
                 <li>
-                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">Mouse</span> - Move paddle (click to capture mouse)
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">Mouse</span> - Move paddle (click
+                  to capture mouse)
                 </li>
                 <li>
-                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">←→ / A/D / Scroll</span> - Adjust launch angle
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">←→ / A/D / Scroll</span> - Adjust
+                  launch angle
                 </li>
                 <li>
-                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">Click / Space</span> - Launch ball / Fire bullets
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">Click / Space</span> - Launch ball
+                  / Fire bullets
                 </li>
                 <li>
                   <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">ESC</span> - Release mouse capture
@@ -160,7 +163,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">P</span> - Pause game
                 </li>
                 <li>
-                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">N / B</span> - Next/Previous music track
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">N / B</span> - Next/Previous music
+                  track
                 </li>
                 <li>
                   <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">M</span> - Toggle music
@@ -222,7 +226,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   <span className="text-[hsl(120,60%,45%)]">Normal</span> - Standard gameplay, speed cap 150%
                 </li>
                 <li>
-                  <span className="text-[hsl(0,85%,55%)]">Godlike</span> - No extra life power-ups, speed cap 175%, faster enemies, more enemy fire
+                  <span className="text-[hsl(0,85%,55%)]">Godlike</span> - No extra life power-ups, speed cap 175%,
+                  faster enemies, more enemy fire
                 </li>
               </ul>
             </div>
@@ -248,7 +253,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
       className="min-h-screen w-full flex items-center justify-center p-4 bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)] relative"
       style={{ backgroundImage: `url(${startScreenImg})` }}
     >
-      <button 
+      <button
         onClick={() => {
           soundManager.playMenuClick();
           setShowChangelog(true);
@@ -256,7 +261,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
         className="absolute top-4 right-4 text-cyan-400 hover:text-cyan-300 text-xs font-mono transition-colors"
         title="View Changelog"
       >
-        v{GAME_VERSION}
+        v{GAME_VERSION} - Changelog
       </button>
       <Card className="max-w-sm w-full p-6 bg-black/60 backdrop-blur-sm border-[hsl(200,70%,50%)]">
         {/* Settings */}
