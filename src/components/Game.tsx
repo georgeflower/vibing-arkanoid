@@ -1783,12 +1783,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             <div className="metal-frame">
               {/* Title Bar */}
               <div className="metal-title-bar">
-                <h3
+                <h1
                   className="text-2xl sm:text-3xl lg:text-4xl retro-pixel-text tracking-widest text-center"
                   style={{ color: "hsl(0, 0%, 95%)", textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}
                 >
                   Vibing Arkanoid
-                </h3>
+                </h1>
                 <button
                   onClick={() => setShowChangelog(true)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-cyan-400 transition-colors font-mono"
