@@ -1,6 +1,15 @@
-export const GAME_VERSION = "0.6.0";
+export const GAME_VERSION = "0.6.1";
 
 export const CHANGELOG = [
+  {
+    version: "0.6.1",
+    changes: [
+      "Turret drop timer now resets on level completion",
+      "Power-ups drop every 3 defeated enemies",
+      "Ball only bounces off the top 50% of the paddle",
+      "Enemy shooting intervals scale with level: 7–12s (lvl 1–7), 4–8s (lvl 8), 3–7s (lvl 9+)",
+    ],
+  },
   {
     version: "0.6.0",
     changes: [
