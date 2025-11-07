@@ -847,6 +847,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   setGameState("ready"); // Wait for click to start next level
                   toast.success(`Level ${level} Complete! Click to continue.`);
                 }
+                
+                // Clear all indestructible bricks when all normal bricks are cleared
+                return newBricks.map((brick) => ({
+                  ...brick,
+                  visible: false,
+                }));
               } else {
                 // No destructible bricks, just advance to next level
                 soundManager.playWin();
