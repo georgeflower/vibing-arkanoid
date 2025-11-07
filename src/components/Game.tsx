@@ -628,7 +628,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           ) {
             // Calculate where on paddle the ball hit (0 = top, 1 = bottom)
             const verticalHitPosition = (newBall.y - paddle.y) / paddle.height;
-            
+
             // Only bounce if hitting top 50% of paddle
             if (verticalHitPosition <= 0.5) {
               soundManager.playBounce();
@@ -857,7 +857,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   setGameState("ready"); // Wait for click to start next level
                   toast.success(`Level ${level} Complete! Click to continue.`);
                 }
-                
+
                 // Clear all indestructible bricks when all normal bricks are cleared
                 return newBricks.map((brick) => ({
                   ...brick,
@@ -1135,7 +1135,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                 // Remove enemy
                 setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
-                
+
                 // Track enemy kill and drop powerup every 3 kills
                 setEnemiesKilled((prev) => {
                   const newCount = prev + 1;
@@ -1212,7 +1212,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                 // Remove enemy
                 setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
-                
+
                 // Track enemy kill and drop powerup every 3 kills
                 setEnemiesKilled((prev) => {
                   const newCount = prev + 1;
@@ -1269,7 +1269,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
               // Remove enemy
               setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
-              
+
               // Track enemy kill and drop powerup every 3 kills
               setEnemiesKilled((prev) => {
                 const newCount = prev + 1;
@@ -2029,7 +2029,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   {gameState === "playing" && (
                     <div className="retro-pixel-text text-xs" style={{ color: "hsl(0, 0%, 60%)" }}>
                       Move your mouse or touch to control the paddle • Press ESC to release mouse • Click canvas to
-                      recapture
+                      recapture • Music: N - Next | B - Previous | M - Mute/Unmute | P - Pause
                     </div>
                   )}
                 </div>
