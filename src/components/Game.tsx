@@ -97,6 +97,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
   const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
+  const [enemiesKilled, setEnemiesKilled] = useState(0);
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
@@ -306,6 +307,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setLastEnemySpawnTime(0);
     setBonusLetters([]);
     setCollectedLetters(new Set());
+    setEnemiesKilled(0);
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
   }, [setPowerUps, initBricksForLevel]);
@@ -371,6 +373,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBonusLetters([]);
     // Don't reset collected letters between levels
     setBrickHitSpeedAccumulated(0); // Reset on level clear
+    setEnemiesKilled(0); // Reset enemy kills on level clear
+    setTimer(0); // Reset timer on level clear (for turret drop chance reset)
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
     setGameState("playing");
@@ -615,20 +619,26 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             newBall.dy = -newBall.dy;
           }
 
-          // Paddle collision
+          // Paddle collision - only bounce from top 50% of paddle
           if (
             newBall.y + newBall.dy > paddle.y - newBall.radius &&
             newBall.x > paddle.x &&
             newBall.x < paddle.x + paddle.width &&
             newBall.dy > 0
           ) {
-            soundManager.playBounce();
+            // Calculate where on paddle the ball hit (0 = top, 1 = bottom)
+            const verticalHitPosition = (newBall.y - paddle.y) / paddle.height;
+            
+            // Only bounce if hitting top 50% of paddle
+            if (verticalHitPosition <= 0.5) {
+              soundManager.playBounce();
 
-            const hitPos = (newBall.x - paddle.x) / paddle.width;
-            const angle = (hitPos - 0.5) * Math.PI * 0.6;
-            const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-            newBall.dx = speed * Math.sin(angle);
-            newBall.dy = -speed * Math.cos(angle);
+              const hitPos = (newBall.x - paddle.x) / paddle.width;
+              const angle = (hitPos - 0.5) * Math.PI * 0.6;
+              const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
+              newBall.dx = speed * Math.sin(angle);
+              newBall.dy = -speed * Math.cos(angle);
+            }
           }
 
           // Bottom collision (lose life)
@@ -1125,6 +1135,33 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                 // Remove enemy
                 setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
+                
+                // Track enemy kill and drop powerup every 3 kills
+                setEnemiesKilled((prev) => {
+                  const newCount = prev + 1;
+                  if (newCount % 3 === 0) {
+                    // Create a powerup at enemy location
+                    const fakeBrick: Brick = {
+                      x: enemy.x,
+                      y: enemy.y,
+                      width: enemy.width,
+                      height: enemy.height,
+                      visible: true,
+                      color: "",
+                      points: 0,
+                      hasPowerUp: true,
+                      hitsRemaining: 0,
+                      maxHits: 1,
+                      isIndestructible: false,
+                    };
+                    const powerUp = createPowerUp(fakeBrick);
+                    if (powerUp) {
+                      setPowerUps((prev) => [...prev, powerUp]);
+                      toast.success("Enemy kill bonus! Power-up dropped!");
+                    }
+                  }
+                  return newCount;
+                });
 
                 // Clear bomb interval
                 if (enemy.id !== undefined) {
@@ -1175,6 +1212,33 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                 // Remove enemy
                 setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
+                
+                // Track enemy kill and drop powerup every 3 kills
+                setEnemiesKilled((prev) => {
+                  const newCount = prev + 1;
+                  if (newCount % 3 === 0) {
+                    // Create a powerup at enemy location
+                    const fakeBrick: Brick = {
+                      x: enemy.x,
+                      y: enemy.y,
+                      width: enemy.width,
+                      height: enemy.height,
+                      visible: true,
+                      color: "",
+                      points: 0,
+                      hasPowerUp: true,
+                      hitsRemaining: 0,
+                      maxHits: 1,
+                      isIndestructible: false,
+                    };
+                    const powerUp = createPowerUp(fakeBrick);
+                    if (powerUp) {
+                      setPowerUps((prev) => [...prev, powerUp]);
+                      toast.success("Enemy kill bonus! Power-up dropped!");
+                    }
+                  }
+                  return newCount;
+                });
 
                 // Clear bomb interval
                 if (enemy.id !== undefined) {
@@ -1205,6 +1269,33 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
               // Remove enemy
               setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
+              
+              // Track enemy kill and drop powerup every 3 kills
+              setEnemiesKilled((prev) => {
+                const newCount = prev + 1;
+                if (newCount % 3 === 0) {
+                  // Create a powerup at enemy location
+                  const fakeBrick: Brick = {
+                    x: enemy.x,
+                    y: enemy.y,
+                    width: enemy.width,
+                    height: enemy.height,
+                    visible: true,
+                    color: "",
+                    points: 0,
+                    hasPowerUp: true,
+                    hitsRemaining: 0,
+                    maxHits: 1,
+                    isIndestructible: false,
+                  };
+                  const powerUp = createPowerUp(fakeBrick);
+                  if (powerUp) {
+                    setPowerUps((prev) => [...prev, powerUp]);
+                    toast.success("Enemy kill bonus! Power-up dropped!");
+                  }
+                }
+                return newCount;
+              });
 
               // Clear bomb interval
               if (enemy.id !== undefined) {
@@ -1604,8 +1695,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         toast.warning(`${enemyName} enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
 
         // Start dropping projectiles for this enemy
-        // Set up bomb/rocket drop with random interval (7-12 seconds)
-        const randomInterval = 7000 + Math.random() * 5000; // 7-12 seconds
+        // Set up bomb/rocket drop with level-scaled intervals
+        // Base: 7-12 seconds, increases 0.5s per level until level 8 (4-8s), then 3-7s from level 9+
+        let minInterval, maxInterval;
+        if (level <= 8) {
+          const levelBonus = (level - 1) * 0.5;
+          minInterval = Math.max(4, 7 - levelBonus);
+          maxInterval = Math.max(8, 12 - levelBonus);
+        } else {
+          minInterval = 3;
+          maxInterval = 7;
+        }
+        const randomInterval = minInterval * 1000 + Math.random() * (maxInterval - minInterval) * 1000;
         const projectileInterval = setInterval(() => {
           setEnemies((currentEnemies) => {
             const currentEnemy = currentEnemies.find((e) => e.id === enemyId);
