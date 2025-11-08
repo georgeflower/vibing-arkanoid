@@ -2,9 +2,10 @@ import endScreenImg from "@/assets/end-screen.png";
 
 interface EndScreenProps {
   onContinue: () => void;
+  onReturnToMenu: () => void;
 }
 
-export const EndScreen = ({ onContinue }: EndScreenProps) => {
+export const EndScreen = ({ onContinue, onReturnToMenu }: EndScreenProps) => {
   return (
     <div 
       className="min-h-screen w-full flex items-center justify-center cursor-pointer"

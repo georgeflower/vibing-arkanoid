@@ -1,5 +1,5 @@
 interface HighScoreTableProps {
-  scores: Array<{ name: string; score: number; level: number; difficulty?: string; beatLevel50?: boolean }>;
+  scores: Array<{ name: string; score: number; level: number; difficulty?: string; beatLevel50?: boolean; startingLives?: number }>;
 }
 
 export const HighScoreTable = ({ scores }: HighScoreTableProps) => {

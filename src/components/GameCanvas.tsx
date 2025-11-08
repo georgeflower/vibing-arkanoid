@@ -22,10 +22,12 @@ interface GameCanvasProps {
   launchAngle: number;
   bonusLetters: BonusLetter[];
   collectedLetters: Set<BonusLetterType>;
+  screenShake: number;
+  backgroundFlash: number;
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -68,8 +70,18 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       const ctx = canvas.current.getContext("2d");
       if (!ctx) return;
 
-      // Clear canvas - retro Amiga background
-      ctx.fillStyle = "hsl(220, 25%, 12%)";
+      // Apply screen shake
+      ctx.save();
+      if (screenShake > 0) {
+        const shakeX = (Math.random() - 0.5) * screenShake;
+        const shakeY = (Math.random() - 0.5) * screenShake;
+        ctx.translate(shakeX, shakeY);
+      }
+
+      // Clear canvas - retro Amiga background with flash
+      const flashIntensity = backgroundFlash;
+      const bgLightness = 12 + (flashIntensity * 40); // Flash makes background brighter
+      ctx.fillStyle = `hsl(220, 25%, ${bgLightness}%)`;
       ctx.fillRect(0, 0, width, height);
 
       // Draw bricks with 16-bit Turrican 2 style texture
@@ -977,7 +989,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillText(text2, width / 2, instructionY2);
       }
     
-    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters]);
+      // Restore context after shake
+      ctx.restore();
+    
+    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash]);
 
     return (
       <canvas

@@ -6,7 +6,7 @@ import * as THREE from "three";
 import metalBallTexture from "@/assets/metal-ball-texture.png";
 
 interface HighScoreDisplayProps {
-  scores: Array<{ name: string; score: number; level: number; difficulty?: string; beatLevel50?: boolean }>;
+  scores: Array<{ name: string; score: number; level: number; difficulty?: string; beatLevel50?: boolean; startingLives?: number }>;
   onClose: () => void;
 }
 
@@ -383,17 +383,17 @@ export const HighScoreDisplay = ({ scores, onClose }: HighScoreDisplayProps) => 
         </Canvas>
       </div>
       
-      <div className="relative z-10 w-full max-w-3xl px-4">
-        <div className="retro-border bg-slate-900/40 rounded-lg p-12 backdrop-blur-sm">
-          <h1 className="text-6xl font-bold text-center mb-8 font-mono animate-pulse">
+      <div className="relative z-10 w-full max-w-4xl px-4 max-h-[90vh] overflow-y-auto">
+        <div className="retro-border bg-slate-900/40 rounded-lg p-4 sm:p-8 lg:p-12 backdrop-blur-sm">
+          <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold text-center mb-4 sm:mb-6 lg:mb-8 font-mono animate-pulse">
             <span className="retro-title">HIGH SCORES</span>
           </h1>
 
-          <div className="space-y-3 mb-8">
+          <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8 max-h-[60vh] overflow-y-auto px-2">
             {scores.map((entry, index) => (
               <div
                 key={index}
-                className="flex justify-between items-center font-mono text-2xl px-6 py-4 bg-slate-800/70 rounded-lg border-2 retro-row"
+                className="flex justify-between items-center font-mono text-sm sm:text-lg lg:text-2xl px-3 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 bg-slate-800/70 rounded-lg border-2 retro-row"
                 style={{
                   borderColor: index === 0 ? "hsl(45, 90%, 55%)" : 
                                index === 1 ? "hsl(0, 0%, 70%)" :
@@ -401,22 +401,31 @@ export const HighScoreDisplay = ({ scores, onClose }: HighScoreDisplayProps) => 
                   animationDelay: `${index * 0.1}s`
                 }}
               >
-                <span className="text-cyan-300 w-16 font-bold">{index + 1}.</span>
-                <span className="text-pink-400 font-bold text-center text-3xl tracking-widest flex items-center gap-2">
-                  {entry.beatLevel50 && <span className="text-4xl">👑</span>}
-                  <span>{entry.name}</span>
+                <span className="text-cyan-300 w-8 sm:w-12 lg:w-16 font-bold">{index + 1}.</span>
+                <span className="text-pink-400 font-bold text-center text-base sm:text-xl lg:text-3xl tracking-widest flex items-center gap-1 sm:gap-2 flex-1 justify-center">
+                  {entry.beatLevel50 && <span className="text-2xl sm:text-3xl lg:text-4xl">👑</span>}
+                  <span className="truncate max-w-[120px] sm:max-w-[200px]">{entry.name}</span>
                   {entry.difficulty === "godlike" && (
-                    <span className="text-red-500 text-sm font-bold" style={{ fontFamily: 'monospace', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                    <span className="text-red-500 text-[8px] sm:text-xs lg:text-sm font-bold" style={{ fontFamily: 'monospace', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
                       GOD-MODE
                     </span>
                   )}
                 </span>
-                <span className="text-amber-300 flex-1 text-right font-bold">
-                  {entry.score.toLocaleString()}
-                </span>
-                <span className="text-purple-400 w-32 text-right">
-                  LEVEL {entry.level}
-                </span>
+                <div className="flex flex-col items-end gap-0.5 sm:gap-1">
+                  <span className="text-amber-300 font-bold text-xs sm:text-base lg:text-xl">
+                    {entry.score.toLocaleString()}
+                  </span>
+                  <div className="flex gap-2 text-[10px] sm:text-xs lg:text-sm">
+                    <span className="text-purple-400">
+                      LVL {entry.level}
+                    </span>
+                    {entry.startingLives && (
+                      <span className="text-green-400">
+                        ❤️{entry.startingLives}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -424,7 +433,7 @@ export const HighScoreDisplay = ({ scores, onClose }: HighScoreDisplayProps) => 
           <div className="flex justify-center">
             <Button
               onClick={onClose}
-              className="px-12 py-6 text-2xl font-bold font-mono bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white rounded-lg transform transition-all hover:scale-105 retro-button"
+              className="px-6 sm:px-8 lg:px-12 py-3 sm:py-4 lg:py-6 text-base sm:text-xl lg:text-2xl font-bold font-mono bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white rounded-lg transform transition-all hover:scale-105 retro-button"
             >
               CONTINUE
             </Button>

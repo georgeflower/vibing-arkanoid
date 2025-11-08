@@ -98,6 +98,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [showChangelog, setShowChangelog] = useState(false);
   const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
   const [enemiesKilled, setEnemiesKilled] = useState(0);
+  const [lastPaddleHitTime, setLastPaddleHitTime] = useState(0);
+  const [screenShake, setScreenShake] = useState(0);
+  const [backgroundFlash, setBackgroundFlash] = useState(0);
+  const [lastScoreMilestone, setLastScoreMilestone] = useState(0);
+  const [scoreBlinking, setScoreBlinking] = useState(false);
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
@@ -189,12 +194,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             // Check if all letters collected
             if (newCollected.size === 6) {
               setScore((s) => s + 500000);
-              setLives((l) => l + 10);
+              setLives((l) => l + 5);
               soundManager.playBonusComplete();
-              toast.success("QUMRAN Complete! +10 Lives & +500,000 Points!", { duration: 5000 });
+              toast.success("QUMRAN Complete! +5 Lives & +500,000 Points!", { duration: 5000 });
+              // Long flash and screen shake for all letters
+              setBackgroundFlash(1);
+              setScreenShake(10);
+              setTimeout(() => setBackgroundFlash(0), 800);
+              setTimeout(() => setScreenShake(0), 800);
             } else {
               soundManager.playBonusLetterPickup();
               toast.success(`Letter ${letter.type} collected!`);
+              // Quick flash for single letter
+              setBackgroundFlash(0.5);
+              setTimeout(() => setBackgroundFlash(0), 200);
             }
 
             return newCollected;
@@ -372,7 +385,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setLastEnemySpawnTime(0);
     setBonusLetters([]);
     // Don't reset collected letters between levels
-    setBrickHitSpeedAccumulated(0); // Reset on level clear
+    // Reset accumulated slowdown speed on level clear
+    setBrickHitSpeedAccumulated(0);
     setEnemiesKilled(0); // Reset enemy kills on level clear
     setTimer(0); // Reset timer on level clear (for turret drop chance reset)
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
@@ -632,6 +646,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             // Only bounce if hitting top 50% of paddle
             if (verticalHitPosition <= 0.5) {
               soundManager.playBounce();
+              
+              // Update last paddle hit time
+              setLastPaddleHitTime(Date.now());
 
               const hitPos = (newBall.x - paddle.x) / paddle.width;
               const angle = (hitPos - 0.5) * Math.PI * 0.6;
@@ -1087,6 +1104,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 // First hit - change color to yellow
                 soundManager.playBounce();
                 toast.warning("Pyramid hit! 2 more hits needed");
+                // Screen shake on enemy hit
+                setScreenShake(5);
+                setTimeout(() => setScreenShake(0), 500);
                 setEnemies((prev) =>
                   prev.map((e) =>
                     e.id === enemy.id
@@ -1101,6 +1121,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 // Second hit - change color to red, make it angry and faster
                 soundManager.playBounce();
                 toast.warning("Pyramid is angry! 1 more hit!");
+                // Screen shake on enemy hit
+                setScreenShake(5);
+                setTimeout(() => setScreenShake(0), 500);
                 setEnemies((prev) =>
                   prev.map((e) =>
                     e.id === enemy.id
@@ -1178,6 +1201,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 // First hit - make it angry and faster
                 soundManager.playBounce();
                 toast.warning("Sphere enemy is angry!");
+                // Screen shake on enemy hit
+                setScreenShake(5);
+                setTimeout(() => setScreenShake(0), 500);
                 setEnemies((prev) =>
                   prev.map((e) =>
                     e.id === enemy.id
@@ -1251,6 +1277,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               }
             } else {
               // Cube enemy - destroy on first hit
+              // Screen shake on enemy hit
+              setScreenShake(5);
+              setTimeout(() => setScreenShake(0), 500);
               setExplosions((prev) => [
                 ...prev,
                 {
@@ -1526,6 +1555,76 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       checkPowerUpCollision(paddle, balls, setBalls, setPaddle, setSpeedMultiplier);
     }
 
+    // Check ball timeout without paddle hit (15s and 25s)
+    if (lastPaddleHitTime > 0) {
+      const timeSinceHit = (Date.now() - lastPaddleHitTime) / 1000;
+      
+      if (timeSinceHit >= 25 && enemies.length > 0) {
+        // 25s - nearest enemy kamikaze
+        const activeBall = balls.find(b => !b.waitingToLaunch);
+        if (activeBall) {
+          // Find closest enemy
+          let closestEnemy = enemies[0];
+          let minDistance = Infinity;
+          
+          for (const enemy of enemies) {
+            const dx = (enemy.x + enemy.width / 2) - activeBall.x;
+            const dy = (enemy.y + enemy.height / 2) - activeBall.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < minDistance) {
+              minDistance = distance;
+              closestEnemy = enemy;
+            }
+          }
+          
+          // Make closest enemy go kamikaze towards ball
+          setEnemies((prev) =>
+            prev.map((e) =>
+              e.id === closestEnemy.id
+                ? {
+                    ...e,
+                    dx: ((activeBall.x - (e.x + e.width / 2)) / minDistance) * e.speed * 3,
+                    dy: ((activeBall.y - (e.y + e.height / 2)) / minDistance) * e.speed * 3,
+                  }
+                : e
+            )
+          );
+          toast.warning("Enemy kamikaze attack!");
+          setLastPaddleHitTime(Date.now()); // Reset timer
+        }
+      } else if (timeSinceHit >= 15) {
+        // 15s - divert ball by 10 degrees
+        setBalls((prev) =>
+          prev.map((ball) => {
+            if (!ball.waitingToLaunch) {
+              const currentAngle = Math.atan2(ball.dy, ball.dx);
+              const divertAngle = currentAngle + (10 * Math.PI / 180);
+              const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+              return {
+                ...ball,
+                dx: Math.cos(divertAngle) * speed,
+                dy: Math.sin(divertAngle) * speed,
+              };
+            }
+            return ball;
+          })
+        );
+        setLastPaddleHitTime(Date.now()); // Reset timer
+      }
+    }
+
+    // Check score milestones for extra lives (every 50000)
+    const currentMilestone = Math.floor(score / 50000);
+    if (currentMilestone > lastScoreMilestone && currentMilestone > 0) {
+      setLastScoreMilestone(currentMilestone);
+      setLives((prev) => prev + 1);
+      soundManager.playExtraLifeSound();
+      toast.success("Extra life awarded! +1 Life", { duration: 3000 });
+      // Blink score
+      setScoreBlinking(true);
+      setTimeout(() => setScoreBlinking(false), 1000);
+    }
+
     animationFrameRef.current = requestAnimationFrame(gameLoop);
   }, [
     gameState,
@@ -1542,6 +1641,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     score,
     isHighScore,
     explosions,
+    lastPaddleHitTime,
+    lastScoreMilestone,
   ]);
 
   useEffect(() => {
@@ -1819,7 +1920,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, [initGame]);
 
   const handleHighScoreSubmit = (name: string) => {
-    addHighScore(name, score, level, settings.difficulty, beatLevel50Completed);
+    addHighScore(name, score, level, settings.difficulty, beatLevel50Completed, settings.startingLives);
     setShowHighScoreEntry(false);
     setShowHighScoreDisplay(true);
     toast.success("High score saved!");
@@ -1841,7 +1942,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const handleCloseHighScoreDisplay = () => {
     setShowHighScoreDisplay(false);
     soundManager.stopHighScoreMusic();
-    handleRestart();
+    onReturnToMenu();
   };
 
   const toggleFullscreen = async () => {
@@ -1878,7 +1979,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }`}
     >
       {showEndScreen ? (
-        <EndScreen onContinue={handleEndScreenContinue} />
+        <EndScreen onContinue={handleEndScreenContinue} onReturnToMenu={onReturnToMenu} />
       ) : showHighScoreDisplay ? (
         <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} />
       ) : (
@@ -1913,7 +2014,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     <div className="stat-label" style={{ color: "hsl(180, 70%, 60%)" }}>
                       SCORE
                     </div>
-                    <div className="stat-value">{score.toString().padStart(6, "0")}</div>
+                    <div className={`stat-value ${scoreBlinking ? 'animate-pulse' : ''}`}>{score.toString().padStart(6, "0")}</div>
                   </div>
 
                   {/* Level */}
@@ -1993,6 +2094,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       launchAngle={launchAngle}
                       bonusLetters={bonusLetters}
                       collectedLetters={collectedLetters}
+                      screenShake={screenShake}
+                      backgroundFlash={backgroundFlash}
                     />
                   </div>
                 </div>

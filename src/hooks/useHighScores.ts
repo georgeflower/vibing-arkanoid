@@ -6,6 +6,7 @@ export interface HighScore {
   level: number;
   difficulty?: string;
   beatLevel50?: boolean;
+  startingLives?: number;
 }
 
 const STORAGE_KEY = "neon_breaker_high_scores";
@@ -39,10 +40,18 @@ export const useHighScores = () => {
     return score > highScores[highScores.length - 1].score;
   };
 
-  const addHighScore = (name: string, score: number, level: number, difficulty?: string, beatLevel50?: boolean) => {
-    const newScore: HighScore = { name, score, level, difficulty, beatLevel50 };
+  const addHighScore = (name: string, score: number, level: number, difficulty?: string, beatLevel50?: boolean, startingLives?: number) => {
+    const newScore: HighScore = { name, score, level, difficulty, beatLevel50, startingLives };
     const updatedScores = [...highScores, newScore]
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => {
+        // Sort by starting lives first (lower is better), then by score (higher is better)
+        const aLives = a.startingLives || 3;
+        const bLives = b.startingLives || 3;
+        if (aLives !== bLives) {
+          return aLives - bLives;
+        }
+        return b.score - a.score;
+      })
       .slice(0, MAX_HIGH_SCORES);
     setHighScores(updatedScores);
   };
