@@ -2,7 +2,7 @@ export const GAME_VERSION = "0.6.2";
 
 export const CHANGELOG = [
   {
-    version: "0.6.1",
+    version: "0.6.2",
     changes: [
       "Replaced shrink power-up icon with new version",
       "High score list now scales to fit all resolutions and screen sizes",
