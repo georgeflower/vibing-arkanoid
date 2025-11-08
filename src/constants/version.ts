@@ -1,6 +1,21 @@
-export const GAME_VERSION = "0.6.1";
+export const GAME_VERSION = "0.6.2";
 
 export const CHANGELOG = [
+  {
+    version: "0.6.1",
+    changes: [
+      "Replaced shrink power-up icon with new version",
+      "High score list now scales to fit all resolutions and screen sizes",
+      "Pressing continue on high score screen now returns to main menu",
+      "Accumulated slowdown speed resets upon level completion",
+      "Screen shakes for 0.5 seconds when hitting an enemy",
+      "Background flashes briefly when collecting a bonus letter; longer flash and screen shake when collecting all letters",
+      "If ball avoids paddle for 15s, it diverts by 10 degrees; after 25s, nearest enemy performs kamikaze toward ball",
+      "Extra life awarded every 50000 points, with sound effect and blinking score",
+      "High score now includes chosen starting lives; fewer lives rank higher for equal scores",
+      "QUMRAN letter reward changed from 11 to 5 extra lives",
+    ],
+  },
   {
     version: "0.6.1",
     changes: [
