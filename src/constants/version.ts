@@ -1,6 +1,20 @@
-export const GAME_VERSION = "0.6.2";
+export const GAME_VERSION = "0.6.3";
 
 export const CHANGELOG = [
+  {
+    version: "0.6.3  ",
+    changes: [
+      "Enemies now explode with unique colors: cubes (cyan/blue), spheres (pink/magenta), pyramids (purple/violet)",
+      "Each explosion emits 20 debris particles with directional spread and physics",
+      "Gravity added to debris particles for realistic falling motion",
+      "Debris rendering enhanced with glowing squares and bright centers",
+      "Explosion sound volume increased from 0.08 to 0.088",
+      "Mobile touch now launches the ball",
+      "Changelog moved to About section only",
+      "Every 3rd enemy kill now guarantees a power-up drop",
+      "Game canvas now fills more of the screen on all devices",
+    ],
+  },
   {
     version: "0.6.2",
     changes: [
