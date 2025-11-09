@@ -263,16 +263,6 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
       className="min-h-screen w-full flex items-center justify-center p-4 bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)] relative"
       style={{ backgroundImage: `url(${startScreenImg})` }}
     >
-      <button
-        onClick={() => {
-          soundManager.playMenuClick();
-          setShowChangelog(true);
-        }}
-        className="absolute top-4 right-4 text-cyan-400 hover:text-cyan-300 text-xs font-mono transition-colors"
-        title="View Changelog"
-      >
-        v{GAME_VERSION} - Changelog
-      </button>
       <Card className="max-w-sm w-full p-6 bg-black/60 backdrop-blur-sm border-[hsl(200,70%,50%)]">
         {/* Settings */}
         <div className="space-y-4">
