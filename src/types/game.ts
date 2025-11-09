@@ -101,11 +101,24 @@ export interface BonusLetter {
   active: boolean;
 }
 
+export interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  color: string;
+  life: number;
+  maxLife: number;
+}
+
 export interface Explosion {
   x: number;
   y: number;
   frame: number;
   maxFrames: number;
+  enemyType?: EnemyType;
+  particles: Particle[];
 }
 
 export type GameState = "ready" | "playing" | "paused" | "gameOver" | "won";

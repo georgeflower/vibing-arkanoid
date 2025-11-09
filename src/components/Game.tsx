@@ -20,6 +20,8 @@ import type {
   BonusLetter,
   BonusLetterType,
   GameSettings,
+  EnemyType,
+  Particle,
 } from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
 
@@ -123,6 +125,53 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBrickHitSpeedAccumulated,
   );
   const { bullets, setBullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks, enemies);
+
+  // Helper function to create explosion particles based on enemy type
+  const createExplosionParticles = useCallback((x: number, y: number, enemyType: EnemyType): Particle[] => {
+    const particles: Particle[] = [];
+    const particleCount = 20; // More particles for better effect
+    
+    // Determine colors based on enemy type
+    let colors: string[] = [];
+    if (enemyType === "cube") {
+      colors = [
+        "hsl(200, 100%, 60%)", // Cyan
+        "hsl(180, 100%, 50%)", // Light cyan
+        "hsl(220, 100%, 70%)", // Light blue
+      ];
+    } else if (enemyType === "sphere") {
+      colors = [
+        "hsl(330, 100%, 60%)", // Pink
+        "hsl(350, 100%, 65%)", // Light pink
+        "hsl(310, 100%, 55%)", // Magenta
+      ];
+    } else if (enemyType === "pyramid") {
+      colors = [
+        "hsl(280, 100%, 60%)", // Purple
+        "hsl(260, 100%, 65%)", // Light purple
+        "hsl(300, 100%, 55%)", // Violet
+      ];
+    }
+    
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.3;
+      const speed = 2 + Math.random() * 3;
+      const size = 3 + Math.random() * 4;
+      
+      particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        life: 30,
+        maxLife: 30,
+      });
+    }
+    
+    return particles;
+  }, []);
 
   // Initialize sound settings - always enabled
   useEffect(() => {
@@ -1180,6 +1229,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     y: enemy.y + enemy.height / 2,
                     frame: 0,
                     maxFrames: 20,
+                    enemyType: enemy.type,
+                    particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type),
                   },
                 ]);
                 soundManager.playExplosion();
@@ -1266,6 +1317,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     y: enemy.y + enemy.height / 2,
                     frame: 0,
                     maxFrames: 20,
+                    enemyType: enemy.type,
+                    particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type),
                   },
                 ]);
                 soundManager.playExplosion();
@@ -1332,6 +1385,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   y: enemy.y + enemy.height / 2,
                   frame: 0,
                   maxFrames: 20,
+                  enemyType: enemy.type,
+                  particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type),
                 },
               ]);
               soundManager.playExplosion();
@@ -1396,12 +1451,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       return ballsUpdated ? newBalls : prevBalls;
     });
 
-    // Update explosions
+    // Update explosions and their particles
     setExplosions((prev) =>
       prev
         .map((exp) => ({
           ...exp,
           frame: exp.frame + 1,
+          particles: exp.particles
+            .map((p) => ({
+              ...p,
+              x: p.x + p.vx,
+              y: p.y + p.vy,
+              vy: p.vy + 0.2, // Add gravity
+              life: p.life - 1,
+            }))
+            .filter((p) => p.life > 0),
         }))
         .filter((exp) => exp.frame < exp.maxFrames),
     );

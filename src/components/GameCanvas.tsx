@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useRef } from "react";
-import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType } from "@/types/game";
+import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, Particle } from "@/types/game";
 import { powerUpImages } from "@/utils/powerUpImages";
 import { bonusLetterImages } from "@/utils/bonusLetterImages";
 import paddleImg from "@/assets/paddle.png";
@@ -739,42 +739,72 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.restore();
       });
 
-      // Draw explosions
+      // Draw explosions with debris particles
       explosions.forEach((explosion) => {
         const progress = explosion.frame / explosion.maxFrames;
         const radius = 15 * (1 + progress * 2);
         const alpha = 1 - progress;
+        
+        // Determine explosion color based on enemy type
+        let primaryHue = 30; // Default orange
+        let secondaryHue = 60; // Default yellow
+        
+        if (explosion.enemyType === "cube") {
+          primaryHue = 200; // Cyan
+          secondaryHue = 180; // Blue-cyan
+        } else if (explosion.enemyType === "sphere") {
+          primaryHue = 330; // Pink/magenta
+          secondaryHue = 350; // Red-pink
+        } else if (explosion.enemyType === "pyramid") {
+          primaryHue = 280; // Purple
+          secondaryHue = 260; // Blue-purple
+        }
         
         ctx.save();
         ctx.globalAlpha = alpha;
         
         // Outer ring
         ctx.shadowBlur = 20;
-        ctx.shadowColor = `hsla(30, 100%, 50%, ${alpha})`;
-        ctx.strokeStyle = `hsla(30, 100%, 50%, ${alpha})`;
+        ctx.shadowColor = `hsla(${primaryHue}, 100%, 50%, ${alpha})`;
+        ctx.strokeStyle = `hsla(${primaryHue}, 100%, 50%, ${alpha})`;
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(explosion.x, explosion.y, radius, 0, Math.PI * 2);
         ctx.stroke();
         
         // Inner glow
-        ctx.fillStyle = `hsla(60, 100%, 60%, ${alpha * 0.6})`;
+        ctx.fillStyle = `hsla(${secondaryHue}, 100%, 60%, ${alpha * 0.6})`;
         ctx.beginPath();
         ctx.arc(explosion.x, explosion.y, radius * 0.6, 0, Math.PI * 2);
         ctx.fill();
         
-        // Particles
-        for (let i = 0; i < 8; i++) {
-          const angle = (i / 8) * Math.PI * 2 + progress * Math.PI;
-          const dist = radius * 0.8;
-          const px = explosion.x + Math.cos(angle) * dist;
-          const py = explosion.y + Math.sin(angle) * dist;
+        // Draw debris particles
+        explosion.particles.forEach((particle: Particle) => {
+          const particleAlpha = particle.life / particle.maxLife;
+          ctx.globalAlpha = particleAlpha;
           
-          ctx.fillStyle = `hsla(${30 + i * 10}, 100%, 60%, ${alpha})`;
-          ctx.beginPath();
-          ctx.arc(px, py, 3, 0, Math.PI * 2);
-          ctx.fill();
-        }
+          // Draw particle with glow
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = particle.color;
+          ctx.fillStyle = particle.color;
+          
+          // Draw as small square debris
+          ctx.fillRect(
+            particle.x - particle.size / 2,
+            particle.y - particle.size / 2,
+            particle.size,
+            particle.size
+          );
+          
+          // Add a bright center
+          ctx.fillStyle = `rgba(255, 255, 255, ${particleAlpha * 0.8})`;
+          ctx.fillRect(
+            particle.x - particle.size / 4,
+            particle.y - particle.size / 4,
+            particle.size / 2,
+            particle.size / 2
+          );
+        });
         
         ctx.restore();
       });
