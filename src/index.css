@@ -111,8 +111,8 @@ All colors MUST be HSL.
 
   /* Responsive canvas scaling for non-fullscreen */
   .game-glow canvas {
-    max-width: calc(100vw - 240px);
-    max-height: calc(100vh - 200px);
+    max-width: 95vw;
+    max-height: 85vh;
     width: auto !important;
     height: auto !important;
     object-fit: contain;
@@ -121,7 +121,8 @@ All colors MUST be HSL.
   /* Mobile adjustments */
   @media (max-width: 768px) {
     .game-glow canvas {
-      max-width: calc(100vw - 40px);
+      max-width: 92vw;
+      max-height: 75vh;
     }
   }
 
@@ -230,8 +231,8 @@ All colors MUST be HSL.
     0 20px 60px rgba(0, 0, 0, 0.6),
     inset 0 2px 4px rgba(255, 255, 255, 0.1);
   padding: 8px;
-  max-width: 1320px;
-  max-height: 100vh;
+  max-width: 98vw;
+  max-height: 98vh;
   margin: 0 auto;
   display: flex;
   flex-direction: column;

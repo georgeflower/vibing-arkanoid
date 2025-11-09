@@ -5,7 +5,7 @@ import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { EndScreen } from "./EndScreen";
-import { Changelog } from "./Changelog";
+
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Maximize2, Minimize2, Home } from "lucide-react";
@@ -22,7 +22,7 @@ import type {
   GameSettings,
 } from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
-import { GAME_VERSION } from "@/constants/version";
+
 import {
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
@@ -95,7 +95,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
   const [isPointerLocked, setIsPointerLocked] = useState(false);
-  const [showChangelog, setShowChangelog] = useState(false);
+  
   const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
   const [enemiesKilled, setEnemiesKilled] = useState(0);
   const [lastPaddleHitTime, setLastPaddleHitTime] = useState(0);
@@ -441,9 +441,42 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const touchX = (e.touches[0].clientX - rect.left) * scaleX;
         const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
         setPaddle((prev) => (prev ? { ...prev, x: newX } : null));
+
+        // Launch ball on mobile touch if waiting
+        const waitingBall = balls.find((ball) => ball.waitingToLaunch);
+        if (waitingBall && gameState === "playing") {
+          setShowInstructions(false);
+
+          // Start timer on first ball launch
+          if (!timerStartedRef.current) {
+            timerStartedRef.current = true;
+            if (timerIntervalRef.current) {
+              clearInterval(timerIntervalRef.current);
+            }
+            timerIntervalRef.current = setInterval(() => {
+              setTimer((prev) => prev + 1);
+            }, 1000);
+          }
+
+          setBalls((prev) =>
+            prev.map((ball) => {
+              if (ball.waitingToLaunch) {
+                const speed = ball.speed;
+                const angle = (launchAngle * Math.PI) / 180;
+                return {
+                  ...ball,
+                  dx: speed * Math.sin(angle),
+                  dy: -speed * Math.cos(angle),
+                  waitingToLaunch: false,
+                };
+              }
+              return ball;
+            }),
+          );
+        }
       }
     },
-    [paddle],
+    [paddle, balls, gameState, launchAngle],
   );
 
   const handleTouchMove = useCallback(
@@ -1163,7 +1196,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 setEnemiesKilled((prev) => {
                   const newCount = prev + 1;
                   if (newCount % 3 === 0) {
-                    // Create a powerup at enemy location
+                    // Create a powerup at enemy location - always drop (retry until success)
                     const fakeBrick: Brick = {
                       x: enemy.x,
                       y: enemy.y,
@@ -1177,7 +1210,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       maxHits: 1,
                       isIndestructible: false,
                     };
-                    const powerUp = createPowerUp(fakeBrick);
+                    // Keep trying until we get a powerup (guaranteed drop)
+                    let powerUp = createPowerUp(fakeBrick);
+                    let attempts = 0;
+                    while (!powerUp && attempts < 10) {
+                      powerUp = createPowerUp(fakeBrick);
+                      attempts++;
+                    }
                     if (powerUp) {
                       setPowerUps((prev) => [...prev, powerUp]);
                       toast.success("Enemy kill bonus! Power-up dropped!");
@@ -1243,7 +1282,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 setEnemiesKilled((prev) => {
                   const newCount = prev + 1;
                   if (newCount % 3 === 0) {
-                    // Create a powerup at enemy location
+                    // Create a powerup at enemy location - always drop (retry until success)
                     const fakeBrick: Brick = {
                       x: enemy.x,
                       y: enemy.y,
@@ -1257,7 +1296,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       maxHits: 1,
                       isIndestructible: false,
                     };
-                    const powerUp = createPowerUp(fakeBrick);
+                    // Keep trying until we get a powerup (guaranteed drop)
+                    let powerUp = createPowerUp(fakeBrick);
+                    let attempts = 0;
+                    while (!powerUp && attempts < 10) {
+                      powerUp = createPowerUp(fakeBrick);
+                      attempts++;
+                    }
                     if (powerUp) {
                       setPowerUps((prev) => [...prev, powerUp]);
                       toast.success("Enemy kill bonus! Power-up dropped!");
@@ -1303,7 +1348,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setEnemiesKilled((prev) => {
                 const newCount = prev + 1;
                 if (newCount % 3 === 0) {
-                  // Create a powerup at enemy location
+                  // Create a powerup at enemy location - always drop (retry until success)
                   const fakeBrick: Brick = {
                     x: enemy.x,
                     y: enemy.y,
@@ -1317,7 +1362,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     maxHits: 1,
                     isIndestructible: false,
                   };
-                  const powerUp = createPowerUp(fakeBrick);
+                  // Keep trying until we get a powerup (guaranteed drop)
+                  let powerUp = createPowerUp(fakeBrick);
+                  let attempts = 0;
+                  while (!powerUp && attempts < 10) {
+                    powerUp = createPowerUp(fakeBrick);
+                    attempts++;
+                  }
                   if (powerUp) {
                     setPowerUps((prev) => [...prev, powerUp]);
                     toast.success("Enemy kill bonus! Power-up dropped!");
@@ -1984,7 +2035,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} />
       ) : (
         <>
-          {showChangelog && <Changelog onClose={() => setShowChangelog(false)} />}
+          
           {showHighScoreEntry ? (
             <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} />
           ) : (
@@ -1997,13 +2048,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 >
                   Vibing Arkanoid
                 </h1>
-                <button
-                  onClick={() => setShowChangelog(true)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-cyan-400 transition-colors font-mono"
-                  title="View Changelog"
-                >
-                  v{GAME_VERSION} - Changelog
-                </button>
               </div>
 
               {/* Stats Bar */}

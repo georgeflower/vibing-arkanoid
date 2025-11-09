@@ -90,17 +90,16 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
               "In the zone, riding the wave of pure creativity." - The Vibe Coding Manifesto
             </p>
           </div>
-          <button
+          <Button
             onClick={() => {
               soundManager.playMenuClick();
               setShowChangelog(true);
             }}
             onMouseEnter={() => soundManager.playMenuHover()}
             className="w-full mt-3 sm:mt-4 bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white text-sm sm:text-base py-3 sm:py-4"
-            title="View Changelog"
           >
             v{GAME_VERSION} - Changelog
-          </button>
+          </Button>
           <Button
             onClick={() => {
               soundManager.playMenuClick();
