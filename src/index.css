@@ -417,11 +417,6 @@ All colors MUST be HSL.
   }
 }
 
-/* Hide side panels in fullscreen mode */
-.game-container-fullscreen .metal-side-panel {
-  display: none;
-}
-
 @media (max-width: 768px) {
   .metal-frame {
     border: 4px ridge hsl(210, 15%, 50%);
@@ -429,6 +424,7 @@ All colors MUST be HSL.
     max-width: 100vw;
   }
   
+  /* Hide side panels on mobile only */
   .metal-side-panel {
     display: none;
   }

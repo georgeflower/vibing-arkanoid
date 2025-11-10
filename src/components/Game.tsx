@@ -2173,7 +2173,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               </div>
 
               {/* Main Content with Side Panels */}
-              <div className={`metal-main-content ${isFullscreen ? 'game-container-fullscreen' : ''}`}>
+              <div className="metal-main-content">
                 {/* Left Panel */}
                 <div className="metal-side-panel metal-side-panel-left">
                   <div className="panel-decoration"></div>
