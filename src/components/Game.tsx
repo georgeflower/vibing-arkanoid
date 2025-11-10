@@ -2107,7 +2107,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               {/* Title Bar */}
               <div className="metal-title-bar">
                 <h1
-                  className="text-2xl sm:text-3xl lg:text-4xl retro-pixel-text tracking-widest text-center"
+                  className="text-xl sm:text-2xl lg:text-3xl retro-pixel-text tracking-widest text-center"
                   style={{ color: "hsl(0, 0%, 95%)", textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}
                 >
                   Vibing Arkanoid
