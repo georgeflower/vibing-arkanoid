@@ -97,6 +97,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
   const [isPointerLocked, setIsPointerLocked] = useState(false);
+  const [headerVisible, setHeaderVisible] = useState(true);
 
   const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
   const [enemiesKilled, setEnemiesKilled] = useState(0);
@@ -2104,6 +2105,39 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
+  // Adaptive header visibility based on vertical space
+  useEffect(() => {
+    const checkHeaderVisibility = () => {
+      if (!fullscreenContainerRef.current) return;
+
+      const containerHeight = fullscreenContainerRef.current.clientHeight;
+      const titleBarHeight = 60; // Approximate height of title bar
+      const statsBarHeight = 70; // Approximate height of stats bar
+      const bottomBarHeight = 60; // Approximate height of bottom bar
+      const sideFrameHeight = 40; // Approximate height of side frame decorations
+      
+      // Calculate required space for game area + frames
+      const requiredHeight = SCALED_CANVAS_HEIGHT + titleBarHeight + statsBarHeight + bottomBarHeight + sideFrameHeight;
+      
+      // Hide header if vertical space is constrained
+      const shouldShowHeader = containerHeight >= requiredHeight;
+      
+      if (shouldShowHeader !== headerVisible) {
+        setHeaderVisible(shouldShowHeader);
+        
+        // Debug flag
+        const layoutMode = shouldShowHeader ? "headerVisible" : "headerHidden";
+        console.log(`[Layout Debug] layoutMode: ${layoutMode}`);
+      }
+    };
+
+    // Check on mount and resize
+    checkHeaderVisibility();
+    window.addEventListener("resize", checkHeaderVisibility);
+    
+    return () => window.removeEventListener("resize", checkHeaderVisibility);
+  }, [headerVisible, SCALED_CANVAS_HEIGHT]);
+
   return (
     <div
       ref={fullscreenContainerRef}
@@ -2121,8 +2155,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} />
           ) : (
             <div className="metal-frame">
-              {/* Title Bar */}
-              <div className="metal-title-bar">
+              {/* Title Bar - Adaptive Visibility */}
+              <div 
+                className={`metal-title-bar transition-all duration-150 ${
+                  headerVisible ? 'opacity-100 max-h-[60px]' : 'opacity-0 max-h-0 overflow-hidden'
+                }`}
+                style={{
+                  transform: headerVisible ? 'translateY(0)' : 'translateY(-10px)',
+                }}
+              >
                 <h1
                   className="text-2xl sm:text-3xl lg:text-4xl retro-pixel-text tracking-widest text-center"
                   style={{ color: "hsl(0, 0%, 95%)", textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}
