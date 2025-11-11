@@ -105,9 +105,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [backgroundFlash, setBackgroundFlash] = useState(0);
   const [lastScoreMilestone, setLastScoreMilestone] = useState(0);
   const [scoreBlinking, setScoreBlinking] = useState(false);
-  const [comboCount, setComboCount] = useState(0);
-  const [comboMultiplier, setComboMultiplier] = useState(1);
-  const [showComboEffect, setShowComboEffect] = useState(false);
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
@@ -373,8 +370,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBonusLetters([]);
     setCollectedLetters(new Set());
     setEnemiesKilled(0);
-    setComboCount(0);
-    setComboMultiplier(1);
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
   }, [setPowerUps, initBricksForLevel]);
@@ -442,8 +437,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Reset accumulated slowdown speed on level clear
     setBrickHitSpeedAccumulated(0);
     setEnemiesKilled(0); // Reset enemy kills on level clear
-    setComboCount(0); // Reset combo on level completion
-    setComboMultiplier(1);
     setTimer(0); // Reset timer on level clear (for turret drop chance reset)
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
@@ -915,26 +908,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 } else {
                   updatedBrick.visible = false;
 
-                  // Increment combo count
-                  setComboCount((prevCombo) => {
-                    const newCombo = prevCombo + 1;
-                    
-                    // Calculate multiplier based on combo (every 5 hits increases multiplier)
-                    const newMultiplier = Math.floor(newCombo / 5) + 1;
-                    setComboMultiplier(newMultiplier);
-                    
-                    // Show combo effect for milestones
-                    if (newCombo % 5 === 0) {
-                      setShowComboEffect(true);
-                      setTimeout(() => setShowComboEffect(false), 1000);
-                      toast.success(`${newCombo}x Combo! ${newMultiplier}x Multiplier!`, { duration: 2000 });
-                    }
-                    
-                    return newCombo;
-                  });
-
-                  // Award points with combo multiplier
-                  setScore((prev) => prev + (brick.points * comboMultiplier));
+                  // Award points and create power-up only when brick is destroyed
+                  setScore((prev) => prev + brick.points);
 
                   if (brick.hasPowerUp) {
                     const powerUp = createPowerUp(brick);
@@ -1012,13 +987,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Check if all balls are lost
       if (updatedBalls.length === 0) {
-        // Reset combo on ball loss
-        if (comboCount > 0) {
-          toast.info(`Combo broken! ${comboCount}x hits`, { duration: 2000 });
-        }
-        setComboCount(0);
-        setComboMultiplier(1);
-        
         setLives((prev) => {
           const newLives = prev - 1;
           soundManager.playLoseLife();
@@ -2139,7 +2107,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               {/* Title Bar */}
               <div className="metal-title-bar">
                 <h1
-                  className="text-xl sm:text-2xl lg:text-3xl retro-pixel-text tracking-widest text-center"
+                  className="text-2xl sm:text-3xl lg:text-4xl retro-pixel-text tracking-widest text-center"
                   style={{ color: "hsl(0, 0%, 95%)", textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}
                 >
                   Vibing Arkanoid
@@ -2188,27 +2156,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     </div>
                     <div className="stat-value">{Math.round(speedMultiplier * 100)}%</div>
                   </div>
-
-                  {/* Combo */}
-                  {comboCount > 0 && (
-                    <div className={`stat-box ${showComboEffect ? 'animate-pulse' : ''}`} style={{ 
-                      background: comboMultiplier > 1 
-                        ? 'linear-gradient(180deg, hsl(330, 100%, 35%) 0%, hsl(330, 100%, 25%) 100%)'
-                        : 'linear-gradient(180deg, hsl(210, 20%, 22%) 0%, hsl(210, 20%, 16%) 100%)'
-                    }}>
-                      <div className="stat-label" style={{ 
-                        color: comboMultiplier > 1 ? "hsl(330, 100%, 70%)" : "hsl(180, 70%, 60%)" 
-                      }}>
-                        COMBO
-                      </div>
-                      <div className="stat-value" style={{
-                        color: comboMultiplier > 1 ? "hsl(330, 100%, 80%)" : "hsl(0, 0%, 90%)",
-                        textShadow: comboMultiplier > 1 ? '0 0 12px hsl(330, 100%, 70%)' : '0 0 8px rgba(255, 255, 255, 0.3)'
-                      }}>
-                        {comboCount}x{comboMultiplier > 1 ? ` (${comboMultiplier}x)` : ''}
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 <div className="flex gap-2">
