@@ -97,7 +97,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
   const [isPointerLocked, setIsPointerLocked] = useState(false);
-  
+
   const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
   const [enemiesKilled, setEnemiesKilled] = useState(0);
   const [lastPaddleHitTime, setLastPaddleHitTime] = useState(0);
@@ -130,7 +130,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const createExplosionParticles = useCallback((x: number, y: number, enemyType: EnemyType): Particle[] => {
     const particles: Particle[] = [];
     const particleCount = 20; // More particles for better effect
-    
+
     // Determine colors based on enemy type
     let colors: string[] = [];
     if (enemyType === "cube") {
@@ -152,12 +152,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         "hsl(300, 100%, 55%)", // Violet
       ];
     }
-    
+
     for (let i = 0; i < particleCount; i++) {
       const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.3;
       const speed = 2 + Math.random() * 3;
       const size = 3 + Math.random() * 4;
-      
+
       particles.push({
         x,
         y,
@@ -169,7 +169,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         maxLife: 30,
       });
     }
-    
+
     return particles;
   }, []);
 
@@ -480,12 +480,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (!canvasRef.current || !paddle) return;
 
       e.preventDefault();
-      
+
       // Fire turrets if there are multiple touches (2+ fingers) and paddle has turrets
       if (e.touches.length > 1 && paddle.hasTurrets && gameState === "playing") {
         fireBullets(paddle);
       }
-      
+
       // Track the first touch for paddle control
       if (e.touches.length > 0 && activeTouchRef.current === null) {
         activeTouchRef.current = e.touches[0].identifier;
@@ -734,7 +734,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             // Only bounce if hitting top 50% of paddle
             if (verticalHitPosition <= 0.5) {
               soundManager.playBounce();
-              
+
               // Update last paddle hit time
               setLastPaddleHitTime(Date.now());
 
@@ -1236,7 +1236,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     frame: 0,
                     maxFrames: 20,
                     enemyType: enemy.type,
-                    particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type),
+                    particles: createExplosionParticles(
+                      enemy.x + enemy.width / 2,
+                      enemy.y + enemy.height / 2,
+                      enemy.type,
+                    ),
                   },
                 ]);
                 soundManager.playExplosion();
@@ -1324,7 +1328,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     frame: 0,
                     maxFrames: 20,
                     enemyType: enemy.type,
-                    particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type),
+                    particles: createExplosionParticles(
+                      enemy.x + enemy.width / 2,
+                      enemy.y + enemy.height / 2,
+                      enemy.type,
+                    ),
                   },
                 ]);
                 soundManager.playExplosion();
@@ -1392,7 +1400,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   frame: 0,
                   maxFrames: 20,
                   enemyType: enemy.type,
-                  particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type),
+                  particles: createExplosionParticles(
+                    enemy.x + enemy.width / 2,
+                    enemy.y + enemy.height / 2,
+                    enemy.type,
+                  ),
                 },
               ]);
               soundManager.playExplosion();
@@ -1679,25 +1691,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Check ball timeout without paddle hit (15s and 25s)
     if (lastPaddleHitTime > 0) {
       const timeSinceHit = (Date.now() - lastPaddleHitTime) / 1000;
-      
+
       if (timeSinceHit >= 25 && enemies.length > 0) {
         // 25s - nearest enemy kamikaze
-        const activeBall = balls.find(b => !b.waitingToLaunch);
+        const activeBall = balls.find((b) => !b.waitingToLaunch);
         if (activeBall) {
           // Find closest enemy
           let closestEnemy = enemies[0];
           let minDistance = Infinity;
-          
+
           for (const enemy of enemies) {
-            const dx = (enemy.x + enemy.width / 2) - activeBall.x;
-            const dy = (enemy.y + enemy.height / 2) - activeBall.y;
+            const dx = enemy.x + enemy.width / 2 - activeBall.x;
+            const dy = enemy.y + enemy.height / 2 - activeBall.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             if (distance < minDistance) {
               minDistance = distance;
               closestEnemy = enemy;
             }
           }
-          
+
           // Make closest enemy go kamikaze towards ball
           setEnemies((prev) =>
             prev.map((e) =>
@@ -1707,8 +1719,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     dx: ((activeBall.x - (e.x + e.width / 2)) / minDistance) * e.speed * 3,
                     dy: ((activeBall.y - (e.y + e.height / 2)) / minDistance) * e.speed * 3,
                   }
-                : e
-            )
+                : e,
+            ),
           );
           toast.warning("Enemy kamikaze attack!");
           setLastPaddleHitTime(Date.now()); // Reset timer
@@ -1719,7 +1731,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           prev.map((ball) => {
             if (!ball.waitingToLaunch) {
               const currentAngle = Math.atan2(ball.dy, ball.dx);
-              const divertAngle = currentAngle + (10 * Math.PI / 180);
+              const divertAngle = currentAngle + (10 * Math.PI) / 180;
               const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
               return {
                 ...ball,
@@ -1728,7 +1740,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               };
             }
             return ball;
-          })
+          }),
         );
         setLastPaddleHitTime(Date.now()); // Reset timer
       }
@@ -2105,7 +2117,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} />
       ) : (
         <>
-          
           {showHighScoreEntry ? (
             <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} />
           ) : (
@@ -2128,7 +2139,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     <div className="stat-label" style={{ color: "hsl(180, 70%, 60%)" }}>
                       SCORE
                     </div>
-                    <div className={`stat-value ${scoreBlinking ? 'animate-pulse' : ''}`}>{score.toString().padStart(6, "0")}</div>
+                    <div className={`stat-value ${scoreBlinking ? "animate-pulse" : ""}`}>
+                      {score.toString().padStart(6, "0")}
+                    </div>
                   </div>
 
                   {/* Level */}
@@ -2246,7 +2259,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   {gameState === "playing" && (
                     <div className="retro-pixel-text text-xs" style={{ color: "hsl(0, 0%, 60%)" }}>
                       Move your mouse or touch to control the paddle • Press ESC to release mouse • Click canvas to
-                      recapture • Music: N - Next | B - Previous | M - Mute/Unmute | P - Pause
+                      recapture
                     </div>
                   )}
                 </div>
