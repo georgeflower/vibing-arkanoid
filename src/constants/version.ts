@@ -1,6 +1,14 @@
-export const GAME_VERSION = "0.6.3";
+export const GAME_VERSION = "0.6.4";
 
 export const CHANGELOG = [
+  {
+    version: "0.6.4  ",
+    changes: [
+      "Implemented global volume increases for game sounds",
+      "Added mobile two-finger ball launch control with debug logging",
+      "Adaptive header now auto-hides 'Vibing Arkanoid' title when vertical space is constrained with 150ms fade and debug logging",
+    ],
+  },
   {
     version: "0.6.3  ",
     changes: [
@@ -9,7 +17,7 @@ export const CHANGELOG = [
       "Gravity added to debris particles for realistic falling motion",
       "Debris rendering enhanced with glowing squares and bright centers",
       "Explosion sound volume increased from 0.08 to 0.088",
-      "Mobile touch now launches the ball",
+      "Mobile play implemented; touch now launches the ball",
       "Changelog moved to About section only",
       "Every 3rd enemy kill now guarantees a power-up drop",
       "Game canvas now fills more of the screen on all devices",
