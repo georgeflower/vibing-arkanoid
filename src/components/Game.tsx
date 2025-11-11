@@ -480,6 +480,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (!canvasRef.current || !paddle) return;
 
       e.preventDefault();
+      
+      // Fire turrets if there are multiple touches (2+ fingers) and paddle has turrets
+      if (e.touches.length > 1 && paddle.hasTurrets && gameState === "playing") {
+        fireBullets(paddle);
+      }
+      
       // Track the first touch for paddle control
       if (e.touches.length > 0 && activeTouchRef.current === null) {
         activeTouchRef.current = e.touches[0].identifier;
@@ -525,7 +531,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
       }
     },
-    [paddle, balls, gameState, launchAngle],
+    [paddle, balls, gameState, launchAngle, fireBullets],
   );
 
   const handleTouchMove = useCallback(
