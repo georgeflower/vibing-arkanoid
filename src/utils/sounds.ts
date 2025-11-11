@@ -187,7 +187,7 @@ class SoundManager {
     oscillator.frequency.value = 800;
     oscillator.type = 'sine';
     
-    gainNode.gain.setValueAtTime(0.08, ctx.currentTime);
+    gainNode.gain.setValueAtTime(0.092, ctx.currentTime); // +15%
     gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
 
     oscillator.start(ctx.currentTime);
@@ -295,7 +295,7 @@ class SoundManager {
     filter.type = 'lowpass';
     filter.frequency.value = 400;
     
-    gainNode.gain.setValueAtTime(0.088, ctx.currentTime);
+    gainNode.gain.setValueAtTime(0.1056, ctx.currentTime); // +20%
     gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
 
     oscillator.start(ctx.currentTime);
@@ -306,21 +306,21 @@ class SoundManager {
   playMultiballSound() {
     if (!this.sfxEnabled) return;
     const audio = new Audio('/multiball.mp3');
-    audio.volume = 0.5;
+    audio.volume = 0.6; // +20%
     audio.play().catch(err => console.log('Multiball sound failed:', err));
   }
 
   playTurretsSound() {
     if (!this.sfxEnabled) return;
     const audio = new Audio('/turrets.mp3');
-    audio.volume = 0.5;
+    audio.volume = 0.6; // +20%
     audio.play().catch(err => console.log('Turrets sound failed:', err));
   }
 
   playFireballSound() {
     if (!this.sfxEnabled) return;
     const audio = new Audio('/fireball.mp3');
-    audio.volume = 0.5;
+    audio.volume = 0.6; // +20%
     audio.play().catch(err => console.log('Fireball sound failed:', err));
   }
 
@@ -370,35 +370,35 @@ class SoundManager {
   playExtraLifeSound() {
     if (!this.sfxEnabled) return;
     const audio = new Audio('/extra_life.mp3');
-    audio.volume = 0.5;
+    audio.volume = 0.6; // +20%
     audio.play().catch(err => console.log('Extra life sound failed:', err));
   }
 
   playSlowerSound() {
     if (!this.sfxEnabled) return;
     const audio = new Audio('/slower.mp3');
-    audio.volume = 0.5;
+    audio.volume = 0.6; // +20%
     audio.play().catch(err => console.log('Slower sound failed:', err));
   }
 
   playWiderSound() {
     if (!this.sfxEnabled) return;
     const audio = new Audio('/wider.mp3');
-    audio.volume = 0.5;
+    audio.volume = 0.6; // +20%
     audio.play().catch(err => console.log('Wider sound failed:', err));
   }
 
   playShrinkSound() {
     if (!this.sfxEnabled) return;
     const audio = new Audio('/smaller.mp3');
-    audio.volume = 0.5;
+    audio.volume = 0.6; // +20%
     audio.play().catch(err => console.log('Shrink sound failed:', err));
   }
 
   playShieldSound() {
     if (!this.sfxEnabled) return;
     const audio = new Audio('/shield.mp3');
-    audio.volume = 0.5;
+    audio.volume = 0.6; // +20%
     audio.play().catch(err => console.log('Shield sound failed:', err));
   }
 

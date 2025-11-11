@@ -475,6 +475,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   );
 
   const activeTouchRef = useRef<number | null>(null);
+  const secondTouchRef = useRef<number | null>(null);
 
   const handleTouchStart = useCallback(
     (e: TouchEvent) => {
@@ -482,9 +483,48 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       e.preventDefault();
 
-      // Fire turrets if there are multiple touches (2+ fingers) and paddle has turrets
-      if (e.touches.length > 1 && paddle.hasTurrets && gameState === "playing") {
+      const waitingBall = balls.find((ball) => ball.waitingToLaunch);
+
+      // If ball is waiting and there are 2 fingers, second finger controls launch angle
+      if (e.touches.length > 1 && waitingBall && gameState === "playing") {
+        // First touch controls paddle, second touch sets launch angle
+        if (activeTouchRef.current !== null && secondTouchRef.current === null) {
+          // Find the second touch (not the first one)
+          for (let i = 0; i < e.touches.length; i++) {
+            if (e.touches[i].identifier !== activeTouchRef.current) {
+              secondTouchRef.current = e.touches[i].identifier;
+              
+              // Calculate launch angle from second finger position relative to paddle
+              const rect = canvasRef.current.getBoundingClientRect();
+              const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+              const touchX = (e.touches[i].clientX - rect.left) * scaleX;
+              
+              // Calculate angle: -60 to +60 degrees based on second finger position relative to paddle center
+              const paddleCenter = paddle.x + paddle.width / 2;
+              const relativeX = touchX - paddleCenter;
+              const maxDistance = SCALED_CANVAS_WIDTH / 3; // Max distance for full angle range
+              const normalizedX = Math.max(-1, Math.min(1, relativeX / maxDistance));
+              const angle = normalizedX * 60; // -60 to +60 degrees
+              
+              setLaunchAngle(angle);
+              console.log('[Launch Debug] audioAndLaunchMode: applied - Second finger angle:', angle);
+              break;
+            }
+          }
+        }
+        
+        // Fire turrets if paddle has turrets
+        if (paddle.hasTurrets) {
+          fireBullets(paddle);
+        }
+        
+        return; // Don't launch ball yet
+      }
+
+      // Fire turrets if there are multiple touches (2+ fingers) and paddle has turrets and ball is NOT waiting
+      if (e.touches.length > 1 && paddle.hasTurrets && gameState === "playing" && !waitingBall) {
         fireBullets(paddle);
+        return;
       }
 
       // Track the first touch for paddle control
@@ -498,9 +538,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
         setPaddle((prev) => (prev ? { ...prev, x: newX } : null));
 
-        // Launch ball on mobile touch if waiting
-        const waitingBall = balls.find((ball) => ball.waitingToLaunch);
-        if (waitingBall && gameState === "playing") {
+        // Single tap on ball when waiting launches it (explicit launch)
+        if (waitingBall && gameState === "playing" && e.touches.length === 1) {
           setShowInstructions(false);
 
           // Start timer on first ball launch
@@ -514,6 +553,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             }, 1000);
           }
 
+          console.log('[Launch Debug] audioAndLaunchMode: applied - Ball launched at angle:', launchAngle);
+          
           setBalls((prev) =>
             prev.map((ball) => {
               if (ball.waitingToLaunch) {
@@ -532,7 +573,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
       }
     },
-    [paddle, balls, gameState, launchAngle, fireBullets],
+    [paddle, balls, gameState, launchAngle, fireBullets, SCALED_CANVAS_WIDTH],
   );
 
   const handleTouchMove = useCallback(
@@ -541,7 +582,30 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       e.preventDefault();
 
-      // Only track the first touch that was registered
+      const waitingBall = balls.find((ball) => ball.waitingToLaunch);
+
+      // Update launch angle if second finger is moving and ball is waiting
+      if (waitingBall && secondTouchRef.current !== null) {
+        for (let i = 0; i < e.touches.length; i++) {
+          if (e.touches[i].identifier === secondTouchRef.current) {
+            const rect = canvasRef.current.getBoundingClientRect();
+            const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+            const touchX = (e.touches[i].clientX - rect.left) * scaleX;
+            
+            // Calculate angle from second finger position relative to paddle center
+            const paddleCenter = paddle.x + paddle.width / 2;
+            const relativeX = touchX - paddleCenter;
+            const maxDistance = SCALED_CANVAS_WIDTH / 3;
+            const normalizedX = Math.max(-1, Math.min(1, relativeX / maxDistance));
+            const angle = normalizedX * 60;
+            
+            setLaunchAngle(angle);
+            break;
+          }
+        }
+      }
+
+      // Track the first touch for paddle control
       let activeTouch = null;
       for (let i = 0; i < e.touches.length; i++) {
         if (e.touches[i].identifier === activeTouchRef.current) {
@@ -565,15 +629,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       setPaddle((prev) => (prev ? { ...prev, x: newX } : null));
     },
-    [paddle],
+    [paddle, balls, SCALED_CANVAS_WIDTH],
   );
 
   const handleTouchEnd = useCallback((e: TouchEvent) => {
-    // Clear active touch when it ends
+    // Clear active touches when they end
     for (let i = 0; i < e.changedTouches.length; i++) {
       if (e.changedTouches[i].identifier === activeTouchRef.current) {
         activeTouchRef.current = null;
-        break;
+      }
+      if (e.changedTouches[i].identifier === secondTouchRef.current) {
+        secondTouchRef.current = null;
+        console.log('[Launch Debug] audioAndLaunchMode: default - Second finger released');
       }
     }
   }, []);
