@@ -74,6 +74,14 @@ class SoundManager {
     this.musicTracks.forEach(track => track?.pause());
   }
 
+  resumeBackgroundMusic() {
+    if (!this.musicEnabled) return;
+    const currentTrack = this.musicTracks[this.currentTrackIndex];
+    if (currentTrack && currentTrack.paused && currentTrack.currentTime > 0) {
+      currentTrack.play().catch(err => console.log('Resume audio failed:', err));
+    }
+  }
+
   stopBackgroundMusic() {
     this.musicTracks.forEach(track => {
       if (track) {
