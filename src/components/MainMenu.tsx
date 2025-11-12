@@ -169,6 +169,9 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">ESC</span> - Release mouse capture
                 </li>
                 <li>
+                  <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">F</span> - Toggle fullscreen
+                </li>
+                <li>
                   <span className="font-mono bg-black/30 px-1 py-0.5 rounded text-xs">P</span> - Pause game
                 </li>
                 <li>

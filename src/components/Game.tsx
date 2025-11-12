@@ -2173,6 +2173,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
+  // F key to toggle fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   // Adaptive header and frame visibility based on vertical space
   useEffect(() => {
     const checkFrameVisibility = () => {

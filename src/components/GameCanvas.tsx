@@ -996,11 +996,12 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.textBaseline = "middle";
         
         // Draw with pixel-like effect by drawing twice with slight offset
-        const instructionY1 = height * 0.80;
-        const instructionY2 = height * 0.85;
-        const instructionY3 = height * 0.90;
+        const instructionY1 = height * 0.78;
+        const instructionY2 = height * 0.83;
+        const instructionY3 = height * 0.88;
         const text1 = "USE A AND D OR LEFT AND RIGHT TO CHANGE THE ANGLE";
         const text2 = "MUSIC: N - NEXT | B - PREVIOUS | M - MUTE/UNMUTE | P - PAUSE";
+        const text3 = "F - FULLSCREEN | ESC - RELEASE MOUSE";
         
         // Shadow for depth - line 1
         ctx.fillStyle = "rgba(80, 80, 80, 0.8)";
@@ -1017,6 +1018,14 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         // Main text - line 2
         ctx.fillStyle = "rgba(180, 180, 180, 0.95)";
         ctx.fillText(text2, width / 2, instructionY2);
+        
+        // Shadow for depth - line 3
+        ctx.fillStyle = "rgba(80, 80, 80, 0.8)";
+        ctx.fillText(text3, width / 2 + 2, instructionY3 + 2);
+        
+        // Main text - line 3
+        ctx.fillStyle = "rgba(180, 180, 180, 0.95)";
+        ctx.fillText(text3, width / 2, instructionY3);
       }
     
       // Restore context after shake
