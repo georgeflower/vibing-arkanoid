@@ -98,9 +98,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
-  const [isReflowing, setIsReflowing] = useState(false);
-  const [isMobileLandscape, setIsMobileLandscape] = useState(false);
-  const [orientationReflowMode, setOrientationReflowMode] = useState<'idle' | 'reflowing' | 'applied'>('idle');
 
   const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
   const [enemiesKilled, setEnemiesKilled] = useState(0);
@@ -118,8 +115,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const launchAngleIntervalRef = useRef<NodeJS.Timeout>();
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const timerStartedRef = useRef(false);
-  const reflowTimeoutRef = useRef<NodeJS.Timeout>();
-  const wasPlayingRef = useRef(false);
 
   const { highScores, isHighScore, addHighScore } = useHighScores();
 
@@ -2210,76 +2205,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     return () => window.removeEventListener("resize", checkHeaderVisibility);
   }, [headerVisible, SCALED_CANVAS_HEIGHT]);
 
-  // Orientation reflow handler
-  useEffect(() => {
-    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    const handleOrientationChange = () => {
-      if (!isMobileDevice) return;
-      
-      const isLandscape = window.matchMedia('(orientation: landscape)').matches;
-      const newIsMobileLandscape = isMobileDevice && isFullscreen && isLandscape;
-      
-      console.log(`[Orientation Debug] orientationReflowMode: reflowing`);
-      console.log(`[Orientation Debug] mobileLandscapeFrameMode: ${newIsMobileLandscape ? 'framesHidden' : 'framesVisible'}`);
-      
-      // Store playing state
-      wasPlayingRef.current = gameState === 'playing';
-      
-      // Pause immediately
-      if (wasPlayingRef.current) {
-        setGameState('paused');
-        soundManager.pauseBackgroundMusic();
-      }
-      
-      setIsReflowing(true);
-      setOrientationReflowMode('reflowing');
-      
-      // Clear any existing timeout
-      if (reflowTimeoutRef.current) {
-        clearTimeout(reflowTimeoutRef.current);
-      }
-      
-      // Reflow with adaptive timing (200-600ms)
-      reflowTimeoutRef.current = setTimeout(() => {
-        setIsMobileLandscape(newIsMobileLandscape);
-        setIsReflowing(false);
-        setOrientationReflowMode('applied');
-        
-        // Resume if was playing
-        if (wasPlayingRef.current) {
-          setGameState('playing');
-          soundManager.resumeBackgroundMusic();
-        }
-        
-        console.log(`[Orientation Debug] orientationReflowMode: applied`);
-      }, 300);
-    };
-    
-    // Debounced resize handler
-    let resizeTimeout: NodeJS.Timeout;
-    const handleResize = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(handleOrientationChange, 100);
-    };
-    
-    // Initial check
-    handleOrientationChange();
-    
-    // Listen to orientation and resize events
-    window.addEventListener('orientationchange', handleOrientationChange);
-    window.addEventListener('resize', handleResize);
-    
-    return () => {
-      window.removeEventListener('orientationchange', handleOrientationChange);
-      window.removeEventListener('resize', handleResize);
-      if (reflowTimeoutRef.current) {
-        clearTimeout(reflowTimeoutRef.current);
-      }
-      clearTimeout(resizeTimeout);
-    };
-  }, [isFullscreen, gameState]);
-
   return (
     <div
       ref={fullscreenContainerRef}
@@ -2296,52 +2221,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           {showHighScoreEntry ? (
             <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} />
           ) : (
-            <div className="metal-frame relative">
-              {/* Reflow Overlay */}
-              {isReflowing && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 transition-opacity duration-100">
-                  <div className="retro-pixel-text text-lg" style={{ color: 'hsl(0, 0%, 85%)' }}>
-                    Adjusting display…
-                  </div>
-                </div>
-              )}
-
-              {/* Mobile Landscape HUD - Inside Playable Area */}
-              {isMobileLandscape && (
-                <div 
-                  className="absolute left-2 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-1.5 pointer-events-none transition-opacity duration-100"
-                  style={{ opacity: 0.5 }}
-                >
-                  {/* Timer */}
-                  <div className="retro-pixel-text text-[10px]" style={{ color: 'hsl(0, 0%, 85%)', textShadow: '1px 1px 2px rgba(0,0,0,0.7)' }}>
-                    TIME: {timer}s
-                  </div>
-                  {/* Score */}
-                  <div className="retro-pixel-text text-[10px]" style={{ color: 'hsl(0, 0%, 85%)', textShadow: '1px 1px 2px rgba(0,0,0,0.7)' }}>
-                    SCORE: {score.toString().padStart(6, "0")}
-                  </div>
-                  {/* Level */}
-                  <div className="retro-pixel-text text-[10px]" style={{ color: 'hsl(0, 0%, 85%)', textShadow: '1px 1px 2px rgba(0,0,0,0.7)' }}>
-                    LEVEL: {level.toString().padStart(2, "0")}
-                  </div>
-                  {/* Lives */}
-                  <div className="retro-pixel-text text-[10px]" style={{ color: 'hsl(0, 0%, 85%)', textShadow: '1px 1px 2px rgba(0,0,0,0.7)' }}>
-                    LIVES: {lives}
-                  </div>
-                  {/* Speed */}
-                  <div className="retro-pixel-text text-[10px]" style={{ color: 'hsl(0, 0%, 85%)', textShadow: '1px 1px 2px rgba(0,0,0,0.7)' }}>
-                    SPEED: {Math.round(speedMultiplier * 100)}%
-                  </div>
-                </div>
-              )}
-
-              {/* Title Bar - Adaptive Visibility (Hidden in Mobile Landscape) */}
+            <div className="metal-frame">
+              {/* Title Bar - Adaptive Visibility */}
               <div 
                 className={`metal-title-bar transition-all duration-150 ${
-                  (headerVisible && !isMobileLandscape) ? 'opacity-100 max-h-[60px]' : 'opacity-0 max-h-0 overflow-hidden'
+                  headerVisible ? 'opacity-100 max-h-[60px]' : 'opacity-0 max-h-0 overflow-hidden'
                 }`}
                 style={{
-                  transform: (headerVisible && !isMobileLandscape) ? 'translateY(0)' : 'translateY(-10px)',
+                  transform: headerVisible ? 'translateY(0)' : 'translateY(-10px)',
                 }}
               >
                 <h1
@@ -2352,8 +2239,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 </h1>
               </div>
 
-              {/* Stats Bar (Hidden in Mobile Landscape) */}
-              <div className={`metal-stats-bar transition-opacity duration-100 ${isMobileLandscape ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
+              {/* Stats Bar */}
+              <div className="metal-stats-bar">
                 <div className="stats-container">
                   {/* Score */}
                   <div className="stat-box">
@@ -2412,17 +2299,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 </div>
               </div>
 
-              {/* Main Content with Side Panels (Frames Hidden in Mobile Landscape) */}
+              {/* Main Content with Side Panels */}
               <div className="metal-main-content">
                 {/* Left Panel */}
-                <div className={`metal-side-panel metal-side-panel-left transition-opacity duration-100 ${isMobileLandscape ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
+                <div className="metal-side-panel metal-side-panel-left">
                   <div className="panel-decoration"></div>
                   <div className="panel-decoration"></div>
                   <div className="panel-decoration"></div>
                 </div>
 
                 {/* Game Canvas */}
-                <div className={`metal-game-area ${isMobileLandscape ? 'flex-1' : ''}`}>
+                <div className="metal-game-area">
                   <div className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}>
                     <GameCanvas
                       ref={canvasRef}
@@ -2449,15 +2336,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 </div>
 
                 {/* Right Panel */}
-                <div className={`metal-side-panel metal-side-panel-right transition-opacity duration-100 ${isMobileLandscape ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
+                <div className="metal-side-panel metal-side-panel-right">
                   <div className="panel-decoration"></div>
                   <div className="panel-decoration"></div>
                   <div className="panel-decoration"></div>
                 </div>
               </div>
 
-              {/* Bottom Controls (Hidden in Mobile Landscape) */}
-              <div className={`metal-bottom-bar transition-opacity duration-100 ${isMobileLandscape ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
+              {/* Bottom Controls */}
+              <div className="metal-bottom-bar">
                 <div className="flex gap-4 justify-center items-center">
                   {gameState === "ready" && (
                     <button
