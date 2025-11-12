@@ -98,6 +98,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
+  const [framesVisible, setFramesVisible] = useState(true);
 
   const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
   const [enemiesKilled, setEnemiesKilled] = useState(0);
@@ -2172,38 +2173,39 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
-  // Adaptive header visibility based on vertical space
+  // Adaptive header and frame visibility based on vertical space
   useEffect(() => {
-    const checkHeaderVisibility = () => {
+    const checkFrameVisibility = () => {
       if (!fullscreenContainerRef.current) return;
 
       const containerHeight = fullscreenContainerRef.current.clientHeight;
-      const titleBarHeight = 60; // Approximate height of title bar
-      const statsBarHeight = 70; // Approximate height of stats bar
-      const bottomBarHeight = 60; // Approximate height of bottom bar
-      const sideFrameHeight = 40; // Approximate height of side frame decorations
+      const titleBarHeight = 60; // Title bar
+      const statsBarHeight = 80; // Stats bar
+      const bottomBarHeight = 60; // Bottom bar
+      const sideFrameHeight = 40; // Side frame padding
       
       // Calculate required space for game area + frames
       const requiredHeight = SCALED_CANVAS_HEIGHT + titleBarHeight + statsBarHeight + bottomBarHeight + sideFrameHeight;
       
-      // Hide header if vertical space is constrained
-      const shouldShowHeader = containerHeight >= requiredHeight;
+      // Hide frames if vertical space is constrained
+      const shouldShowFrames = containerHeight >= requiredHeight;
       
-      if (shouldShowHeader !== headerVisible) {
-        setHeaderVisible(shouldShowHeader);
+      if (shouldShowFrames !== framesVisible) {
+        setFramesVisible(shouldShowFrames);
+        setHeaderVisible(shouldShowFrames); // Keep header in sync
         
         // Debug flag
-        const layoutMode = shouldShowHeader ? "headerVisible" : "headerHidden";
+        const layoutMode = shouldShowFrames ? "headerVisible" : "headerHidden";
         console.log(`[Layout Debug] layoutMode: ${layoutMode}`);
       }
     };
 
     // Check on mount and resize
-    checkHeaderVisibility();
-    window.addEventListener("resize", checkHeaderVisibility);
+    checkFrameVisibility();
+    window.addEventListener("resize", checkFrameVisibility);
     
-    return () => window.removeEventListener("resize", checkHeaderVisibility);
-  }, [headerVisible, SCALED_CANVAS_HEIGHT]);
+    return () => window.removeEventListener("resize", checkFrameVisibility);
+  }, [framesVisible, SCALED_CANVAS_HEIGHT]);
 
   return (
     <div
@@ -2239,8 +2241,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 </h1>
               </div>
 
-              {/* Stats Bar */}
-              <div className="metal-stats-bar">
+              {/* Stats Bar - Adaptive Visibility */}
+              <div 
+                className={`metal-stats-bar transition-all duration-150 ${
+                  framesVisible ? 'opacity-100 max-h-[100px]' : 'opacity-0 max-h-0 overflow-hidden'
+                }`}
+                style={{
+                  transform: framesVisible ? 'translateY(0)' : 'translateY(-10px)',
+                }}
+              >
                 <div className="stats-container">
                   {/* Score */}
                   <div className="stat-box">
@@ -2343,8 +2352,37 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 </div>
               </div>
 
-              {/* Bottom Controls */}
-              <div className="metal-bottom-bar">
+              {/* Compact HUD Overlay - Shown when frames are hidden */}
+              {!framesVisible && (
+                <div 
+                  className="fixed top-4 left-4 z-50 flex flex-col gap-2 pointer-events-none"
+                  style={{
+                    textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                  }}
+                >
+                  <div className="flex gap-4 items-center bg-black/30 backdrop-blur-sm px-3 py-2 rounded">
+                    <div className="retro-pixel-text text-xs" style={{ color: "hsl(180, 70%, 60%)" }}>
+                      SCORE: <span style={{ color: "hsl(0, 0%, 95%)" }}>{score.toString().padStart(6, "0")}</span>
+                    </div>
+                    <div className="retro-pixel-text text-xs" style={{ color: "hsl(30, 75%, 55%)" }}>
+                      LV: <span style={{ color: "hsl(0, 0%, 95%)" }}>{level.toString().padStart(2, "0")}</span>
+                    </div>
+                    <div className="retro-pixel-text text-xs" style={{ color: "hsl(0, 70%, 55%)" }}>
+                      LIVES: <span style={{ color: "hsl(0, 0%, 95%)" }}>{lives}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom Controls - Adaptive Visibility */}
+              <div 
+                className={`metal-bottom-bar transition-all duration-150 ${
+                  framesVisible ? 'opacity-100 max-h-[80px]' : 'opacity-0 max-h-0 overflow-hidden'
+                }`}
+                style={{
+                  transform: framesVisible ? 'translateY(0)' : 'translateY(10px)',
+                }}
+              >
                 <div className="flex gap-4 justify-center items-center">
                   {gameState === "ready" && (
                     <button
