@@ -484,6 +484,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       e.preventDefault();
 
+      // Single-tap to start game when in "ready" state (mobile start)
+      if (gameState === "ready" && e.touches.length === 1 && bricks.length > 0) {
+        console.log('[Ready Tap Debug] readyTapStart: enabled - Single tap detected, starting game');
+        
+        const isLevelComplete = bricks.every((brick) => !brick.visible) && bricks.length > 0;
+
+        if (isLevelComplete) {
+          nextLevel();
+        } else {
+          // Start game - start music only if not already playing
+          setGameState("playing");
+          if (!soundManager.isMusicPlaying()) {
+            soundManager.playBackgroundMusic();
+          }
+        }
+        return;
+      }
+
       const waitingBall = balls.find((ball) => ball.waitingToLaunch);
 
       // If ball is waiting and there are 2 fingers, second finger controls launch angle
@@ -574,7 +592,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
       }
     },
-    [paddle, balls, gameState, launchAngle, fireBullets, SCALED_CANVAS_WIDTH],
+    [paddle, balls, gameState, launchAngle, fireBullets, SCALED_CANVAS_WIDTH, bricks, nextLevel],
   );
 
   const handleTouchMove = useCallback(
