@@ -122,14 +122,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
         style={{ backgroundImage: `url(${startScreenImg})` }}
         onClick={() => {
           soundManager.playMenuClick();
-          soundManager.initializeRandomTrack();
-          soundManager.playBackgroundMusic();
           setShowPressToStart(false);
         }}
         onKeyDown={() => {
           soundManager.playMenuClick();
-          soundManager.initializeRandomTrack();
-          soundManager.playBackgroundMusic();
           setShowPressToStart(false);
         }}
         tabIndex={0}
