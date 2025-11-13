@@ -47,6 +47,7 @@ import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
 import { soundManager } from "@/utils/sounds";
+import { musicManager } from "@/utils/musicManager";
 
 interface GameProps {
   settings: GameSettings;
@@ -495,8 +496,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         } else {
           // Start game - start music only if not already playing
           setGameState("playing");
-          if (!soundManager.isMusicPlaying()) {
-            soundManager.playBackgroundMusic();
+          if (!musicManager.isMusicPlaying()) {
+            musicManager.play();
           }
         }
         return;
@@ -679,9 +680,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       } else {
         // Start game - start music only if not already playing
         setGameState("playing");
-        if (!soundManager.isMusicPlaying()) {
-          soundManager.initializeRandomTrack();
-          soundManager.playBackgroundMusic(level);
+        if (!musicManager.isMusicPlaying()) {
+          musicManager.play();
         }
         toast.success("Click again to launch!");
       }
@@ -1043,7 +1043,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   setBeatLevel50Completed(true);
                   setGameState("won");
                   setShowEndScreen(true);
-                  soundManager.stopBackgroundMusic();
+                  musicManager.stop();
                   toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
                 } else {
                   setGameState("ready"); // Wait for click to start next level
@@ -1063,7 +1063,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   setBeatLevel50Completed(true);
                   setGameState("won");
                   setShowEndScreen(true);
-                  soundManager.stopBackgroundMusic();
+                  musicManager.stop();
                   toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
                 } else {
                   nextLevel(); // Automatically advance since no bricks to destroy
@@ -1086,7 +1086,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           if (newLives <= 0) {
             setGameState("gameOver");
-            soundManager.stopBackgroundMusic();
+            musicManager.stop();
 
             // Check if it's a high score
             if (isHighScore(score)) {
@@ -1629,7 +1629,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             if (newLives <= 0) {
               setGameState("gameOver");
-              soundManager.stopBackgroundMusic();
+              musicManager.stop();
               toast.error("Game Over!");
 
               if (isHighScore(score)) {
@@ -1716,7 +1716,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             if (newLives <= 0) {
               setGameState("gameOver");
-              soundManager.stopBackgroundMusic();
+              musicManager.stop();
               toast.error("Game Over!");
 
               if (isHighScore(score)) {
@@ -2117,8 +2117,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       } else {
         // Continue current level - start music only if not already playing
         setGameState("playing");
-        if (!soundManager.isMusicPlaying()) {
-          soundManager.playBackgroundMusic(level);
+        if (!musicManager.isMusicPlaying()) {
+          musicManager.play();
         }
         toast.success("Continue!");
       }
@@ -2129,7 +2129,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
-    soundManager.stopBackgroundMusic();
+    musicManager.stop();
     soundManager.stopHighScoreMusic();
     setShowHighScoreEntry(false);
     setShowHighScoreDisplay(false);
