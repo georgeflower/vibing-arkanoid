@@ -47,7 +47,7 @@ import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
 import { soundManager } from "@/utils/sounds";
-import { musicManager } from "@/utils/musicManager";
+import { AudioVisualizer } from "./AudioVisualizer";
 
 interface GameProps {
   settings: GameSettings;
@@ -488,6 +488,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Single-tap to start game when in "ready" state (mobile start)
       if (gameState === "ready" && e.touches.length === 1 && bricks.length > 0) {
         console.log('[Ready Tap Debug] readyTapStart: enabled - Single tap detected, starting game');
+        
+        // Enter fullscreen on mobile
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(err => {
+            console.log("Fullscreen request failed:", err);
+          });
+        }
         
         const isLevelComplete = bricks.every((brick) => !brick.visible) && bricks.length > 0;
 

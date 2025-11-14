@@ -1,29 +1,95 @@
-// Simple sound effects using Web Audio API
+// Sound Manager with integrated music playback (tracker + MP3)
+export type MusicSource = "tracker" | "mp3";
+export type RepeatMode = "off" | "repeatTrack" | "repeatList";
+export type MusicState = "playing" | "paused" | "stopped";
+export type VolumeGroup = "music" | "powerUps" | "bricks" | "explosions";
+
+interface MusicAsset {
+  key: string;
+  title: string;
+  path: string;
+  type: "xm" | "mp3";
+}
+
+interface VolumeGroupGains {
+  music: number;
+  powerUps: number;
+  bricks: number;
+  explosions: number;
+}
+
 class SoundManager {
   private audioContext: AudioContext | null = null;
-  private musicTracks: HTMLAudioElement[] = [];
-  private currentTrackIndex = 0;
+  private xmPlayer: any = null;
+  private currentMp3Audio: HTMLAudioElement | null = null;
   private highScoreMusic: HTMLAudioElement | null = null;
+  private musicSource: MusicSource = "mp3";
+  private musicState: MusicState = "stopped";
+  private repeatMode: RepeatMode = "repeatList";
+  private currentAssetIndex = 0;
   private musicEnabled = true;
   private sfxEnabled = true;
-  private trackUrls = [
-    '/Pixel_Frenzy-2.mp3',
-    '/sound_2.mp3',
-    '/level_3.mp3',
-    '/level_4.mp3',
-    '/level_5.mp3',
-    '/level_7.mp3',
-    '/Turrican.mp3',
-    '/Turrican_2.mp3',
-    '/Flubber_Happy_Moderate_Amiga.mp3',
-    '/leve_boss_chip_atari.mp3',
-    '/level_cave_c64.mp3',
-    '/level_cave_2_c64.mp3',
-    '/level_cave_chip_atari.mp3',
-    '/level_cave_chip_atari_2.mp3',
-    '/level_dessert_chip_atari_2.mp3',
-    '/level_dessert_chip_atari_2_2.mp3'
+  private volumeGroups: VolumeGroupGains = {
+    music: 0.3,
+    powerUps: 0.36,
+    bricks: 0.0805,
+    explosions: 0.088
+  };
+  private analyser: AnalyserNode | null = null;
+  private audioSource: MediaElementAudioSourceNode | null = null;
+
+  private trackerAssets: MusicAsset[] = [
+    { key: "omar", title: "Omar", path: "/music/OMAR.XM", type: "xm" },
+    { key: "hero", title: "Hero", path: "/music/HERO.XM", type: "xm" },
+    { key: "qumcam", title: "Qum Cam", path: "/music/qum-cam.xm", type: "xm" },
+    { key: "sparkman", title: "Sparkman", path: "/music/SPARKMAN.XM", type: "xm" },
+    { key: "orientp", title: "Orient Palace", path: "/music/orientp.xm", type: "xm" }
   ];
+
+  private mp3Assets: MusicAsset[] = [
+    { key: "pixel1", title: "Pixel Frenzy", path: "/Pixel_Frenzy-2.mp3", type: "mp3" },
+    { key: "sound2", title: "Sound 2", path: "/sound_2.mp3", type: "mp3" },
+    { key: "level3", title: "Level 3", path: "/level_3.mp3", type: "mp3" },
+    { key: "level4", title: "Level 4", path: "/level_4.mp3", type: "mp3" },
+    { key: "level5", title: "Level 5", path: "/level_5.mp3", type: "mp3" },
+    { key: "level7", title: "Level 7", path: "/level_7.mp3", type: "mp3" },
+    { key: "turrican", title: "Turrican", path: "/Turrican.mp3", type: "mp3" },
+    { key: "turrican2", title: "Turrican 2", path: "/Turrican_2.mp3", type: "mp3" },
+    { key: "flubber", title: "Flubber Happy", path: "/Flubber_Happy_Moderate_Amiga.mp3", type: "mp3" }
+  ];
+
+  constructor() {
+    this.loadPreferences();
+    this.initXMPlayer();
+  }
+
+  private loadPreferences() {
+    const saved = localStorage.getItem("soundManagerPrefs");
+    if (saved) {
+      try {
+        const prefs = JSON.parse(saved);
+        this.musicSource = prefs.musicSource || "mp3";
+        this.repeatMode = prefs.repeatMode || "repeatList";
+        this.musicEnabled = prefs.musicEnabled !== false;
+        this.sfxEnabled = prefs.sfxEnabled !== false;
+        if (prefs.volumeGroups) {
+          this.volumeGroups = { ...this.volumeGroups, ...prefs.volumeGroups };
+        }
+      } catch (e) {
+        console.warn("Failed to load sound preferences:", e);
+      }
+    }
+  }
+
+  private savePreferences() {
+    localStorage.setItem("soundManagerPrefs", JSON.stringify({
+      musicSource: this.musicSource,
+      repeatMode: this.repeatMode,
+      musicEnabled: this.musicEnabled,
+      sfxEnabled: this.sfxEnabled,
+      volumeGroups: this.volumeGroups
+    }));
+  }
 
   private getAudioContext() {
     if (!this.audioContext) {
@@ -32,61 +98,242 @@ class SoundManager {
     return this.audioContext;
   }
 
-  playBackgroundMusic(level: number = 1) {
-    if (!this.musicEnabled) return;
+  private async initXMPlayer() {
+    if (typeof window !== "undefined" && (window as any).XMPlayer) {
+      this.xmPlayer = (window as any).XMPlayer;
+      console.log("[SoundManager] XMPlayer initialized");
+    }
+  }
 
-    // Stop all currently playing tracks first
-    this.musicTracks.forEach((track, index) => {
-      if (track && !track.paused) {
-        track.pause();
-        track.currentTime = 0;
-      }
-    });
-
-    // Initialize track if not already loaded
-    if (!this.musicTracks[this.currentTrackIndex]) {
-      const audio = new Audio(this.trackUrls[this.currentTrackIndex]);
-      audio.volume = 0.3;
-      audio.addEventListener('ended', () => this.handleTrackEnd());
-      this.musicTracks[this.currentTrackIndex] = audio;
+  // Music playback API
+  async play(key?: string) {
+    if (!this.musicEnabled) {
+      console.log("[SoundManager] Music disabled, not playing");
+      return;
     }
 
-    // Play current track
-    this.musicTracks[this.currentTrackIndex]?.play().catch(err => console.log('Audio play failed:', err));
+    const playlist = this.getCurrentPlaylist();
+    
+    if (key) {
+      const index = playlist.findIndex(asset => asset.key === key);
+      if (index !== -1) {
+        this.currentAssetIndex = index;
+      }
+    }
+
+    const asset = playlist[this.currentAssetIndex];
+    if (!asset) {
+      console.warn("[SoundManager] No asset to play");
+      return;
+    }
+
+    console.log(`[SoundManager Debug] musicEngine: "${this.musicSource === "tracker" ? "xmtracker" : "mp3"}", musicState: "playing", musicSource: "${this.musicSource}"`);
+
+    await this.stopCurrent();
+
+    if (this.musicSource === "tracker" && asset.type === "xm") {
+      await this.playTracker(asset);
+    } else if (this.musicSource === "mp3" && asset.type === "mp3") {
+      await this.playMp3(asset);
+    }
+
+    this.musicState = "playing";
+  }
+
+  private async playTracker(asset: MusicAsset) {
+    if (!this.xmPlayer) {
+      console.warn("[SoundManager] XMPlayer not available, falling back to MP3");
+      if (this.mp3Assets.length > 0) {
+        this.musicSource = "mp3";
+        this.savePreferences();
+        await this.playMp3(this.mp3Assets[0]);
+      }
+      return;
+    }
+
+    try {
+      const response = await fetch(asset.path);
+      const arrayBuffer = await response.arrayBuffer();
+      
+      const ctx = this.getAudioContext();
+      await ctx.resume();
+
+      this.xmPlayer.load(arrayBuffer);
+      this.xmPlayer.play(ctx.sampleRate, (left: Float32Array, right: Float32Array) => {
+        const gain = this.volumeGroups.music;
+        for (let i = 0; i < left.length; i++) {
+          left[i] *= gain;
+          right[i] *= gain;
+        }
+      });
+
+      console.log(`[SoundManager] Playing tracker: ${asset.title}`);
+    } catch (error) {
+      console.error("[SoundManager] Error playing tracker:", error);
+    }
+  }
+
+  private async playMp3(asset: MusicAsset) {
+    try {
+      this.currentMp3Audio = new Audio(asset.path);
+      this.currentMp3Audio.volume = this.volumeGroups.music;
+      this.currentMp3Audio.addEventListener("ended", () => this.handleTrackEnd());
+      
+      const ctx = this.getAudioContext();
+      await ctx.resume();
+
+      // Setup analyser for visualization
+      if (!this.audioSource) {
+        this.audioSource = ctx.createMediaElementSource(this.currentMp3Audio);
+        this.analyser = ctx.createAnalyser();
+        this.analyser.fftSize = 2048;
+        this.audioSource.connect(this.analyser);
+        this.analyser.connect(ctx.destination);
+      }
+      
+      await this.currentMp3Audio.play();
+      console.log(`[SoundManager] Playing MP3: ${asset.title}`);
+    } catch (error) {
+      console.error("[SoundManager] Error playing MP3:", error);
+    }
+  }
+
+  pause() {
+    if (this.musicState !== "playing") return;
+
+    if (this.xmPlayer && this.musicSource === "tracker") {
+      this.xmPlayer.pause();
+    } else if (this.currentMp3Audio) {
+      this.currentMp3Audio.pause();
+    }
+
+    this.musicState = "paused";
+    console.log("[SoundManager Debug] musicState: \"paused\"");
+  }
+
+  async resume() {
+    if (this.musicState !== "paused") return;
+
+    if (this.xmPlayer && this.musicSource === "tracker") {
+      const ctx = this.getAudioContext();
+      await ctx.resume();
+      this.xmPlayer.play(ctx.sampleRate);
+    } else if (this.currentMp3Audio) {
+      await this.currentMp3Audio.play();
+    }
+
+    this.musicState = "playing";
+    console.log("[SoundManager Debug] musicState: \"playing\"");
+  }
+
+  stop() {
+    this.stopCurrent();
+    this.musicState = "stopped";
+    console.log("[SoundManager Debug] musicState: \"stopped\"");
+  }
+
+  private async stopCurrent() {
+    if (this.xmPlayer) {
+      this.xmPlayer.stop();
+    }
+    if (this.currentMp3Audio) {
+      this.currentMp3Audio.pause();
+      this.currentMp3Audio.currentTime = 0;
+      this.currentMp3Audio = null;
+    }
+  }
+
+  next() {
+    const playlist = this.getCurrentPlaylist();
+    this.currentAssetIndex = (this.currentAssetIndex + 1) % playlist.length;
+    console.log(`[SoundManager Debug] musicRepeat: "${this.repeatMode}" - Next track: ${playlist[this.currentAssetIndex].title}`);
+    if (this.musicState === "playing") {
+      this.play();
+    }
+  }
+
+  previous() {
+    const playlist = this.getCurrentPlaylist();
+    this.currentAssetIndex = (this.currentAssetIndex - 1 + playlist.length) % playlist.length;
+    console.log(`[SoundManager Debug] musicRepeat: "${this.repeatMode}" - Previous track: ${playlist[this.currentAssetIndex].title}`);
+    if (this.musicState === "playing") {
+      this.play();
+    }
   }
 
   private handleTrackEnd() {
-    // Move to next track in sequence
-    this.currentTrackIndex = (this.currentTrackIndex + 1) % this.trackUrls.length;
+    console.log(`[SoundManager] Track ended, repeatMode: ${this.repeatMode}`);
     
-    // Play next song immediately if music is enabled
-    if (this.musicEnabled) {
-      this.playBackgroundMusic();
+    if (this.repeatMode === "repeatTrack") {
+      this.play();
+    } else if (this.repeatMode === "repeatList") {
+      this.next();
+    } else {
+      this.stop();
     }
   }
 
   initializeRandomTrack() {
-    // Only used at game start to pick random first track
-    this.currentTrackIndex = Math.floor(Math.random() * this.trackUrls.length);
+    const playlist = this.getCurrentPlaylist();
+    this.currentAssetIndex = Math.floor(Math.random() * playlist.length);
   }
 
-  pauseBackgroundMusic() {
-    this.musicTracks.forEach(track => track?.pause());
+  // Volume group management
+  setGroupGain(group: VolumeGroup, gain: number) {
+    this.volumeGroups[group] = Math.max(0, Math.min(1, gain));
+    
+    if (group === "music" && this.currentMp3Audio) {
+      this.currentMp3Audio.volume = this.volumeGroups.music;
+    }
+    
+    this.savePreferences();
   }
 
-  stopBackgroundMusic() {
-    this.musicTracks.forEach(track => {
-      if (track) {
-        track.pause();
-        track.currentTime = 0;
+  adjustGroupGain(group: VolumeGroup, percentChange: number) {
+    const currentGain = this.volumeGroups[group];
+    const newGain = currentGain * (1 + percentChange / 100);
+    this.setGroupGain(group, newGain);
+  }
+
+  getGroupGain(group: VolumeGroup): number {
+    return this.volumeGroups[group];
+  }
+
+  // Getters and setters
+  getMusicSource(): MusicSource {
+    return this.musicSource;
+  }
+
+  setMusicSource(source: MusicSource) {
+    if (this.musicSource !== source) {
+      this.musicSource = source;
+      this.currentAssetIndex = 0;
+      this.savePreferences();
+      
+      if (this.musicState === "playing") {
+        this.play();
       }
-    });
+      
+      console.log(`[SoundManager Debug] musicSource: "${source}"`);
+    }
+  }
+
+  getRepeatMode(): RepeatMode {
+    return this.repeatMode;
+  }
+
+  setRepeatMode(mode: RepeatMode) {
+    this.repeatMode = mode;
+    this.savePreferences();
+    console.log(`[SoundManager Debug] musicRepeat: "${mode}"`);
   }
 
   setMusicEnabled(enabled: boolean) {
     this.musicEnabled = enabled;
-    if (!enabled) {
-      this.stopBackgroundMusic();
+    this.savePreferences();
+    
+    if (!enabled && this.musicState === "playing") {
+      this.stop();
     }
   }
 
@@ -96,57 +343,56 @@ class SoundManager {
 
   setSfxEnabled(enabled: boolean) {
     this.sfxEnabled = enabled;
+    this.savePreferences();
   }
 
   getSfxEnabled(): boolean {
     return this.sfxEnabled;
   }
 
-  setCurrentTrack(trackIndex: number) {
-    const wasPlaying = this.musicTracks[this.currentTrackIndex] && 
-                       !this.musicTracks[this.currentTrackIndex].paused;
-    
-    this.stopBackgroundMusic();
-    this.currentTrackIndex = trackIndex;
-    
-    if (wasPlaying && this.musicEnabled) {
-      this.playBackgroundMusic();
-    }
+  getMusicState(): MusicState {
+    return this.musicState;
+  }
+
+  getCurrentPlaylist(): MusicAsset[] {
+    return this.musicSource === "tracker" ? this.trackerAssets : this.mp3Assets;
   }
 
   getCurrentTrackIndex(): number {
-    return this.currentTrackIndex;
+    return this.currentAssetIndex;
   }
 
   getTrackNames(): string[] {
-    return [
-      'Pixel Frenzy',
-      'Sound 2',
-      'Level 3',
-      'Level 4',
-      'Level 5',
-      'Level 7',
-      'Turrican',
-      'Turrican 2',
-      'Flubber Happy',
-      'Boss Chip Atari',
-      'Cave C64',
-      'Cave 2 C64',
-      'Cave Chip Atari',
-      'Cave Chip Atari 2',
-      'Desert Chip Atari 2',
-      'Desert Chip Atari 2-2'
-    ];
+    return this.getCurrentPlaylist().map(asset => asset.title);
   }
 
+  isMusicPlaying(): boolean {
+    return this.musicState === "playing";
+  }
+
+  getCurrentTrackTitle(): string {
+    const playlist = this.getCurrentPlaylist();
+    return playlist[this.currentAssetIndex]?.title || "No Track";
+  }
+
+  getAnalyser(): AnalyserNode | null {
+    return this.analyser;
+  }
+
+  // High score music
   playHighScoreMusic() {
-    this.stopBackgroundMusic(); // Stop game music
+    this.stopCurrent();
+    
     if (!this.highScoreMusic) {
       this.highScoreMusic = new Audio('/High_score.mp3');
+      this.highScoreMusic.volume = 0.5;
       this.highScoreMusic.loop = true;
-      this.highScoreMusic.volume = 0.4;
     }
-    this.highScoreMusic.play().catch(err => console.log('High score audio play failed:', err));
+    
+    if (this.highScoreMusic) {
+      this.highScoreMusic.currentTime = 0;
+      this.highScoreMusic.play();
+    }
   }
 
   stopHighScoreMusic() {
@@ -156,406 +402,335 @@ class SoundManager {
     }
   }
 
+  // Sound effects
   playBounce() {
     if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    oscillator.frequency.value = 200;
-    oscillator.type = 'sine';
+    const context = this.getAudioContext();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
     
-    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.1);
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    
+    oscillator.frequency.value = 400;
+    gainNode.gain.value = 0.1;
+    
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.05);
   }
 
   playBrickHit() {
     if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
+    const context = this.getAudioContext();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
     
-    gainNode.gain.setValueAtTime(0.092, ctx.currentTime); // +15%
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
-
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.05);
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    
+    oscillator.frequency.value = 800;
+    gainNode.gain.setValueAtTime(this.volumeGroups.bricks, context.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.15);
+    
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.15);
   }
 
   playPowerUp() {
     if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    oscillator.frequency.setValueAtTime(300, ctx.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.2);
-    oscillator.type = 'sine';
+    const context = this.getAudioContext();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
     
-    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.2);
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    
+    oscillator.type = 'square';
+    oscillator.frequency.setValueAtTime(523, context.currentTime);
+    oscillator.frequency.setValueAtTime(659, context.currentTime + 0.1);
+    oscillator.frequency.setValueAtTime(784, context.currentTime + 0.2);
+    
+    gainNode.gain.setValueAtTime(this.volumeGroups.powerUps, context.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
+    
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.3);
   }
 
   playShoot() {
     if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    oscillator.frequency.setValueAtTime(800, ctx.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.1);
-    oscillator.type = 'sawtooth';
+    const context = this.getAudioContext();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
     
-    gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.1);
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    
+    oscillator.frequency.setValueAtTime(440, context.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(110, context.currentTime + 0.1);
+    gainNode.gain.setValueAtTime(0.2, context.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1);
+    
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.1);
   }
 
   playLoseLife() {
     if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    oscillator.frequency.setValueAtTime(400, ctx.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.5);
-    oscillator.type = 'sawtooth';
+    const context = this.getAudioContext();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
     
-    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.5);
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    
+    oscillator.type = 'sawtooth';
+    oscillator.frequency.setValueAtTime(440, context.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(55, context.currentTime + 0.5);
+    gainNode.gain.setValueAtTime(0.3, context.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
+    
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.5);
   }
 
   playWin() {
     if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    [0, 0.1, 0.2, 0.3].forEach((time, i) => {
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      const freq = [262, 330, 392, 523][i]; // C, E, G, C
-      oscillator.frequency.value = freq;
-      oscillator.type = 'sine';
+    const context = this.getAudioContext();
+    const notes = [523, 659, 784, 1047];
+    
+    notes.forEach((freq, i) => {
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
       
-      gainNode.gain.setValueAtTime(0.2, ctx.currentTime + time);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + time + 0.3);
-
-      oscillator.start(ctx.currentTime + time);
-      oscillator.stop(ctx.currentTime + time + 0.3);
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+      
+      oscillator.frequency.value = freq;
+      gainNode.gain.setValueAtTime(0.2, context.currentTime + i * 0.15);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + i * 0.15 + 0.3);
+      
+      oscillator.start(context.currentTime + i * 0.15);
+      oscillator.stop(context.currentTime + i * 0.15 + 0.3);
     });
   }
 
   playExplosion() {
     if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    // Low rumble explosion sound
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
-
-    oscillator.connect(filter);
-    filter.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    oscillator.frequency.setValueAtTime(150, ctx.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.4);
-    oscillator.type = 'sawtooth';
+    const context = this.getAudioContext();
+    const bufferSize = context.sampleRate * 0.5;
+    const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
+    const data = buffer.getChannelData(0);
     
-    filter.type = 'lowpass';
-    filter.frequency.value = 400;
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.1));
+    }
     
-    gainNode.gain.setValueAtTime(0.1056, ctx.currentTime); // +20%
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.4);
+    const source = context.createBufferSource();
+    const gainNode = context.createGain();
+    
+    source.buffer = buffer;
+    source.connect(gainNode);
+    gainNode.connect(context.destination);
+    
+    gainNode.gain.value = this.volumeGroups.explosions;
+    
+    source.start(context.currentTime);
   }
 
   // Power-up specific sounds
   playMultiballSound() {
-    if (!this.sfxEnabled) return;
     const audio = new Audio('/multiball.mp3');
-    audio.volume = 0.6; // +20%
-    audio.play().catch(err => console.log('Multiball sound failed:', err));
+    audio.volume = this.volumeGroups.powerUps;
+    audio.play();
   }
 
   playTurretsSound() {
-    if (!this.sfxEnabled) return;
     const audio = new Audio('/turrets.mp3');
-    audio.volume = 0.6; // +20%
-    audio.play().catch(err => console.log('Turrets sound failed:', err));
+    audio.volume = this.volumeGroups.powerUps;
+    audio.play();
   }
 
   playFireballSound() {
-    if (!this.sfxEnabled) return;
     const audio = new Audio('/fireball.mp3');
-    audio.volume = 0.6; // +20%
-    audio.play().catch(err => console.log('Fireball sound failed:', err));
+    audio.volume = this.volumeGroups.powerUps;
+    audio.play();
   }
 
   playBombDropSound() {
     if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
+    const context = this.getAudioContext();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
     
     oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
+    gainNode.connect(context.destination);
     
-    // Pew sound - quick descending pitch
-    oscillator.frequency.setValueAtTime(800, ctx.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.1);
+    oscillator.frequency.setValueAtTime(800, context.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(200, context.currentTime + 0.3);
+    gainNode.gain.setValueAtTime(0.15, context.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
     
-    gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-    
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.1);
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.3);
   }
 
   playPyramidBulletSound() {
     if (!this.sfxEnabled) return;
-    const audioContext = this.getAudioContext();
-    if (!audioContext) return;
-
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    const context = this.getAudioContext();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
     
     oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    gainNode.connect(context.destination);
     
-    // Swooshing pew sound - sweep from high to mid with wave modulation
-    oscillator.type = "sawtooth";
-    oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.15);
+    oscillator.type = 'triangle';
+    oscillator.frequency.value = 600;
+    gainNode.gain.setValueAtTime(0.08, context.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.08);
     
-    gainNode.gain.setValueAtTime(0.12, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.15);
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.08);
   }
 
   playExtraLifeSound() {
-    if (!this.sfxEnabled) return;
     const audio = new Audio('/extra_life.mp3');
-    audio.volume = 0.6; // +20%
-    audio.play().catch(err => console.log('Extra life sound failed:', err));
+    audio.volume = this.volumeGroups.powerUps;
+    audio.play();
   }
 
   playSlowerSound() {
-    if (!this.sfxEnabled) return;
     const audio = new Audio('/slower.mp3');
-    audio.volume = 0.6; // +20%
-    audio.play().catch(err => console.log('Slower sound failed:', err));
+    audio.volume = this.volumeGroups.powerUps;
+    audio.play();
   }
 
   playWiderSound() {
-    if (!this.sfxEnabled) return;
     const audio = new Audio('/wider.mp3');
-    audio.volume = 0.6; // +20%
-    audio.play().catch(err => console.log('Wider sound failed:', err));
+    audio.volume = this.volumeGroups.powerUps;
+    audio.play();
   }
 
   playShrinkSound() {
-    if (!this.sfxEnabled) return;
-    const audio = new Audio('/smaller.mp3');
-    audio.volume = 0.6; // +20%
-    audio.play().catch(err => console.log('Shrink sound failed:', err));
+    const audio = new Audio('/shrink.mp3');
+    audio.volume = this.volumeGroups.powerUps;
+    audio.play();
   }
 
   playShieldSound() {
-    if (!this.sfxEnabled) return;
     const audio = new Audio('/shield.mp3');
-    audio.volume = 0.6; // +20%
-    audio.play().catch(err => console.log('Shield sound failed:', err));
+    audio.volume = this.volumeGroups.powerUps;
+    audio.play();
+  }
+
+  playSmallerSound() {
+    const audio = new Audio('/smaller.mp3');
+    audio.volume = this.volumeGroups.powerUps;
+    audio.play();
   }
 
   playBonusLetterPickup() {
     if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
+    const context = this.getAudioContext();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
     
-    // Brilliant sparkle sound with multiple harmonics
-    [0, 0.05, 0.1].forEach((time, i) => {
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      const freq = [800, 1200, 1600][i];
-      oscillator.frequency.setValueAtTime(freq, ctx.currentTime + time);
-      oscillator.frequency.exponentialRampToValueAtTime(freq * 1.5, ctx.currentTime + time + 0.2);
-      oscillator.type = 'sine';
-      
-      gainNode.gain.setValueAtTime(0.2, ctx.currentTime + time);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + time + 0.2);
-
-      oscillator.start(ctx.currentTime + time);
-      oscillator.stop(ctx.currentTime + time + 0.2);
-    });
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(880, context.currentTime);
+    oscillator.frequency.setValueAtTime(1760, context.currentTime + 0.05);
+    
+    gainNode.gain.setValueAtTime(0.2, context.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.15);
+    
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.15);
   }
 
   playBonusComplete() {
     if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    // Grand triumphant fanfare with rich harmonics
-    const melody = [
-      { time: 0, freq: 523 },     // C5
-      { time: 0.12, freq: 659 },  // E5
-      { time: 0.24, freq: 784 },  // G5
-      { time: 0.36, freq: 1047 }, // C6
-      { time: 0.48, freq: 1319 }, // E6
-      { time: 0.6, freq: 1568 },  // G6
-      { time: 0.72, freq: 2093 }, // C7
-    ];
-
-    melody.forEach(({ time, freq }) => {
-      // Main note
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
+    const context = this.getAudioContext();
+    const frequencies = [523.25, 659.25, 783.99, 1046.50];
+    
+    frequencies.forEach((freq, index) => {
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      
       oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      oscillator.frequency.value = freq;
+      gainNode.connect(context.destination);
+      
       oscillator.type = 'sine';
-      gainNode.gain.setValueAtTime(0.35, ctx.currentTime + time);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + time + 0.5);
-      oscillator.start(ctx.currentTime + time);
-      oscillator.stop(ctx.currentTime + time + 0.5);
-
-      // Harmonic (octave)
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.frequency.value = freq * 2;
-      osc2.type = 'sine';
-      gain2.gain.setValueAtTime(0.15, ctx.currentTime + time);
-      gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + time + 0.5);
-      osc2.start(ctx.currentTime + time);
-      osc2.stop(ctx.currentTime + time + 0.5);
+      oscillator.frequency.value = freq;
+      
+      const startTime = context.currentTime + index * 0.1;
+      gainNode.gain.setValueAtTime(0.3, startTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.4);
+      
+      oscillator.start(startTime);
+      oscillator.stop(startTime + 0.4);
     });
   }
 
-  isMusicPlaying(): boolean {
-    return this.musicTracks.some(track => track && !track.paused && track.currentTime > 0);
-  }
-
-  nextTrack() {
-    this.stopBackgroundMusic();
-    this.currentTrackIndex = (this.currentTrackIndex + 1) % this.trackUrls.length;
-    
-    if (this.musicEnabled) {
-      this.playBackgroundMusic();
-    }
-  }
-
-  previousTrack() {
-    this.stopBackgroundMusic();
-    this.currentTrackIndex = (this.currentTrackIndex - 1 + this.trackUrls.length) % this.trackUrls.length;
-    
-    if (this.musicEnabled) {
-      this.playBackgroundMusic();
-    }
-  }
-
-  toggleMute() {
-    this.musicEnabled = !this.musicEnabled;
-    if (!this.musicEnabled) {
-      this.pauseBackgroundMusic();
-    } else {
-      this.playBackgroundMusic();
-    }
-    return this.musicEnabled;
-  }
-
-  // Menu UI sounds
   playMenuClick() {
     if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
+    const context = this.getAudioContext();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
     
-    gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
-
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.05);
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    
+    oscillator.frequency.value = 800;
+    gainNode.gain.setValueAtTime(0.1, context.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.05);
+    
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.05);
   }
 
   playMenuHover() {
     if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    oscillator.frequency.value = 400;
-    oscillator.type = 'sine';
+    const context = this.getAudioContext();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
     
-    gainNode.gain.setValueAtTime(0.08, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.04);
-
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.04);
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    
+    oscillator.frequency.value = 600;
+    gainNode.gain.setValueAtTime(0.05, context.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.03);
+    
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.03);
   }
 
   playSliderChange() {
     if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    oscillator.frequency.value = 600;
-    oscillator.type = 'sine';
+    const context = this.getAudioContext();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
     
-    gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.03);
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    
+    oscillator.frequency.value = 300;
+    gainNode.gain.setValueAtTime(0.03, context.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.02);
+    
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.02);
+  }
 
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.03);
+  toggleMute() {
+    console.warn("[SoundManager] toggleMute is deprecated");
+    if (this.musicState === "playing") {
+      this.pause();
+    } else {
+      this.resume();
+    }
   }
 }
 
