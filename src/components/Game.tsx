@@ -47,7 +47,6 @@ import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
 import { soundManager } from "@/utils/sounds";
-import { AudioVisualizer } from "./AudioVisualizer";
 
 interface GameProps {
   settings: GameSettings;
@@ -489,13 +488,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (gameState === "ready" && e.touches.length === 1 && bricks.length > 0) {
         console.log('[Ready Tap Debug] readyTapStart: enabled - Single tap detected, starting game');
         
-        // Enter fullscreen on mobile
-        if (!document.fullscreenElement) {
-          document.documentElement.requestFullscreen().catch(err => {
-            console.log("Fullscreen request failed:", err);
-          });
-        }
-        
         const isLevelComplete = bricks.every((brick) => !brick.visible) && bricks.length > 0;
 
         if (isLevelComplete) {
@@ -503,8 +495,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         } else {
           // Start game - start music only if not already playing
           setGameState("playing");
-          if (!musicManager.isMusicPlaying()) {
-            musicManager.play();
+          if (!soundManager.isMusicPlaying()) {
+            soundManager.playBackgroundMusic();
           }
         }
         return;
@@ -687,8 +679,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       } else {
         // Start game - start music only if not already playing
         setGameState("playing");
-        if (!musicManager.isMusicPlaying()) {
-          musicManager.play();
+        if (!soundManager.isMusicPlaying()) {
+          soundManager.initializeRandomTrack();
+          soundManager.playBackgroundMusic(level);
         }
         toast.success("Click again to launch!");
       }
@@ -1050,7 +1043,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   setBeatLevel50Completed(true);
                   setGameState("won");
                   setShowEndScreen(true);
-                  musicManager.stop();
+                  soundManager.stopBackgroundMusic();
                   toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
                 } else {
                   setGameState("ready"); // Wait for click to start next level
@@ -1070,7 +1063,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   setBeatLevel50Completed(true);
                   setGameState("won");
                   setShowEndScreen(true);
-                  musicManager.stop();
+                  soundManager.stopBackgroundMusic();
                   toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
                 } else {
                   nextLevel(); // Automatically advance since no bricks to destroy
@@ -1093,7 +1086,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           if (newLives <= 0) {
             setGameState("gameOver");
-            musicManager.stop();
+            soundManager.stopBackgroundMusic();
 
             // Check if it's a high score
             if (isHighScore(score)) {
@@ -1636,7 +1629,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             if (newLives <= 0) {
               setGameState("gameOver");
-              musicManager.stop();
+              soundManager.stopBackgroundMusic();
               toast.error("Game Over!");
 
               if (isHighScore(score)) {
@@ -1723,7 +1716,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             if (newLives <= 0) {
               setGameState("gameOver");
-              musicManager.stop();
+              soundManager.stopBackgroundMusic();
               toast.error("Game Over!");
 
               if (isHighScore(score)) {
@@ -2124,8 +2117,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       } else {
         // Continue current level - start music only if not already playing
         setGameState("playing");
-        if (!musicManager.isMusicPlaying()) {
-          musicManager.play();
+        if (!soundManager.isMusicPlaying()) {
+          soundManager.playBackgroundMusic(level);
         }
         toast.success("Continue!");
       }
@@ -2136,7 +2129,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
-    musicManager.stop();
+    soundManager.stopBackgroundMusic();
     soundManager.stopHighScoreMusic();
     setShowHighScoreEntry(false);
     setShowHighScoreDisplay(false);
