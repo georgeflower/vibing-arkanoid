@@ -121,7 +121,7 @@ export interface Explosion {
   particles: Particle[];
 }
 
-export type GameState = "ready" | "playing" | "paused" | "gameOver" | "won";
+export type GameState = "ready" | "playing" | "paused" | "gameOver" | "won" | "boss";
 
 export type Difficulty = "normal" | "godlike";
 
