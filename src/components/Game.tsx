@@ -100,9 +100,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [headerVisible, setHeaderVisible] = useState(true);
   
   // Boss system - spawn at level 5, 10, 15, etc.
-  const [boss, setBoss] = useState<any>(null);
-  const [bossProjectiles, setBossProjectiles] = useState<any[]>([]);
-  const bossLevels = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+  const {
+    boss,
+    bossProjectiles,
+    spawnBoss,
+    registerBossHit,
+    updateBoss,
+    updateBossProjectiles,
+    fireBossProjectile,
+    setBoss,
+    setBossProjectiles,
+  } = require("@/hooks/useBoss").useBoss(SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT);
+  const lastBossUpdateRef = useRef<number>(Date.now());
+  const lastBossAttackRef = useRef<number>(0);
   const [framesVisible, setFramesVisible] = useState(true);
 
   const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
@@ -447,7 +457,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setTimer(0); // Reset timer on level clear (for turret drop chance reset)
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
-    setGameState("playing");
+    
+    // Check if this is a boss level (every 5 levels)
+    if (newLevel % 5 === 0) {
+      // Spawn boss
+      const newBoss = spawnBoss();
+      toast.success(`BOSS LEVEL ${newLevel}!`, { duration: 3000 });
+      setGameState("boss");
+    } else {
+      setGameState("playing");
+    }
 
     if (newLevel === 10) {
       toast.success(`Level ${newLevel}! New music unlocked!`);
@@ -844,6 +863,34 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             return null;
           }
 
+          // Boss collision
+          if (boss && boss.state !== "dead") {
+            const ballLeft = newBall.x - newBall.radius;
+            const ballRight = newBall.x + newBall.radius;
+            const ballTop = newBall.y - newBall.radius;
+            const ballBottom = newBall.y + newBall.radius;
+
+            if (
+              ballRight > boss.x &&
+              ballLeft < boss.x + boss.width &&
+              ballBottom > boss.y &&
+              ballTop < boss.y + boss.height
+            ) {
+              // Boss hit!
+              registerBossHit();
+              soundManager.playBounce();
+
+              // Bounce ball away from boss
+              const bossCenterX = boss.x + boss.width / 2;
+              const bossCenterY = boss.y + boss.height / 2;
+              const angle = Math.atan2(newBall.y - bossCenterY, newBall.x - bossCenterX);
+              const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
+              newBall.dx = speed * Math.cos(angle);
+              newBall.dy = speed * Math.sin(angle);
+              newBall.lastHitTime = Date.now();
+            }
+          }
+
           // Brick collision (expand collision area to cover padding gaps)
           setBricks((prevBricks) => {
             let brickHit = false;
@@ -1146,10 +1193,68 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, [paddle, balls, createPowerUp, setPowerUps, nextLevel, speedMultiplier]);
 
   const gameLoop = useCallback(() => {
-    if (gameState !== "playing") return;
+    if (gameState !== "playing" && gameState !== "boss") return;
 
     // Update background animation
     setBackgroundPhase((prev) => (prev + 1) % 360);
+
+    // Update boss and projectiles if in boss mode
+    if (gameState === "boss" && boss) {
+      const now = Date.now();
+      const deltaTime = now - lastBossUpdateRef.current;
+      lastBossUpdateRef.current = now;
+
+      // Update boss movement
+      updateBoss(deltaTime);
+
+      // Update boss projectiles
+      if (paddle) {
+        updateBossProjectiles(deltaTime, paddle.x + paddle.width / 2, paddle.y);
+      }
+
+      // Boss attack logic
+      const attackCooldown = boss.isAngry
+        ? boss.config.attackIntervalBase / boss.config.attackRateMultiplier
+        : boss.config.attackIntervalBase;
+
+      if (now - lastBossAttackRef.current > attackCooldown && boss.state === "moving") {
+        const attackType = Math.random();
+        if (attackType < 0.4) {
+          // Laser
+          if (paddle) {
+            fireBossProjectile("laser", paddle.x + paddle.width / 2, paddle.y);
+          }
+        } else if (attackType < 0.7) {
+          // Regular missile
+          fireBossProjectile("missile");
+        } else {
+          // Homing missile
+          if (paddle) {
+            fireBossProjectile("homingMissile", paddle.x + paddle.width / 2, paddle.y);
+          }
+        }
+        lastBossAttackRef.current = now;
+      }
+
+      // Check if boss is defeated
+      if (boss.state === "dead") {
+        // Boss defeated! Award points and advance level
+        const bossBonus = 10000 * level;
+        setScore((prev) => prev + bossBonus);
+        toast.success(`Boss defeated! +${bossBonus} points!`, { duration: 4000 });
+        soundManager.playWin();
+
+        // Clear boss
+        setBoss(null);
+        setBossProjectiles([]);
+
+        // Advance to next level
+        setTimeout(() => {
+          nextLevel();
+        }, 2000);
+        return;
+      }
+    }
 
     // Update balls (only if not waiting to launch)
     setBalls((prev) =>
@@ -1602,6 +1707,84 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Check bomb-paddle collision
     if (paddle) {
+      // Boss projectile collisions
+      bossProjectiles.forEach((proj) => {
+        // Check for shield first
+        if (
+          paddle.hasShield &&
+          proj.x + proj.width > paddle.x &&
+          proj.x < paddle.x + paddle.width &&
+          proj.y + proj.height > paddle.y - 10 &&
+          proj.y < paddle.y
+        ) {
+          soundManager.playBounce();
+          setBossProjectiles((prev) => prev.filter((p) => p !== proj));
+          setPaddle((prev) => (prev ? { ...prev, hasShield: false } : null));
+          toast.success("Shield absorbed boss attack!");
+          return;
+        }
+
+        if (
+          proj.x + proj.width > paddle.x &&
+          proj.x < paddle.x + paddle.width &&
+          proj.y + proj.height > paddle.y &&
+          proj.y < paddle.y + paddle.height
+        ) {
+          soundManager.playLoseLife();
+          setBossProjectiles((prev) => prev.filter((p) => p !== proj));
+
+          setLives((prev) => {
+            const newLives = prev - 1;
+
+            if (newLives <= 0) {
+              setGameState("gameOver");
+              soundManager.stopBackgroundMusic();
+              toast.error("Game Over!");
+
+              if (isHighScore(score)) {
+                setShowHighScoreEntry(true);
+                soundManager.playHighScoreMusic();
+              }
+            } else {
+              const baseSpeed = 3;
+              const resetBall: Ball = {
+                x: SCALED_CANVAS_WIDTH / 2,
+                y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+                dx: baseSpeed,
+                dy: -baseSpeed,
+                radius: SCALED_BALL_RADIUS,
+                speed: baseSpeed,
+                id: nextBallId.current++,
+                isFireball: false,
+                waitingToLaunch: true,
+              };
+              setBalls([resetBall]);
+              setLaunchAngle(-20);
+              launchAngleDirectionRef.current = 1;
+              setShowInstructions(true);
+              setPowerUps([]);
+              setPaddle((prev) => (prev ? { ...prev, hasTurrets: false, width: SCALED_PADDLE_WIDTH } : null));
+              setBullets([]);
+              if (speedMultiplier < 1) {
+                setSpeedMultiplier(1);
+              }
+              setBrickHitSpeedAccumulated(0);
+              setTimer(0);
+              setLastEnemySpawnTime(0);
+              setEnemies([]);
+              setBombs([]);
+              setExplosions([]);
+              bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
+              bombIntervalsRef.current.clear();
+              setGameState("ready");
+              toast.error(`Boss attack hit! ${newLives} lives remaining. Click to continue.`);
+            }
+            return newLives;
+          });
+        }
+      });
+
+      // Regular bomb collisions
       bombs.forEach((bomb) => {
         // Check for shield first
         if (
@@ -1865,13 +2048,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     bricks,
     score,
     isHighScore,
-    explosions,
-    lastPaddleHitTime,
-    lastScoreMilestone,
-  ]);
+      explosions,
+      lastPaddleHitTime,
+      lastScoreMilestone,
+      boss,
+      updateBoss,
+      updateBossProjectiles,
+      fireBossProjectile,
+      registerBossHit,
+    ]);
 
   useEffect(() => {
-    if (gameState === "playing") {
+    if (gameState === "playing" || gameState === "boss") {
       animationFrameRef.current = requestAnimationFrame(gameLoop);
     } else {
       if (animationFrameRef.current) {
@@ -2376,6 +2564,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       collectedLetters={collectedLetters}
                       screenShake={screenShake}
                       backgroundFlash={backgroundFlash}
+                      boss={boss}
+                      bossProjectiles={bossProjectiles}
                     />
                   </div>
                 </div>
