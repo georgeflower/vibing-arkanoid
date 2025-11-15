@@ -98,6 +98,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
+  
+  // Boss system - spawn at level 5, 10, 15, etc.
+  const [boss, setBoss] = useState<any>(null);
+  const [bossProjectiles, setBossProjectiles] = useState<any[]>([]);
+  const bossLevels = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
   const [framesVisible, setFramesVisible] = useState(true);
 
   const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
