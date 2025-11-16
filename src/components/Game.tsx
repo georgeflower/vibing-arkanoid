@@ -99,6 +99,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
+  const isBossLevelRef = useRef(false); // Track if current level is a boss level
   
   // Boss system - spawn at level 5, 10, 15, etc.
   const {
@@ -379,6 +380,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setPowerUps([]);
     setTimer(0);
     timerStartedRef.current = false;
+    isBossLevelRef.current = false; // Start with no boss
     setEnemies([]);
     setBombs([]);
     setBackgroundPhase(0);
@@ -461,12 +463,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     
     // Check if this is a boss level (every 5 levels)
     if (newLevel % 5 === 0) {
-      // Spawn boss
-      const newBoss = spawnBoss();
+      // Mark as boss level and spawn boss
+      isBossLevelRef.current = true;
+      spawnBoss();
       toast.success(`BOSS LEVEL ${newLevel}!`, { duration: 3000 });
-      setGameState("boss");
+      setGameState("ready"); // Wait for player to start
     } else {
-      setGameState("playing");
+      isBossLevelRef.current = false;
+      setGameState("ready");
     }
 
     if (newLevel === 10) {
@@ -518,8 +522,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (isLevelComplete) {
           nextLevel();
         } else {
-          // Start game - start music only if not already playing
-          setGameState("playing");
+          // Transition to boss or playing state
+          if (isBossLevelRef.current) {
+            setGameState("boss");
+          } else {
+            setGameState("playing");
+          }
+          
           if (!soundManager.isMusicPlaying()) {
             soundManager.playBackgroundMusic();
           }
@@ -702,8 +711,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (isLevelComplete) {
         nextLevel();
       } else {
-        // Start game - start music only if not already playing
-        setGameState("playing");
+        // Start game - transition to boss or playing state
+        if (isBossLevelRef.current) {
+          setGameState("boss");
+        } else {
+          setGameState("playing");
+        }
+        
+        // Start music only if not already playing
         if (!soundManager.isMusicPlaying()) {
           soundManager.initializeRandomTrack();
           soundManager.playBackgroundMusic(level);
