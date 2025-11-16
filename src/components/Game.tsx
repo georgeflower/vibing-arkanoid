@@ -468,6 +468,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (newLevel % 5 === 0) {
       // Mark as boss level and spawn boss
       isBossLevelRef.current = true;
+      setBossProjectiles([]); // Clear any lingering projectiles
       spawnBoss();
       console.log('[Boss Start Debug] bossStartFix: pending - Boss level detected, waiting for player input');
       setBossStartDebug("pending");
@@ -540,6 +541,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             }
             
             console.log('[Boss Start Debug] Step 3: inputEnabled - Enabling ball launch inputs');
+            setBossProjectiles([]); // Clear any lingering projectiles before starting
             console.log('[Boss Start Debug] Step 4: uiState=BOSS - Transitioning to boss state');
             setGameState("boss");
             setBossStartDebug("fixed");
@@ -746,6 +748,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
           
           console.log('[Boss Start Debug] Step 3: inputEnabled - Enabling ball launch inputs');
+          setBossProjectiles([]); // Clear any lingering projectiles before starting
           console.log('[Boss Start Debug] Step 4: uiState=BOSS - Transitioning to boss state');
           setGameState("boss");
           setBossStartDebug("fixed");
@@ -1830,6 +1833,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setExplosions([]);
               bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
               bombIntervalsRef.current.clear();
+              setBossProjectiles([]); // Clear boss projectiles when resetting
               setGameState("ready");
               toast.error(`Boss attack hit! ${newLives} lives remaining. Click to continue.`);
             }
