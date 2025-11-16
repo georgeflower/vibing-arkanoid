@@ -4,6 +4,7 @@ import { powerUpImages } from "@/utils/powerUpImages";
 import { bonusLetterImages } from "@/utils/bonusLetterImages";
 import paddleImg from "@/assets/paddle.png";
 import paddleTurretsImg from "@/assets/paddle-turrets.png";
+import bossSpritesheetImg from "@/assets/boss-spritesheet.png";
 
 interface GameCanvasProps {
   width: number;
@@ -66,7 +67,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       paddleTurretsImageRef.current = paddleTurretsImage;
       
       const bossSpritesheetImage = new Image();
-      bossSpritesheetImage.src = require("@/assets/boss-spritesheet.png");
+      bossSpritesheetImage.src = bossSpritesheetImg + cacheBuster;
       bossSpritesheetRef.current = bossSpritesheetImage;
     }, []);
 

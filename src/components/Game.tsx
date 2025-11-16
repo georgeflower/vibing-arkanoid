@@ -47,6 +47,7 @@ import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
 import { soundManager } from "@/utils/sounds";
+import { useBoss } from "@/hooks/useBoss";
 
 interface GameProps {
   settings: GameSettings;
@@ -110,7 +111,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     fireBossProjectile,
     setBoss,
     setBossProjectiles,
-  } = require("@/hooks/useBoss").useBoss(SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT);
+  } = useBoss(SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT);
   const lastBossUpdateRef = useRef<number>(Date.now());
   const lastBossAttackRef = useRef<number>(0);
   const [framesVisible, setFramesVisible] = useState(true);
