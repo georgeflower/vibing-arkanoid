@@ -335,7 +335,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     });
 
     // Initialize ball with speed multiplier - waiting to launch
-    const baseSpeed = 3;
+    const baseSpeed = 3.45; // 15% faster than original base speed of 3
     const initialBall: Ball = {
       x: SCALED_CANVAS_WIDTH / 2,
       y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
@@ -392,7 +392,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     const newLevel = level + 1;
     const maxSpeedMultiplier = settings.difficulty === "godlike" ? 1.75 : 1.5; // 175% godlike, 150% normal
-    const newSpeedMultiplier = Math.min(maxSpeedMultiplier, 1 + (newLevel - 1) * 0.05); // 5% faster per level
+    // Godlike starts at 125%, normal at 100%, both increase 5% per level
+    const baseMultiplier = settings.difficulty === "godlike" ? 1.25 : 1.0;
+    const newSpeedMultiplier = Math.min(maxSpeedMultiplier, baseMultiplier + (newLevel - 1) * 0.05);
 
     setLevel(newLevel);
     setSpeedMultiplier(newSpeedMultiplier);
@@ -407,7 +409,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     });
 
     // Initialize ball with new speed - waiting to launch (capped at 175%)
-    const baseSpeed = 3 * Math.min(newSpeedMultiplier, 1.75);
+    const baseSpeed = 3.45 * Math.min(newSpeedMultiplier, 1.75); // 15% faster base speed
     const initialBall: Ball = {
       x: SCALED_CANVAS_WIDTH / 2,
       y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
@@ -1098,7 +1100,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             }
           } else {
             // Reset ball and clear power-ups, but wait for click to continue
-            const baseSpeed = 3;
+            const baseSpeed = 3.45; // 15% faster base speed
             const resetBall: Ball = {
               x: SCALED_CANVAS_WIDTH / 2,
               y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
@@ -1638,7 +1640,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               }
             } else {
               // Reset ball and clear power-ups, but wait for click to continue
-              const baseSpeed = 3;
+              const baseSpeed = 3.45; // 15% faster base speed
               const resetBall: Ball = {
                 x: SCALED_CANVAS_WIDTH / 2,
                 y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
@@ -1725,7 +1727,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               }
             } else {
               // Reset ball and clear power-ups, but wait for click to continue
-              const baseSpeed = 3;
+              const baseSpeed = 3.45; // 15% faster base speed
               const resetBall: Ball = {
                 x: SCALED_CANVAS_WIDTH / 2,
                 y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
