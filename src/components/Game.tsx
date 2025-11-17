@@ -99,6 +99,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
   const [framesVisible, setFramesVisible] = useState(true);
+  const [titleVisible, setTitleVisible] = useState(true);
+  const [gameScale, setGameScale] = useState(1);
+  const [disableAutoZoom, setDisableAutoZoom] = useState(false);
 
   const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
   const [enemiesKilled, setEnemiesKilled] = useState(0);
@@ -2208,37 +2211,97 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Adaptive header and frame visibility based on vertical space
   useEffect(() => {
+    let debounceTimer: NodeJS.Timeout;
+
     const checkFrameVisibility = () => {
       if (!fullscreenContainerRef.current) return;
 
       const containerHeight = fullscreenContainerRef.current.clientHeight;
-      const titleBarHeight = 60; // Title bar
-      const statsBarHeight = 80; // Stats bar
-      const bottomBarHeight = 60; // Bottom bar
-      const sideFrameHeight = 40; // Side frame padding
+      const containerWidth = fullscreenContainerRef.current.clientWidth;
+      const isMobile = containerWidth < 768; // Mobile breakpoint
       
-      // Calculate required space for game area + frames
-      const requiredHeight = SCALED_CANVAS_HEIGHT + titleBarHeight + statsBarHeight + bottomBarHeight + sideFrameHeight;
+      const titleBarHeight = 60;
+      const statsBarHeight = 80;
+      const bottomBarHeight = 60;
+      const sideFrameHeight = 40;
       
-      // Hide frames if vertical space is constrained
-      const shouldShowFrames = containerHeight >= requiredHeight;
-      
-      if (shouldShowFrames !== framesVisible) {
-        setFramesVisible(shouldShowFrames);
-        setHeaderVisible(shouldShowFrames); // Keep header in sync
+      // Desktop-specific adaptive layout
+      if (!isMobile) {
+        const playableAreaHeight = SCALED_CANVAS_HEIGHT;
+        const statsAndBottomHeight = statsBarHeight + bottomBarHeight + sideFrameHeight;
+        const fullHeightNeeded = playableAreaHeight + titleBarHeight + statsAndBottomHeight;
         
-        // Debug flag
-        const layoutMode = shouldShowFrames ? "headerVisible" : "headerHidden";
-        console.log(`[Layout Debug] layoutMode: ${layoutMode}`);
+        // Check if we need to hide title
+        const shouldShowTitle = containerHeight >= fullHeightNeeded;
+        
+        if (!shouldShowTitle && !disableAutoZoom) {
+          // Hide title and calculate scale
+          const availableHeight = containerHeight - statsAndBottomHeight;
+          const minimalTopMargin = 20;
+          const scalableHeight = playableAreaHeight + minimalTopMargin;
+          let scaleFactor = availableHeight / scalableHeight;
+          
+          // Clamp scale to prevent unreadably small UI
+          const minScale = 0.5;
+          scaleFactor = Math.max(minScale, Math.min(1.0, scaleFactor));
+          
+          if (titleVisible || gameScale !== scaleFactor) {
+            setTitleVisible(false);
+            setGameScale(scaleFactor);
+            console.log(`[Desktop Layout] desktopLayoutMode: titleHidden, scale: ${scaleFactor.toFixed(2)}`);
+          }
+        } else {
+          // Show title and reset scale
+          if (!titleVisible || gameScale !== 1) {
+            setTitleVisible(true);
+            setGameScale(1);
+            console.log(`[Desktop Layout] desktopLayoutMode: titleVisible, scale: 1.0`);
+          }
+        }
+        
+        // Stats and controls always visible on desktop
+        if (!framesVisible) {
+          setFramesVisible(true);
+          setHeaderVisible(true);
+        }
+      } else {
+        // Mobile: existing behavior - hide all frames if constrained
+        const requiredHeight = SCALED_CANVAS_HEIGHT + titleBarHeight + statsBarHeight + bottomBarHeight + sideFrameHeight;
+        const shouldShowFrames = containerHeight >= requiredHeight;
+        
+        if (shouldShowFrames !== framesVisible) {
+          setFramesVisible(shouldShowFrames);
+          setHeaderVisible(shouldShowFrames);
+          setTitleVisible(shouldShowFrames);
+          setGameScale(1);
+          
+          const layoutMode = shouldShowFrames ? "headerVisible" : "headerHidden";
+          console.log(`[Layout Debug] layoutMode: ${layoutMode}`);
+        }
       }
+    };
+
+    const debouncedCheck = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(checkFrameVisibility, 120);
     };
 
     // Check on mount and resize
     checkFrameVisibility();
-    window.addEventListener("resize", checkFrameVisibility);
+    window.addEventListener("resize", debouncedCheck);
     
-    return () => window.removeEventListener("resize", checkFrameVisibility);
-  }, [framesVisible, SCALED_CANVAS_HEIGHT]);
+    const handleFullscreenChange = () => {
+      setTimeout(checkFrameVisibility, 100);
+    };
+    
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    
+    return () => {
+      clearTimeout(debounceTimer);
+      window.removeEventListener("resize", debouncedCheck);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, [framesVisible, titleVisible, gameScale, disableAutoZoom, SCALED_CANVAS_HEIGHT]);
 
   return (
     <div
@@ -2257,13 +2320,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} />
           ) : (
             <div className="metal-frame">
-              {/* Title Bar - Adaptive Visibility */}
+              {/* Title Bar - Adaptive Visibility (Desktop: only title hides, Mobile: all hides) */}
               <div 
                 className={`metal-title-bar transition-all duration-150 ${
-                  headerVisible ? 'opacity-100 max-h-[60px]' : 'opacity-0 max-h-0 overflow-hidden'
+                  titleVisible ? 'opacity-100 max-h-[60px]' : 'opacity-0 max-h-0 overflow-hidden'
                 }`}
                 style={{
-                  transform: headerVisible ? 'translateY(0)' : 'translateY(-10px)',
+                  transform: titleVisible ? 'translateY(0)' : 'translateY(-10px)',
+                  transition: 'opacity 150ms ease-in-out, max-height 150ms ease-in-out, transform 150ms ease-in-out',
                 }}
               >
                 <h1
@@ -2350,9 +2414,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   <div className="panel-decoration"></div>
                 </div>
 
-                {/* Game Canvas */}
+                {/* Game Canvas - Apply scale transform when title is hidden (desktop only) */}
                 <div className="metal-game-area">
-                  <div className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}>
+                  <div 
+                    className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}
+                    style={{
+                      transform: `scale(${gameScale})`,
+                      transformOrigin: 'top center',
+                      transition: 'transform 150ms ease-in-out',
+                    }}
+                  >
                     <GameCanvas
                       ref={canvasRef}
                       width={SCALED_CANVAS_WIDTH}
