@@ -3,17 +3,19 @@ import type { Bullet, Paddle, Brick, Enemy } from "@/types/game";
 import { BULLET_WIDTH, BULLET_HEIGHT, BULLET_SPEED, CANVAS_HEIGHT, BRICK_PADDING } from "@/constants/game";
 import { soundManager } from "@/utils/sounds";
 import { getHitColor } from "@/constants/game";
+import { toast } from "sonner";
 
 export const useBullets = (
   setScore: React.Dispatch<React.SetStateAction<number>>,
   setBricks: React.Dispatch<React.SetStateAction<Brick[]>>,
   bricks: Brick[],
-  enemies: Enemy[]
+  enemies: Enemy[],
+  setPaddle: React.Dispatch<React.SetStateAction<Paddle | null>>
 ) => {
   const [bullets, setBullets] = useState<Bullet[]>([]);
 
   const fireBullets = useCallback((paddle: Paddle) => {
-    if (!paddle.hasTurrets) return;
+    if (!paddle.hasTurrets || !paddle.turretShots || paddle.turretShots <= 0) return;
 
     soundManager.playShoot();
 
@@ -34,7 +36,18 @@ export const useBullets = (
     };
 
     setBullets(prev => [...prev, leftBullet, rightBullet]);
-  }, []);
+    
+    // Decrement turret shots and remove turrets if depleted
+    setPaddle(prev => {
+      if (!prev) return null;
+      const newShots = (prev.turretShots || 0) - 1;
+      if (newShots <= 0) {
+        toast.info("Turrets depleted!");
+        return { ...prev, hasTurrets: false, turretShots: 0 };
+      }
+      return { ...prev, turretShots: newShots };
+    });
+  }, [setPaddle]);
 
   const updateBullets = useCallback((currentBricks: Brick[]) => {
     // Move bullets and collect collision information

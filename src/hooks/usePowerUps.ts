@@ -115,8 +115,9 @@ export const usePowerUps = (
             
             case "turrets":
               soundManager.playTurretsSound();
-              setPaddle(prev => prev ? { ...prev, hasTurrets: true } : null);
-              toast.success("Turrets activated!");
+              const shotsCount = difficulty === "godlike" ? 15 : 30;
+              setPaddle(prev => prev ? { ...prev, hasTurrets: true, turretShots: shotsCount } : null);
+              toast.success(`Turrets activated! (${shotsCount} shots)`);
               break;
             
             case "fireball":
