@@ -47,7 +47,6 @@ import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
 import { soundManager } from "@/utils/sounds";
-import { useBoss } from "@/hooks/useBoss";
 
 interface GameProps {
   settings: GameSettings;
@@ -99,25 +98,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
-  const isBossLevelRef = useRef(false); // Track if current level is a boss level
-  
-  // Boss start debug tracking
-  const [bossStartDebug, setBossStartDebug] = useState<"pending" | "fixed" | "failed">("pending");
-  
-  // Boss system - spawn at level 5, 10, 15, etc.
-  const {
-    boss,
-    bossProjectiles,
-    spawnBoss,
-    registerBossHit,
-    updateBoss,
-    updateBossProjectiles,
-    fireBossProjectile,
-    setBoss,
-    setBossProjectiles,
-  } = useBoss(SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT);
-  const lastBossUpdateRef = useRef<number>(Date.now());
-  const lastBossAttackRef = useRef<number>(0);
   const [framesVisible, setFramesVisible] = useState(true);
 
   const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
@@ -383,7 +363,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setPowerUps([]);
     setTimer(0);
     timerStartedRef.current = false;
-    isBossLevelRef.current = false; // Start with no boss
     setEnemies([]);
     setBombs([]);
     setBackgroundPhase(0);
@@ -463,22 +442,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setTimer(0); // Reset timer on level clear (for turret drop chance reset)
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
-    
-    // Check if this is a boss level (every 5 levels)
-    if (newLevel % 5 === 0) {
-      // Mark as boss level and spawn boss
-      isBossLevelRef.current = true;
-      setBossProjectiles([]); // Clear any lingering projectiles
-      spawnBoss();
-      console.log('[Boss Start Debug] bossStartFix: pending - Boss level detected, waiting for player input');
-      setBossStartDebug("pending");
-      toast.success(`BOSS LEVEL ${newLevel}!`, { duration: 3000 });
-      setGameState("ready"); // Wait for player to start
-      setShowInstructions(true); // Show instructions for boss start
-    } else {
-      isBossLevelRef.current = false;
-      setGameState("ready");
-    }
+    setGameState("playing");
 
     if (newLevel === 10) {
       toast.success(`Level ${newLevel}! New music unlocked!`);
@@ -500,7 +464,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const sensitivity = 1.5;
         const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, paddle.x + e.movementX * sensitivity));
         setPaddle((prev) => (prev ? { ...prev, x: newX } : null));
-      } else if (gameState === "playing" || gameState === "boss") {
+      } else if (gameState === "playing") {
         const rect = canvasRef.current.getBoundingClientRect();
         const scaleX = SCALED_CANVAS_WIDTH / rect.width;
         const mouseX = (e.clientX - rect.left) * scaleX;
@@ -529,28 +493,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (isLevelComplete) {
           nextLevel();
         } else {
-          // Start level flow - transition to boss or playing state
-          if (isBossLevelRef.current) {
-            console.log('[Boss Start Debug] bossStartFix: pending -> fixed - Starting boss level transition');
-            console.log('[Boss Start Debug] Step 1: overlayHidden - Hiding ready overlay');
-            setShowInstructions(false); // Hide instructions overlay
-            
-            console.log('[Boss Start Debug] Step 2: audioResumed - Starting audio');
-            if (!soundManager.isMusicPlaying()) {
-              soundManager.playBackgroundMusic();
-            }
-            
-            console.log('[Boss Start Debug] Step 3: inputEnabled - Enabling ball launch inputs');
-            setBossProjectiles([]); // Clear any lingering projectiles before starting
-            console.log('[Boss Start Debug] Step 4: uiState=BOSS - Transitioning to boss state');
-            setGameState("boss");
-            setBossStartDebug("fixed");
-            
-            toast.success("Boss Battle! Click/tap again to launch ball!");
-          } else {
-            setGameState("playing");
-          }
-          
+          // Start game - start music only if not already playing
+          setGameState("playing");
           if (!soundManager.isMusicPlaying()) {
             soundManager.playBackgroundMusic();
           }
@@ -561,8 +505,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const waitingBall = balls.find((ball) => ball.waitingToLaunch);
 
       // If ball is waiting and there are 2 fingers, second finger controls launch angle
-      // Allow in both playing and boss states
-      if (e.touches.length > 1 && waitingBall && (gameState === "playing" || gameState === "boss")) {
+      if (e.touches.length > 1 && waitingBall && gameState === "playing") {
         // First touch controls paddle, second touch sets launch angle
         if (activeTouchRef.current !== null && secondTouchRef.current === null) {
           // Find the second touch (not the first one)
@@ -598,8 +541,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
 
       // Fire turrets if there are multiple touches (2+ fingers) and paddle has turrets and ball is NOT waiting
-      // Allow in both playing and boss states
-      if (e.touches.length > 1 && paddle.hasTurrets && (gameState === "playing" || gameState === "boss") && !waitingBall) {
+      if (e.touches.length > 1 && paddle.hasTurrets && gameState === "playing" && !waitingBall) {
         fireBullets(paddle);
         return;
       }
@@ -735,41 +677,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (isLevelComplete) {
         nextLevel();
       } else {
-        // Start level flow - transition to boss or playing state
-        if (isBossLevelRef.current) {
-          console.log('[Boss Start Debug] bossStartFix: pending -> fixed - Starting boss level transition (desktop)');
-          console.log('[Boss Start Debug] Step 1: overlayHidden - Hiding ready overlay');
-          setShowInstructions(false); // Hide instructions overlay
-          
-          console.log('[Boss Start Debug] Step 2: audioResumed - Starting audio');
-          if (!soundManager.isMusicPlaying()) {
-            soundManager.initializeRandomTrack();
-            soundManager.playBackgroundMusic(level);
-          }
-          
-          console.log('[Boss Start Debug] Step 3: inputEnabled - Enabling ball launch inputs');
-          setBossProjectiles([]); // Clear any lingering projectiles before starting
-          console.log('[Boss Start Debug] Step 4: uiState=BOSS - Transitioning to boss state');
-          setGameState("boss");
-          setBossStartDebug("fixed");
-          
-          toast.success("Boss Battle! Click again to launch ball!");
-        } else {
-          setGameState("playing");
-          
-          // Start music only if not already playing
-          if (!soundManager.isMusicPlaying()) {
-            soundManager.initializeRandomTrack();
-            soundManager.playBackgroundMusic(level);
-          }
-          toast.success("Click again to launch!");
+        // Start game - start music only if not already playing
+        setGameState("playing");
+        if (!soundManager.isMusicPlaying()) {
+          soundManager.initializeRandomTrack();
+          soundManager.playBackgroundMusic(level);
         }
+        toast.success("Click again to launch!");
       }
       return;
     }
 
-    // Allow ball launch in both playing and boss states
-    if (!paddle || (gameState !== "playing" && gameState !== "boss")) return;
+    if (!paddle || gameState !== "playing") return;
 
     // Check if ball is waiting to launch
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
@@ -918,34 +837,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           if (newBall.y + newBall.dy > SCALED_CANVAS_HEIGHT - newBall.radius) {
             // Remove this ball
             return null;
-          }
-
-          // Boss collision
-          if (boss && boss.state !== "dead") {
-            const ballLeft = newBall.x - newBall.radius;
-            const ballRight = newBall.x + newBall.radius;
-            const ballTop = newBall.y - newBall.radius;
-            const ballBottom = newBall.y + newBall.radius;
-
-            if (
-              ballRight > boss.x &&
-              ballLeft < boss.x + boss.width &&
-              ballBottom > boss.y &&
-              ballTop < boss.y + boss.height
-            ) {
-              // Boss hit!
-              registerBossHit();
-              soundManager.playBounce();
-
-              // Bounce ball away from boss
-              const bossCenterX = boss.x + boss.width / 2;
-              const bossCenterY = boss.y + boss.height / 2;
-              const angle = Math.atan2(newBall.y - bossCenterY, newBall.x - bossCenterX);
-              const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-              newBall.dx = speed * Math.cos(angle);
-              newBall.dy = speed * Math.sin(angle);
-              newBall.lastHitTime = Date.now();
-            }
           }
 
           // Brick collision (expand collision area to cover padding gaps)
@@ -1250,68 +1141,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, [paddle, balls, createPowerUp, setPowerUps, nextLevel, speedMultiplier]);
 
   const gameLoop = useCallback(() => {
-    if (gameState !== "playing" && gameState !== "boss") return;
+    if (gameState !== "playing") return;
 
     // Update background animation
     setBackgroundPhase((prev) => (prev + 1) % 360);
-
-    // Update boss and projectiles if in boss mode
-    if (gameState === "boss" && boss) {
-      const now = Date.now();
-      const deltaTime = now - lastBossUpdateRef.current;
-      lastBossUpdateRef.current = now;
-
-      // Update boss movement
-      updateBoss(deltaTime);
-
-      // Update boss projectiles
-      if (paddle) {
-        updateBossProjectiles(deltaTime, paddle.x + paddle.width / 2, paddle.y);
-      }
-
-      // Boss attack logic
-      const attackCooldown = boss.isAngry
-        ? boss.config.attackIntervalBase / boss.config.attackRateMultiplier
-        : boss.config.attackIntervalBase;
-
-      if (now - lastBossAttackRef.current > attackCooldown && boss.state === "moving") {
-        const attackType = Math.random();
-        if (attackType < 0.4) {
-          // Laser
-          if (paddle) {
-            fireBossProjectile("laser", paddle.x + paddle.width / 2, paddle.y);
-          }
-        } else if (attackType < 0.7) {
-          // Regular missile
-          fireBossProjectile("missile");
-        } else {
-          // Homing missile
-          if (paddle) {
-            fireBossProjectile("homingMissile", paddle.x + paddle.width / 2, paddle.y);
-          }
-        }
-        lastBossAttackRef.current = now;
-      }
-
-      // Check if boss is defeated
-      if (boss.state === "dead") {
-        // Boss defeated! Award points and advance level
-        const bossBonus = 10000 * level;
-        setScore((prev) => prev + bossBonus);
-        toast.success(`Boss defeated! +${bossBonus} points!`, { duration: 4000 });
-        soundManager.playWin();
-
-        // Clear boss
-        setBoss(null);
-        setBossProjectiles([]);
-
-        // Advance to next level
-        setTimeout(() => {
-          nextLevel();
-        }, 2000);
-        return;
-      }
-    }
 
     // Update balls (only if not waiting to launch)
     setBalls((prev) =>
@@ -1764,85 +1597,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Check bomb-paddle collision
     if (paddle) {
-      // Boss projectile collisions
-      bossProjectiles.forEach((proj) => {
-        // Check for shield first
-        if (
-          paddle.hasShield &&
-          proj.x + proj.width > paddle.x &&
-          proj.x < paddle.x + paddle.width &&
-          proj.y + proj.height > paddle.y - 10 &&
-          proj.y < paddle.y
-        ) {
-          soundManager.playBounce();
-          setBossProjectiles((prev) => prev.filter((p) => p !== proj));
-          setPaddle((prev) => (prev ? { ...prev, hasShield: false } : null));
-          toast.success("Shield absorbed boss attack!");
-          return;
-        }
-
-        if (
-          proj.x + proj.width > paddle.x &&
-          proj.x < paddle.x + paddle.width &&
-          proj.y + proj.height > paddle.y &&
-          proj.y < paddle.y + paddle.height
-        ) {
-          soundManager.playLoseLife();
-          setBossProjectiles((prev) => prev.filter((p) => p !== proj));
-
-          setLives((prev) => {
-            const newLives = prev - 1;
-
-            if (newLives <= 0) {
-              setGameState("gameOver");
-              soundManager.stopBackgroundMusic();
-              toast.error("Game Over!");
-
-              if (isHighScore(score)) {
-                setShowHighScoreEntry(true);
-                soundManager.playHighScoreMusic();
-              }
-            } else {
-              const baseSpeed = 3;
-              const resetBall: Ball = {
-                x: SCALED_CANVAS_WIDTH / 2,
-                y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
-                dx: baseSpeed,
-                dy: -baseSpeed,
-                radius: SCALED_BALL_RADIUS,
-                speed: baseSpeed,
-                id: nextBallId.current++,
-                isFireball: false,
-                waitingToLaunch: true,
-              };
-              setBalls([resetBall]);
-              setLaunchAngle(-20);
-              launchAngleDirectionRef.current = 1;
-              setShowInstructions(true);
-              setPowerUps([]);
-              setPaddle((prev) => (prev ? { ...prev, hasTurrets: false, width: SCALED_PADDLE_WIDTH } : null));
-              setBullets([]);
-              if (speedMultiplier < 1) {
-                setSpeedMultiplier(1);
-              }
-              setBrickHitSpeedAccumulated(0);
-              setTimer(0);
-              setLastEnemySpawnTime(0);
-              setEnemies([]);
-              setBombs([]);
-              setExplosions([]);
-              bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
-              bombIntervalsRef.current.clear();
-              setBossProjectiles([]); // Clear boss projectiles when resetting
-              setGameState("ready");
-              toast.error(`Boss attack hit! ${newLives} lives remaining. Click to continue.`);
-            }
-            return newLives;
-          });
-        }
-      });
-
-      // Regular bomb collisions
       bombs.forEach((bomb) => {
         // Check for shield first
         if (
@@ -2106,18 +1860,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     bricks,
     score,
     isHighScore,
-      explosions,
-      lastPaddleHitTime,
-      lastScoreMilestone,
-      boss,
-      updateBoss,
-      updateBossProjectiles,
-      fireBossProjectile,
-      registerBossHit,
-    ]);
+    explosions,
+    lastPaddleHitTime,
+    lastScoreMilestone,
+  ]);
 
   useEffect(() => {
-    if (gameState === "playing" || gameState === "boss") {
+    if (gameState === "playing") {
       animationFrameRef.current = requestAnimationFrame(gameLoop);
     } else {
       if (animationFrameRef.current) {
@@ -2329,8 +2078,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Keyboard controls for launch angle
   useEffect(() => {
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
-    // Allow keyboard controls in both playing and boss states
-    if ((gameState !== "playing" && gameState !== "boss") || !waitingBall) return;
+    if (gameState !== "playing" || !waitingBall) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") {
@@ -2367,22 +2115,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Start next level
         nextLevel();
       } else {
-        // Continue current level - transition to boss or playing state
-        if (isBossLevelRef.current) {
-          console.log('[Boss Start Debug] bossStartFix: pending -> fixed - Starting boss level from button');
-          setShowInstructions(false);
-          setGameState("boss");
-          setBossStartDebug("fixed");
-          toast.success("Boss Battle!");
-        } else {
-          setGameState("playing");
-          toast.success("Continue!");
-        }
-        
-        // Start music only if not already playing
+        // Continue current level - start music only if not already playing
+        setGameState("playing");
         if (!soundManager.isMusicPlaying()) {
           soundManager.playBackgroundMusic(level);
         }
+        toast.success("Continue!");
       }
     }
   };
@@ -2633,8 +2371,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       collectedLetters={collectedLetters}
                       screenShake={screenShake}
                       backgroundFlash={backgroundFlash}
-                      boss={boss}
-                      bossProjectiles={bossProjectiles}
                     />
                   </div>
                 </div>

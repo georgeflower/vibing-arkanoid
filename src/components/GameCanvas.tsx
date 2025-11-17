@@ -4,7 +4,6 @@ import { powerUpImages } from "@/utils/powerUpImages";
 import { bonusLetterImages } from "@/utils/bonusLetterImages";
 import paddleImg from "@/assets/paddle.png";
 import paddleTurretsImg from "@/assets/paddle-turrets.png";
-import bossSpritesheetImg from "@/assets/boss-spritesheet.png";
 
 interface GameCanvasProps {
   width: number;
@@ -25,17 +24,14 @@ interface GameCanvasProps {
   collectedLetters: Set<BonusLetterType>;
   screenShake: number;
   backgroundFlash: number;
-  boss?: any;
-  bossProjectiles?: any[];
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, boss, bossProjectiles }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
     const paddleTurretsImageRef = useRef<HTMLImageElement | null>(null);
-    const bossSpritesheetRef = useRef<HTMLImageElement | null>(null);
     const bgRotationRef = useRef(0);
     const bgZoomRef = useRef(1);
     const rotationSpeedRef = useRef(0.5);
@@ -43,7 +39,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const zoomDirectionRef = useRef(1);
     const dashOffsetRef = useRef(0);
     
-    // Load power-up images, bonus letter images, paddle image, and boss spritesheet
+    // Load power-up images, bonus letter images, and paddle image
     useEffect(() => {
       const cacheBuster = `?t=${Date.now()}`;
       Object.entries(powerUpImages).forEach(([type, src]) => {
@@ -65,10 +61,6 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       const paddleTurretsImage = new Image();
       paddleTurretsImage.src = paddleTurretsImg + cacheBuster;
       paddleTurretsImageRef.current = paddleTurretsImage;
-      
-      const bossSpritesheetImage = new Image();
-      bossSpritesheetImage.src = bossSpritesheetImg + cacheBuster;
-      bossSpritesheetRef.current = bossSpritesheetImage;
     }, []);
 
     useEffect(() => {
@@ -206,36 +198,6 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
           ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height / 2);
         }
-      }
-
-      // Draw boss if present
-      if (boss && bossSpritesheetRef.current && bossSpritesheetRef.current.complete) {
-        ctx.save();
-        const now = Date.now();
-        if (now - (boss.hitFlashTime || 0) < 150) {
-          ctx.globalAlpha = 0.5 + Math.sin(now * 0.05) * 0.3;
-        }
-        const spriteX = boss.isAngry ? 80 : 0;
-        ctx.drawImage(bossSpritesheetRef.current, spriteX, 0, 80, 60, boss.x, boss.y, boss.width, boss.height);
-        ctx.restore();
-        
-        // Health bar
-        ctx.fillStyle = "rgba(255, 0, 0, 0.8)";
-        ctx.fillRect(boss.x, boss.y - 15, boss.width, 8);
-        ctx.fillStyle = "rgba(0, 255, 0, 0.8)";
-        ctx.fillRect(boss.x, boss.y - 15, boss.width * (boss.currentHealth / boss.maxHealth), 8);
-      }
-      
-      // Draw boss projectiles
-      if (bossProjectiles && bossSpritesheetRef.current && bossSpritesheetRef.current.complete) {
-        bossProjectiles.forEach((proj) => {
-          ctx.save();
-          ctx.translate(proj.x + proj.width / 2, proj.y + proj.height / 2);
-          ctx.rotate(proj.rotation);
-          const spriteX = proj.type === "laser" ? 0 : 32;
-          ctx.drawImage(bossSpritesheetRef.current!, spriteX, 120, 32, 32, -proj.width / 2, -proj.height / 2, proj.width, proj.height);
-          ctx.restore();
-        });
       }
 
       // Draw balls
