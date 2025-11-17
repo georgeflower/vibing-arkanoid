@@ -33,6 +33,7 @@ export interface Paddle {
   height: number;
   hasTurrets?: boolean;
   hasShield?: boolean;
+  turretShots?: number;
 }
 
 export interface Bullet {

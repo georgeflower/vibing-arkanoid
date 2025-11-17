@@ -129,7 +129,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     settings.difficulty,
     setBrickHitSpeedAccumulated,
   );
-  const { bullets, setBullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks, enemies);
+  const { bullets, setBullets, fireBullets, updateBullets } = useBullets(setScore, setBricks, bricks, enemies, setPaddle);
 
   // Helper function to create explosion particles based on enemy type
   const createExplosionParticles = useCallback((x: number, y: number, enemyType: EnemyType): Particle[] => {
