@@ -1,6 +1,16 @@
-export const GAME_VERSION = "0.6.4";
+export const GAME_VERSION = "0.6.5";
 
 export const CHANGELOG = [
+  {
+    version: "0.6.5  ",
+    changes: [
+      "Turret power-up now has limited ammo: 30 shots in normal mode, 15 shots in god mode, and is automatically removed when depleted",
+      "Added turret ammo counter to HUD that pulses red when 5 shots or fewer remain",
+      "Desktop adaptive layout: title-only hiding and zoom scaling when vertical space is constrained while keeping stats and controls always visible",
+      "Base speed increased by 15% to 3.45 (was 3.00)",
+      "God mode now starts at 125% speed",
+    ],
+  },
   {
     version: "0.6.4  ",
     changes: [
