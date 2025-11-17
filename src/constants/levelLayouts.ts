@@ -104,7 +104,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, false, false, true, false, false, false, false, false, true, false, false, false],
   ],
 
-  // Level 6: Checkerboard
+  // Level 6
   [
     [true, false, true, false, true, false, true, false, true, false, true, false, true],
     [false, true, false, true, false, true, false, true, false, true, false, true, false],
@@ -114,9 +114,9 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, true, false, true, false, true, false, true, false, true, false, true, false],
     [true, false, true, false, true, false, true, false, true, false, true, false, true],
     [false, true, false, true, false, true, false, true, false, true, false, true, false],
-    [true, false, true, false, true, false, true, false, true, false, true, false, true],
+    [true, false, true, 2, true, false, true, 2, true, false, true, 2, true],
     [false, true, false, true, false, true, false, true, false, true, false, true, false],
-    [true, false, true, false, true, false, true, false, true, false, true, false, true],
+    [true, 2, true, false, true, 2, true, false, true, 2, true, false, true],
     [false, true, false, true, false, true, false, true, false, true, false, true, false],
     [true, false, true, false, true, false, true, false, true, false, true, false, true],
     [false, true, false, true, false, true, false, true, false, true, false, true, false],
