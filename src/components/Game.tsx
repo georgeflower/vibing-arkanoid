@@ -2389,6 +2389,28 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     </div>
                     <div className="stat-value">{Math.round(speedMultiplier * 100)}%</div>
                   </div>
+
+                  {/* Turret Ammo - Only show when turrets are active */}
+                  {paddle?.hasTurrets && paddle?.turretShots !== undefined && (
+                    <div className="stat-box">
+                      <div 
+                        className="stat-label" 
+                        style={{ 
+                          color: paddle.turretShots <= 5 ? "hsl(0, 80%, 60%)" : "hsl(280, 60%, 60%)" 
+                        }}
+                      >
+                        AMMO
+                      </div>
+                      <div 
+                        className={`stat-value ${paddle.turretShots <= 5 ? 'animate-pulse' : ''}`}
+                        style={{
+                          color: paddle.turretShots <= 5 ? "hsl(0, 80%, 65%)" : "hsl(0, 0%, 85%)"
+                        }}
+                      >
+                        {paddle.turretShots}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2">
