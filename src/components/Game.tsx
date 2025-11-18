@@ -67,6 +67,11 @@ export const Game = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
+  const [isMobileDevice] = useState(() => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+           ('ontouchstart' in window && window.matchMedia('(max-width: 768px)').matches);
+  });
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
   const [framesVisible, setFramesVisible] = useState(true);
@@ -2082,11 +2087,32 @@ export const Game = ({
   // Listen for fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const isNowFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(isNowFullscreen);
+      
+      // On mobile: if exiting fullscreen and game is playing, pause and show prompt
+      if (isMobileDevice && !isNowFullscreen && gameState === "playing") {
+        setGameState("paused");
+        if (gameLoopRef.current) {
+          gameLoopRef.current.pause();
+        }
+        setShowFullscreenPrompt(true);
+      }
     };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, []);
+  }, [isMobileDevice, gameState]);
+
+  // Auto-enter fullscreen on mobile when game starts
+  useEffect(() => {
+    if (isMobileDevice && gameState === "ready" && !isFullscreen && fullscreenContainerRef.current) {
+      // Small delay to ensure DOM is ready
+      const timer = setTimeout(() => {
+        toggleFullscreen();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isMobileDevice, gameState]);
 
   // F key to toggle fullscreen
   useEffect(() => {
@@ -2183,7 +2209,31 @@ export const Game = ({
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
   }, [framesVisible, titleVisible, gameScale, disableAutoZoom, SCALED_CANVAS_HEIGHT]);
+  // Handle tap to resume fullscreen on mobile
+  const handleFullscreenPromptClick = async () => {
+    setShowFullscreenPrompt(false);
+    await toggleFullscreen();
+    setGameState("playing");
+    if (gameLoopRef.current) {
+      gameLoopRef.current.resume();
+    }
+  };
+
   return <div ref={fullscreenContainerRef} className={`flex items-center justify-center ${isFullscreen ? "h-screen bg-background overflow-hidden" : "h-screen overflow-hidden"}`}>
+      {/* Mobile fullscreen prompt overlay */}
+      {showFullscreenPrompt && isMobileDevice && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-pointer"
+          onClick={handleFullscreenPromptClick}
+        >
+          <div className="text-center p-8 bg-background/90 rounded-lg border-2 border-primary">
+            <h2 className="text-2xl font-bold mb-4 text-foreground">Game Paused</h2>
+            <p className="text-lg text-muted-foreground mb-2">Tap to enter fullscreen</p>
+            <p className="text-sm text-muted-foreground">and resume playing</p>
+          </div>
+        </div>
+      )}
+      
       {showEndScreen ? <EndScreen onContinue={handleEndScreenContinue} onReturnToMenu={onReturnToMenu} /> : showHighScoreDisplay ? <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} /> : <>
           {showHighScoreEntry ? <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} /> : <div className="metal-frame">
               {/* Title Bar - Adaptive Visibility (Desktop: only title hides, Mobile: all hides) */}
