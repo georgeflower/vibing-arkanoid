@@ -1124,17 +1124,29 @@ export const Game = ({
   
   // FPS tracking for adaptive quality
   const fpsTrackerRef = useRef({ lastTime: performance.now(), frameCount: 0, fps: 60 });
+  const lastFrameTimeRef = useRef(performance.now());
+  const targetFrameTime = 1000 / 60; // 60 FPS cap
   
   const gameLoop = useCallback(() => {
     if (gameState !== "playing") return;
 
-    // Track FPS
+    // Throttle to 60 FPS
     const now = performance.now();
+    const elapsed = now - lastFrameTimeRef.current;
+    
+    if (elapsed < targetFrameTime) {
+      animationFrameRef.current = requestAnimationFrame(gameLoop);
+      return;
+    }
+    
+    lastFrameTimeRef.current = now - (elapsed % targetFrameTime);
+
+    // Track FPS
     fpsTrackerRef.current.frameCount++;
     const deltaTime = now - fpsTrackerRef.current.lastTime;
     
     if (deltaTime >= 1000) {
-      const fps = Math.round(fpsTrackerRef.current.frameCount * 1000 / deltaTime);
+      const fps = Math.min(60, Math.round(fpsTrackerRef.current.frameCount * 1000 / deltaTime));
       fpsTrackerRef.current.fps = fps;
       fpsTrackerRef.current.frameCount = 0;
       fpsTrackerRef.current.lastTime = now;
