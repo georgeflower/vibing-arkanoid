@@ -1228,6 +1228,8 @@ export const Game = ({
             setBrickHitSpeedAccumulated(0);
             setTimer(0);
             setEnemies([]);
+            setBossAttacks([]);
+            setLaserWarnings([]);
             setBombs([]);
             setExplosions([]);
             bombIntervalsRef.current.forEach(interval => clearInterval(interval));
@@ -1787,6 +1789,8 @@ export const Game = ({
               setTimer(0);
               setLastEnemySpawnTime(0);
               setEnemies([]); // Clear all enemies
+              setBossAttacks([]);
+              setLaserWarnings([]);
               setBombs([]); // Clear all bombs
               setExplosions([]);
               // Clear all bomb intervals
@@ -1863,6 +1867,8 @@ export const Game = ({
               setTimer(0);
               setLastEnemySpawnTime(0);
               setEnemies([]); // Clear all enemies
+              setBossAttacks([]);
+              setLaserWarnings([]);
               setBombs([]); // Clear all bombs
               setExplosions([]);
               // Clear all bomb intervals
@@ -1952,6 +1958,8 @@ export const Game = ({
             setPowerUps([]);
             setBullets([]);
             setEnemies([]);
+            setBossAttacks([]);
+            setLaserWarnings([]);
             setBombs([]);
             setExplosions([]);
             // Clear all bomb intervals
@@ -2003,6 +2011,8 @@ export const Game = ({
               setPowerUps([]);
               setBullets([]);
               setEnemies([]);
+              setBossAttacks([]);
+              setLaserWarnings([]);
               setBombs([]);
               setExplosions([]);
               bombIntervalsRef.current.forEach(interval => clearInterval(interval));
