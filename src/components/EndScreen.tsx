@@ -1,5 +1,6 @@
 import endScreenImg from "@/assets/end-screen.png";
 import { Button } from "./ui/button";
+import { useState, useEffect } from "react";
 
 interface GameStats {
   totalBricksDestroyed: number;
@@ -22,8 +23,49 @@ interface EndScreenProps {
   stats?: GameStats;
 }
 
+const useAnimatedCounter = (targetValue: number, duration: number, delay: number = 0) => {
+  const [count, setCount] = useState(0);
+  
+  useEffect(() => {
+    const startTime = Date.now() + delay;
+    const endTime = startTime + duration;
+    
+    const animate = () => {
+      const now = Date.now();
+      
+      if (now < startTime) {
+        requestAnimationFrame(animate);
+        return;
+      }
+      
+      if (now >= endTime) {
+        setCount(targetValue);
+        return;
+      }
+      
+      const progress = (now - startTime) / duration;
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      setCount(Math.floor(targetValue * easeOutQuart));
+      requestAnimationFrame(animate);
+    };
+    
+    requestAnimationFrame(animate);
+  }, [targetValue, duration, delay]);
+  
+  return count;
+};
+
 export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: EndScreenProps) => {
-  const accuracy = stats?.accuracy ?? 0;
+  // Animate each counter with different speeds and delays
+  const animatedScore = useAnimatedCounter(stats?.finalScore ?? 0, 2000, 0);
+  const animatedLevel = useAnimatedCounter(stats?.finalLevel ?? 1, 800, 100);
+  const animatedBricks = useAnimatedCounter(stats?.totalBricksDestroyed ?? 0, 1500, 200);
+  const animatedCombo = useAnimatedCounter(stats?.longestCombo ?? 0, 1200, 300);
+  const animatedPowerUps = useAnimatedCounter(stats?.powerUpsCollected ?? 0, 1000, 400);
+  const animatedTurretKills = useAnimatedCounter(stats?.bricksDestroyedByTurrets ?? 0, 1300, 500);
+  const animatedEnemies = useAnimatedCounter(stats?.enemiesKilled ?? 0, 1400, 600);
+  const animatedBosses = useAnimatedCounter(stats?.bossesKilled ?? 0, 900, 700);
+  
   return (
     <div 
       className="min-h-screen w-full flex items-center justify-center"
@@ -49,49 +91,42 @@ export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: E
           
           <div className="flex justify-between text-xl">
             <span className="text-gray-300">Final Score:</span>
-            <span className="text-white font-bold">{stats?.finalScore.toString().padStart(6, '0') ?? '000000'}</span>
+            <span className="text-white font-bold">{animatedScore.toString().padStart(6, '0')}</span>
           </div>
           
           <div className="flex justify-between text-xl">
             <span className="text-gray-300">Level Reached:</span>
-            <span className="text-white font-bold">{stats?.finalLevel ?? 1}</span>
+            <span className="text-white font-bold">{animatedLevel}</span>
           </div>
           
           <div className="flex justify-between text-xl">
             <span className="text-gray-300">Bricks Destroyed:</span>
-            <span className="text-white font-bold">{stats?.totalBricksDestroyed ?? 0}</span>
+            <span className="text-white font-bold">{animatedBricks}</span>
           </div>
           
           <div className="flex justify-between text-xl">
             <span className="text-gray-300">Longest Combo:</span>
-            <span className="text-white font-bold">{stats?.longestCombo ?? 0}x</span>
-          </div>
-          
-          <div className="flex justify-between text-xl">
-            <span className="text-gray-300">Accuracy:</span>
-            <span className={`font-bold ${accuracy >= 70 ? 'text-green-400' : accuracy >= 40 ? 'text-yellow-400' : 'text-red-400'}`}>
-              {accuracy.toFixed(1)}%
-            </span>
+            <span className="text-white font-bold">{animatedCombo}x</span>
           </div>
           
           <div className="flex justify-between text-xl">
             <span className="text-gray-300">Power-ups Collected:</span>
-            <span className="text-white font-bold">{stats?.powerUpsCollected ?? 0}</span>
+            <span className="text-white font-bold">{animatedPowerUps}</span>
           </div>
           
           <div className="flex justify-between text-xl">
             <span className="text-gray-300">Turret Brick Kills:</span>
-            <span className="text-white font-bold">{stats?.bricksDestroyedByTurrets ?? 0}</span>
+            <span className="text-white font-bold">{animatedTurretKills}</span>
           </div>
           
           <div className="flex justify-between text-xl">
             <span className="text-gray-300">Enemies Killed:</span>
-            <span className="text-white font-bold">{stats?.enemiesKilled ?? 0}</span>
+            <span className="text-white font-bold">{animatedEnemies}</span>
           </div>
           
           <div className="flex justify-between text-xl">
             <span className="text-gray-300">Bosses Defeated:</span>
-            <span className="text-white font-bold">{stats?.bossesKilled ?? 0}</span>
+            <span className="text-white font-bold">{animatedBosses}</span>
           </div>
         </div>
         
