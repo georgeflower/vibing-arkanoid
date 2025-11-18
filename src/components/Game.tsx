@@ -452,6 +452,11 @@ export const Game = ({
   }, [level, initBricksForLevel, setPowerUps]);
   useEffect(() => {
     initGame();
+    
+    // Preload power-up sounds
+    soundManager.preloadSounds().catch(err => {
+      console.error('Failed to preload sounds:', err);
+    });
   }, [initGame]);
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!canvasRef.current || !paddle) return;
