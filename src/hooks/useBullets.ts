@@ -10,7 +10,8 @@ export const useBullets = (
   setBricks: React.Dispatch<React.SetStateAction<Brick[]>>,
   bricks: Brick[],
   enemies: Enemy[],
-  setPaddle: React.Dispatch<React.SetStateAction<Paddle | null>>
+  setPaddle: React.Dispatch<React.SetStateAction<Paddle | null>>,
+  onBrickDestroyedByTurret?: () => void
 ) => {
   const [bullets, setBullets] = useState<Bullet[]>([]);
 
@@ -127,6 +128,7 @@ export const useBullets = (
               } else {
                 updatedBrick.visible = false;
                 setScore(prev => prev + brick.points);
+                onBrickDestroyedByTurret?.();
               }
               
               return updatedBrick;

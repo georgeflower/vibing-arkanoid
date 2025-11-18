@@ -11,7 +11,8 @@ export const usePowerUps = (
   setLives: React.Dispatch<React.SetStateAction<number>>,
   timer: number = 0,
   difficulty: Difficulty = "normal",
-  setBrickHitSpeedAccumulated?: React.Dispatch<React.SetStateAction<number>>
+  setBrickHitSpeedAccumulated?: React.Dispatch<React.SetStateAction<number>>,
+  onPowerUpCollected?: (type: string) => void
 ) => {
   const [powerUps, setPowerUps] = useState<PowerUp[]>([]);
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
@@ -98,6 +99,7 @@ export const usePowerUps = (
           powerUp.y < paddle.y + paddle.height
         ) {
           // Apply power-up effect
+          onPowerUpCollected?.(powerUp.type);
           
           switch (powerUp.type) {
             case "multiball":
