@@ -38,28 +38,64 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const zoomSpeedRef = useRef(0.3);
     const zoomDirectionRef = useRef(1);
     const dashOffsetRef = useRef(0);
+    const imagesLoadedRef = useRef(false);
+    
+    // Helper function to check if image is valid and loaded
+    const isImageValid = (img: HTMLImageElement | null): boolean => {
+      return !!(img && img.complete && img.naturalHeight !== 0);
+    };
     
     // Load power-up images, bonus letter images, and paddle image
     useEffect(() => {
-      const cacheBuster = `?t=${Date.now()}`;
+      let loadedCount = 0;
+      const totalImages = Object.keys(powerUpImages).length + 
+                         Object.keys(bonusLetterImages).length + 2; // +2 for paddle images
+      
+      const checkAllLoaded = () => {
+        loadedCount++;
+        if (loadedCount === totalImages) {
+          imagesLoadedRef.current = true;
+        }
+      };
+      
       Object.entries(powerUpImages).forEach(([type, src]) => {
         const img = new Image();
-        img.src = src + cacheBuster;
+        img.onload = checkAllLoaded;
+        img.onerror = () => {
+          console.error(`Failed to load power-up image: ${type}`);
+          checkAllLoaded();
+        };
+        img.src = src;
         loadedImagesRef.current[type] = img;
       });
       
       Object.entries(bonusLetterImages).forEach(([type, src]) => {
         const img = new Image();
-        img.src = src + cacheBuster;
+        img.onload = checkAllLoaded;
+        img.onerror = () => {
+          console.error(`Failed to load bonus letter image: ${type}`);
+          checkAllLoaded();
+        };
+        img.src = src;
         bonusLetterImagesRef.current[type] = img;
       });
       
       const paddleImage = new Image();
-      paddleImage.src = paddleImg + cacheBuster;
+      paddleImage.onload = checkAllLoaded;
+      paddleImage.onerror = () => {
+        console.error('Failed to load paddle image');
+        checkAllLoaded();
+      };
+      paddleImage.src = paddleImg;
       paddleImageRef.current = paddleImage;
       
       const paddleTurretsImage = new Image();
-      paddleTurretsImage.src = paddleTurretsImg + cacheBuster;
+      paddleTurretsImage.onload = checkAllLoaded;
+      paddleTurretsImage.onerror = () => {
+        console.error('Failed to load paddle turrets image');
+        checkAllLoaded();
+      };
+      paddleTurretsImage.src = paddleTurretsImg;
       paddleTurretsImageRef.current = paddleTurretsImage;
     }, []);
 
@@ -182,10 +218,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       if (paddle) {
         const img = paddleImageRef.current;
         
-        if (img && img.complete) {
+        if (isImageValid(img)) {
           ctx.shadowBlur = 12;
           ctx.shadowColor = "hsl(200, 70%, 50%)";
-          ctx.drawImage(img, paddle.x, paddle.y, paddle.width, paddle.height);
+          ctx.drawImage(img!, paddle.x, paddle.y, paddle.width, paddle.height);
         } else {
           // Fallback while image loads
           ctx.shadowBlur = 12;
@@ -331,13 +367,13 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         }
         
         // Draw the icon
-        if (img && img.complete) {
+        if (isImageValid(img)) {
           ctx.save();
           ctx.beginPath();
           ctx.roundRect(-size / 2, -size / 2, size, size, cornerRadius);
           ctx.clip();
           ctx.globalAlpha = 0.9;
-          ctx.drawImage(img, -size / 2, -size / 2, size, size);
+          ctx.drawImage(img!, -size / 2, -size / 2, size, size);
           ctx.restore();
         }
         
@@ -889,8 +925,8 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.shadowBlur = 15;
         ctx.shadowColor = "hsl(280, 90%, 60%)";
         
-        if (img && img.complete) {
-          ctx.drawImage(img, -size / 2, -size / 2, size, size);
+        if (isImageValid(img)) {
+          ctx.drawImage(img!, -size / 2, -size / 2, size, size);
         } else {
           // Fallback circle if image not loaded
           ctx.fillStyle = "hsl(280, 90%, 60%)";
@@ -917,9 +953,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         
         ctx.save();
         
-        if (img && img.complete) {
+        if (isImageValid(img)) {
           ctx.globalAlpha = isCollected ? 1 : 0.3;
-          ctx.drawImage(img, x, y, size, size);
+          ctx.drawImage(img!, x, y, size, size);
         }
         
         ctx.restore();
