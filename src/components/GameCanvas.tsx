@@ -903,6 +903,213 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.restore();
       });
 
+      // Draw laser warnings
+      laserWarnings.forEach(warning => {
+        const elapsed = Date.now() - warning.startTime;
+        const alpha = Math.sin((elapsed / 800) * Math.PI);
+        
+        ctx.strokeStyle = `rgba(255, 0, 0, ${alpha * 0.7})`;
+        ctx.lineWidth = 8;
+        ctx.setLineDash([10, 10]);
+        ctx.lineDashOffset = (Date.now() / 50) % 20;
+        ctx.beginPath();
+        ctx.moveTo(warning.x + 4, 0);
+        ctx.lineTo(warning.x + 4, height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+
+      // Draw boss attacks
+      bossAttacks.forEach(attack => {
+        if (attack.type === 'laser') {
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
+          ctx.fillStyle = 'rgba(255, 50, 50, 0.9)';
+          ctx.fillRect(attack.x, attack.y, attack.width, attack.height);
+          
+          ctx.fillStyle = 'rgba(255, 200, 200, 0.6)';
+          ctx.fillRect(attack.x + attack.width * 0.2, attack.y, attack.width * 0.6, attack.height);
+        } else {
+          ctx.save();
+          ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
+          ctx.rotate((Date.now() / 30) * Math.PI / 180);
+          
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = attack.type === 'super' ? 'hsl(280, 100%, 60%)' : 'hsl(0, 100%, 60%)';
+          ctx.fillStyle = attack.type === 'super' ? 'hsl(280, 80%, 60%)' : 'hsl(0, 80%, 60%)';
+          ctx.beginPath();
+          ctx.arc(0, 0, attack.width / 2, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.beginPath();
+          ctx.arc(-2, -2, attack.width / 4, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.restore();
+        }
+      });
+
+      // Draw boss
+      if (boss) {
+        const centerX = boss.x + boss.width / 2;
+        const centerY = boss.y + boss.height / 2;
+        
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        
+        if (boss.type === 'cube') {
+          ctx.rotate(boss.rotationY);
+          const size = boss.width / 2;
+          
+          const baseHue = boss.isAngry ? 0 : 200;
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
+          ctx.fillStyle = `hsl(${baseHue}, 80%, 50%)`;
+          ctx.fillRect(-size, -size, size * 2, size * 2);
+          
+          ctx.fillStyle = `hsl(${baseHue}, 70%, 60%)`;
+          ctx.fillRect(-size, -size, size * 2, size * 0.5);
+          
+          ctx.strokeStyle = `hsl(${baseHue}, 90%, 70%)`;
+          ctx.lineWidth = 3;
+          ctx.strokeRect(-size, -size, size * 2, size * 2);
+        } else if (boss.type === 'sphere') {
+          const radius = boss.width / 2;
+          const baseHue = boss.isAngry ? 330 : 330;
+          const intensity = boss.isAngry ? 70 : 60;
+          
+          const gradient = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, 0, 0, 0, radius);
+          gradient.addColorStop(0, `hsl(${baseHue}, 100%, ${intensity + 20}%)`);
+          gradient.addColorStop(0.7, `hsl(${baseHue}, 90%, ${intensity}%)`);
+          gradient.addColorStop(1, `hsl(${baseHue}, 70%, ${intensity - 20}%)`);
+          
+          ctx.shadowBlur = 25;
+          ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(0, 0, radius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          if (boss.isAngry) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.beginPath();
+            ctx.moveTo(-8, -5);
+            ctx.lineTo(-5, 0);
+            ctx.moveTo(8, -5);
+            ctx.lineTo(5, 0);
+            ctx.stroke();
+          }
+        } else if (boss.type === 'pyramid') {
+          const size = boss.width / 2;
+          const baseHue = boss.isAngry ? 0 : (boss.isSuperAngry ? 280 : 280);
+          const intensity = boss.isSuperAngry ? 75 : (boss.isAngry ? 65 : 60);
+          
+          ctx.rotate(boss.rotationY);
+          ctx.shadowBlur = 25;
+          ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
+          
+          ctx.fillStyle = `hsl(${baseHue}, 80%, ${intensity}%)`;
+          ctx.beginPath();
+          ctx.moveTo(0, -size);
+          ctx.lineTo(size, size);
+          ctx.lineTo(-size, size);
+          ctx.closePath();
+          ctx.fill();
+          
+          ctx.fillStyle = `hsl(${baseHue}, 70%, ${intensity + 10}%)`;
+          ctx.beginPath();
+          ctx.moveTo(0, -size);
+          ctx.lineTo(0, 0);
+          ctx.lineTo(-size, size);
+          ctx.closePath();
+          ctx.fill();
+          
+          ctx.strokeStyle = `hsl(${baseHue}, 90%, 70%)`;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(0, -size);
+          ctx.lineTo(size, size);
+          ctx.lineTo(-size, size);
+          ctx.closePath();
+          ctx.stroke();
+        }
+        
+        ctx.restore();
+        
+        // Draw boss health bar
+        const healthBarWidth = boss.width;
+        const healthBarHeight = 8;
+        const healthBarX = boss.x;
+        const healthBarY = boss.y - 25;
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+        
+        const healthPercent = boss.currentHealth / boss.maxHealth;
+        const fillColor = healthPercent > 0.5 ? 'hsl(120, 80%, 50%)' : 
+                          healthPercent > 0.25 ? 'hsl(50, 80%, 50%)' : 'hsl(0, 80%, 50%)';
+        ctx.fillStyle = fillColor;
+        ctx.fillRect(healthBarX, healthBarY, healthBarWidth * healthPercent, healthBarHeight);
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.font = 'bold 12px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${boss.type.toUpperCase()} BOSS`, boss.x + boss.width / 2, healthBarY - 8);
+      }
+
+      // Draw resurrected bosses
+      resurrectedBosses.forEach(resBoss => {
+        const centerX = resBoss.x + resBoss.width / 2;
+        const centerY = resBoss.y + resBoss.height / 2;
+        
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(resBoss.rotationY);
+        
+        const size = resBoss.width / 2;
+        const baseHue = resBoss.isSuperAngry ? 0 : 280;
+        const intensity = resBoss.isSuperAngry ? 75 : 65;
+        
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
+        ctx.fillStyle = `hsl(${baseHue}, 80%, ${intensity}%)`;
+        ctx.beginPath();
+        ctx.moveTo(0, -size);
+        ctx.lineTo(size, size);
+        ctx.lineTo(-size, size);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.strokeStyle = `hsl(${baseHue}, 90%, 70%)`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        ctx.restore();
+        
+        // Mini health bar
+        const hbW = resBoss.width;
+        const hbH = 4;
+        const hbX = resBoss.x;
+        const hbY = resBoss.y - 10;
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(hbX, hbY, hbW, hbH);
+        
+        const hpPercent = resBoss.currentHealth / resBoss.maxHealth;
+        ctx.fillStyle = hpPercent > 0.5 ? 'hsl(120, 80%, 50%)' : 'hsl(0, 80%, 50%)';
+        ctx.fillRect(hbX, hbY, hbW * hpPercent, hbH);
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(hbX, hbY, hbW, hbH);
+      });
+
       // Draw bonus letters as 3D spheres with letter images
       bonusLetters.forEach((letter) => {
         if (!letter.active) return;
@@ -1059,7 +1266,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       // Restore context after shake
       ctx.restore();
     
-    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash]);
+    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, boss, resurrectedBosses, bossAttacks, laserWarnings]);
 
     return (
       <canvas

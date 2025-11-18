@@ -1819,6 +1819,10 @@ export const Game = ({
         } else {
           setResurrectedBosses(prev => prev.map((b, i) => i === idx ? { ...b, x: b.x + (dx/dist) * b.speed, y: b.y + (dy/dist) * b.speed, rotationX: b.rotationX + 0.08, rotationY: b.rotationY + 0.12 } : b));
         }
+      } else if (resBoss.phase === 'attacking' && Date.now() - resBoss.lastAttackTime >= resBoss.attackCooldown && paddle) {
+        performBossAttack(resBoss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings);
+        const nextIdx = (resBoss.currentPositionIndex + 1) % resBoss.positions.length;
+        setResurrectedBosses(prev => prev.map((b, i) => i === idx ? { ...b, phase: 'moving', targetPosition: b.positions[nextIdx], currentPositionIndex: nextIdx, lastAttackTime: Date.now() } : b));
       }
     });
     
@@ -1837,6 +1841,9 @@ export const Game = ({
       }
       return true;
     }));
+    
+    // Clean up expired laser warnings
+    setLaserWarnings(prev => prev.filter(warning => Date.now() - warning.startTime < 800));
     
     // Boss collision with balls
     if (boss && paddle) {
@@ -1871,6 +1878,63 @@ export const Game = ({
         }
       });
     }
+    
+    // Resurrected boss collisions with balls
+    resurrectedBosses.forEach((resBoss, bossIdx) => {
+      balls.forEach(ball => {
+        if (!ball.waitingToLaunch && ball.x + ball.radius > resBoss.x && ball.x - ball.radius < resBoss.x + resBoss.width && ball.y + ball.radius > resBoss.y && ball.y - ball.radius < resBoss.y + resBoss.height) {
+          soundManager.playBounce();
+          setScreenShake(6);
+          setTimeout(() => setScreenShake(0), 400);
+          const angle = Math.atan2(ball.y - (resBoss.y + resBoss.height/2), ball.x - (resBoss.x + resBoss.width/2));
+          setBalls(prev => prev.map(b => b.id === ball.id ? { ...b, dx: Math.cos(angle) * b.speed, dy: Math.sin(angle) * b.speed } : b));
+          
+          setResurrectedBosses(prev => {
+            const updated = [...prev];
+            const newHealth = updated[bossIdx].currentHealth - 1;
+            
+            if (newHealth <= 0) {
+              // Boss destroyed
+              const config = BOSS_CONFIG.pyramid;
+              setScore(s => s + config.resurrectedPoints);
+              toast.success(`PYRAMID DESTROYED! +${config.resurrectedPoints} points`);
+              
+              setExplosions(e => [...e, {
+                x: resBoss.x + resBoss.width / 2,
+                y: resBoss.y + resBoss.height / 2,
+                frame: 0,
+                maxFrames: 30,
+                enemyType: 'pyramid' as EnemyType,
+                particles: createExplosionParticles(resBoss.x + resBoss.width / 2, resBoss.y + resBoss.height / 2, 'pyramid' as EnemyType)
+              }]);
+              soundManager.playExplosion();
+              
+              // Remove this boss
+              const remaining = updated.filter((_, i) => i !== bossIdx);
+              
+              // Check if only one remains - make it super angry
+              if (remaining.length === 1) {
+                toast.error("FINAL PYRAMID ENRAGED!");
+                remaining[0] = { ...remaining[0], isSuperAngry: true, speed: BOSS_CONFIG.pyramid.superAngryMoveSpeed };
+              }
+              
+              // Check if all defeated
+              if (remaining.length === 0) {
+                toast.success("ALL PYRAMIDS DEFEATED!");
+                setBossActive(false);
+                setTimeout(() => nextLevel(), 3000);
+              }
+              
+              return remaining;
+            } else {
+              toast.info(`PYRAMID: ${newHealth} HP`);
+              updated[bossIdx] = { ...updated[bossIdx], currentHealth: newHealth };
+              return updated;
+            }
+          });
+        }
+      });
+    });
 
     // Check collisions
     checkCollision();
@@ -2459,6 +2523,10 @@ export const Game = ({
                       screenShake={screenShake} 
                       backgroundFlash={backgroundFlash}
                       qualitySettings={qualitySettings}
+                      boss={boss}
+                      resurrectedBosses={resurrectedBosses}
+                      bossAttacks={bossAttacks}
+                      laserWarnings={laserWarnings}
                     />
                     {showDebugOverlay && gameLoopRef.current && (
                       <GameLoopDebugOverlay 
