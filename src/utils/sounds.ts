@@ -14,7 +14,6 @@ class SoundManager {
     '/level_5.mp3',
     '/level_7.mp3',
     '/Turrican.mp3',
-    '/Turrican_2.mp3',
     '/Flubber_Happy_Moderate_Amiga.mp3',
     '/leve_boss_chip_atari.mp3',
     '/level_cave_c64.mp3',
