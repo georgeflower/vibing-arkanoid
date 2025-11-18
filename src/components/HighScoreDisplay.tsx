@@ -214,7 +214,7 @@ const RetroDonut = () => {
 const Scene3D = () => {
   return (
     <>
-      <Environment preset="city" />
+      <Environment preset="sunset" />
       <ambientLight intensity={0.4} />
       <directionalLight
         position={[5, 8, 5]}
