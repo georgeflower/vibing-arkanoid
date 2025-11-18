@@ -2178,16 +2178,28 @@ export const Game = ({
           setHeaderVisible(true);
         }
       } else {
-        // Mobile: existing behavior - hide all frames if constrained
-        const requiredHeight = SCALED_CANVAS_HEIGHT + titleBarHeight + statsBarHeight + bottomBarHeight + sideFrameHeight;
-        const shouldShowFrames = containerHeight >= requiredHeight;
-        if (shouldShowFrames !== framesVisible) {
-          setFramesVisible(shouldShowFrames);
-          setHeaderVisible(shouldShowFrames);
-          setTitleVisible(shouldShowFrames);
-          setGameScale(1);
-          const layoutMode = shouldShowFrames ? "headerVisible" : "headerHidden";
-          console.log(`[Layout Debug] layoutMode: ${layoutMode}`);
+        // Mobile: hide all frames when in fullscreen, otherwise check space
+        if (isFullscreen) {
+          // Force hide all frames in fullscreen on mobile
+          if (framesVisible || headerVisible || titleVisible) {
+            setFramesVisible(false);
+            setHeaderVisible(false);
+            setTitleVisible(false);
+            setGameScale(1);
+            console.log(`[Layout Debug] layoutMode: mobileFullscreenFramesHidden`);
+          }
+        } else {
+          // Normal mobile behavior - hide all frames if constrained
+          const requiredHeight = SCALED_CANVAS_HEIGHT + titleBarHeight + statsBarHeight + bottomBarHeight + sideFrameHeight;
+          const shouldShowFrames = containerHeight >= requiredHeight;
+          if (shouldShowFrames !== framesVisible) {
+            setFramesVisible(shouldShowFrames);
+            setHeaderVisible(shouldShowFrames);
+            setTitleVisible(shouldShowFrames);
+            setGameScale(1);
+            const layoutMode = shouldShowFrames ? "headerVisible" : "headerHidden";
+            console.log(`[Layout Debug] layoutMode: ${layoutMode}`);
+          }
         }
       }
     };
@@ -2208,7 +2220,7 @@ export const Game = ({
       window.removeEventListener("resize", debouncedCheck);
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
-  }, [framesVisible, titleVisible, gameScale, disableAutoZoom, SCALED_CANVAS_HEIGHT]);
+  }, [framesVisible, titleVisible, gameScale, disableAutoZoom, SCALED_CANVAS_HEIGHT, isFullscreen]);
   // Handle tap to resume fullscreen on mobile
   const handleFullscreenPromptClick = async () => {
     setShowFullscreenPrompt(false);
