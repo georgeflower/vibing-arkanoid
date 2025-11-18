@@ -30,10 +30,12 @@ interface GameCanvasProps {
   resurrectedBosses: Boss[];
   bossAttacks: BossAttack[];
   laserWarnings: Array<{ x: number; startTime: number }>;
+  gameOverParticles: Particle[];
+  bossIntroActive: boolean;
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, bossIntroActive }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -1295,10 +1297,103 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillText(text3, width / 2, instructionY3);
       }
     
+      // Draw game over particles
+      if (gameOverParticles.length > 0) {
+        ctx.save();
+        gameOverParticles.forEach((particle: Particle) => {
+          const particleAlpha = particle.life / particle.maxLife;
+          ctx.globalAlpha = particleAlpha;
+          
+          // Draw particle with glow
+          if (qualitySettings.glowEnabled) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = particle.color;
+          }
+          ctx.fillStyle = particle.color;
+          
+          // Draw as small glowing circle
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Add a bright center
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = `rgba(255, 255, 255, ${particleAlpha * 0.9})`;
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.restore();
+      }
+      
+      // Boss intro cinematic overlay
+      if (bossIntroActive) {
+        ctx.save();
+        
+        // Dark overlay with pulsing effect
+        const pulseAlpha = 0.7 + Math.sin(Date.now() / 300) * 0.2;
+        ctx.fillStyle = `rgba(0, 0, 0, ${pulseAlpha})`;
+        ctx.fillRect(0, 0, width, height);
+        
+        // Red warning borders pulsing
+        const borderPulse = 5 + Math.sin(Date.now() / 200) * 3;
+        ctx.strokeStyle = `rgba(255, 0, 0, ${0.6 + Math.sin(Date.now() / 250) * 0.4})`;
+        ctx.lineWidth = borderPulse;
+        ctx.strokeRect(borderPulse/2, borderPulse/2, width - borderPulse, height - borderPulse);
+        
+        // Dramatic zoom effect on boss position (if boss exists)
+        if (boss) {
+          const zoomPulse = 1 + Math.sin(Date.now() / 400) * 0.1;
+          ctx.save();
+          ctx.translate(boss.x + boss.width / 2, boss.y + boss.height / 2);
+          ctx.scale(zoomPulse, zoomPulse);
+          ctx.translate(-(boss.x + boss.width / 2), -(boss.y + boss.height / 2));
+          
+          // Spotlight on boss
+          const gradient = ctx.createRadialGradient(
+            boss.x + boss.width / 2, 
+            boss.y + boss.height / 2, 
+            0,
+            boss.x + boss.width / 2, 
+            boss.y + boss.height / 2, 
+            150
+          );
+          gradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+          gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, width, height);
+          
+          ctx.restore();
+        }
+        
+        // "WARNING" text at top
+        ctx.font = "bold 36px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        
+        const warningY = height * 0.2;
+        const textFlash = Math.sin(Date.now() / 150) > 0 ? 1 : 0.5;
+        
+        // Shadow
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = `rgba(255, 0, 0, ${textFlash})`;
+        ctx.fillStyle = `rgba(255, 50, 50, ${textFlash})`;
+        ctx.fillText("⚠ WARNING ⚠", width / 2, warningY);
+        
+        // Subtitle
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "rgba(255, 255, 0, 0.5)";
+        ctx.font = "bold 24px monospace";
+        ctx.fillStyle = "rgba(255, 255, 100, 0.9)";
+        ctx.fillText("BOSS APPROACHING", width / 2, warningY + 50);
+        
+        ctx.restore();
+      }
+    
       // Restore context after shake
       ctx.restore();
     
-    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, boss, resurrectedBosses, bossAttacks, laserWarnings]);
+    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, bossIntroActive, qualitySettings]);
 
     return (
       <canvas

@@ -1703,6 +1703,16 @@ export const Game = ({
         life: p.life - 1
       })).filter(p => p.life > 0)
     })).filter(exp => exp.frame < exp.maxFrames));
+    
+    // Update game over particles
+    setGameOverParticles(prev => prev.map(p => ({
+      ...p,
+      x: p.x + p.vx,
+      y: p.y + p.vy,
+      vy: p.vy + 0.15, // Gravity
+      vx: p.vx * 0.98, // Air resistance
+      life: p.life - 1
+    })).filter(p => p.life > 0));
 
     // Update bombs and rockets (pyramid bullets move in straight lines with angle)
     setBombs(prev => prev.map(bomb => {
@@ -2844,6 +2854,8 @@ export const Game = ({
                       resurrectedBosses={resurrectedBosses}
                       bossAttacks={bossAttacks}
                       laserWarnings={laserWarnings}
+                      gameOverParticles={gameOverParticles}
+                      bossIntroActive={bossIntroActive}
                     />
                     {showDebugOverlay && gameLoopRef.current && (
                       <GameLoopDebugOverlay 
