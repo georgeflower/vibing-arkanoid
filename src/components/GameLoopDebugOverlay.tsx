@@ -71,6 +71,13 @@ export const GameLoopDebugOverlay = ({ getDebugInfo, visible = true }: GameLoopD
           <span className="text-muted-foreground">Max Delta:</span>
           <span>{debugInfo.maxDeltaMs}ms</span>
         </div>
+        
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Paused:</span>
+          <span className={debugInfo.isPaused ? "text-yellow-400" : "text-green-400"}>
+            {debugInfo.isPaused ? "yes" : "no"}
+          </span>
+        </div>
       </div>
       
       <div className="mt-2 pt-2 border-t border-border/20 text-[10px] text-muted-foreground">
