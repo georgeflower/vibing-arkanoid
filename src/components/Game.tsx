@@ -81,6 +81,7 @@ export const Game = ({
   const [lastScoreMilestone, setLastScoreMilestone] = useState(0);
   const [scoreBlinking, setScoreBlinking] = useState(false);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
+  const [currentFps, setCurrentFps] = useState(60);
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
@@ -1138,8 +1139,9 @@ export const Game = ({
       fpsTrackerRef.current.frameCount = 0;
       fpsTrackerRef.current.lastTime = now;
       
-      // Update adaptive quality system
+      // Update adaptive quality system and display
       updateFps(fps);
+      setCurrentFps(fps);
     }
     
     // Also feed real-time FPS from fixed-step game loop if available
@@ -2246,6 +2248,7 @@ export const Game = ({
                 <QualityIndicator 
                   quality={quality}
                   autoAdjustEnabled={autoAdjustEnabled}
+                  fps={currentFps}
                 />
 
                 {/* Right Panel - Stats and Controls */}
