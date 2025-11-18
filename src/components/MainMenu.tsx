@@ -189,13 +189,29 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
               <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
                 <li>Break all bricks to advance to the next level</li>
                 <li>Collect power-ups for special abilities</li>
-                <li>Collect bonus letters Q-U-M-R-A-N for massive rewards</li>
+                <li>Collect bonus letters Q-U-M-R-A-N for massive rewards (5 extra lives)</li>
                 <li>Watch out for enemies and their projectiles</li>
+                <li><span className="text-[hsl(30,100%,60%)] font-bold">Boss battles on levels 5, 10, and 15!</span> Defeat powerful bosses with unique attacks</li>
                 <li>Ball bounces only from top half of paddle</li>
                 <li>If ball doesn't touch paddle for 15s, it auto-diverts</li>
                 <li>After 25s without paddle, closest enemy kamikazes the ball</li>
                 <li>Get extra life every 50,000 score points</li>
                 <li>Powerup drops every 3 enemies destroyed</li>
+                <li>Game automatically adjusts visual quality based on performance</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">Enemies & Bosses</h3>
+              <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
+                <li><span className="text-cyan-400">Cube Enemies</span> - Basic enemies, 1 hit to destroy</li>
+                <li><span className="text-pink-400">Sphere Enemies</span> - 2 hits to destroy, become faster when angry</li>
+                <li><span className="text-purple-400">Pyramid Enemies</span> - 3 hits to destroy, toughest regular enemy</li>
+                <li><span className="text-[hsl(30,100%,60%)] font-bold">CUBE BOSS (Level 5)</span> - First boss encounter with unique attack patterns</li>
+                <li><span className="text-[hsl(330,100%,65%)] font-bold">SPHERE BOSS (Level 10)</span> - Multi-phase boss with escalating difficulty</li>
+                <li><span className="text-[hsl(280,80%,60%)] font-bold">PYRAMID BOSS (Level 15)</span> - Ultimate challenge! Splits into 3 smaller bosses</li>
+                <li>Bosses attack with shots, lasers, spiral patterns, and cross patterns</li>
+                <li>Boss health bars show current phase HP</li>
               </ul>
             </div>
 
@@ -206,7 +222,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   <span className="text-[hsl(330,100%,65%)]">Multiball</span> - Split ball into three
                 </li>
                 <li>
-                  <span className="text-[hsl(30,100%,60%)]">Turrets</span> - Add cannons to paddle (50% chance at 90s)
+                  <span className="text-[hsl(30,100%,60%)]">Turrets</span> - Add cannons to paddle (30 shots normal / 15 godlike, 50% chance at 90s)
                 </li>
                 <li>
                   <span className="text-[hsl(30,100%,60%)]">Fireball</span> - Ball destroys everything
