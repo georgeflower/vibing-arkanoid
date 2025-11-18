@@ -161,7 +161,7 @@ export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: E
             onClick={onContinue}
             className="w-full text-xl py-6 bg-cyan-600 hover:bg-cyan-700 text-white font-bold"
           >
-            CONTINUE
+            HIGH SCORES
           </Button>
           
           <Button 
