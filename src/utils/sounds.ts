@@ -302,38 +302,85 @@ class SoundManager {
   }
 
   // Power-up specific sounds
-  // Cache for power-up audio elements
-  private powerUpSounds: { [key: string]: HTMLAudioElement } = {};
-  
-  private getOrCreateAudio(url: string, volume: number): HTMLAudioElement {
-    if (!this.powerUpSounds[url]) {
-      const audio = new Audio(url);
-      audio.volume = volume;
-      audio.preload = 'auto';
-      this.powerUpSounds[url] = audio;
+  // AudioBuffer cache for preloaded sounds
+  private audioBuffers: { [key: string]: AudioBuffer } = {};
+  private soundsLoaded = false;
+
+  private soundUrls = [
+    '/multiball.mp3',
+    '/turrets.mp3',
+    '/fireball.mp3',
+    '/extra_life.mp3',
+    '/slower.mp3',
+    '/wider.mp3',
+    '/smaller.mp3',
+    '/shield.mp3'
+  ];
+
+  async preloadSounds(): Promise<void> {
+    if (this.soundsLoaded) return;
+
+    const ctx = this.getAudioContext();
+    
+    try {
+      const loadPromises = this.soundUrls.map(async (url) => {
+        try {
+          const response = await fetch(url);
+          const arrayBuffer = await response.arrayBuffer();
+          const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+          this.audioBuffers[url] = audioBuffer;
+        } catch (err) {
+          console.warn(`Failed to load sound ${url}:`, err);
+        }
+      });
+
+      await Promise.all(loadPromises);
+      this.soundsLoaded = true;
+      console.log('Power-up sounds preloaded successfully');
+    } catch (err) {
+      console.error('Error preloading sounds:', err);
     }
-    return this.powerUpSounds[url];
+  }
+
+  private playAudioBuffer(buffer: AudioBuffer, volume: number): void {
+    if (!buffer) return;
+
+    const ctx = this.getAudioContext();
+    const source = ctx.createBufferSource();
+    const gainNode = ctx.createGain();
+
+    source.buffer = buffer;
+    source.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    // Apply 20% volume boost for power-up sounds
+    gainNode.gain.value = volume * 1.2;
+
+    source.start(0);
   }
 
   playMultiballSound() {
     if (!this.sfxEnabled) return;
-    const audio = this.getOrCreateAudio('/multiball.mp3', 0.6);
-    audio.currentTime = 0;
-    audio.play().catch(err => console.log('Multiball sound failed:', err));
+    const buffer = this.audioBuffers['/multiball.mp3'];
+    if (buffer) {
+      this.playAudioBuffer(buffer, 0.6);
+    }
   }
 
   playTurretsSound() {
     if (!this.sfxEnabled) return;
-    const audio = this.getOrCreateAudio('/turrets.mp3', 0.6);
-    audio.currentTime = 0;
-    audio.play().catch(err => console.log('Turrets sound failed:', err));
+    const buffer = this.audioBuffers['/turrets.mp3'];
+    if (buffer) {
+      this.playAudioBuffer(buffer, 0.6);
+    }
   }
 
   playFireballSound() {
     if (!this.sfxEnabled) return;
-    const audio = this.getOrCreateAudio('/fireball.mp3', 0.6);
-    audio.currentTime = 0;
-    audio.play().catch(err => console.log('Fireball sound failed:', err));
+    const buffer = this.audioBuffers['/fireball.mp3'];
+    if (buffer) {
+      this.playAudioBuffer(buffer, 0.6);
+    }
   }
 
   playBombDropSound() {
@@ -381,37 +428,42 @@ class SoundManager {
 
   playExtraLifeSound() {
     if (!this.sfxEnabled) return;
-    const audio = this.getOrCreateAudio('/extra_life.mp3', 0.6);
-    audio.currentTime = 0;
-    audio.play().catch(err => console.log('Extra life sound failed:', err));
+    const buffer = this.audioBuffers['/extra_life.mp3'];
+    if (buffer) {
+      this.playAudioBuffer(buffer, 0.6);
+    }
   }
 
   playSlowerSound() {
     if (!this.sfxEnabled) return;
-    const audio = this.getOrCreateAudio('/slower.mp3', 0.6);
-    audio.currentTime = 0;
-    audio.play().catch(err => console.log('Slower sound failed:', err));
+    const buffer = this.audioBuffers['/slower.mp3'];
+    if (buffer) {
+      this.playAudioBuffer(buffer, 0.6);
+    }
   }
 
   playWiderSound() {
     if (!this.sfxEnabled) return;
-    const audio = this.getOrCreateAudio('/wider.mp3', 0.6);
-    audio.currentTime = 0;
-    audio.play().catch(err => console.log('Wider sound failed:', err));
+    const buffer = this.audioBuffers['/wider.mp3'];
+    if (buffer) {
+      this.playAudioBuffer(buffer, 0.6);
+    }
   }
 
   playShrinkSound() {
     if (!this.sfxEnabled) return;
-    const audio = this.getOrCreateAudio('/smaller.mp3', 0.6);
-    audio.currentTime = 0;
-    audio.play().catch(err => console.log('Shrink sound failed:', err));
+    const buffer = this.audioBuffers['/smaller.mp3'];
+    if (buffer) {
+      this.playAudioBuffer(buffer, 0.6);
+    }
   }
 
   playShieldSound() {
     if (!this.sfxEnabled) return;
-    const audio = this.getOrCreateAudio('/shield.mp3', 0.6);
-    audio.currentTime = 0;
-    audio.play().catch(err => console.log('Shield sound failed:', err));
+    const buffer = this.audioBuffers['/shield.mp3'];
+    if (buffer) {
+      this.playAudioBuffer(buffer, 0.6);
+    }
   }
 
   playBonusLetterPickup() {
