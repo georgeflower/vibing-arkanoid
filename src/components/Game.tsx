@@ -521,9 +521,11 @@ export const Game = ({
     e.preventDefault();
 
     // Single-tap to start game when in "ready" state (mobile start)
-    if (gameState === "ready" && e.touches.length === 1 && bricks.length > 0) {
+    if (gameState === "ready" && e.touches.length === 1) {
       console.log('[Ready Tap Debug] readyTapStart: enabled - Single tap detected, starting game');
-      const isLevelComplete = bricks.every(brick => !brick.visible) && bricks.length > 0;
+      const hasDestructibleBricks = bricks.some(brick => !brick.isIndestructible);
+      const isLevelComplete = hasDestructibleBricks && bricks.every(brick => !brick.visible || brick.isIndestructible);
+      
       if (isLevelComplete) {
         nextLevel();
       } else {
@@ -532,6 +534,7 @@ export const Game = ({
         if (!soundManager.isMusicPlaying()) {
           soundManager.playBackgroundMusic();
         }
+        toast.success("Tap again to launch!");
       }
       return;
     }
@@ -691,8 +694,11 @@ export const Game = ({
     }
 
     // If game is ready, start the game first
-    if (gameState === "ready" && bricks.length > 0) {
-      const isLevelComplete = bricks.every(brick => !brick.visible) && bricks.length > 0;
+    if (gameState === "ready") {
+      // Check if there are destructible bricks
+      const hasDestructibleBricks = bricks.some(brick => !brick.isIndestructible);
+      const isLevelComplete = hasDestructibleBricks && bricks.every(brick => !brick.visible || brick.isIndestructible);
+      
       if (isLevelComplete) {
         nextLevel();
       } else {
@@ -1201,6 +1207,9 @@ export const Game = ({
       setScreenShake(0);
       setBackgroundFlash(0);
     }, 1000);
+    
+    // Clear all balls immediately
+    setBalls([]);
     
     // Progress to next level after delay
     setTimeout(() => {
@@ -1846,7 +1855,43 @@ export const Game = ({
       attack.y = newY;
       if (paddle && attack.x + attack.width > paddle.x && attack.x < paddle.x + paddle.width && attack.y + attack.height > paddle.y && attack.y < paddle.y + paddle.height) {
         soundManager.playLoseLife();
-        setLives(l => l - 1);
+        setLives(prev => {
+          const newLives = prev - 1;
+          if (newLives <= 0) {
+            setGameState("gameOver");
+            soundManager.stopBackgroundMusic();
+            toast.error("Game Over!");
+            if (isHighScore(score)) {
+              setShowHighScoreEntry(true);
+              soundManager.playHighScoreMusic();
+            }
+          } else {
+            // Reset ball and clear power-ups, wait for click to continue
+            const baseSpeed = 5.175;
+            setBalls([{
+              id: nextBallId.current++,
+              x: SCALED_CANVAS_WIDTH / 2,
+              y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+              dx: baseSpeed,
+              dy: -baseSpeed,
+              radius: SCALED_BALL_RADIUS,
+              speed: baseSpeed,
+              waitingToLaunch: true,
+              isFireball: false
+            }]);
+            setPowerUps([]);
+            setBullets([]);
+            setEnemies([]);
+            setBombs([]);
+            setExplosions([]);
+            // Clear all bomb intervals
+            bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+            bombIntervalsRef.current.clear();
+            setGameState("ready");
+            toast.error(`Boss attack hit! ${newLives} lives remaining. Click to continue.`);
+          }
+          return newLives;
+        });
         return false;
       }
       return true;
