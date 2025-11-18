@@ -111,8 +111,8 @@ All colors MUST be HSL.
 
   /* Responsive canvas scaling for non-fullscreen */
   .game-glow canvas {
-    max-width: calc(95vw - 220px); /* Account for side panels (60px + 140px) + gaps + borders */
-    max-height: 85vh;
+    max-width: calc(98vw - 220px); /* Account for side panels (60px + 140px) + gaps + borders */
+    max-height: 90vh;
     width: auto !important;
     height: auto !important;
     object-fit: contain;
@@ -121,8 +121,8 @@ All colors MUST be HSL.
   /* Mobile adjustments */
   @media (max-width: 768px) {
     .game-glow canvas {
-      max-width: 92vw; /* Side panels hidden on mobile */
-      max-height: 75vh;
+      max-width: 96vw; /* Side panels hidden on mobile */
+      max-height: 82vh;
     }
   }
 
@@ -399,7 +399,7 @@ All colors MUST be HSL.
   }
   
   .game-glow canvas {
-    max-width: calc(95vw - 210px); /* Account for different panel sizes */
+    max-width: calc(98vw - 210px); /* Account for different panel sizes */
   }
 
   .right-stat-label {
