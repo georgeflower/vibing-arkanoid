@@ -57,13 +57,16 @@ export function performBossAttack(
     toast.warning(`${boss.type.toUpperCase()} CHARGING LASER!`, { duration: 1000 });
     
     setTimeout(() => {
+      const laserStartY = boss.y + boss.height;
+      const laserHeight = 650 - laserStartY;
+      
       const attack: BossAttack = {
         bossId: boss.id,
         type: 'laser',
         x: laserX,
-        y: 0,
+        y: laserStartY,
         width: ATTACK_PATTERNS.laser.width,
-        height: ATTACK_PATTERNS.laser.height,
+        height: laserHeight,
         speed: 0,
         dx: 0,
         dy: 0,
