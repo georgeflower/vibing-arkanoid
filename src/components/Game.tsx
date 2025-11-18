@@ -18,7 +18,7 @@ import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
 import { useAdaptiveQuality } from "@/hooks/useAdaptiveQuality";
 import { soundManager } from "@/utils/sounds";
-import { FixedStepGameLoop } from "@/utils/gameLoop";
+import { useFixedGameLoop, type SimulationState } from "@/hooks/useFixedGameLoop";
 interface GameProps {
   settings: GameSettings;
   onReturnToMenu: () => void;
@@ -90,36 +90,18 @@ export const Game = ({
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const timerStartedRef = useRef(false);
   
-  // Fixed-step game loop
-  const gameLoopRef = useRef<FixedStepGameLoop | null>(null);
-  
-  // Simulation state refs for immediate physics updates
-  const simBallsRef = useRef<Ball[]>([]);
-  const simPaddleRef = useRef<Paddle | null>(null);
-  const simBricksRef = useRef<Brick[]>([]);
-  const simEnemiesRef = useRef<Enemy[]>([]);
-  const simBombsRef = useRef<Bomb[]>([]);
-  const simTimerRef = useRef<number>(0);
-  const simBackgroundPhaseRef = useRef<number>(0);
-  
-  // Initialize fixed-step game loop on mount
-  useEffect(() => {
-    if (!gameLoopRef.current) {
-      gameLoopRef.current = new FixedStepGameLoop({
-        fixedStep: 16.6667, // 60Hz
-        maxDeltaMs: 250,
-        maxUpdatesPerFrame: 8,
-        timeScale: speedMultiplier,
-        mode: "fixedStep"
-      });
-    }
-    
-    return () => {
-      if (gameLoopRef.current) {
-        gameLoopRef.current.stop();
-      }
-    };
-  }, []);
+  // Use the fixed-step game loop hook
+  const {
+    setCallbacks,
+    start: startLoop,
+    stop: stopLoop,
+    pause: pauseLoop,
+    resume: resumeLoop,
+    getDebugInfo,
+    updateSimulationState,
+    getSimulationState,
+    gameLoop
+  } = useFixedGameLoop(speedMultiplier);
   const {
     highScores,
     isHighScore,
@@ -381,9 +363,7 @@ export const Game = ({
   }, [setPowerUps, initBricksForLevel]);
   const nextLevel = useCallback(() => {
     // Stop game loop before starting new level
-    if (gameLoopRef.current) {
-      gameLoopRef.current.stop();
-    }
+    stopLoop();
 
     // Clear timer interval before resetting
     if (timerIntervalRef.current) {
@@ -451,7 +431,7 @@ export const Game = ({
     } else {
       toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
     }
-  }, [level, initBricksForLevel, setPowerUps]);
+  }, [level, initBricksForLevel, setPowerUps, stopLoop, settings.difficulty, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, SCALED_PADDLE_WIDTH, SCALED_PADDLE_HEIGHT, SCALED_BALL_RADIUS, scaleFactor]);
   useEffect(() => {
     initGame();
   }, [initGame]);
@@ -727,15 +707,11 @@ export const Game = ({
         // Toggle pause
         if (gameState === "playing") {
           setGameState("paused");
-          if (gameLoopRef.current) {
-            gameLoopRef.current.pause();
-          }
+          pauseLoop();
           toast.success("Game paused");
         } else if (gameState === "paused") {
           setGameState("playing");
-          if (gameLoopRef.current) {
-            gameLoopRef.current.resume();
-          }
+          resumeLoop();
           toast.success("Game resumed");
         }
       } else if (e.key === "m" || e.key === "M") {
@@ -750,23 +726,23 @@ export const Game = ({
         });
       } else if (e.key === "[") {
         // Decrease time scale
-        if (gameLoopRef.current) {
-          const newScale = Math.max(0.1, gameLoopRef.current.getTimeScale() - 0.1);
-          gameLoopRef.current.setTimeScale(newScale);
+        if (gameLoop) {
+          const newScale = Math.max(0.1, gameLoop.getTimeScale() - 0.1);
+          gameLoop.setTimeScale(newScale);
           toast.success(`Time scale: ${newScale.toFixed(1)}x`);
         }
       } else if (e.key === "]") {
         // Increase time scale
-        if (gameLoopRef.current) {
-          const newScale = Math.min(3.0, gameLoopRef.current.getTimeScale() + 0.1);
-          gameLoopRef.current.setTimeScale(newScale);
+        if (gameLoop) {
+          const newScale = Math.min(3.0, gameLoop.getTimeScale() + 0.1);
+          gameLoop.setTimeScale(newScale);
           toast.success(`Time scale: ${newScale.toFixed(1)}x`);
         }
       } else if (e.key === "\\") {
         // Toggle loop mode
-        if (gameLoopRef.current) {
-          const newMode = gameLoopRef.current.getMode() === "fixedStep" ? "legacy" : "fixedStep";
-          gameLoopRef.current.setMode(newMode);
+        if (gameLoop) {
+          const newMode = gameLoop.getMode() === "fixedStep" ? "legacy" : "fixedStep";
+          gameLoop.setMode(newMode);
           toast.success(`Loop mode: ${newMode}`);
         }
       } else if (e.key === "q" || e.key === "Q") {
@@ -814,7 +790,7 @@ export const Game = ({
       window.removeEventListener("keydown", handleKeyPress);
       document.removeEventListener("pointerlockchange", handlePointerLockChange);
     };
-  }, [handleMouseMove, handleTouchMove, handleClick, nextLevel, gameState]);
+  }, [handleMouseMove, handleTouchMove, handleClick, nextLevel, gameState, pauseLoop, resumeLoop, gameLoop, toggleAutoAdjust, quality, setQuality]);
   const checkCollision = useCallback(() => {
     if (!paddle || balls.length === 0) return;
     setBalls(prevBalls => {
@@ -1133,19 +1109,22 @@ export const Game = ({
   const fpsTrackerRef = useRef({ lastTime: performance.now(), frameCount: 0, fps: 60 });
   
   // Fixed update: All game logic runs here at fixed 60Hz
-  const fixedUpdate = useCallback((dt: number) => {
+  const fixedUpdate = useCallback((dt: number, simState: SimulationState) => {
     if (gameState !== "playing") return;
 
-    // Update background animation using ref
-    simBackgroundPhaseRef.current = (simBackgroundPhaseRef.current + 1) % 360;
+    // Get current simulation state
+    let { balls: simBalls, paddle: simPaddle, bricks: simBricks, enemies: simEnemies, bombs: simBombs, timer: simTimer, backgroundPhase: simBackground } = simState;
+
+    // Update background animation
+    simBackground = (simBackground + 1) % 360;
 
     // Update balls in simulation state
-    simBallsRef.current = simBallsRef.current.map(ball => {
-      if (ball.waitingToLaunch && simPaddleRef.current) {
+    simBalls = simBalls.map(ball => {
+      if (ball.waitingToLaunch && simPaddle) {
         return {
           ...ball,
-          x: simPaddleRef.current.x + simPaddleRef.current.width / 2,
-          y: simPaddleRef.current.y - ball.radius - 5
+          x: simPaddle.x + simPaddle.width / 2,
+          y: simPaddle.y - ball.radius - 5
         };
       }
       return {
@@ -1157,7 +1136,7 @@ export const Game = ({
     });
 
     // Update enemies in simulation state
-    simEnemiesRef.current = simEnemiesRef.current.map(enemy => {
+    simEnemies = simEnemies.map(enemy => {
       let newX = enemy.x + enemy.dx;
       let newY = enemy.y + enemy.dy;
       let newDx = enemy.dx;
@@ -1196,12 +1175,23 @@ export const Game = ({
       };
     });
 
-    // Sync simulation refs to React state for other systems
-    setBalls(simBallsRef.current);
-    setEnemies(simEnemiesRef.current);
-    setPaddle(simPaddleRef.current);
-    setBricks(simBricksRef.current);
-    setBombs(simBombsRef.current);
+    // Update simulation state in the hook
+    updateSimulationState({
+      balls: simBalls,
+      paddle: simPaddle,
+      bricks: simBricks,
+      enemies: simEnemies,
+      bombs: simBombs,
+      timer: simTimer,
+      backgroundPhase: simBackground
+    });
+
+    // Sync simulation state to React state for other systems
+    setBalls(simBalls);
+    setEnemies(simEnemies);
+    setPaddle(simPaddle);
+    setBricks(simBricks);
+    setBombs(simBombs);
 
     // Update power-ups
     updatePowerUps();
@@ -1325,15 +1315,10 @@ export const Game = ({
       setTimeout(() => setScoreBlinking(false), 1000);
     }
 
-    // Sync simulation state back to refs (for next frame)
-    simPaddleRef.current = paddle;
-    simBricksRef.current = bricks;
-    simEnemiesRef.current = enemies;
-    simBombsRef.current = bombs;
-  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemies, bombs, bricks, score, explosions, lastPaddleHitTime, lastScoreMilestone, lives, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, checkBonusLetterCollision, createExplosionParticles]);
+  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemies, bombs, bricks, score, explosions, lastPaddleHitTime, lastScoreMilestone, lives, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, checkBonusLetterCollision, createExplosionParticles, updateSimulationState]);
 
   // Render frame: UI updates run here at variable FPS
-  const renderFrame = useCallback((alpha: number) => {
+  const renderFrame = useCallback((alpha: number, simState: SimulationState) => {
     if (gameState !== "playing") return;
 
     // Track FPS
@@ -1350,15 +1335,13 @@ export const Game = ({
     }
     
     // Feed FPS from game loop
-    if (gameLoopRef.current) {
-      const debugInfo = gameLoopRef.current.getDebugInfo();
-      if (debugInfo.fps > 0) {
-        updateFps(debugInfo.fps);
-      }
+    const debugInfo = getDebugInfo();
+    if (debugInfo.fps > 0) {
+      updateFps(debugInfo.fps);
     }
 
     // Update background phase for rendering
-    setBackgroundPhase(simBackgroundPhaseRef.current);
+    setBackgroundPhase(simState.backgroundPhase);
 
     // Update explosions
     setExplosions(prev => {
@@ -1379,62 +1362,61 @@ export const Game = ({
 
     // Background flash decay
     setBackgroundFlash(prev => Math.max(0, prev - 0.05));
-  }, [gameState, updateFps]);
+  }, [gameState, updateFps, getDebugInfo]);
 
   
-  // Keep simulation refs in sync with React state
+  // Wire simulation state into the hook
   useEffect(() => {
-    simBallsRef.current = balls;
-    simPaddleRef.current = paddle;
-    simBricksRef.current = bricks;
-    simEnemiesRef.current = enemies;
-    simBombsRef.current = bombs;
-  }, [balls, paddle, bricks, enemies, bombs]);
+    updateSimulationState({
+      balls,
+      paddle,
+      bricks,
+      enemies,
+      bombs,
+      powerUps,
+      bullets,
+      bonusLetters,
+      timer,
+      backgroundPhase
+    });
+  }, [balls, paddle, bricks, enemies, bombs, powerUps, bullets, bonusLetters, timer, backgroundPhase, updateSimulationState]);
   
-  // Update game loop time scale when speed multiplier changes
+  // Register callbacks with the game loop
   useEffect(() => {
-    if (gameLoopRef.current) {
-      gameLoopRef.current.setTimeScale(speedMultiplier);
-    }
-  }, [speedMultiplier]);
+    setCallbacks({
+      onFixedUpdate: fixedUpdate,
+      onRender: renderFrame
+    });
+  }, [fixedUpdate, renderFrame, setCallbacks]);
   
-  // Start/stop fixed-step game loop based on game state
+  // Control loop start/stop based on game state
   useEffect(() => {
-    if (!gameLoopRef.current) return;
-    
     if (gameState === "playing") {
-      // Sync simulation refs with React state
-      simBallsRef.current = balls;
-      simPaddleRef.current = paddle;
-      simBricksRef.current = bricks;
-      simEnemiesRef.current = enemies;
-      simBombsRef.current = bombs;
-      simTimerRef.current = timer;
-      simBackgroundPhaseRef.current = backgroundPhase;
-      
-      // Wire up callbacks
-      gameLoopRef.current.setFixedUpdateCallback((dt: number) => {
-        fixedUpdate(dt);
+      // Sync initial state
+      updateSimulationState({
+        balls,
+        paddle,
+        bricks,
+        enemies,
+        bombs,
+        powerUps,
+        bullets,
+        bonusLetters,
+        timer,
+        backgroundPhase
       });
-      
-      gameLoopRef.current.setRenderCallback((alpha: number) => {
-        renderFrame(alpha);
-      });
-      
-      // Ensure loop is not paused and accumulator is clean before starting
-      (gameLoopRef.current as any).resume?.();
-      gameLoopRef.current.resetAccumulator?.();
-      gameLoopRef.current.start();
+      resumeLoop();
+      startLoop();
+    } else if (gameState === "paused") {
+      pauseLoop();
     } else {
-      gameLoopRef.current.stop();
+      stopLoop();
     }
     
     return () => {
-      if (gameLoopRef.current) {
-        gameLoopRef.current.stop();
-      }
+      stopLoop();
     };
-  }, [gameState, fixedUpdate, renderFrame]);
+  }, [gameState, balls, paddle, bricks, enemies, bombs, powerUps, bullets, bonusLetters, timer, backgroundPhase, startLoop, stopLoop, pauseLoop, resumeLoop, updateSimulationState]);
 
 
   // Separate useEffect for timer management - handle pause/resume
@@ -1668,9 +1650,7 @@ export const Game = ({
     }
   };
   const handleRestart = useCallback(() => {
-    if (gameLoopRef.current) {
-      gameLoopRef.current.stop();
-    }
+    stopLoop();
     soundManager.stopBackgroundMusic();
     soundManager.stopHighScoreMusic();
     setShowHighScoreEntry(false);
@@ -1679,7 +1659,7 @@ export const Game = ({
     setBeatLevel50Completed(false);
     initGame();
     toast("Game Reset!");
-  }, [initGame]);
+  }, [initGame, stopLoop]);
   const handleHighScoreSubmit = (name: string) => {
     addHighScore(name, score, level, settings.difficulty, beatLevel50Completed, settings.startingLives);
     setShowHighScoreEntry(false);
@@ -1877,19 +1857,9 @@ export const Game = ({
                       backgroundFlash={backgroundFlash}
                       qualitySettings={qualitySettings}
                     />
-                    {showDebugOverlay && gameLoopRef.current && (
+                    {showDebugOverlay && (
                       <GameLoopDebugOverlay 
-                        getDebugInfo={() => gameLoopRef.current?.getDebugInfo() ?? {
-                          mode: "legacy",
-                          fixedHz: 60,
-                          maxDeltaMs: 250,
-                          accumulator: 0,
-                          timeScale: 1,
-                          fps: 0,
-                          updatesThisFrame: 0,
-                          alpha: 0,
-                          isPaused: true
-                        }}
+                        getDebugInfo={getDebugInfo}
                         visible={showDebugOverlay}
                       />
                     )}
