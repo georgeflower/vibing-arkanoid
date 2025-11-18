@@ -111,7 +111,7 @@ All colors MUST be HSL.
 
   /* Responsive canvas scaling for non-fullscreen */
   .game-glow canvas {
-    max-width: calc(95vw - 180px); /* Account for side panels (60px each) + gaps + borders */
+    max-width: calc(95vw - 220px); /* Account for side panels (60px + 140px) + gaps + borders */
     max-height: 85vh;
     width: auto !important;
     height: auto !important;
@@ -266,56 +266,6 @@ All colors MUST be HSL.
     0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.stats-container {
-  display: flex;
-  gap: 12px;
-  flex: 1;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.stat-box {
-  background: linear-gradient(180deg, hsl(210, 20%, 22%) 0%, hsl(210, 20%, 16%) 100%);
-  border: 2px inset hsl(210, 15%, 45%);
-  border-radius: 3px;
-  padding: 6px 12px;
-  min-width: 80px;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
-}
-
-.stat-label {
-  font-size: 8px;
-  font-family: 'Press Start 2P', monospace;
-  text-align: center;
-  margin-bottom: 3px;
-  font-weight: bold;
-  letter-spacing: 0.5px;
-}
-
-.stat-value {
-  font-size: 14px;
-  font-family: 'Press Start 2P', monospace;
-  text-align: center;
-  color: hsl(0, 0%, 90%);
-  text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
-}
-
-.fullscreen-btn {
-  background: linear-gradient(180deg, hsl(210, 15%, 45%) 0%, hsl(210, 15%, 35%) 100%);
-  border: 2px ridge hsl(210, 15%, 55%);
-  border-radius: 4px;
-  padding: 8px 12px;
-  color: hsl(0, 0%, 85%);
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.fullscreen-btn:hover {
-  background: linear-gradient(180deg, hsl(210, 15%, 50%) 0%, hsl(210, 15%, 40%) 100%);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-}
-
 .metal-main-content {
   display: flex;
   gap: 8px;
@@ -340,6 +290,56 @@ All colors MUST be HSL.
     0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
+.metal-side-panel-right {
+  width: 140px;
+  padding: 12px;
+  gap: 8px;
+}
+
+.right-panel-btn {
+  background: linear-gradient(180deg, hsl(210, 15%, 45%) 0%, hsl(210, 15%, 35%) 100%);
+  border: 2px ridge hsl(210, 15%, 55%);
+  border-radius: 4px;
+  padding: 10px;
+  color: hsl(0, 0%, 85%);
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.right-panel-btn:hover {
+  background: linear-gradient(180deg, hsl(210, 15%, 50%) 0%, hsl(210, 15%, 40%) 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.right-stat-box {
+  background: linear-gradient(180deg, hsl(210, 20%, 22%) 0%, hsl(210, 20%, 16%) 100%);
+  border: 2px inset hsl(210, 15%, 45%);
+  border-radius: 3px;
+  padding: 6px 8px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.right-stat-label {
+  font-size: 7px;
+  font-family: 'Press Start 2P', monospace;
+  text-align: center;
+  margin-bottom: 4px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.right-stat-value {
+  font-size: 12px;
+  font-family: 'Press Start 2P', monospace;
+  text-align: center;
+  color: hsl(0, 0%, 90%);
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
 .panel-decoration {
   background: linear-gradient(180deg, hsl(210, 20%, 20%) 0%, hsl(210, 20%, 14%) 100%);
   border: 2px inset hsl(210, 15%, 45%);
@@ -361,7 +361,7 @@ All colors MUST be HSL.
     inset 0 2px 4px rgba(0, 0, 0, 0.6),
     0 2px 4px rgba(0, 0, 0, 0.3);
   flex: 1; /* Allow game area to grow but respect container bounds */
-  max-width: calc(100% - 160px); /* Constrain to container minus side panels + gaps */
+  max-width: calc(100% - 220px); /* Constrain to container minus side panels (60px + 140px) + gaps */
   min-width: 0; /* Allow shrinking if needed */
 }
 
@@ -388,43 +388,38 @@ All colors MUST be HSL.
     padding: 12px 6px;
     gap: 12px;
   }
+
+  .metal-side-panel-right {
+    width: 120px;
+    padding: 10px;
+  }
   
   .metal-game-area {
-    max-width: calc(100% - 140px); /* Adjust for smaller panels at this breakpoint */
+    max-width: calc(100% - 210px); /* Adjust for left (50px) + right (120px) panels + gaps */
   }
   
   .game-glow canvas {
-    max-width: calc(95vw - 140px); /* Account for smaller side panels */
+    max-width: calc(95vw - 210px); /* Account for different panel sizes */
+  }
+
+  .right-stat-label {
+    font-size: 6px;
+  }
+
+  .right-stat-value {
+    font-size: 10px;
+  }
+
+  .right-panel-btn {
+    padding: 8px;
   }
   
   .panel-decoration {
     height: 40px;
   }
   
-  .stats-container {
-    gap: 8px;
-  }
-  
-  .stat-box {
-    min-width: 70px;
-    padding: 5px 10px;
-  }
-  
-  .stat-label {
-    font-size: 7px;
-  }
-  
-  .stat-value {
-    font-size: 12px;
-  }
-  
   .metal-title-bar {
     padding: 8px 12px;
-    margin-bottom: 4px;
-  }
-  
-  .metal-stats-bar {
-    padding: 6px 8px;
     margin-bottom: 4px;
   }
 }
@@ -441,34 +436,9 @@ All colors MUST be HSL.
     display: none;
   }
   
-  .stats-container {
-    gap: 4px;
-  }
-  
-  .stat-box {
-    min-width: 55px;
-    padding: 3px 6px;
-  }
-  
-  .stat-label {
-    font-size: 6px;
-    margin-bottom: 2px;
-    letter-spacing: 0px;
-  }
-  
-  .stat-value {
-    font-size: 10px;
-  }
-  
   .metal-title-bar {
     padding: 6px 8px;
     margin-bottom: 3px;
-  }
-  
-  .metal-stats-bar {
-    padding: 4px 6px;
-    margin-bottom: 3px;
-    gap: 4px;
   }
   
   .metal-game-area {
@@ -485,21 +455,4 @@ All colors MUST be HSL.
   }
 }
 
-@media (max-width: 480px) {
-  .stat-box {
-    min-width: 48px;
-    padding: 2px 4px;
-  }
-  
-  .stat-label {
-    font-size: 5px;
-  }
-  
-  .stat-value {
-    font-size: 8px;
-  }
-  
-  .stats-container {
-    gap: 3px;
-  }
-}
+
