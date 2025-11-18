@@ -1421,6 +1421,8 @@ export const Game = ({
         renderFrame(alpha);
       });
       
+      // Reset accumulator for clean start
+      gameLoopRef.current.resetAccumulator?.();
       gameLoopRef.current.start();
     } else {
       gameLoopRef.current.stop();
@@ -1431,7 +1433,7 @@ export const Game = ({
         gameLoopRef.current.stop();
       }
     };
-  }, [gameState, fixedUpdate, renderFrame, balls, paddle, bricks, enemies, bombs, timer, backgroundPhase]);
+  }, [gameState, fixedUpdate, renderFrame]);
 
 
   // Separate useEffect for timer management - handle pause/resume
