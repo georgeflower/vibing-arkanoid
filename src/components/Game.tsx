@@ -2185,87 +2185,6 @@ export const Game = ({
                 </h1>
               </div>
 
-              {/* Stats Bar - Adaptive Visibility */}
-              <div className={`metal-stats-bar transition-all duration-150 ${framesVisible ? 'opacity-100 max-h-[100px]' : 'opacity-0 max-h-0 overflow-hidden'}`} style={{
-          transform: framesVisible ? 'translateY(0)' : 'translateY(-10px)'
-        }}>
-                <div className="stats-container">
-                  {/* Score */}
-                  <div className="stat-box">
-                    <div className="stat-label" style={{
-                color: "hsl(180, 70%, 60%)"
-              }}>
-                      SCORE
-                    </div>
-                    <div className={`stat-value ${scoreBlinking ? "animate-pulse" : ""}`}>
-                      {score.toString().padStart(6, "0")}
-                    </div>
-                  </div>
-
-                  {/* Level */}
-                  <div className="stat-box">
-                    <div className="stat-label" style={{
-                color: "hsl(30, 75%, 55%)"
-              }}>
-                      LEVEL
-                    </div>
-                    <div className="stat-value">{level.toString().padStart(2, "0")}</div>
-                  </div>
-
-                  {/* Lives */}
-                  <div className="stat-box">
-                    <div className="stat-label" style={{
-                color: "hsl(0, 70%, 55%)"
-              }}>
-                      LIVES
-                    </div>
-                    <div className="stat-value">{lives}</div>
-                  </div>
-
-                  {/* Timer */}
-                  <div className="stat-box">
-                    <div className="stat-label" style={{
-                color: "hsl(210, 60%, 55%)"
-              }}>
-                      TIMER
-                    </div>
-                    <div className="stat-value">{timer}s</div>
-                  </div>
-
-                  {/* Speed */}
-                  <div className="stat-box">
-                    <div className="stat-label" style={{
-                color: "hsl(120, 50%, 50%)"
-              }}>
-                      SPEED
-                    </div>
-                    <div className="stat-value">{Math.round(speedMultiplier * 100)}%</div>
-                  </div>
-
-                  {/* Turret Ammo - Only show when turrets are active */}
-                  {paddle?.hasTurrets && paddle?.turretShots !== undefined && <div className="stat-box">
-                      <div className="stat-label" style={{
-                color: paddle.turretShots <= 5 ? "hsl(0, 80%, 60%)" : "hsl(280, 60%, 60%)"
-              }}>
-                        AMMO
-                      </div>
-                      <div className={`stat-value ${paddle.turretShots <= 5 ? 'animate-pulse' : ''}`} style={{
-                color: paddle.turretShots <= 5 ? "hsl(0, 80%, 65%)" : "hsl(0, 0%, 85%)"
-              }}>
-                        {paddle.turretShots}
-                      </div>
-                    </div>}
-                </div>
-
-                <div className="flex gap-2">
-                  <button onClick={onReturnToMenu} className="fullscreen-btn" title="Return to Main Menu">
-                    <Home size={18} />
-                  </button>
-                  <button onClick={toggleFullscreen} className="fullscreen-btn" title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}>
-                    {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-                  </button>
-                </div>
-              </div>
 
               {/* Main Content with Side Panels */}
               <div className="metal-main-content">
@@ -2329,11 +2248,78 @@ export const Game = ({
                   autoAdjustEnabled={autoAdjustEnabled}
                 />
 
-                {/* Right Panel */}
-                <div className="metal-side-panel metal-side-panel-right">
-                  <div className="panel-decoration"></div>
-                  <div className="panel-decoration"></div>
-                  <div className="panel-decoration"></div>
+                {/* Right Panel - Stats and Controls */}
+                <div className={`metal-side-panel metal-side-panel-right transition-all duration-150 ${framesVisible ? 'opacity-100' : 'opacity-0'}`}>
+                  {/* Control Buttons */}
+                  <div className="flex flex-col gap-2 mb-4">
+                    <button onClick={onReturnToMenu} className="right-panel-btn" title="Return to Main Menu">
+                      <Home size={20} />
+                    </button>
+                    <button onClick={toggleFullscreen} className="right-panel-btn" title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}>
+                      {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                    </button>
+                  </div>
+
+                  {/* Stats */}
+                  <div className="flex flex-col gap-3">
+                    {/* Score */}
+                    <div className="right-stat-box">
+                      <div className="right-stat-label" style={{ color: "hsl(180, 70%, 60%)" }}>
+                        SCORE
+                      </div>
+                      <div className={`right-stat-value ${scoreBlinking ? "animate-pulse" : ""}`}>
+                        {score.toString().padStart(6, "0")}
+                      </div>
+                    </div>
+
+                    {/* Level */}
+                    <div className="right-stat-box">
+                      <div className="right-stat-label" style={{ color: "hsl(30, 75%, 55%)" }}>
+                        LEVEL
+                      </div>
+                      <div className="right-stat-value">{level.toString().padStart(2, "0")}</div>
+                    </div>
+
+                    {/* Lives */}
+                    <div className="right-stat-box">
+                      <div className="right-stat-label" style={{ color: "hsl(0, 70%, 55%)" }}>
+                        LIVES
+                      </div>
+                      <div className="right-stat-value">{lives}</div>
+                    </div>
+
+                    {/* Timer */}
+                    <div className="right-stat-box">
+                      <div className="right-stat-label" style={{ color: "hsl(210, 60%, 55%)" }}>
+                        TIMER
+                      </div>
+                      <div className="right-stat-value">{timer}s</div>
+                    </div>
+
+                    {/* Speed */}
+                    <div className="right-stat-box">
+                      <div className="right-stat-label" style={{ color: "hsl(120, 50%, 50%)" }}>
+                        SPEED
+                      </div>
+                      <div className="right-stat-value">{Math.round(speedMultiplier * 100)}%</div>
+                    </div>
+
+                    {/* Turret Ammo - Only show when turrets are active */}
+                    {paddle?.hasTurrets && paddle?.turretShots !== undefined && (
+                      <div className="right-stat-box">
+                        <div className="right-stat-label" style={{
+                          color: paddle.turretShots <= 5 ? "hsl(0, 80%, 60%)" : "hsl(280, 60%, 60%)"
+                        }}>
+                          AMMO
+                        </div>
+                        <div className={`right-stat-value ${paddle.turretShots <= 5 ? 'animate-pulse' : ''}`} style={{
+                          color: paddle.turretShots <= 5 ? "hsl(0, 80%, 65%)" : "hsl(0, 0%, 85%)"
+                        }}>
+                          {paddle.turretShots}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
