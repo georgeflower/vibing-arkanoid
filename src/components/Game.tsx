@@ -1236,9 +1236,15 @@ export const Game = ({
             }
             setGameOverParticles(particles);
 
-            // Always show end screen with statistics first
-            setShowEndScreen(true);
-            toast.error("Game Over!");
+            // Check for high score immediately
+            if (!levelSkipped && isHighScore(score)) {
+              setShowHighScoreEntry(true);
+              soundManager.playHighScoreMusic();
+              toast.error("Game Over - New High Score!");
+            } else {
+              setShowEndScreen(true);
+              toast.error("Game Over!");
+            }
           } else {
             // Reset ball and clear power-ups, but wait for click to continue
             const baseSpeed = 5.175; // 50% faster base speed
@@ -1798,8 +1804,15 @@ export const Game = ({
               soundManager.stopBackgroundMusic();
               setBossAttacks([]);
               setLaserWarnings([]);
-              setShowEndScreen(true);
-              toast.error("Game Over!");
+              // Check for high score immediately
+              if (!levelSkipped && isHighScore(score)) {
+                setShowHighScoreEntry(true);
+                soundManager.playHighScoreMusic();
+                toast.error("Game Over - New High Score!");
+              } else {
+                setShowEndScreen(true);
+                toast.error("Game Over!");
+              }
             } else {
               // Reset ball and clear power-ups, but wait for click to continue
               const baseSpeed = 5.175; // 50% faster base speed
@@ -1876,8 +1889,15 @@ export const Game = ({
             soundManager.stopBackgroundMusic();
             setBossAttacks([]);
             setLaserWarnings([]);
-            setShowEndScreen(true);
-            toast.error("Game Over!");
+            // Check for high score immediately
+            if (!levelSkipped && isHighScore(score)) {
+              setShowHighScoreEntry(true);
+              soundManager.playHighScoreMusic();
+              toast.error("Game Over - New High Score!");
+            } else {
+              setShowEndScreen(true);
+              toast.error("Game Over!");
+            }
           } else {
               // Reset ball and clear power-ups, but wait for click to continue
               const baseSpeed = 5.175; // 50% faster base speed
@@ -1984,8 +2004,15 @@ export const Game = ({
             soundManager.stopBackgroundMusic();
             setBossAttacks([]);
             setLaserWarnings([]);
-            setShowEndScreen(true);
-            toast.error("Game Over!");
+            // Check for high score immediately
+            if (!levelSkipped && isHighScore(score)) {
+              setShowHighScoreEntry(true);
+              soundManager.playHighScoreMusic();
+              toast.error("Game Over - New High Score!");
+            } else {
+              setShowEndScreen(true);
+              toast.error("Game Over!");
+            }
           } else {
             // Reset ball and clear power-ups, wait for click to continue
             const baseSpeed = 5.175;
@@ -2037,8 +2064,15 @@ export const Game = ({
             soundManager.stopBackgroundMusic();
             setBossAttacks([]);
             setLaserWarnings([]);
-            setShowEndScreen(true);
-            toast.error("Game Over!");
+            // Check for high score immediately
+            if (!levelSkipped && isHighScore(score)) {
+              setShowHighScoreEntry(true);
+              soundManager.playHighScoreMusic();
+              toast.error("Game Over - New High Score!");
+            } else {
+              setShowEndScreen(true);
+              toast.error("Game Over!");
+            }
           } else {
               // Reset game to ready state
               const baseSpeed = 5.175;
@@ -2625,20 +2659,18 @@ export const Game = ({
   };
   const handleEndScreenContinue = () => {
     setShowEndScreen(false);
-    // Check if it's a high score (and player didn't skip levels)
-    if (!levelSkipped && isHighScore(score)) {
-      setShowHighScoreEntry(true);
-      soundManager.playHighScoreMusic();
-      toast.success("New High Score!");
-    } else {
-      // Show high score display even if not a high score
-      setShowHighScoreDisplay(true);
-    }
+    setShowHighScoreDisplay(true);
   };
   const handleCloseHighScoreDisplay = () => {
     setShowHighScoreDisplay(false);
-    soundManager.stopHighScoreMusic();
-    onReturnToMenu();
+    // If end screen hasn't been shown yet, show it
+    if (!showEndScreen) {
+      setShowEndScreen(true);
+    } else {
+      // If coming back from end screen, go to menu
+      soundManager.stopHighScoreMusic();
+      onReturnToMenu();
+    }
   };
   
   const handleRetryLevel = useCallback(() => {
