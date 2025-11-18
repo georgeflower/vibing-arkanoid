@@ -25,9 +25,7 @@ export function createBoss(level: number, canvasWidth: number, canvasHeight: num
   
   const maxHealth = bossType === 'cube' 
     ? config.health 
-    : ('healthPhase1' in config && 'healthPhase2' in config 
-        ? config.healthPhase1 + config.healthPhase2 
-        : 20);
+    : ('healthPhase1' in config ? config.healthPhase1 : 10);
   
   const currentHealth = bossType === 'cube' 
     ? config.health 

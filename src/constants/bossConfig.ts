@@ -35,8 +35,8 @@ export const BOSS_CONFIG = {
     moveSpeed: 1.8,
     angryMoveSpeed: 3.0,
     superAngryMoveSpeed: 4.5,
-    attackTypes: ['shot', 'laser', 'super'] as const,
-    attackInterval: 2500,
+    attackTypes: ['shot', 'laser', 'super', 'spiral', 'cross'] as const,
+    attackInterval: 1500,
     points: 20000,
     resurrectedPoints: 3000
   }
@@ -72,5 +72,17 @@ export const ATTACK_PATTERNS = {
     speed: 3.5,
     size: 10,
     spreadAngle: 360
+  },
+  spiral: {
+    count: 16,
+    speed: 3.0,
+    size: 10,
+    rotationSpeed: 0.3
+  },
+  cross: {
+    count: 4,
+    speed: 4.5,
+    size: 12,
+    directions: [0, 90, 180, 270]
   }
 } as const;

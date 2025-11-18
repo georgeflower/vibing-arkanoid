@@ -13,7 +13,21 @@ export function performBossAttack(
   const config = BOSS_CONFIG[boss.type];
   const attackTypes = config.attackTypes;
   
-  const attackType = attackTypes[Math.floor(Math.random() * attackTypes.length)] as BossAttackType;
+  // Pyramid boss uses weighted attack selection
+  let attackType: BossAttackType;
+  
+  if (boss.type === 'pyramid') {
+    const rand = Math.random();
+    // Weighted selection: 40% super, 30% spiral, 15% cross, 10% laser, 5% shot
+    if (rand < 0.40) attackType = 'super';
+    else if (rand < 0.70) attackType = 'spiral';
+    else if (rand < 0.85) attackType = 'cross';
+    else if (rand < 0.95) attackType = 'laser';
+    else attackType = 'shot';
+  } else {
+    // Other bosses use random selection
+    attackType = attackTypes[Math.floor(Math.random() * attackTypes.length)] as BossAttackType;
+  }
   
   soundManager.playBombDropSound();
   
@@ -91,5 +105,60 @@ export function performBossAttack(
     setBossAttacks(prev => [...prev, ...attacks]);
     toast.error(`${boss.type.toUpperCase()} SUPER ATTACK!`);
     soundManager.playExplosion();
+    
+  } else if (attackType === 'spiral') {
+    const centerX = boss.x + boss.width / 2;
+    const centerY = boss.y + boss.height / 2;
+    const attacks: BossAttack[] = [];
+    const spiralOffset = Date.now() / 1000; // Animated spiral
+    
+    for (let i = 0; i < ATTACK_PATTERNS.spiral.count; i++) {
+      const angle = (i / ATTACK_PATTERNS.spiral.count) * Math.PI * 2 + spiralOffset;
+      
+      attacks.push({
+        bossId: boss.id,
+        type: 'spiral',
+        x: centerX,
+        y: centerY,
+        width: ATTACK_PATTERNS.spiral.size,
+        height: ATTACK_PATTERNS.spiral.size,
+        speed: ATTACK_PATTERNS.spiral.speed,
+        angle: angle,
+        dx: Math.cos(angle) * ATTACK_PATTERNS.spiral.speed,
+        dy: Math.sin(angle) * ATTACK_PATTERNS.spiral.speed,
+        damage: 1
+      });
+    }
+    
+    setBossAttacks(prev => [...prev, ...attacks]);
+    toast.warning(`${boss.type.toUpperCase()} SPIRAL ATTACK!`);
+    soundManager.playExplosion();
+    
+  } else if (attackType === 'cross') {
+    const centerX = boss.x + boss.width / 2;
+    const centerY = boss.y + boss.height / 2;
+    const attacks: BossAttack[] = [];
+    
+    ATTACK_PATTERNS.cross.directions.forEach(degree => {
+      const angle = (degree * Math.PI) / 180;
+      
+      attacks.push({
+        bossId: boss.id,
+        type: 'cross',
+        x: centerX,
+        y: centerY,
+        width: ATTACK_PATTERNS.cross.size,
+        height: ATTACK_PATTERNS.cross.size,
+        speed: ATTACK_PATTERNS.cross.speed,
+        angle: angle,
+        dx: Math.cos(angle) * ATTACK_PATTERNS.cross.speed,
+        dy: Math.sin(angle) * ATTACK_PATTERNS.cross.speed,
+        damage: 1
+      });
+    });
+    
+    setBossAttacks(prev => [...prev, ...attacks]);
+    toast.warning(`${boss.type.toUpperCase()} CROSS ATTACK!`);
+    soundManager.playBombDropSound();
   }
 }

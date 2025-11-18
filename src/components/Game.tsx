@@ -1897,6 +1897,59 @@ export const Game = ({
       return true;
     }));
     
+    // Check laser collisions with paddle separately
+    bossAttacks.forEach(attack => {
+      if (attack.type === 'laser' && paddle) {
+        // Check if paddle is within laser X range
+        const laserRight = attack.x + attack.width;
+        const paddleRight = paddle.x + paddle.width;
+        
+        if (paddle.x < laserRight && paddleRight > attack.x) {
+          // Paddle is hit by laser!
+          soundManager.playLoseLife();
+          setLives(prev => {
+            const newLives = prev - 1;
+            if (newLives <= 0) {
+              setGameState("gameOver");
+              soundManager.stopBackgroundMusic();
+              toast.error("Game Over!");
+              if (isHighScore(score)) {
+                setShowHighScoreEntry(true);
+                soundManager.playHighScoreMusic();
+              }
+            } else {
+              // Reset game to ready state
+              const baseSpeed = 5.175;
+              setBalls([{
+                id: nextBallId.current++,
+                x: SCALED_CANVAS_WIDTH / 2,
+                y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+                dx: baseSpeed,
+                dy: -baseSpeed,
+                radius: SCALED_BALL_RADIUS,
+                speed: baseSpeed,
+                waitingToLaunch: true,
+                isFireball: false
+              }]);
+              setPowerUps([]);
+              setBullets([]);
+              setEnemies([]);
+              setBombs([]);
+              setExplosions([]);
+              bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+              bombIntervalsRef.current.clear();
+              setGameState("ready");
+              toast.error(`LASER HIT! ${newLives} lives remaining. Click to continue.`);
+            }
+            return newLives;
+          });
+          
+          // Remove the laser after hit
+          setBossAttacks(prev => prev.filter(a => a !== attack));
+        }
+      }
+    });
+    
     // Clean up expired laser warnings
     setLaserWarnings(prev => prev.filter(warning => Date.now() - warning.startTime < 800));
     
