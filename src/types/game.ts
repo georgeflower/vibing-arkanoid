@@ -122,6 +122,63 @@ export interface Explosion {
   particles: Particle[];
 }
 
+export type BossType = "cube" | "sphere" | "pyramid";
+export type BossPhase = "idle" | "moving" | "attacking" | "transitioning" | "defeated";
+export type BossAttackType = "shot" | "laser" | "super";
+
+export interface Boss {
+  id: number;
+  type: BossType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  rotationX: number;
+  rotationY: number;
+  rotationZ: number;
+  speed: number;
+  dx: number;
+  dy: number;
+  
+  // Boss-specific properties
+  maxHealth: number;
+  currentHealth: number;
+  phase: BossPhase;
+  currentStage: number;
+  isAngry: boolean;
+  isSuperAngry: boolean;
+  
+  // Movement pattern
+  targetPosition: { x: number; y: number };
+  currentPositionIndex: number;
+  positions: Array<{ x: number; y: number }>;
+  waitTimeAtPosition: number;
+  
+  // Attack system
+  attackCooldown: number;
+  lastAttackTime: number;
+  isCharging: boolean;
+  
+  // Resurrection (for pyramid)
+  parentBossId?: number;
+  isResurrected?: boolean;
+}
+
+export interface BossAttack {
+  bossId: number;
+  type: BossAttackType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  speed: number;
+  angle?: number;
+  damage: number;
+  dx?: number;
+  dy?: number;
+}
+
 export type GameState = "ready" | "playing" | "paused" | "gameOver" | "won";
 
 export type Difficulty = "normal" | "godlike";

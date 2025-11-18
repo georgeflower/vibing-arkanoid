@@ -10,7 +10,7 @@ import { QualityIndicator } from "./QualityIndicator";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Maximize2, Minimize2, Home } from "lucide-react";
-import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, GameSettings, EnemyType, Particle } from "@/types/game";
+import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, GameSettings, EnemyType, Particle, Boss, BossAttack } from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
 import { CANVAS_WIDTH, CANVAS_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, BRICK_ROWS, BRICK_COLS, BRICK_WIDTH, BRICK_HEIGHT, BRICK_PADDING, BRICK_OFFSET_TOP, BRICK_OFFSET_LEFT, brickColors, POWERUP_DROP_CHANCE, getHitColor, getBrickColors } from "@/constants/game";
 import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
@@ -19,6 +19,9 @@ import { useBullets } from "@/hooks/useBullets";
 import { useAdaptiveQuality } from "@/hooks/useAdaptiveQuality";
 import { soundManager } from "@/utils/sounds";
 import { FixedStepGameLoop } from "@/utils/gameLoop";
+import { createBoss, createResurrectedPyramid } from "@/utils/bossUtils";
+import { performBossAttack } from "@/utils/bossAttacks";
+import { BOSS_LEVELS, BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
 interface GameProps {
   settings: GameSettings;
   onReturnToMenu: () => void;
@@ -67,6 +70,11 @@ export const Game = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
+  const [boss, setBoss] = useState<Boss | null>(null);
+  const [resurrectedBosses, setResurrectedBosses] = useState<Boss[]>([]);
+  const [bossAttacks, setBossAttacks] = useState<BossAttack[]>([]);
+  const [bossActive, setBossActive] = useState(false);
+  const [laserWarnings, setLaserWarnings] = useState<Array<{ x: number; startTime: number }>>([]);
   const [isMobileDevice] = useState(() => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
            ('ontouchstart' in window && window.matchMedia('(max-width: 768px)').matches);
@@ -290,6 +298,19 @@ export const Game = ({
     });
   }, [paddle]);
   const initBricksForLevel = useCallback((currentLevel: number) => {
+    // Check if this is a boss level
+    if (BOSS_LEVELS.includes(currentLevel)) {
+      const newBoss = createBoss(currentLevel, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT);
+      setBoss(newBoss);
+      setBossActive(true);
+      setResurrectedBosses([]);
+      setBossAttacks([]);
+      setLaserWarnings([]);
+      const bossName = newBoss?.type.toUpperCase();
+      toast.success(`LEVEL ${currentLevel}: ${bossName} BOSS!`, { duration: 3000 });
+      return []; // No bricks on boss levels
+    }
+    
     const layoutIndex = Math.min(currentLevel - 1, levelLayouts.length - 1);
     const layout = levelLayouts[layoutIndex];
     const levelColors = getBrickColors(currentLevel);
@@ -374,6 +395,11 @@ export const Game = ({
     setBonusLetters([]);
     setCollectedLetters(new Set());
     setEnemiesKilled(0);
+    setBoss(null);
+    setResurrectedBosses([]);
+    setBossAttacks([]);
+    setBossActive(false);
+    setLaserWarnings([]);
     bombIntervalsRef.current.forEach(interval => clearInterval(interval));
     bombIntervalsRef.current.clear();
   }, [setPowerUps, initBricksForLevel]);
@@ -441,6 +467,11 @@ export const Game = ({
     setBrickHitSpeedAccumulated(0);
     setEnemiesKilled(0); // Reset enemy kills on level clear
     setTimer(0); // Reset timer on level clear (for turret drop chance reset)
+    setBoss(null);
+    setResurrectedBosses([]);
+    setBossAttacks([]);
+    setBossActive(false);
+    setLaserWarnings([]);
     bombIntervalsRef.current.forEach(interval => clearInterval(interval));
     bombIntervalsRef.current.clear();
     setGameState("playing");
@@ -1132,6 +1163,42 @@ export const Game = ({
     });
   }, [paddle, balls, createPowerUp, setPowerUps, nextLevel, speedMultiplier]);
   
+  // Boss defeat handler
+  const handleBossDefeat = useCallback((defeatedBoss: Boss) => {
+    const config = BOSS_CONFIG[defeatedBoss.type];
+    
+    setScore(s => s + config.points);
+    toast.success(`${defeatedBoss.type.toUpperCase()} BOSS DEFEATED! +${config.points} points`, { duration: 4000 });
+    
+    // Big explosion
+    setExplosions(prev => [...prev, {
+      x: defeatedBoss.x + defeatedBoss.width / 2,
+      y: defeatedBoss.y + defeatedBoss.height / 2,
+      frame: 0,
+      maxFrames: 40,
+      enemyType: defeatedBoss.type as EnemyType,
+      particles: createExplosionParticles(
+        defeatedBoss.x + defeatedBoss.width / 2,
+        defeatedBoss.y + defeatedBoss.height / 2,
+        defeatedBoss.type as EnemyType
+      )
+    }]);
+    
+    soundManager.playExplosion();
+    setScreenShake(15);
+    setBackgroundFlash(1);
+    setTimeout(() => {
+      setScreenShake(0);
+      setBackgroundFlash(0);
+    }, 1000);
+    
+    // Progress to next level after delay
+    setTimeout(() => {
+      setBossActive(false);
+      nextLevel();
+    }, 3000);
+  }, [createExplosionParticles, nextLevel]);
+  
   // FPS tracking for adaptive quality
   const fpsTrackerRef = useRef({ lastTime: performance.now(), frameCount: 0, fps: 60 });
   const lastFrameTimeRef = useRef(performance.now());
@@ -1720,6 +1787,91 @@ export const Game = ({
       });
     }
 
+    // Update boss movement and attacks
+    if (boss && boss.phase === 'moving') {
+      const dx = boss.targetPosition.x - boss.x;
+      const dy = boss.targetPosition.y - boss.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < 5) {
+        setBoss(prev => prev ? { ...prev, phase: 'attacking', x: boss.targetPosition.x, y: boss.targetPosition.y, dx: 0, dy: 0, lastAttackTime: Date.now() } : null);
+      } else {
+        const config = BOSS_CONFIG[boss.type];
+        const moveSpeed = boss.isSuperAngry && 'superAngryMoveSpeed' in config ? config.superAngryMoveSpeed : (boss.isAngry && 'angryMoveSpeed' in config ? config.angryMoveSpeed : boss.speed);
+        setBoss(prev => prev ? { ...prev, x: prev.x + (dx / distance) * moveSpeed, y: prev.y + (dy / distance) * moveSpeed, rotationX: prev.rotationX + 0.05, rotationY: prev.rotationY + 0.08, rotationZ: prev.rotationZ + 0.03 } : null);
+      }
+    }
+    
+    if (boss && boss.phase === 'attacking' && Date.now() - boss.lastAttackTime >= boss.attackCooldown && paddle) {
+      performBossAttack(boss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings);
+      const nextIndex = (boss.currentPositionIndex + 1) % boss.positions.length;
+      setBoss(prev => prev ? { ...prev, phase: 'moving', targetPosition: prev.positions[nextIndex], currentPositionIndex: nextIndex, lastAttackTime: Date.now() } : null);
+    }
+    
+    // Update resurrected bosses
+    resurrectedBosses.forEach((resBoss, idx) => {
+      if (resBoss.phase === 'moving') {
+        const dx = resBoss.targetPosition.x - resBoss.x;
+        const dy = resBoss.targetPosition.y - resBoss.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 5) {
+          setResurrectedBosses(prev => prev.map((b, i) => i === idx ? { ...b, phase: 'attacking', lastAttackTime: Date.now() } : b));
+        } else {
+          setResurrectedBosses(prev => prev.map((b, i) => i === idx ? { ...b, x: b.x + (dx/dist) * b.speed, y: b.y + (dy/dist) * b.speed, rotationX: b.rotationX + 0.08, rotationY: b.rotationY + 0.12 } : b));
+        }
+      }
+    });
+    
+    // Update boss attacks
+    setBossAttacks(prev => prev.filter(attack => {
+      if (attack.type === 'laser') return true;
+      const newX = attack.x + (attack.dx || 0);
+      const newY = attack.y + (attack.dy || 0);
+      if (newX < 0 || newX > SCALED_CANVAS_WIDTH || newY < 0 || newY > SCALED_CANVAS_HEIGHT) return false;
+      attack.x = newX;
+      attack.y = newY;
+      if (paddle && attack.x + attack.width > paddle.x && attack.x < paddle.x + paddle.width && attack.y + attack.height > paddle.y && attack.y < paddle.y + paddle.height) {
+        soundManager.playLoseLife();
+        setLives(l => l - 1);
+        return false;
+      }
+      return true;
+    }));
+    
+    // Boss collision with balls
+    if (boss && paddle) {
+      balls.forEach(ball => {
+        if (!ball.waitingToLaunch && ball.x + ball.radius > boss.x && ball.x - ball.radius < boss.x + boss.width && ball.y + ball.radius > boss.y && ball.y - ball.radius < boss.y + boss.height) {
+          soundManager.playBounce();
+          setScreenShake(8);
+          setTimeout(() => setScreenShake(0), 500);
+          const angle = Math.atan2(ball.y - (boss.y + boss.height/2), ball.x - (boss.x + boss.width/2));
+          setBalls(prev => prev.map(b => b.id === ball.id ? { ...b, dx: Math.cos(angle) * b.speed, dy: Math.sin(angle) * b.speed } : b));
+          
+          setBoss(prev => {
+            if (!prev) return null;
+            const newHealth = prev.currentHealth - 1;
+            if (prev.type === 'cube' && newHealth <= 0) { handleBossDefeat(prev); return null; }
+            if (prev.type === 'sphere') {
+              if (newHealth === 0 && !prev.isAngry) { toast.warning("SPHERE BOSS ENRAGED!"); return { ...prev, currentHealth: BOSS_CONFIG.sphere.healthPhase2, isAngry: true, speed: BOSS_CONFIG.sphere.angryMoveSpeed }; }
+              if (newHealth <= 0 && prev.isAngry) { handleBossDefeat(prev); return null; }
+            }
+            if (prev.type === 'pyramid' && !prev.isResurrected) {
+              if (newHealth === 0 && !prev.isAngry) { toast.warning("PYRAMID BOSS ENRAGED!"); return { ...prev, currentHealth: BOSS_CONFIG.pyramid.healthPhase2, isAngry: true }; }
+              if (newHealth <= 0 && prev.isAngry) {
+                toast.error("PYRAMID RESURRECTS!");
+                const resurrected = [0,1,2].map(i => createResurrectedPyramid(prev, i, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT));
+                setResurrectedBosses(resurrected);
+                return null;
+              }
+            }
+            toast.info(`${prev.type.toUpperCase()}: ${newHealth} HP`);
+            return { ...prev, currentHealth: newHealth };
+          });
+        }
+      });
+    }
+
     // Check collisions
     checkCollision();
 
@@ -1844,6 +1996,9 @@ export const Game = ({
 
   // Enemy spawn at regular intervals
   useEffect(() => {
+    // Don't spawn normal enemies during boss fights
+    if (bossActive) return;
+    
     if (gameState === "playing" && timer > 0) {
       // Spawn interval decreases with level
       // Normal: 30s at level 1, 20s at level 2, 15s at level 3+

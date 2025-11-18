@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useRef } from "react";
-import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, Particle } from "@/types/game";
+import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, Particle, Boss, BossAttack } from "@/types/game";
 import type { QualitySettings } from "@/hooks/useAdaptiveQuality";
 import { powerUpImages } from "@/utils/powerUpImages";
 import { bonusLetterImages } from "@/utils/bonusLetterImages";
@@ -26,10 +26,14 @@ interface GameCanvasProps {
   screenShake: number;
   backgroundFlash: number;
   qualitySettings: QualitySettings;
+  boss: Boss | null;
+  resurrectedBosses: Boss[];
+  bossAttacks: BossAttack[];
+  laserWarnings: Array<{ x: number; startTime: number }>;
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
