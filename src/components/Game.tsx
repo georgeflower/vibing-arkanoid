@@ -459,11 +459,10 @@ export const Game = ({
         x: newX
       } : null);
     } else if (gameState === "playing") {
-      // Convert screen coordinates to game coordinates accounting for scale
-      const container = document.getElementById('game-canvas-container');
-      const rect = container?.getBoundingClientRect() || canvasRef.current.getBoundingClientRect();
-      const gameX = (e.clientX - rect.left) / gameScale;
-      const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, gameX - paddle.width / 2));
+      const rect = canvasRef.current.getBoundingClientRect();
+      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+      const mouseX = (e.clientX - rect.left) * scaleX;
+      const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, mouseX - paddle.width / 2));
       setPaddle(prev => prev ? {
         ...prev,
         x: newX
@@ -503,9 +502,9 @@ export const Game = ({
             secondTouchRef.current = e.touches[i].identifier;
 
             // Calculate launch angle from second finger position relative to paddle
-            const container = document.getElementById('game-canvas-container');
-            const rect = container?.getBoundingClientRect() || canvasRef.current.getBoundingClientRect();
-            const touchX = (e.touches[i].clientX - rect.left) / gameScale;
+            const rect = canvasRef.current.getBoundingClientRect();
+            const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+            const touchX = (e.touches[i].clientX - rect.left) * scaleX;
 
             // Calculate angle: -60 to +60 degrees based on second finger position relative to paddle center
             const paddleCenter = paddle.x + paddle.width / 2;
@@ -539,9 +538,9 @@ export const Game = ({
       activeTouchRef.current = e.touches[0].identifier;
 
       // Update paddle position immediately on touch start
-      const container = document.getElementById('game-canvas-container');
-      const rect = container?.getBoundingClientRect() || canvasRef.current.getBoundingClientRect();
-      const touchX = (e.touches[0].clientX - rect.left) / gameScale;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+      const touchX = (e.touches[0].clientX - rect.left) * scaleX;
       const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
       setPaddle(prev => prev ? {
         ...prev,
@@ -588,9 +587,9 @@ export const Game = ({
     if (waitingBall && secondTouchRef.current !== null) {
       for (let i = 0; i < e.touches.length; i++) {
         if (e.touches[i].identifier === secondTouchRef.current) {
-          const container = document.getElementById('game-canvas-container');
-          const rect = container?.getBoundingClientRect() || canvasRef.current.getBoundingClientRect();
-          const touchX = (e.touches[i].clientX - rect.left) / gameScale;
+          const rect = canvasRef.current.getBoundingClientRect();
+          const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+          const touchX = (e.touches[i].clientX - rect.left) * scaleX;
 
           // Calculate angle from second finger position relative to paddle center
           const paddleCenter = paddle.x + paddle.width / 2;
@@ -619,9 +618,9 @@ export const Game = ({
       activeTouchRef.current = activeTouch.identifier;
     }
     if (!activeTouch) return;
-    const container = document.getElementById('game-canvas-container');
-    const rect = container?.getBoundingClientRect() || canvasRef.current.getBoundingClientRect();
-    const touchX = (activeTouch.clientX - rect.left) / gameScale;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+    const touchX = (activeTouch.clientX - rect.left) * scaleX;
     const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
     setPaddle(prev => prev ? {
       ...prev,
@@ -2103,67 +2102,33 @@ export const Game = ({
 
       // Desktop-specific adaptive layout
       if (!isMobile) {
-        // UI chrome dimensions
-        const leftPanelWidth = 60;
-        const rightPanelWidth = 140;
-        const horizontalGaps = 16; // 8px gap on each side
         const playableAreaHeight = SCALED_CANVAS_HEIGHT;
         const statsAndBottomHeight = statsBarHeight + bottomBarHeight + sideFrameHeight;
         const fullHeightNeeded = playableAreaHeight + titleBarHeight + statsAndBottomHeight;
 
-        // 1) Decide title visibility FIRST (based on height only)
+        // Check if we need to hide title
         const shouldShowTitle = containerHeight >= fullHeightNeeded;
         if (!shouldShowTitle && !disableAutoZoom) {
-          if (titleVisible) setTitleVisible(false);
+          // Hide title and calculate scale
+          const availableHeight = containerHeight - statsAndBottomHeight;
+          const minimalTopMargin = 20;
+          const scalableHeight = playableAreaHeight + minimalTopMargin;
+          let scaleFactor = availableHeight / scalableHeight;
+
+          // Clamp scale to prevent unreadably small UI
+          const minScale = 0.5;
+          scaleFactor = Math.max(minScale, Math.min(1.0, scaleFactor));
+          if (titleVisible || gameScale !== scaleFactor) {
+            setTitleVisible(false);
+            setGameScale(scaleFactor);
+            console.log(`[Desktop Layout] desktopLayoutMode: titleHidden, scale: ${scaleFactor.toFixed(2)}`);
+          }
         } else {
-          if (!titleVisible) setTitleVisible(true);
-        }
-
-        // 2) Compute effective sizes using actual title visibility state
-        const effectiveTitleHeight = titleVisible ? titleBarHeight : 0;
-        const availableWidthForCanvas = containerWidth - leftPanelWidth - rightPanelWidth - horizontalGaps;
-        const availableHeightForCanvas = containerHeight - effectiveTitleHeight - statsAndBottomHeight;
-
-        // 3) Compute scale and clamp
-        const widthScale = availableWidthForCanvas / SCALED_CANVAS_WIDTH;
-        const heightScale = availableHeightForCanvas / SCALED_CANVAS_HEIGHT;
-        let scaleFactor = Math.min(widthScale, heightScale);
-        
-        const minScale = 0.6;
-        const maxScale = 1.0;
-        scaleFactor = Math.max(minScale, Math.min(maxScale, scaleFactor));
-
-        // 4) Update state and apply visual transform only on meaningful change
-        if (Math.abs(gameScale - scaleFactor) > 0.01) {
-          setGameScale(scaleFactor);
-          console.log(
-            `[Desktop Layout] desktopLayoutMode: ${titleVisible ? "titleVisible" : "titleHidden"}, ` +
-            `scale: ${scaleFactor.toFixed(2)}, ` +
-            `container: ${containerWidth}x${containerHeight}, ` +
-            `effectiveTitleHeight: ${effectiveTitleHeight}, ` +
-            `available: ${Math.round(availableWidthForCanvas)}x${Math.round(availableHeightForCanvas)}`
-          );
-
-          // 5) Position and size canvas container to fill available space
-          const canvasContainer = document.getElementById('game-canvas-container');
-          if (canvasContainer) {
-            // Set logical container size to scaled canvas dimensions
-            canvasContainer.style.width = `${Math.round(SCALED_CANVAS_WIDTH * scaleFactor)}px`;
-            canvasContainer.style.height = `${Math.round(SCALED_CANVAS_HEIGHT * scaleFactor)}px`;
-
-            // Apply transform with top-left origin for precise scaling
-            canvasContainer.style.transformOrigin = 'top left';
-            canvasContainer.style.transform = `scale(${scaleFactor})`;
-
-            // Center horizontally between left and right panels, pin top below title
-            const availableLeft = leftPanelWidth + horizontalGaps / 2;
-            const availableRight = containerWidth - rightPanelWidth - horizontalGaps / 2;
-            const availableCenterX = Math.round((availableLeft + availableRight - (SCALED_CANVAS_WIDTH * scaleFactor)) / 2);
-            canvasContainer.style.left = `${Math.max(availableLeft, availableCenterX)}px`;
-            canvasContainer.style.top = `${effectiveTitleHeight}px`;
-
-            // Ensure absolute positioning
-            canvasContainer.style.position = 'absolute';
+          // Show title and reset scale
+          if (!titleVisible || gameScale !== 1) {
+            setTitleVisible(true);
+            setGameScale(1);
+            console.log(`[Desktop Layout] desktopLayoutMode: titleVisible, scale: 1.0`);
           }
         }
 
@@ -2230,16 +2195,14 @@ export const Game = ({
                   <div className="panel-decoration"></div>
                 </div>
 
-                {/* Game Canvas - Scale applied via JS for precise control */}
+                {/* Game Canvas - Apply scale transform when title is hidden (desktop only) */}
                 <div className="metal-game-area">
-                  <div 
-                    id="game-canvas-container"
-                    className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}
-                    style={{
-                      transition: 'transform 150ms ease-in-out, opacity 150ms ease-in-out'
-                    }}
-                  >
-                    <GameCanvas
+                  <div className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`} style={{
+              transform: `scale(${gameScale})`,
+              transformOrigin: 'top center',
+              transition: 'transform 150ms ease-in-out'
+            }}>
+                    <GameCanvas 
                       ref={canvasRef} 
                       width={SCALED_CANVAS_WIDTH} 
                       height={SCALED_CANVAS_HEIGHT} 
