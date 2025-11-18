@@ -2660,6 +2660,14 @@ export const Game = ({
     setShowEndScreen(false);
     setShowHighScoreDisplay(true);
   };
+  
+  const handleEndScreenReturnToMenu = () => {
+    soundManager.stopHighScoreMusic();
+    soundManager.stopBackgroundMusic();
+    setShowEndScreen(false);
+    onReturnToMenu();
+  };
+  
   const handleCloseHighScoreDisplay = () => {
     setShowHighScoreDisplay(false);
     // If end screen hasn't been shown yet, show it
@@ -2673,6 +2681,10 @@ export const Game = ({
   };
   
   const handleRetryLevel = useCallback(() => {
+    // Stop all music first
+    soundManager.stopHighScoreMusic();
+    soundManager.stopBackgroundMusic();
+    
     // Stop game loop before restarting level
     if (gameLoopRef.current) {
       gameLoopRef.current.stop();
@@ -2956,7 +2968,7 @@ export const Game = ({
       
       {showEndScreen ? <EndScreen 
         onContinue={handleEndScreenContinue} 
-        onReturnToMenu={onReturnToMenu}
+        onReturnToMenu={handleEndScreenReturnToMenu}
         onRetryLevel={handleRetryLevel}
         stats={{
           totalBricksDestroyed,
