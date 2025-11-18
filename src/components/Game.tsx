@@ -6,6 +6,7 @@ import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { EndScreen } from "./EndScreen";
 import { GameLoopDebugOverlay } from "./GameLoopDebugOverlay";
+import { QualityIndicator } from "./QualityIndicator";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Maximize2, Minimize2, Home } from "lucide-react";
@@ -15,6 +16,7 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, 
 import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
+import { useAdaptiveQuality } from "@/hooks/useAdaptiveQuality";
 import { soundManager } from "@/utils/sounds";
 import { FixedStepGameLoop } from "@/utils/gameLoop";
 interface GameProps {
@@ -129,10 +131,27 @@ export const Game = ({
     updateBullets
   } = useBullets(setScore, setBricks, bricks, enemies, setPaddle);
 
+  // Adaptive quality system
+  const {
+    quality,
+    qualitySettings,
+    updateFps,
+    setQuality,
+    toggleAutoAdjust,
+    autoAdjustEnabled
+  } = useAdaptiveQuality({
+    initialQuality: 'high',
+    autoAdjust: true,
+    lowFpsThreshold: 30,
+    mediumFpsThreshold: 45,
+    highFpsThreshold: 55,
+    sampleWindow: 3
+  });
+
   // Helper function to create explosion particles based on enemy type
   const createExplosionParticles = useCallback((x: number, y: number, enemyType: EnemyType): Particle[] => {
     const particles: Particle[] = [];
-    const particleCount = 20; // More particles for better effect
+    const particleCount = Math.round(qualitySettings.explosionParticles); // Adjust based on quality
 
     // Determine colors based on enemy type
     let colors: string[] = [];
@@ -174,7 +193,7 @@ export const Game = ({
       });
     }
     return particles;
-  }, []);
+  }, [qualitySettings.explosionParticles]);
 
   // Initialize sound settings - always enabled
   useEffect(() => {
@@ -742,6 +761,20 @@ export const Game = ({
           gameLoopRef.current.setMode(newMode);
           toast.success(`Loop mode: ${newMode}`);
         }
+      } else if (e.key === "q" || e.key === "Q") {
+        if (e.shiftKey) {
+          // Shift+Q: Toggle auto-adjust
+          toggleAutoAdjust();
+        } else {
+          // Q: Cycle quality levels
+          const levels: Array<'low' | 'medium' | 'high'> = ['low', 'medium', 'high'];
+          const currentIndex = levels.indexOf(quality);
+          const nextIndex = (currentIndex + 1) % levels.length;
+          const nextQuality = levels[nextIndex];
+          
+          // Use the hook's setQuality which handles everything properly
+          setQuality(nextQuality);
+        }
       } else if (e.key === "0") {
         // Clear level and advance
         nextLevel();
@@ -1087,8 +1120,35 @@ export const Game = ({
       return updatedBalls;
     });
   }, [paddle, balls, createPowerUp, setPowerUps, nextLevel, speedMultiplier]);
+  
+  // FPS tracking for adaptive quality
+  const fpsTrackerRef = useRef({ lastTime: performance.now(), frameCount: 0, fps: 60 });
+  
   const gameLoop = useCallback(() => {
     if (gameState !== "playing") return;
+
+    // Track FPS
+    const now = performance.now();
+    fpsTrackerRef.current.frameCount++;
+    const deltaTime = now - fpsTrackerRef.current.lastTime;
+    
+    if (deltaTime >= 1000) {
+      const fps = Math.round(fpsTrackerRef.current.frameCount * 1000 / deltaTime);
+      fpsTrackerRef.current.fps = fps;
+      fpsTrackerRef.current.frameCount = 0;
+      fpsTrackerRef.current.lastTime = now;
+      
+      // Update adaptive quality system
+      updateFps(fps);
+    }
+    
+    // Also feed real-time FPS from fixed-step game loop if available
+    if (gameLoopRef.current) {
+      const debugInfo = gameLoopRef.current.getDebugInfo();
+      if (debugInfo.fps > 0) {
+        updateFps(debugInfo.fps);
+      }
+    }
 
     // Update background animation
     setBackgroundPhase(prev => (prev + 1) % 360);
@@ -1706,7 +1766,7 @@ export const Game = ({
       setTimeout(() => setScoreBlinking(false), 1000);
     }
     animationFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemies, bombs, bricks, score, isHighScore, explosions, lastPaddleHitTime, lastScoreMilestone]);
+  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemies, bombs, bricks, score, isHighScore, explosions, lastPaddleHitTime, lastScoreMilestone, updateFps]);
   
   useEffect(() => {
     if (gameState === "playing") {
@@ -2223,7 +2283,28 @@ export const Game = ({
               transformOrigin: 'top center',
               transition: 'transform 150ms ease-in-out'
             }}>
-                    <GameCanvas ref={canvasRef} width={SCALED_CANVAS_WIDTH} height={SCALED_CANVAS_HEIGHT} bricks={bricks} balls={balls} paddle={paddle} gameState={gameState} powerUps={powerUps} bullets={bullets} enemy={enemies} bombs={bombs} level={level} backgroundPhase={backgroundPhase} explosions={explosions} launchAngle={launchAngle} bonusLetters={bonusLetters} collectedLetters={collectedLetters} screenShake={screenShake} backgroundFlash={backgroundFlash} />
+                    <GameCanvas 
+                      ref={canvasRef} 
+                      width={SCALED_CANVAS_WIDTH} 
+                      height={SCALED_CANVAS_HEIGHT} 
+                      bricks={bricks} 
+                      balls={balls} 
+                      paddle={paddle} 
+                      gameState={gameState} 
+                      powerUps={powerUps} 
+                      bullets={bullets} 
+                      enemy={enemies} 
+                      bombs={bombs} 
+                      level={level} 
+                      backgroundPhase={backgroundPhase} 
+                      explosions={explosions} 
+                      launchAngle={launchAngle} 
+                      bonusLetters={bonusLetters} 
+                      collectedLetters={collectedLetters} 
+                      screenShake={screenShake} 
+                      backgroundFlash={backgroundFlash}
+                      qualitySettings={qualitySettings}
+                    />
                     {showDebugOverlay && gameLoopRef.current && (
                       <GameLoopDebugOverlay 
                         getDebugInfo={() => gameLoopRef.current?.getDebugInfo() ?? {
@@ -2241,6 +2322,12 @@ export const Game = ({
                     )}
                   </div>
                 </div>
+
+                {/* Quality Indicator */}
+                <QualityIndicator 
+                  quality={quality}
+                  autoAdjustEnabled={autoAdjustEnabled}
+                />
 
                 {/* Right Panel */}
                 <div className="metal-side-panel metal-side-panel-right">

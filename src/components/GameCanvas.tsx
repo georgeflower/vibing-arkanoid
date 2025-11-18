@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useRef } from "react";
 import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, Particle } from "@/types/game";
+import type { QualitySettings } from "@/hooks/useAdaptiveQuality";
 import { powerUpImages } from "@/utils/powerUpImages";
 import { bonusLetterImages } from "@/utils/bonusLetterImages";
 import paddleImg from "@/assets/paddle.png";
@@ -24,10 +25,11 @@ interface GameCanvasProps {
   collectedLetters: Set<BonusLetterType>;
   screenShake: number;
   backgroundFlash: number;
+  qualitySettings: QualitySettings;
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -187,18 +189,23 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         const img = paddleImageRef.current;
         
         if (isImageValid(img)) {
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = "hsl(200, 70%, 50%)";
+          if (qualitySettings.shadowsEnabled) {
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = "hsl(200, 70%, 50%)";
+          }
           ctx.drawImage(img, paddle.x, paddle.y, paddle.width, paddle.height);
+          ctx.shadowBlur = 0;
         } else {
           // Fallback while image loads
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = "hsl(200, 70%, 50%)";
+          if (qualitySettings.shadowsEnabled) {
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = "hsl(200, 70%, 50%)";
+          }
           ctx.fillStyle = "hsl(200, 70%, 50%)";
           ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+          ctx.shadowBlur = 0;
           
           // Paddle highlight
-          ctx.shadowBlur = 0;
           ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
           ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height / 2);
         }
@@ -234,12 +241,15 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           gradient.addColorStop(1, "hsl(0, 0%, 40%)");
         }
         
-        ctx.shadowBlur = 14;
-        ctx.shadowColor = ballColor;
+        if (qualitySettings.shadowsEnabled) {
+          ctx.shadowBlur = 14;
+          ctx.shadowColor = ballColor;
+        }
         ctx.fillStyle = gradient;
         ctx.beginPath();
         ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
         ctx.fill();
+        ctx.shadowBlur = 0;
         
         // Retro spinning pattern - rotating horizontal bands
         if (!ball.isFireball) {
@@ -255,13 +265,14 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.restore();
 
         // Fireball trail effect
-        if (ball.isFireball) {
+        if (ball.isFireball && qualitySettings.glowEnabled) {
           ctx.shadowBlur = 10;
           ctx.shadowColor = "hsl(30, 85%, 55%)";
           ctx.fillStyle = "hsla(30, 85%, 55%, 0.25)";
           ctx.beginPath();
           ctx.arc(ball.x, ball.y, ball.radius * 1.5, 0, Math.PI * 2);
           ctx.fill();
+          ctx.shadowBlur = 0;
         }
 
         // Draw launch indicator if ball is waiting to launch
@@ -768,13 +779,16 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.globalAlpha = alpha;
         
         // Outer ring
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = `hsla(${primaryHue}, 100%, 50%, ${alpha})`;
+        if (qualitySettings.glowEnabled) {
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = `hsla(${primaryHue}, 100%, 50%, ${alpha})`;
+        }
         ctx.strokeStyle = `hsla(${primaryHue}, 100%, 50%, ${alpha})`;
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(explosion.x, explosion.y, radius, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.shadowBlur = 0;
         
         // Inner glow
         ctx.fillStyle = `hsla(${secondaryHue}, 100%, 60%, ${alpha * 0.6})`;
@@ -782,14 +796,20 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.arc(explosion.x, explosion.y, radius * 0.6, 0, Math.PI * 2);
         ctx.fill();
         
-        // Draw debris particles
-        explosion.particles.forEach((particle: Particle) => {
+        // Draw debris particles (with quality-based sampling)
+        const particleStep = Math.ceil(1 / qualitySettings.particleMultiplier);
+        explosion.particles.forEach((particle: Particle, index: number) => {
+          // Skip particles based on quality
+          if (index % particleStep !== 0) return;
+          
           const particleAlpha = particle.life / particle.maxLife;
           ctx.globalAlpha = particleAlpha;
           
           // Draw particle with glow
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = particle.color;
+          if (qualitySettings.glowEnabled) {
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = particle.color;
+          }
           ctx.fillStyle = particle.color;
           
           // Draw as small square debris
