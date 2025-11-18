@@ -5,6 +5,7 @@ import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { EndScreen } from "./EndScreen";
+import { GameLoopDebugOverlay } from "./GameLoopDebugOverlay";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Maximize2, Minimize2, Home } from "lucide-react";
@@ -15,6 +16,7 @@ import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
 import { soundManager } from "@/utils/sounds";
+import { FixedStepGameLoop } from "@/utils/gameLoop";
 interface GameProps {
   settings: GameSettings;
   onReturnToMenu: () => void;
@@ -76,6 +78,7 @@ export const Game = ({
   const [backgroundFlash, setBackgroundFlash] = useState(0);
   const [lastScoreMilestone, setLastScoreMilestone] = useState(0);
   const [scoreBlinking, setScoreBlinking] = useState(false);
+  const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
@@ -85,6 +88,9 @@ export const Game = ({
   const launchAngleIntervalRef = useRef<NodeJS.Timeout>();
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const timerStartedRef = useRef(false);
+  
+  // Fixed-step game loop
+  const gameLoopRef = useRef<FixedStepGameLoop | null>(null);
   const {
     highScores,
     isHighScore,
@@ -328,9 +334,9 @@ export const Game = ({
     bombIntervalsRef.current.clear();
   }, [setPowerUps, initBricksForLevel]);
   const nextLevel = useCallback(() => {
-    // Cancel any running animation frame before starting new level
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
+    // Stop game loop before starting new level
+    if (gameLoopRef.current) {
+      gameLoopRef.current.stop();
     }
 
     // Clear timer interval before resetting
@@ -675,14 +681,44 @@ export const Game = ({
         // Toggle pause
         if (gameState === "playing") {
           setGameState("paused");
+          if (gameLoopRef.current) {
+            gameLoopRef.current.pause();
+          }
           toast.success("Game paused");
         } else if (gameState === "paused") {
           setGameState("playing");
+          if (gameLoopRef.current) {
+            gameLoopRef.current.resume();
+          }
           toast.success("Game resumed");
         }
       } else if (e.key === "m" || e.key === "M") {
         const enabled = soundManager.toggleMute();
         toast.success(enabled ? "Music on" : "Music muted");
+      } else if (e.key === "l" || e.key === "L") {
+        // Toggle debug overlay
+        setShowDebugOverlay(prev => !prev);
+      } else if (e.key === "[") {
+        // Decrease time scale
+        if (gameLoopRef.current) {
+          const newScale = Math.max(0.1, gameLoopRef.current.getTimeScale() - 0.1);
+          gameLoopRef.current.setTimeScale(newScale);
+          toast.success(`Time scale: ${newScale.toFixed(1)}x`);
+        }
+      } else if (e.key === "]") {
+        // Increase time scale
+        if (gameLoopRef.current) {
+          const newScale = Math.min(3.0, gameLoopRef.current.getTimeScale() + 0.1);
+          gameLoopRef.current.setTimeScale(newScale);
+          toast.success(`Time scale: ${newScale.toFixed(1)}x`);
+        }
+      } else if (e.key === "\\") {
+        // Toggle loop mode
+        if (gameLoopRef.current) {
+          const newMode = gameLoopRef.current.getMode() === "fixedStep" ? "legacy" : "fixedStep";
+          gameLoopRef.current.setMode(newMode);
+          toast.success(`Loop mode: ${newMode}`);
+        }
       } else if (e.key === "0") {
         // Clear level and advance
         nextLevel();
@@ -1648,6 +1684,7 @@ export const Game = ({
     }
     animationFrameRef.current = requestAnimationFrame(gameLoop);
   }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemies, bombs, bricks, score, isHighScore, explosions, lastPaddleHitTime, lastScoreMilestone]);
+  
   useEffect(() => {
     if (gameState === "playing") {
       animationFrameRef.current = requestAnimationFrame(gameLoop);
@@ -1662,6 +1699,7 @@ export const Game = ({
       }
     };
   }, [gameState, gameLoop]);
+
 
   // Separate useEffect for timer management - handle pause/resume
   useEffect(() => {
@@ -2163,6 +2201,21 @@ export const Game = ({
               transition: 'transform 150ms ease-in-out'
             }}>
                     <GameCanvas ref={canvasRef} width={SCALED_CANVAS_WIDTH} height={SCALED_CANVAS_HEIGHT} bricks={bricks} balls={balls} paddle={paddle} gameState={gameState} powerUps={powerUps} bullets={bullets} enemy={enemies} bombs={bombs} level={level} backgroundPhase={backgroundPhase} explosions={explosions} launchAngle={launchAngle} bonusLetters={bonusLetters} collectedLetters={collectedLetters} screenShake={screenShake} backgroundFlash={backgroundFlash} />
+                    {showDebugOverlay && gameLoopRef.current && (
+                      <GameLoopDebugOverlay 
+                        getDebugInfo={() => gameLoopRef.current?.getDebugInfo() ?? {
+                          mode: "legacy",
+                          fixedHz: 60,
+                          maxDeltaMs: 250,
+                          accumulator: 0,
+                          timeScale: 1,
+                          fps: 0,
+                          updatesThisFrame: 0,
+                          alpha: 0
+                        }}
+                        visible={showDebugOverlay}
+                      />
+                    )}
                   </div>
                 </div>
 
