@@ -1,6 +1,26 @@
-export const GAME_VERSION = "0.6.5";
+export const GAME_VERSION = "0.6.6";
 
 export const CHANGELOG = [
+  {
+    version: "0.6.6",
+    changes: [
+      "Boss system: Epic boss battles on levels 5, 10, and 15 featuring Cube, Sphere, and Pyramid bosses with unique attack patterns",
+      "Boss attacks: Shot, laser, super, spiral, and cross patterns with visual warnings and effects",
+      "Multi-phase boss mechanics: Bosses become faster and more aggressive as they lose health",
+      "Pyramid boss resurrection: Splits into 3 smaller independent bosses when defeated",
+      "Boss intro cinematics: Dramatic warning overlays, pulsing borders, spotlight zoom, and 'BOSS APPROACHING' text",
+      "Game over particle explosion animation with glowing particles and gravity physics",
+      "Game over statistics screen: Displays bricks destroyed, longest combo, and accuracy percentage",
+      "Retry level button: Resets score and lives to restart the level you died on",
+      "Level skipper detection: Players who skip levels see 'CHEATER' banner and are disqualified from high scores",
+      "Boss damage effects: Screen shake, color flashing, and impact particles when bosses take damage",
+      "Laser warning visual: Pulsating dotted line with '!! LASER !!' text before laser fires",
+      "Fixed: Boss attacks and laser warnings now properly clear when losing a ball",
+      "Fixed: Retry level now correctly restarts the current level instead of advancing to the next",
+      "Fixed: Boss laser attacks now originate from boss position instead of screen top",
+      "Fixed: Multi-phase boss health bars now accurately reflect current phase HP",
+    ],
+  },
   {
     version: "0.6.5  ",
     changes: [
