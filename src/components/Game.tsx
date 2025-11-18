@@ -95,6 +95,18 @@ export const Game = ({
   const [scoreBlinking, setScoreBlinking] = useState(false);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const [currentFps, setCurrentFps] = useState(60);
+  
+  // Game statistics tracking
+  const [totalBricksDestroyed, setTotalBricksDestroyed] = useState(0);
+  const [totalShots, setTotalShots] = useState(0);
+  const [bricksHit, setBricksHit] = useState(0);
+  const [longestCombo, setLongestCombo] = useState(0);
+  const [currentCombo, setCurrentCombo] = useState(0);
+  const [levelSkipped, setLevelSkipped] = useState(false);
+  const [bossIntroActive, setBossIntroActive] = useState(false);
+  const [gameOverParticles, setGameOverParticles] = useState<Particle[]>([]);
+  const [retryLevelData, setRetryLevelData] = useState<{level: number, layout: any} | null>(null);
+  
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
@@ -474,6 +486,21 @@ export const Game = ({
       setBossAttacks([]);
       setBossActive(false);
       setLaserWarnings([]);
+    } else {
+      // Boss level - trigger intro sequence
+      setBossIntroActive(true);
+      soundManager.playBossIntroSound();
+      
+      // Show boss name after 1 second
+      setTimeout(() => {
+        const bossName = newLevel === 5 ? 'CUBE GUARDIAN' : newLevel === 10 ? 'SPHERE DESTROYER' : 'PYRAMID LORD';
+        toast.error(`⚠️ BOSS APPROACHING: ${bossName} ⚠️`, { duration: 3000 });
+      }, 1000);
+      
+      // End intro after 3 seconds
+      setTimeout(() => {
+        setBossIntroActive(false);
+      }, 3000);
     }
     bombIntervalsRef.current.forEach(interval => clearInterval(interval));
     bombIntervalsRef.current.clear();
@@ -614,6 +641,9 @@ export const Game = ({
           if (ball.waitingToLaunch) {
             const speed = ball.speed;
             const angle = launchAngle * Math.PI / 180;
+            // Track shot fired
+            setTotalShots(prev => prev + 1);
+            
             return {
               ...ball,
               dx: speed * Math.sin(angle),
@@ -827,9 +857,10 @@ export const Game = ({
           setQuality(nextQuality);
         }
       } else if (e.key === "0") {
-        // Clear level and advance
+        // Clear level and advance - mark as level skipped (disqualified from high scores)
+        setLevelSkipped(true);
         nextLevel();
-        toast.success("Level skipped!");
+        toast.warning("Level skipped! You are DISQUALIFIED from high scores!", { duration: 3000 });
       }
     };
     const handlePointerLockChange = () => {
@@ -1049,6 +1080,15 @@ export const Game = ({
 
               // Increase ball speed slightly with each brick hit (but not for indestructible bricks)
               if (!brick.isIndestructible && updatedBrick.hitsRemaining === 0) {
+                // Track brick destroyed
+                setTotalBricksDestroyed(prev => prev + 1);
+                setBricksHit(prev => prev + 1);
+                setCurrentCombo(prev => {
+                  const newCombo = prev + 1;
+                  setLongestCombo(current => Math.max(current, newCombo));
+                  return newCombo;
+                });
+                
                 // Only add speed when brick is fully destroyed
                 // Cap accumulated speed at 30%
                 if (brickHitSpeedAccumulated < 0.3) {
@@ -1057,6 +1097,9 @@ export const Game = ({
                   newBall.dx *= 1 + speedIncrease;
                   newBall.dy *= 1 + speedIncrease;
                 }
+              } else if (brick.isIndestructible) {
+                // Reset combo on indestructible hit
+                setCurrentCombo(0);
               }
               return updatedBrick;
             }
@@ -1117,15 +1160,40 @@ export const Game = ({
 
       // Check if all balls are lost
       if (updatedBalls.length === 0) {
+        // Reset combo on ball loss
+        setCurrentCombo(0);
+        
         setLives(prev => {
           const newLives = prev - 1;
           soundManager.playLoseLife();
           if (newLives <= 0) {
             setGameState("gameOver");
             soundManager.stopBackgroundMusic();
+            
+            // Clear boss attacks on death
+            setBossAttacks([]);
+            setLaserWarnings([]);
+            
+            // Create game over particle explosion
+            const particles: Particle[] = [];
+            for (let i = 0; i < 50; i++) {
+              const angle = (Math.PI * 2 * i) / 50;
+              const speed = 3 + Math.random() * 5;
+              particles.push({
+                x: SCALED_CANVAS_WIDTH / 2,
+                y: SCALED_CANVAS_HEIGHT / 2,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size: 4 + Math.random() * 6,
+                color: `hsl(${Math.random() * 360}, 100%, 60%)`,
+                life: 60,
+                maxLife: 60
+              });
+            }
+            setGameOverParticles(particles);
 
-            // Check if it's a high score
-            if (isHighScore(score)) {
+            // Check if it's a high score (but not if they skipped levels)
+            if (!levelSkipped && isHighScore(score)) {
               setShowHighScoreEntry(true);
               soundManager.playHighScoreMusic();
               toast.success("New High Score!");
@@ -1956,16 +2024,46 @@ export const Game = ({
     // Boss collision with balls
     if (boss && paddle) {
       balls.forEach(ball => {
-        // Add cooldown check to prevent multiple hits
+        // Add cooldown check to prevent multiple hits - 1000ms cooldown
         const now = Date.now();
-        if (ball.lastHitTime && now - ball.lastHitTime < 50) {
+        if (ball.lastHitTime && now - ball.lastHitTime < 1000) {
           return; // Skip this collision check
         }
         
         if (!ball.waitingToLaunch && ball.x + ball.radius > boss.x && ball.x - ball.radius < boss.x + boss.width && ball.y + ball.radius > boss.y && ball.y - ball.radius < boss.y + boss.height) {
-          soundManager.playBounce();
-          setScreenShake(8);
-          setTimeout(() => setScreenShake(0), 500);
+          soundManager.playBossHitSound();
+          setScreenShake(10);
+          setBackgroundFlash(0.3);
+          setTimeout(() => {
+            setScreenShake(0);
+            setBackgroundFlash(0);
+          }, 500);
+          
+          // Create hit particles
+          const hitParticles: Particle[] = [];
+          for (let i = 0; i < 15; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 4;
+            hitParticles.push({
+              x: ball.x,
+              y: ball.y,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              size: 3 + Math.random() * 3,
+              color: boss.type === 'cube' ? 'hsl(200, 100%, 60%)' : boss.type === 'sphere' ? 'hsl(330, 100%, 60%)' : 'hsl(280, 100%, 60%)',
+              life: 20,
+              maxLife: 20
+            });
+          }
+          setExplosions(prev => [...prev, {
+            x: ball.x,
+            y: ball.y,
+            frame: 0,
+            maxFrames: 20,
+            enemyType: boss.type as EnemyType,
+            particles: hitParticles
+          }]);
+          
           const angle = Math.atan2(ball.y - (boss.y + boss.height/2), ball.x - (boss.x + boss.width/2));
           setBalls(prev => prev.map(b => b.id === ball.id ? { ...b, dx: Math.cos(angle) * b.speed, dy: Math.sin(angle) * b.speed, lastHitTime: now } : b));
           
@@ -1974,13 +2072,29 @@ export const Game = ({
             const newHealth = prev.currentHealth - 1;
             if (prev.type === 'cube' && newHealth <= 0) { handleBossDefeat(prev); return null; }
             if (prev.type === 'sphere') {
-              if (newHealth === 0 && !prev.isAngry) { toast.warning("SPHERE BOSS ENRAGED!"); return { ...prev, currentHealth: BOSS_CONFIG.sphere.healthPhase2, isAngry: true, speed: BOSS_CONFIG.sphere.angryMoveSpeed }; }
+              if (newHealth === 0 && !prev.isAngry) { 
+                toast.warning("SPHERE BOSS ENRAGED!"); 
+                soundManager.playBossPhaseTransitionSound();
+                setScreenShake(15);
+                setTimeout(() => setScreenShake(0), 600);
+                return { ...prev, currentHealth: BOSS_CONFIG.sphere.healthPhase2, maxHealth: BOSS_CONFIG.sphere.healthPhase2, isAngry: true, speed: BOSS_CONFIG.sphere.angryMoveSpeed }; 
+              }
               if (newHealth <= 0 && prev.isAngry) { handleBossDefeat(prev); return null; }
             }
             if (prev.type === 'pyramid' && !prev.isResurrected) {
-              if (newHealth === 0 && !prev.isAngry) { toast.warning("PYRAMID BOSS ENRAGED!"); return { ...prev, currentHealth: BOSS_CONFIG.pyramid.healthPhase2, isAngry: true }; }
+              if (newHealth === 0 && !prev.isAngry) { 
+                toast.warning("PYRAMID BOSS ENRAGED!"); 
+                soundManager.playBossPhaseTransitionSound();
+                setScreenShake(15);
+                setTimeout(() => setScreenShake(0), 600);
+                return { ...prev, currentHealth: BOSS_CONFIG.pyramid.healthPhase2, maxHealth: BOSS_CONFIG.pyramid.healthPhase2, isAngry: true }; 
+              }
               if (newHealth <= 0 && prev.isAngry) {
                 toast.error("PYRAMID RESURRECTS!");
+                soundManager.playExplosion();
+                soundManager.playExplosion();
+                setScreenShake(20);
+                setTimeout(() => setScreenShake(0), 800);
                 const resurrected = [0,1,2].map(i => createResurrectedPyramid(prev, i, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT));
                 setResurrectedBosses(resurrected);
                 return null;
@@ -1996,16 +2110,46 @@ export const Game = ({
     // Resurrected boss collisions with balls
     resurrectedBosses.forEach((resBoss, bossIdx) => {
       balls.forEach(ball => {
-        // Add cooldown check to prevent multiple hits
+        // Add cooldown check to prevent multiple hits - 1000ms cooldown
         const now = Date.now();
-        if (ball.lastHitTime && now - ball.lastHitTime < 50) {
+        if (ball.lastHitTime && now - ball.lastHitTime < 1000) {
           return; // Skip this collision check
         }
         
         if (!ball.waitingToLaunch && ball.x + ball.radius > resBoss.x && ball.x - ball.radius < resBoss.x + resBoss.width && ball.y + ball.radius > resBoss.y && ball.y - ball.radius < resBoss.y + resBoss.height) {
-          soundManager.playBounce();
-          setScreenShake(6);
-          setTimeout(() => setScreenShake(0), 400);
+          soundManager.playBossHitSound();
+          setScreenShake(8);
+          setBackgroundFlash(0.2);
+          setTimeout(() => {
+            setScreenShake(0);
+            setBackgroundFlash(0);
+          }, 400);
+          
+          // Create hit particles
+          const hitParticles: Particle[] = [];
+          for (let i = 0; i < 10; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 3;
+            hitParticles.push({
+              x: ball.x,
+              y: ball.y,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              size: 2 + Math.random() * 3,
+              color: 'hsl(280, 100%, 60%)',
+              life: 15,
+              maxLife: 15
+            });
+          }
+          setExplosions(prev => [...prev, {
+            x: ball.x,
+            y: ball.y,
+            frame: 0,
+            maxFrames: 15,
+            enemyType: 'pyramid' as EnemyType,
+            particles: hitParticles
+          }]);
+          
           const angle = Math.atan2(ball.y - (resBoss.y + resBoss.height/2), ball.x - (resBoss.x + resBoss.width/2));
           setBalls(prev => prev.map(b => b.id === ball.id ? { ...b, dx: Math.cos(angle) * b.speed, dy: Math.sin(angle) * b.speed, lastHitTime: now } : b));
           
@@ -2018,6 +2162,7 @@ export const Game = ({
               const config = BOSS_CONFIG.pyramid;
               setScore(s => s + config.resurrectedPoints);
               toast.success(`PYRAMID DESTROYED! +${config.resurrectedPoints} points`);
+              soundManager.playBossDefeatSound();
               
               setExplosions(e => [...e, {
                 x: resBoss.x + resBoss.width / 2,
@@ -2413,6 +2558,23 @@ export const Game = ({
     soundManager.stopHighScoreMusic();
     onReturnToMenu();
   };
+  
+  const handleRetryLevel = useCallback(() => {
+    setShowEndScreen(false);
+    setShowHighScoreEntry(false);
+    setScore(0);
+    setTotalBricksDestroyed(0);
+    setTotalShots(0);
+    setBricksHit(0);
+    setLongestCombo(0);
+    setCurrentCombo(0);
+    setLevelSkipped(false);
+    setLives(settings.startingLives);
+    const currentLevel = level;
+    setLevel(currentLevel - 1);
+    nextLevel();
+  }, [level, settings.startingLives, nextLevel]);
+  
   const toggleFullscreen = async () => {
     if (!fullscreenContainerRef.current) return;
     try {
@@ -2590,7 +2752,20 @@ export const Game = ({
         </div>
       )}
       
-      {showEndScreen ? <EndScreen onContinue={handleEndScreenContinue} onReturnToMenu={onReturnToMenu} /> : showHighScoreDisplay ? <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} /> : gameState === "gameOver" && !showHighScoreEntry ? (
+      {showEndScreen ? <EndScreen 
+        onContinue={handleEndScreenContinue} 
+        onReturnToMenu={onReturnToMenu}
+        onRetryLevel={retryLevelData ? handleRetryLevel : undefined}
+        stats={{
+          totalBricksDestroyed,
+          totalShots,
+          longestCombo,
+          accuracy: totalShots > 0 ? (bricksHit / totalShots) * 100 : 0,
+          levelSkipped,
+          finalScore: score,
+          finalLevel: level
+        }}
+      /> : showHighScoreDisplay ? <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} /> : gameState === "gameOver" && !showHighScoreEntry ? (
         <div 
           className="fixed inset-0 flex items-center justify-center bg-black/80 z-50 cursor-pointer"
           onClick={onReturnToMenu}

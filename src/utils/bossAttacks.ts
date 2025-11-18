@@ -55,6 +55,7 @@ export function performBossAttack(
     
     setLaserWarnings(prev => [...prev, { x: laserX, startTime: Date.now() }]);
     toast.warning(`${boss.type.toUpperCase()} CHARGING LASER!`, { duration: 1000 });
+    soundManager.playLaserChargingSound();
     
     setTimeout(() => {
       const laserStartY = boss.y + boss.height;
