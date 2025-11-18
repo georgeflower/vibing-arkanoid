@@ -903,20 +903,52 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.restore();
       });
 
-      // Draw laser warnings
+      // Draw laser warnings with enhanced pulsating dotted effect
       laserWarnings.forEach(warning => {
         const elapsed = Date.now() - warning.startTime;
-        const alpha = Math.sin((elapsed / 800) * Math.PI);
+        const progress = elapsed / 800; // 0 to 1
         
-        ctx.strokeStyle = `rgba(255, 0, 0, ${alpha * 0.7})`;
-        ctx.lineWidth = 8;
-        ctx.setLineDash([10, 10]);
-        ctx.lineDashOffset = (Date.now() / 50) % 20;
+        // Pulsating effect - faster and more dramatic
+        const pulse = Math.abs(Math.sin(elapsed / 100)); // Fast pulse
+        const alpha = 0.4 + (pulse * 0.6); // Range: 0.4 to 1.0
+        
+        // Find the boss position to draw from boss to bottom
+        const bossSource = boss || resurrectedBosses.find(b => 
+          Math.abs((b.x + b.width / 2) - (warning.x + 4)) < 10
+        );
+        
+        const startY = bossSource ? bossSource.y + bossSource.height : 0;
+        
+        // Draw thick dotted warning line
+        ctx.strokeStyle = `rgba(255, ${40 + pulse * 100}, 0, ${alpha})`;
+        ctx.lineWidth = 10 + (pulse * 6); // Pulsating width
+        ctx.setLineDash([5, 15]); // Dotted pattern (short dots, long gaps)
+        ctx.lineDashOffset = (Date.now() / 30) % 20; // Animated dots
+        
         ctx.beginPath();
-        ctx.moveTo(warning.x + 4, 0);
+        ctx.moveTo(warning.x + 4, startY);
         ctx.lineTo(warning.x + 4, height);
         ctx.stroke();
+        
+        // Draw glowing center line
+        ctx.strokeStyle = `rgba(255, 255, 100, ${alpha * 0.8})`;
+        ctx.lineWidth = 3;
         ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(warning.x + 4, startY);
+        ctx.lineTo(warning.x + 4, height);
+        ctx.stroke();
+        
+        // Reset line dash
+        ctx.setLineDash([]);
+        
+        // Add warning text near paddle area
+        if (progress > 0.3) {
+          ctx.fillStyle = `rgba(255, 50, 0, ${alpha})`;
+          ctx.font = 'bold 14px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('!! LASER !!', warning.x + 4, height - 80);
+        }
       });
 
       // Draw boss attacks

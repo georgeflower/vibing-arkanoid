@@ -124,7 +124,7 @@ export interface Explosion {
 
 export type BossType = "cube" | "sphere" | "pyramid";
 export type BossPhase = "idle" | "moving" | "attacking" | "transitioning" | "defeated";
-export type BossAttackType = "shot" | "laser" | "super";
+export type BossAttackType = "shot" | "laser" | "super" | "spiral" | "cross";
 
 export interface Boss {
   id: number;
