@@ -54,8 +54,8 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
   const {
     initialQuality = 'high',
     autoAdjust = true,
-    lowFpsThreshold = 30,
-    mediumFpsThreshold = 45,
+    lowFpsThreshold = 25,
+    mediumFpsThreshold = 35,
     highFpsThreshold = 55,
     sampleWindow = 3
   } = options;
