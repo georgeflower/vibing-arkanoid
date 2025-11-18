@@ -112,7 +112,8 @@ export function useFixedGameLoop(speedMultiplier: number = 1) {
       timeScale: 1,
       fps: 0,
       updatesThisFrame: 0,
-      alpha: 0
+      alpha: 0,
+      isPaused: true
     };
   }, []);
 
