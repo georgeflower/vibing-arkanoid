@@ -18,7 +18,7 @@ import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
 import { useAdaptiveQuality } from "@/hooks/useAdaptiveQuality";
 import { soundManager } from "@/utils/sounds";
-import { useFixedGameLoop, type SimulationState } from "@/hooks/useFixedGameLoop";
+import { FixedStepGameLoop } from "@/utils/gameLoop";
 interface GameProps {
   settings: GameSettings;
   onReturnToMenu: () => void;
@@ -80,8 +80,9 @@ export const Game = ({
   const [backgroundFlash, setBackgroundFlash] = useState(0);
   const [lastScoreMilestone, setLastScoreMilestone] = useState(0);
   const [scoreBlinking, setScoreBlinking] = useState(false);
-  const [showDebugOverlay, setShowDebugOverlay] = useState(true);
+  const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const launchAngleDirectionRef = useRef(1);
+  const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
   const nextEnemyId = useRef(1);
   const timerIntervalRef = useRef<NodeJS.Timeout>();
@@ -90,18 +91,27 @@ export const Game = ({
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const timerStartedRef = useRef(false);
   
-  // Use the fixed-step game loop hook
-  const {
-    setCallbacks,
-    start: startLoop,
-    stop: stopLoop,
-    pause: pauseLoop,
-    resume: resumeLoop,
-    getDebugInfo,
-    updateSimulationState,
-    getSimulationState,
-    gameLoop
-  } = useFixedGameLoop(speedMultiplier);
+  // Fixed-step game loop
+  const gameLoopRef = useRef<FixedStepGameLoop | null>(null);
+  
+  // Initialize fixed-step game loop on mount
+  useEffect(() => {
+    if (!gameLoopRef.current) {
+      gameLoopRef.current = new FixedStepGameLoop({
+        fixedStep: 16.6667, // 60Hz
+        maxDeltaMs: 250,
+        maxUpdatesPerFrame: 8,
+        timeScale: 1.0,
+        mode: "fixedStep"
+      });
+    }
+    
+    return () => {
+      if (gameLoopRef.current) {
+        gameLoopRef.current.stop();
+      }
+    };
+  }, []);
   const {
     highScores,
     isHighScore,
@@ -363,7 +373,9 @@ export const Game = ({
   }, [setPowerUps, initBricksForLevel]);
   const nextLevel = useCallback(() => {
     // Stop game loop before starting new level
-    stopLoop();
+    if (gameLoopRef.current) {
+      gameLoopRef.current.stop();
+    }
 
     // Clear timer interval before resetting
     if (timerIntervalRef.current) {
@@ -431,7 +443,7 @@ export const Game = ({
     } else {
       toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
     }
-  }, [level, initBricksForLevel, setPowerUps, stopLoop, settings.difficulty, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, SCALED_PADDLE_WIDTH, SCALED_PADDLE_HEIGHT, SCALED_BALL_RADIUS, scaleFactor]);
+  }, [level, initBricksForLevel, setPowerUps]);
   useEffect(() => {
     initGame();
   }, [initGame]);
@@ -707,11 +719,15 @@ export const Game = ({
         // Toggle pause
         if (gameState === "playing") {
           setGameState("paused");
-          pauseLoop();
+          if (gameLoopRef.current) {
+            gameLoopRef.current.pause();
+          }
           toast.success("Game paused");
         } else if (gameState === "paused") {
           setGameState("playing");
-          resumeLoop();
+          if (gameLoopRef.current) {
+            gameLoopRef.current.resume();
+          }
           toast.success("Game resumed");
         }
       } else if (e.key === "m" || e.key === "M") {
@@ -726,23 +742,23 @@ export const Game = ({
         });
       } else if (e.key === "[") {
         // Decrease time scale
-        if (gameLoop) {
-          const newScale = Math.max(0.1, gameLoop.getTimeScale() - 0.1);
-          gameLoop.setTimeScale(newScale);
+        if (gameLoopRef.current) {
+          const newScale = Math.max(0.1, gameLoopRef.current.getTimeScale() - 0.1);
+          gameLoopRef.current.setTimeScale(newScale);
           toast.success(`Time scale: ${newScale.toFixed(1)}x`);
         }
       } else if (e.key === "]") {
         // Increase time scale
-        if (gameLoop) {
-          const newScale = Math.min(3.0, gameLoop.getTimeScale() + 0.1);
-          gameLoop.setTimeScale(newScale);
+        if (gameLoopRef.current) {
+          const newScale = Math.min(3.0, gameLoopRef.current.getTimeScale() + 0.1);
+          gameLoopRef.current.setTimeScale(newScale);
           toast.success(`Time scale: ${newScale.toFixed(1)}x`);
         }
       } else if (e.key === "\\") {
         // Toggle loop mode
-        if (gameLoop) {
-          const newMode = gameLoop.getMode() === "fixedStep" ? "legacy" : "fixedStep";
-          gameLoop.setMode(newMode);
+        if (gameLoopRef.current) {
+          const newMode = gameLoopRef.current.getMode() === "fixedStep" ? "legacy" : "fixedStep";
+          gameLoopRef.current.setMode(newMode);
           toast.success(`Loop mode: ${newMode}`);
         }
       } else if (e.key === "q" || e.key === "Q") {
@@ -790,7 +806,7 @@ export const Game = ({
       window.removeEventListener("keydown", handleKeyPress);
       document.removeEventListener("pointerlockchange", handlePointerLockChange);
     };
-  }, [handleMouseMove, handleTouchMove, handleClick, nextLevel, gameState, pauseLoop, resumeLoop, gameLoop, toggleAutoAdjust, quality, setQuality]);
+  }, [handleMouseMove, handleTouchMove, handleClick, nextLevel, gameState]);
   const checkCollision = useCallback(() => {
     if (!paddle || balls.length === 0) return;
     setBalls(prevBalls => {
@@ -1108,90 +1124,52 @@ export const Game = ({
   // FPS tracking for adaptive quality
   const fpsTrackerRef = useRef({ lastTime: performance.now(), frameCount: 0, fps: 60 });
   
-  // Fixed update: All game logic runs here at fixed 60Hz
-  const fixedUpdate = useCallback((dt: number, simState: SimulationState) => {
+  const gameLoop = useCallback(() => {
     if (gameState !== "playing") return;
 
-    // Get current simulation state
-    let { balls: simBalls, paddle: simPaddle, bricks: simBricks, enemies: simEnemies, bombs: simBombs, timer: simTimer, backgroundPhase: simBackground } = simState;
+    // Track FPS
+    const now = performance.now();
+    fpsTrackerRef.current.frameCount++;
+    const deltaTime = now - fpsTrackerRef.current.lastTime;
+    
+    if (deltaTime >= 1000) {
+      const fps = Math.round(fpsTrackerRef.current.frameCount * 1000 / deltaTime);
+      fpsTrackerRef.current.fps = fps;
+      fpsTrackerRef.current.frameCount = 0;
+      fpsTrackerRef.current.lastTime = now;
+      
+      // Update adaptive quality system
+      updateFps(fps);
+    }
+    
+    // Also feed real-time FPS from fixed-step game loop if available
+    if (gameLoopRef.current) {
+      const debugInfo = gameLoopRef.current.getDebugInfo();
+      if (debugInfo.fps > 0) {
+        updateFps(debugInfo.fps);
+      }
+    }
 
     // Update background animation
-    simBackground = (simBackground + 1) % 360;
+    setBackgroundPhase(prev => (prev + 1) % 360);
 
-    // Update balls in simulation state
-    simBalls = simBalls.map(ball => {
-      if (ball.waitingToLaunch && simPaddle) {
+    // Update balls (only if not waiting to launch)
+    setBalls(prev => prev.map(ball => {
+      if (ball.waitingToLaunch && paddle) {
+        // Keep ball attached to paddle
         return {
           ...ball,
-          x: simPaddle.x + simPaddle.width / 2,
-          y: simPaddle.y - ball.radius - 5
+          x: paddle.x + paddle.width / 2,
+          y: paddle.y - ball.radius - 5
         };
       }
       return {
         ...ball,
         x: ball.x + ball.dx * speedMultiplier,
         y: ball.y + ball.dy * speedMultiplier,
-        rotation: ((ball.rotation || 0) + 3) % 360
+        rotation: ((ball.rotation || 0) + 3) % 360 // Spinning rotation
       };
-    });
-
-    // Update enemies in simulation state
-    simEnemies = simEnemies.map(enemy => {
-      let newX = enemy.x + enemy.dx;
-      let newY = enemy.y + enemy.dy;
-      let newDx = enemy.dx;
-      let newDy = enemy.dy;
-
-      if (enemy.type === "sphere" || enemy.type === "pyramid") {
-        if (Math.random() < (enemy.type === "pyramid" ? 0.08 : 0.05)) {
-          const randomAngle = (Math.random() - 0.5) * Math.PI / 4;
-          const currentAngle = Math.atan2(newDy, newDx);
-          const newAngle = currentAngle + randomAngle;
-          newDx = Math.cos(newAngle) * enemy.speed;
-          newDy = Math.sin(newAngle) * enemy.speed;
-        }
-      }
-
-      if (newX <= 0 || newX >= SCALED_CANVAS_WIDTH - enemy.width) {
-        newDx = -enemy.dx;
-        newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - enemy.width, newX));
-      }
-
-      const maxY = SCALED_CANVAS_HEIGHT * 0.6;
-      if (newY <= 0 || newY >= maxY - enemy.height) {
-        newDy = -enemy.dy;
-        newY = Math.max(0, Math.min(maxY - enemy.height, newY));
-      }
-      
-      return {
-        ...enemy,
-        x: newX,
-        y: newY,
-        dx: newDx,
-        dy: newDy,
-        rotationX: enemy.rotationX + (enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" ? 0.08 : 0.05),
-        rotationY: enemy.rotationY + (enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" ? 0.12 : 0.08),
-        rotationZ: enemy.rotationZ + (enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" ? 0.06 : 0.03)
-      };
-    });
-
-    // Update simulation state in the hook
-    updateSimulationState({
-      balls: simBalls,
-      paddle: simPaddle,
-      bricks: simBricks,
-      enemies: simEnemies,
-      bombs: simBombs,
-      timer: simTimer,
-      backgroundPhase: simBackground
-    });
-
-    // Sync simulation state to React state for other systems
-    setBalls(simBalls);
-    setEnemies(simEnemies);
-    setPaddle(simPaddle);
-    setBricks(simBricks);
-    setBombs(simBombs);
+    }));
 
     // Update power-ups
     updatePowerUps();
@@ -1208,47 +1186,514 @@ export const Game = ({
     // Update bullets
     updateBullets(bricks);
 
-    // Update bombs
-    setBombs(prev => prev.map(bomb => {
+    // Update enemies
+    setEnemies(prev => prev.map(enemy => {
+      let newX = enemy.x + enemy.dx;
+      let newY = enemy.y + enemy.dy;
+      let newDx = enemy.dx;
+      let newDy = enemy.dy;
+
+      // Sphere and Pyramid enemies have more random movement
+      if (enemy.type === "sphere" || enemy.type === "pyramid") {
+        // Add some randomness to movement
+        if (Math.random() < (enemy.type === "pyramid" ? 0.08 : 0.05)) {
+          const randomAngle = (Math.random() - 0.5) * Math.PI / 4;
+          const currentAngle = Math.atan2(newDy, newDx);
+          const newAngle = currentAngle + randomAngle;
+          newDx = Math.cos(newAngle) * enemy.speed;
+          newDy = Math.sin(newAngle) * enemy.speed;
+        }
+      }
+
+      // Bounce off walls
+      if (newX <= 0 || newX >= SCALED_CANVAS_WIDTH - enemy.width) {
+        newDx = -enemy.dx;
+        newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - enemy.width, newX));
+      }
+
+      // Bounce off top and 60% boundary
+      const maxY = SCALED_CANVAS_HEIGHT * 0.6;
+      if (newY <= 0 || newY >= maxY - enemy.height) {
+        newDy = -enemy.dy;
+        newY = Math.max(0, Math.min(maxY - enemy.height, newY));
+      }
       return {
-        ...bomb,
-        y: bomb.y + bomb.speed * speedMultiplier
+        ...enemy,
+        x: newX,
+        y: newY,
+        dx: newDx,
+        dy: newDy,
+        rotationX: enemy.rotationX + (enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" ? 0.08 : 0.05),
+        rotationY: enemy.rotationY + (enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" ? 0.12 : 0.08),
+        rotationZ: enemy.rotationZ + (enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" ? 0.06 : 0.03)
       };
     }));
 
-    // Check bomb collisions with paddle
-    const bombsToRemove: number[] = [];
+    // Check ball-enemy collisions and destroy enemies immediately
+    const hitEnemiesThisFrame = new Set<number>(); // Track which enemies were hit this frame
+    setBalls(prevBalls => {
+      let ballsUpdated = false;
+      const newBalls = prevBalls.map(ball => {
+        if (ball.waitingToLaunch) return ball;
+        for (const enemy of enemies) {
+          // Skip if this enemy was already hit this frame
+          if (hitEnemiesThisFrame.has(enemy.id || -1)) {
+            continue;
+          }
+          if (ball.x + ball.radius > enemy.x && ball.x - ball.radius < enemy.x + enemy.width && ball.y + ball.radius > enemy.y && ball.y - ball.radius < enemy.y + enemy.height) {
+            // Mark this enemy as hit in this frame
+            if (enemy.id !== undefined) {
+              hitEnemiesThisFrame.add(enemy.id);
+            }
+
+            // Change ball trajectory immediately
+            const ballCenterX = ball.x;
+            const ballCenterY = ball.y;
+            const enemyCenterX = enemy.x + enemy.width / 2;
+            const enemyCenterY = enemy.y + enemy.height / 2;
+            const dx = ballCenterX - enemyCenterX;
+            const dy = ballCenterY - enemyCenterY;
+            ballsUpdated = true;
+            let updatedBall = ball;
+
+            // Reverse ball direction based on collision side
+            if (Math.abs(dx) > Math.abs(dy)) {
+              updatedBall = {
+                ...ball,
+                dx: -ball.dx
+              };
+            } else {
+              updatedBall = {
+                ...ball,
+                dy: -ball.dy
+              };
+            }
+
+            // Handle enemy destruction/damage
+            if (enemy.type === "pyramid") {
+              const currentHits = enemy.hits || 0;
+              if (currentHits === 0) {
+                // First hit - change color to yellow
+                soundManager.playBounce();
+                toast.warning("Pyramid hit! 2 more hits needed");
+                // Screen shake on enemy hit
+                setScreenShake(5);
+                setTimeout(() => setScreenShake(0), 500);
+                setEnemies(prev => prev.map(e => e.id === enemy.id ? {
+                  ...e,
+                  hits: 1
+                } : e));
+              } else if (currentHits === 1) {
+                // Second hit - change color to red, make it angry and faster
+                soundManager.playBounce();
+                toast.warning("Pyramid is angry! 1 more hit!");
+                // Screen shake on enemy hit
+                setScreenShake(5);
+                setTimeout(() => setScreenShake(0), 500);
+                setEnemies(prev => prev.map(e => e.id === enemy.id ? {
+                  ...e,
+                  hits: 2,
+                  isAngry: true,
+                  speed: e.speed * 1.5,
+                  dx: e.dx * 1.5,
+                  dy: e.dy * 1.5
+                } : e));
+              } else {
+                // Third hit - destroy it
+                setExplosions(prev => [...prev, {
+                  x: enemy.x + enemy.width / 2,
+                  y: enemy.y + enemy.height / 2,
+                  frame: 0,
+                  maxFrames: 20,
+                  enemyType: enemy.type,
+                  particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type)
+                }]);
+                soundManager.playExplosion();
+                setScore(s => s + 300);
+                toast.success("Pyramid destroyed! +300 points");
+
+                // Check for bonus letter drop
+                dropBonusLetter(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+
+                // Remove enemy
+                setEnemies(prev => prev.filter(e => e.id !== enemy.id));
+
+                // Track enemy kill and drop powerup every 3 kills
+                setEnemiesKilled(prev => {
+                  const newCount = prev + 1;
+                  if (newCount % 3 === 0) {
+                    // Create a powerup at enemy location - always drop (retry until success)
+                    const fakeBrick: Brick = {
+                      x: enemy.x,
+                      y: enemy.y,
+                      width: enemy.width,
+                      height: enemy.height,
+                      visible: true,
+                      color: "",
+                      points: 0,
+                      hasPowerUp: true,
+                      hitsRemaining: 0,
+                      maxHits: 1,
+                      isIndestructible: false
+                    };
+                    // Keep trying until we get a powerup (guaranteed drop)
+                    let powerUp = createPowerUp(fakeBrick);
+                    let attempts = 0;
+                    while (!powerUp && attempts < 10) {
+                      powerUp = createPowerUp(fakeBrick);
+                      attempts++;
+                    }
+                    if (powerUp) {
+                      setPowerUps(prev => [...prev, powerUp]);
+                      toast.success("Enemy kill bonus! Power-up dropped!");
+                    }
+                  }
+                  return newCount;
+                });
+
+                // Clear bomb interval
+                if (enemy.id !== undefined) {
+                  const interval = bombIntervalsRef.current.get(enemy.id);
+                  if (interval) {
+                    clearInterval(interval);
+                    bombIntervalsRef.current.delete(enemy.id);
+                  }
+                }
+              }
+            } else if (enemy.type === "sphere") {
+              const currentHits = enemy.hits || 0;
+              if (currentHits === 0) {
+                // First hit - make it angry and faster
+                soundManager.playBounce();
+                toast.warning("Sphere enemy is angry!");
+                // Screen shake on enemy hit
+                setScreenShake(5);
+                setTimeout(() => setScreenShake(0), 500);
+                setEnemies(prev => prev.map(e => e.id === enemy.id ? {
+                  ...e,
+                  hits: 1,
+                  isAngry: true,
+                  speed: e.speed * 1.3,
+                  dx: e.dx * 1.3,
+                  dy: e.dy * 1.3
+                } : e));
+              } else {
+                // Second hit - destroy it
+                setExplosions(prev => [...prev, {
+                  x: enemy.x + enemy.width / 2,
+                  y: enemy.y + enemy.height / 2,
+                  frame: 0,
+                  maxFrames: 20,
+                  enemyType: enemy.type,
+                  particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type)
+                }]);
+                soundManager.playExplosion();
+                setScore(s => s + 200);
+                toast.success("Sphere enemy destroyed! +200 points");
+
+                // Check for bonus letter drop
+                dropBonusLetter(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+
+                // Remove enemy
+                setEnemies(prev => prev.filter(e => e.id !== enemy.id));
+
+                // Track enemy kill and drop powerup every 3 kills
+                setEnemiesKilled(prev => {
+                  const newCount = prev + 1;
+                  if (newCount % 3 === 0) {
+                    // Create a powerup at enemy location - always drop (retry until success)
+                    const fakeBrick: Brick = {
+                      x: enemy.x,
+                      y: enemy.y,
+                      width: enemy.width,
+                      height: enemy.height,
+                      visible: true,
+                      color: "",
+                      points: 0,
+                      hasPowerUp: true,
+                      hitsRemaining: 0,
+                      maxHits: 1,
+                      isIndestructible: false
+                    };
+                    // Keep trying until we get a powerup (guaranteed drop)
+                    let powerUp = createPowerUp(fakeBrick);
+                    let attempts = 0;
+                    while (!powerUp && attempts < 10) {
+                      powerUp = createPowerUp(fakeBrick);
+                      attempts++;
+                    }
+                    if (powerUp) {
+                      setPowerUps(prev => [...prev, powerUp]);
+                      toast.success("Enemy kill bonus! Power-up dropped!");
+                    }
+                  }
+                  return newCount;
+                });
+
+                // Clear bomb interval
+                if (enemy.id !== undefined) {
+                  const interval = bombIntervalsRef.current.get(enemy.id);
+                  if (interval) {
+                    clearInterval(interval);
+                    bombIntervalsRef.current.delete(enemy.id);
+                  }
+                }
+              }
+            } else {
+              // Cube enemy - destroy on first hit
+              // Screen shake on enemy hit
+              setScreenShake(5);
+              setTimeout(() => setScreenShake(0), 500);
+              setExplosions(prev => [...prev, {
+                x: enemy.x + enemy.width / 2,
+                y: enemy.y + enemy.height / 2,
+                frame: 0,
+                maxFrames: 20,
+                enemyType: enemy.type,
+                particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type)
+              }]);
+              soundManager.playExplosion();
+              setScore(s => s + 100);
+              toast.success("Enemy destroyed! +100 points");
+
+              // Check for bonus letter drop
+              dropBonusLetter(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+
+              // Remove enemy
+              setEnemies(prev => prev.filter(e => e.id !== enemy.id));
+
+              // Track enemy kill and drop powerup every 3 kills
+              setEnemiesKilled(prev => {
+                const newCount = prev + 1;
+                if (newCount % 3 === 0) {
+                  // Create a powerup at enemy location - always drop (retry until success)
+                  const fakeBrick: Brick = {
+                    x: enemy.x,
+                    y: enemy.y,
+                    width: enemy.width,
+                    height: enemy.height,
+                    visible: true,
+                    color: "",
+                    points: 0,
+                    hasPowerUp: true,
+                    hitsRemaining: 0,
+                    maxHits: 1,
+                    isIndestructible: false
+                  };
+                  // Keep trying until we get a powerup (guaranteed drop)
+                  let powerUp = createPowerUp(fakeBrick);
+                  let attempts = 0;
+                  while (!powerUp && attempts < 10) {
+                    powerUp = createPowerUp(fakeBrick);
+                    attempts++;
+                  }
+                  if (powerUp) {
+                    setPowerUps(prev => [...prev, powerUp]);
+                    toast.success("Enemy kill bonus! Power-up dropped!");
+                  }
+                }
+                return newCount;
+              });
+
+              // Clear bomb interval
+              if (enemy.id !== undefined) {
+                const interval = bombIntervalsRef.current.get(enemy.id);
+                if (interval) {
+                  clearInterval(interval);
+                  bombIntervalsRef.current.delete(enemy.id);
+                }
+              }
+            }
+            return updatedBall;
+          }
+        }
+        return ball;
+      });
+      return ballsUpdated ? newBalls : prevBalls;
+    });
+
+    // Update explosions and their particles
+    setExplosions(prev => prev.map(exp => ({
+      ...exp,
+      frame: exp.frame + 1,
+      particles: exp.particles.map(p => ({
+        ...p,
+        x: p.x + p.vx,
+        y: p.y + p.vy,
+        vy: p.vy + 0.2,
+        // Add gravity
+        life: p.life - 1
+      })).filter(p => p.life > 0)
+    })).filter(exp => exp.frame < exp.maxFrames));
+
+    // Update bombs and rockets (pyramid bullets move in straight lines with angle)
+    setBombs(prev => prev.map(bomb => {
+      if (bomb.type === "pyramidBullet" && bomb.dx !== undefined) {
+        // Pyramid bullets move in straight line at angle
+        return {
+          ...bomb,
+          x: bomb.x + (bomb.dx || 0),
+          y: bomb.y + bomb.speed
+        };
+      }
+      return {
+        ...bomb,
+        y: bomb.y + bomb.speed
+      };
+    }).filter(bomb => bomb.y < SCALED_CANVAS_HEIGHT));
+
+    // Check bomb-paddle collision
     if (paddle) {
-      bombs.forEach((bomb, index) => {
-        if (bomb.y + 30 >= paddle.y && bomb.y <= paddle.y + paddle.height && bomb.x + 15 >= paddle.x && bomb.x <= paddle.x + paddle.width) {
-          setExplosions(prev => [...prev, {
-            x: bomb.x,
-            y: bomb.y,
-            frame: 0,
-            maxFrames: 10,
-            particles: createExplosionParticles(bomb.x, bomb.y, "cube")
-          }]);
-          soundManager.playExplosion();
-          bombsToRemove.push(index);
-          if (!paddle.hasShield) {
-            const newLives = lives - 1;
-            setLives(newLives);
+      bombs.forEach(bomb => {
+        // Check for shield first
+        if (paddle.hasShield && bomb.x + bomb.width > paddle.x && bomb.x < paddle.x + paddle.width && bomb.y + bomb.height > paddle.y - 10 && bomb.y < paddle.y) {
+          // Bomb hit shield - destroy both
+          soundManager.playBounce();
+          setBombs(prev => prev.filter(b => b.enemyId !== bomb.enemyId));
+          setPaddle(prev => prev ? {
+            ...prev,
+            hasShield: false
+          } : null);
+          toast.success("Shield absorbed the hit!");
+          return;
+        }
+        if (bomb.x + bomb.width > paddle.x && bomb.x < paddle.x + paddle.width && bomb.y + bomb.height > paddle.y && bomb.y < paddle.y + paddle.height) {
+          // Bomb hit paddle - lose a life
+          soundManager.playLoseLife();
+          setBombs(prev => prev.filter(b => b.enemyId !== bomb.enemyId));
+          setLives(prev => {
+            const newLives = prev - 1;
             if (newLives <= 0) {
               setGameState("gameOver");
               soundManager.stopBackgroundMusic();
-              soundManager.playHighScoreMusic();
-              toast.error("Game Over - Bullet hit!");
+              toast.error("Game Over!");
+              if (isHighScore(score)) {
+                setShowHighScoreEntry(true);
+                soundManager.playHighScoreMusic();
+              }
             } else {
-              setGameState("paused");
-              toast.error(`Bullet hit! ${newLives} lives remaining. Click to continue.`);
+              // Reset ball and clear power-ups, but wait for click to continue
+              const baseSpeed = 3.45; // 15% faster base speed
+              const resetBall: Ball = {
+                x: SCALED_CANVAS_WIDTH / 2,
+                y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+                dx: baseSpeed,
+                dy: -baseSpeed,
+                radius: SCALED_BALL_RADIUS,
+                speed: baseSpeed,
+                id: nextBallId.current++,
+                isFireball: false,
+                waitingToLaunch: true
+              };
+              setBalls([resetBall]);
+              setLaunchAngle(-20);
+              launchAngleDirectionRef.current = 1;
+              setShowInstructions(true); // Show instructions when resetting ball
+              setPowerUps([]);
+              setPaddle(prev => prev ? {
+                ...prev,
+                hasTurrets: false,
+                width: SCALED_PADDLE_WIDTH
+              } : null);
+              setBullets([]); // Clear all bullets
+              // Only reset speed if it's slower than base speed
+              if (speedMultiplier < 1) {
+                setSpeedMultiplier(1);
+              }
+              // Reset accumulated brick hit speed on death
+              setBrickHitSpeedAccumulated(0);
+              setTimer(0);
+              setLastEnemySpawnTime(0);
+              setEnemies([]); // Clear all enemies
+              setBombs([]); // Clear all bombs
+              setExplosions([]);
+              // Clear all bomb intervals
+              bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+              bombIntervalsRef.current.clear();
+              setGameState("ready");
+              toast.error(`Bomb hit! ${newLives} lives remaining. Click to continue.`);
             }
-          }
+            return newLives;
+          });
         }
       });
-      
-      if (bombsToRemove.length > 0) {
-        setBombs(prev => prev.filter((_, index) => !bombsToRemove.includes(index)));
-      }
+    }
+
+    // Check bounced bullet-paddle collision
+    if (paddle) {
+      bullets.forEach(bullet => {
+        // Check for shield first
+        if (paddle.hasShield && bullet.isBounced && bullet.x + bullet.width > paddle.x && bullet.x < paddle.x + paddle.width && bullet.y + bullet.height > paddle.y - 10 && bullet.y < paddle.y) {
+          // Bullet hit shield - destroy both
+          soundManager.playBounce();
+          setBullets(prev => prev.filter(b => b !== bullet));
+          setPaddle(prev => prev ? {
+            ...prev,
+            hasShield: false
+          } : null);
+          toast.success("Shield absorbed the hit!");
+          return;
+        }
+        if (bullet.isBounced && bullet.x + bullet.width > paddle.x && bullet.x < paddle.x + paddle.width && bullet.y + bullet.height > paddle.y && bullet.y < paddle.y + paddle.height) {
+          // Bounced bullet hit paddle - lose a life
+          soundManager.playLoseLife();
+          setBullets(prev => prev.filter(b => b !== bullet));
+          setLives(prev => {
+            const newLives = prev - 1;
+            if (newLives <= 0) {
+              setGameState("gameOver");
+              soundManager.stopBackgroundMusic();
+              toast.error("Game Over!");
+              if (isHighScore(score)) {
+                setShowHighScoreEntry(true);
+                soundManager.playHighScoreMusic();
+              }
+            } else {
+              // Reset ball and clear power-ups, but wait for click to continue
+              const baseSpeed = 3.45; // 15% faster base speed
+              const resetBall: Ball = {
+                x: SCALED_CANVAS_WIDTH / 2,
+                y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+                dx: baseSpeed,
+                dy: -baseSpeed,
+                radius: SCALED_BALL_RADIUS,
+                speed: baseSpeed,
+                id: nextBallId.current++,
+                isFireball: false,
+                waitingToLaunch: true
+              };
+              setBalls([resetBall]);
+              setLaunchAngle(-20);
+              launchAngleDirectionRef.current = 1;
+              setShowInstructions(true); // Show instructions when resetting ball
+              setPowerUps([]);
+              setPaddle(prev => prev ? {
+                ...prev,
+                hasTurrets: false,
+                width: SCALED_PADDLE_WIDTH
+              } : null);
+              setBullets([]); // Clear all bullets
+              // Only reset speed if it's slower than base speed
+              if (speedMultiplier < 1) {
+                setSpeedMultiplier(1);
+              }
+              // Reset accumulated brick hit speed on death
+              setBrickHitSpeedAccumulated(0);
+              setTimer(0);
+              setLastEnemySpawnTime(0);
+              setEnemies([]); // Clear all enemies
+              setBombs([]); // Clear all bombs
+              setExplosions([]);
+              // Clear all bomb intervals
+              bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+              bombIntervalsRef.current.clear();
+              setGameState("ready");
+              toast.error(`Bullet hit! ${newLives} lives remaining. Click to continue.`);
+            }
+            return newLives;
+          });
+        }
+      });
     }
 
     // Check collisions
@@ -1259,12 +1704,14 @@ export const Game = ({
       checkPowerUpCollision(paddle, balls, setBalls, setPaddle, setSpeedMultiplier);
     }
 
-    // Check ball timeout logic
+    // Check ball timeout without paddle hit (15s and 25s)
     if (lastPaddleHitTime > 0) {
       const timeSinceHit = (Date.now() - lastPaddleHitTime) / 1000;
       if (timeSinceHit >= 25 && enemies.length > 0) {
+        // 25s - nearest enemy kamikaze
         const activeBall = balls.find(b => !b.waitingToLaunch);
         if (activeBall) {
+          // Find closest enemy
           let closestEnemy = enemies[0];
           let minDistance = Infinity;
           for (const enemy of enemies) {
@@ -1276,15 +1723,18 @@ export const Game = ({
               closestEnemy = enemy;
             }
           }
+
+          // Make closest enemy go kamikaze towards ball
           setEnemies(prev => prev.map(e => e.id === closestEnemy.id ? {
             ...e,
             dx: (activeBall.x - (e.x + e.width / 2)) / minDistance * e.speed * 3,
             dy: (activeBall.y - (e.y + e.height / 2)) / minDistance * e.speed * 3
           } : e));
           toast.warning("Enemy kamikaze attack!");
-          setLastPaddleHitTime(Date.now());
+          setLastPaddleHitTime(Date.now()); // Reset timer
         }
       } else if (timeSinceHit >= 15) {
+        // 15s - divert ball by 10 degrees
         setBalls(prev => prev.map(ball => {
           if (!ball.waitingToLaunch) {
             const currentAngle = Math.atan2(ball.dy, ball.dx);
@@ -1298,11 +1748,11 @@ export const Game = ({
           }
           return ball;
         }));
-        setLastPaddleHitTime(Date.now());
+        setLastPaddleHitTime(Date.now()); // Reset timer
       }
     }
 
-    // Check score milestones
+    // Check score milestones for extra lives (every 50000)
     const currentMilestone = Math.floor(score / 50000);
     if (currentMilestone > lastScoreMilestone && currentMilestone > 0) {
       setLastScoreMilestone(currentMilestone);
@@ -1311,112 +1761,27 @@ export const Game = ({
       toast.success("Extra life awarded! +1 Life", {
         duration: 3000
       });
+      // Blink score
       setScoreBlinking(true);
       setTimeout(() => setScoreBlinking(false), 1000);
     }
-
-  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemies, bombs, bricks, score, explosions, lastPaddleHitTime, lastScoreMilestone, lives, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, checkBonusLetterCollision, createExplosionParticles, updateSimulationState]);
-
-  // Render frame: UI updates run here at variable FPS
-  const renderFrame = useCallback((alpha: number, simState: SimulationState) => {
-    if (gameState !== "playing") return;
-
-    // Track FPS
-    const now = performance.now();
-    fpsTrackerRef.current.frameCount++;
-    const deltaTime = now - fpsTrackerRef.current.lastTime;
-    
-    if (deltaTime >= 1000) {
-      const fps = Math.round(fpsTrackerRef.current.frameCount * 1000 / deltaTime);
-      fpsTrackerRef.current.fps = fps;
-      fpsTrackerRef.current.frameCount = 0;
-      fpsTrackerRef.current.lastTime = now;
-      updateFps(fps);
-    }
-    
-    // Feed FPS from game loop
-    const debugInfo = getDebugInfo();
-    if (debugInfo.fps > 0) {
-      updateFps(debugInfo.fps);
-    }
-
-    // Update background phase for rendering
-    setBackgroundPhase(simState.backgroundPhase);
-
-    // Update explosions
-    setExplosions(prev => {
-      return prev.map(explosion => ({
-        ...explosion,
-        particles: explosion.particles.map(p => ({
-          ...p,
-          x: p.x + p.vx,
-          y: p.y + p.vy,
-          vy: p.vy + 0.5,
-          life: p.life - 1
-        })).filter(p => p.life > 0)
-      })).filter(explosion => explosion.particles.length > 0);
-    });
-
-    // Screen shake decay
-    setScreenShake(prev => Math.max(0, prev - 0.5));
-
-    // Background flash decay
-    setBackgroundFlash(prev => Math.max(0, prev - 0.05));
-  }, [gameState, updateFps, getDebugInfo]);
-
+    animationFrameRef.current = requestAnimationFrame(gameLoop);
+  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemies, bombs, bricks, score, isHighScore, explosions, lastPaddleHitTime, lastScoreMilestone, updateFps]);
   
-  // Wire simulation state into the hook
-  useEffect(() => {
-    updateSimulationState({
-      balls,
-      paddle,
-      bricks,
-      enemies,
-      bombs,
-      powerUps,
-      bullets,
-      bonusLetters,
-      timer,
-      backgroundPhase
-    });
-  }, [balls, paddle, bricks, enemies, bombs, powerUps, bullets, bonusLetters, timer, backgroundPhase, updateSimulationState]);
-  
-  // Register callbacks with the game loop
-  useEffect(() => {
-    setCallbacks({
-      onFixedUpdate: fixedUpdate,
-      onRender: renderFrame
-    });
-  }, [fixedUpdate, renderFrame, setCallbacks]);
-  
-  // Control loop start/stop based on game state
   useEffect(() => {
     if (gameState === "playing") {
-      // Sync initial state
-      updateSimulationState({
-        balls,
-        paddle,
-        bricks,
-        enemies,
-        bombs,
-        powerUps,
-        bullets,
-        bonusLetters,
-        timer,
-        backgroundPhase
-      });
-      resumeLoop();
-      startLoop();
-    } else if (gameState === "paused") {
-      pauseLoop();
+      animationFrameRef.current = requestAnimationFrame(gameLoop);
     } else {
-      stopLoop();
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     }
-    
     return () => {
-      stopLoop();
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
-  }, [gameState, balls, paddle, bricks, enemies, bombs, powerUps, bullets, bonusLetters, timer, backgroundPhase, startLoop, stopLoop, pauseLoop, resumeLoop, updateSimulationState]);
+  }, [gameState, gameLoop]);
 
 
   // Separate useEffect for timer management - handle pause/resume
@@ -1650,7 +2015,9 @@ export const Game = ({
     }
   };
   const handleRestart = useCallback(() => {
-    stopLoop();
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
     soundManager.stopBackgroundMusic();
     soundManager.stopHighScoreMusic();
     setShowHighScoreEntry(false);
@@ -1659,7 +2026,7 @@ export const Game = ({
     setBeatLevel50Completed(false);
     initGame();
     toast("Game Reset!");
-  }, [initGame, stopLoop]);
+  }, [initGame]);
   const handleHighScoreSubmit = (name: string) => {
     addHighScore(name, score, level, settings.difficulty, beatLevel50Completed, settings.startingLives);
     setShowHighScoreEntry(false);
@@ -1857,9 +2224,18 @@ export const Game = ({
                       backgroundFlash={backgroundFlash}
                       qualitySettings={qualitySettings}
                     />
-                    {showDebugOverlay && (
+                    {showDebugOverlay && gameLoopRef.current && (
                       <GameLoopDebugOverlay 
-                        getDebugInfo={getDebugInfo}
+                        getDebugInfo={() => gameLoopRef.current?.getDebugInfo() ?? {
+                          mode: "legacy",
+                          fixedHz: 60,
+                          maxDeltaMs: 250,
+                          accumulator: 0,
+                          timeScale: 1,
+                          fps: 0,
+                          updatesThisFrame: 0,
+                          alpha: 0
+                        }}
                         visible={showDebugOverlay}
                       />
                     )}
