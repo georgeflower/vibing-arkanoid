@@ -106,6 +106,9 @@ export const Game = ({
   const [bossIntroActive, setBossIntroActive] = useState(false);
   const [gameOverParticles, setGameOverParticles] = useState<Particle[]>([]);
   const [retryLevelData, setRetryLevelData] = useState<{level: number, layout: any} | null>(null);
+  const [powerUpsCollectedTypes, setPowerUpsCollectedTypes] = useState<Set<string>>(new Set());
+  const [bricksDestroyedByTurrets, setBricksDestroyedByTurrets] = useState(0);
+  const [bossesKilled, setBossesKilled] = useState(0);
   
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
@@ -149,13 +152,27 @@ export const Game = ({
     updatePowerUps,
     checkPowerUpCollision,
     setPowerUps
-  } = usePowerUps(level, setLives, timer, settings.difficulty, setBrickHitSpeedAccumulated);
+  } = usePowerUps(
+    level, 
+    setLives, 
+    timer, 
+    settings.difficulty, 
+    setBrickHitSpeedAccumulated,
+    (type: string) => setPowerUpsCollectedTypes(prev => new Set(prev).add(type))
+  );
   const {
     bullets,
     setBullets,
     fireBullets,
     updateBullets
-  } = useBullets(setScore, setBricks, bricks, enemies, setPaddle);
+  } = useBullets(
+    setScore, 
+    setBricks, 
+    bricks, 
+    enemies, 
+    setPaddle,
+    () => setBricksDestroyedByTurrets(prev => prev + 1)
+  );
 
   // Adaptive quality system
   const {
@@ -1249,6 +1266,7 @@ export const Game = ({
     const config = BOSS_CONFIG[defeatedBoss.type];
     
     setScore(s => s + config.points);
+    setBossesKilled(prev => prev + 1);
     toast.success(`${defeatedBoss.type.toUpperCase()} BOSS DEFEATED! +${config.points} points`, { duration: 4000 });
     
     // Big explosion
@@ -2629,6 +2647,9 @@ export const Game = ({
     setLongestCombo(0);
     setCurrentCombo(0);
     setLevelSkipped(false);
+    setPowerUpsCollectedTypes(new Set());
+    setBricksDestroyedByTurrets(0);
+    setBossesKilled(0);
     setLives(settings.startingLives);
     
     // Clear all entities
@@ -2858,7 +2879,11 @@ export const Game = ({
           accuracy: totalShots > 0 ? (bricksHit / totalShots) * 100 : 0,
           levelSkipped,
           finalScore: score,
-          finalLevel: level
+          finalLevel: level,
+          powerUpsCollected: powerUpsCollectedTypes.size,
+          bricksDestroyedByTurrets,
+          enemiesKilled,
+          bossesKilled
         }}
       /> : showHighScoreDisplay ? <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} /> : <>
           {showHighScoreEntry ? <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} /> : <div className={`metal-frame ${isMobileDevice && isFullscreen ? 'mobile-fullscreen-mode' : ''}`}>

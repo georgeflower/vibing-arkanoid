@@ -9,6 +9,10 @@ interface GameStats {
   levelSkipped: boolean;
   finalScore: number;
   finalLevel: number;
+  powerUpsCollected?: number;
+  bricksDestroyedByTurrets?: number;
+  enemiesKilled?: number;
+  bossesKilled?: number;
 }
 
 interface EndScreenProps {
@@ -68,6 +72,26 @@ export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: E
             <span className={`font-bold ${accuracy >= 70 ? 'text-green-400' : accuracy >= 40 ? 'text-yellow-400' : 'text-red-400'}`}>
               {accuracy.toFixed(1)}%
             </span>
+          </div>
+          
+          <div className="flex justify-between text-xl">
+            <span className="text-gray-300">Power-ups Collected:</span>
+            <span className="text-white font-bold">{stats?.powerUpsCollected ?? 0}</span>
+          </div>
+          
+          <div className="flex justify-between text-xl">
+            <span className="text-gray-300">Turret Brick Kills:</span>
+            <span className="text-white font-bold">{stats?.bricksDestroyedByTurrets ?? 0}</span>
+          </div>
+          
+          <div className="flex justify-between text-xl">
+            <span className="text-gray-300">Enemies Killed:</span>
+            <span className="text-white font-bold">{stats?.enemiesKilled ?? 0}</span>
+          </div>
+          
+          <div className="flex justify-between text-xl">
+            <span className="text-gray-300">Bosses Defeated:</span>
+            <span className="text-white font-bold">{stats?.bossesKilled ?? 0}</span>
           </div>
         </div>
         
