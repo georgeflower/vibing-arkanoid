@@ -460,6 +460,7 @@ export const Game = ({
       } : null);
     } else if (gameState === "playing") {
       const rect = canvasRef.current.getBoundingClientRect();
+      // Account for visual scale when mapping input coordinates
       const scaleX = SCALED_CANVAS_WIDTH / rect.width;
       const mouseX = (e.clientX - rect.left) * scaleX;
       const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, mouseX - paddle.width / 2));
@@ -503,6 +504,7 @@ export const Game = ({
 
             // Calculate launch angle from second finger position relative to paddle
             const rect = canvasRef.current.getBoundingClientRect();
+            // Account for visual scale when mapping input coordinates
             const scaleX = SCALED_CANVAS_WIDTH / rect.width;
             const touchX = (e.touches[i].clientX - rect.left) * scaleX;
 
@@ -539,6 +541,7 @@ export const Game = ({
 
       // Update paddle position immediately on touch start
       const rect = canvasRef.current.getBoundingClientRect();
+      // Account for visual scale when mapping input coordinates
       const scaleX = SCALED_CANVAS_WIDTH / rect.width;
       const touchX = (e.touches[0].clientX - rect.left) * scaleX;
       const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
@@ -588,6 +591,7 @@ export const Game = ({
       for (let i = 0; i < e.touches.length; i++) {
         if (e.touches[i].identifier === secondTouchRef.current) {
           const rect = canvasRef.current.getBoundingClientRect();
+          // Account for visual scale when mapping input coordinates
           const scaleX = SCALED_CANVAS_WIDTH / rect.width;
           const touchX = (e.touches[i].clientX - rect.left) * scaleX;
 
@@ -619,6 +623,7 @@ export const Game = ({
     }
     if (!activeTouch) return;
     const rect = canvasRef.current.getBoundingClientRect();
+    // Account for visual scale when mapping input coordinates
     const scaleX = SCALED_CANVAS_WIDTH / rect.width;
     const touchX = (activeTouch.clientX - rect.left) * scaleX;
     const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
@@ -2110,11 +2115,7 @@ export const Game = ({
         const statsAndBottomHeight = statsBarHeight + bottomBarHeight + sideFrameHeight;
         const fullHeightNeeded = playableAreaHeight + titleBarHeight + statsAndBottomHeight;
 
-        // Compute available space for canvas
-        const availableWidthForCanvas = containerWidth - leftPanelWidth - rightPanelWidth - horizontalGaps;
-        const availableHeightForCanvas = containerHeight - titleBarHeight - statsAndBottomHeight;
-
-        // Check if we need to hide title (based on height only)
+        // 1) Decide title visibility FIRST (based on height only)
         const shouldShowTitle = containerHeight >= fullHeightNeeded;
         if (!shouldShowTitle && !disableAutoZoom) {
           if (titleVisible) setTitleVisible(false);
@@ -2122,22 +2123,42 @@ export const Game = ({
           if (!titleVisible) setTitleVisible(true);
         }
 
-        // Always compute and apply unified scale factor based on both width and height
+        // 2) Compute effective sizes using actual title visibility state
+        const effectiveTitleHeight = titleVisible ? titleBarHeight : 0;
+        const availableWidthForCanvas = containerWidth - leftPanelWidth - rightPanelWidth - horizontalGaps;
+        const availableHeightForCanvas = containerHeight - effectiveTitleHeight - statsAndBottomHeight;
+
+        // 3) Compute scale and clamp
         const widthScale = availableWidthForCanvas / SCALED_CANVAS_WIDTH;
         const heightScale = availableHeightForCanvas / SCALED_CANVAS_HEIGHT;
         let scaleFactor = Math.min(widthScale, heightScale);
-
-        // Clamp scale to reasonable bounds
+        
         const minScale = 0.6;
         const maxScale = 1.0;
         scaleFactor = Math.max(minScale, Math.min(maxScale, scaleFactor));
 
-        // Only update state if scale actually changed (prevent layout thrashing)
+        // 4) Update state and apply visual transform only on meaningful change
         if (Math.abs(gameScale - scaleFactor) > 0.01) {
           setGameScale(scaleFactor);
           console.log(
-            `[Desktop Layout] desktopLayoutMode: ${titleVisible ? "titleVisible" : "titleHidden"}, scale: ${scaleFactor.toFixed(2)}`
+            `[Desktop Layout] desktopLayoutMode: ${titleVisible ? "titleVisible" : "titleHidden"}, ` +
+            `scale: ${scaleFactor.toFixed(2)}, ` +
+            `container: ${containerWidth}x${containerHeight}, ` +
+            `effectiveTitleHeight: ${effectiveTitleHeight}, ` +
+            `available: ${Math.round(availableWidthForCanvas)}x${Math.round(availableHeightForCanvas)}`
           );
+
+          // 5) Apply transform to canvas container (keep HUD outside)
+          const canvasContainer = document.getElementById('game-canvas-container');
+          if (canvasContainer) {
+            canvasContainer.style.transformOrigin = 'top left';
+            canvasContainer.style.transform = `scale(${scaleFactor})`;
+            canvasContainer.style.width = `${Math.round(SCALED_CANVAS_WIDTH * scaleFactor)}px`;
+            canvasContainer.style.height = `${Math.round(SCALED_CANVAS_HEIGHT * scaleFactor)}px`;
+            canvasContainer.style.position = 'relative';
+            canvasContainer.style.left = `0px`;
+            canvasContainer.style.top = `0px`;
+          }
         }
 
         // Stats and controls always visible on desktop
@@ -2203,14 +2224,16 @@ export const Game = ({
                   <div className="panel-decoration"></div>
                 </div>
 
-                {/* Game Canvas - Apply scale transform when title is hidden (desktop only) */}
+                {/* Game Canvas - Scale applied via JS for precise control */}
                 <div className="metal-game-area">
-                  <div className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`} style={{
-              transform: `scale(${gameScale})`,
-              transformOrigin: 'top center',
-              transition: 'transform 150ms ease-in-out'
-            }}>
-                    <GameCanvas 
+                  <div 
+                    id="game-canvas-container"
+                    className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}
+                    style={{
+                      transition: 'transform 150ms ease-in-out, opacity 150ms ease-in-out'
+                    }}
+                  >
+                    <GameCanvas
                       ref={canvasRef} 
                       width={SCALED_CANVAS_WIDTH} 
                       height={SCALED_CANVAS_HEIGHT} 
