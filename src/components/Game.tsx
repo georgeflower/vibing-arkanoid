@@ -467,11 +467,14 @@ export const Game = ({
     setBrickHitSpeedAccumulated(0);
     setEnemiesKilled(0); // Reset enemy kills on level clear
     setTimer(0); // Reset timer on level clear (for turret drop chance reset)
-    setBoss(null);
-    setResurrectedBosses([]);
-    setBossAttacks([]);
-    setBossActive(false);
-    setLaserWarnings([]);
+    // Only clear boss state if the new level is NOT a boss level
+    if (!BOSS_LEVELS.includes(newLevel)) {
+      setBoss(null);
+      setResurrectedBosses([]);
+      setBossAttacks([]);
+      setBossActive(false);
+      setLaserWarnings([]);
+    }
     bombIntervalsRef.current.forEach(interval => clearInterval(interval));
     bombIntervalsRef.current.clear();
     setGameState("playing");
