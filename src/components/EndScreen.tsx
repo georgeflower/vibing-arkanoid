@@ -57,14 +57,13 @@ const useAnimatedCounter = (targetValue: number, duration: number, delay: number
 };
 
 const formatTime = (seconds: number): string => {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
+  const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  const minText = mins === 1 ? "min" : "mins";
+  const secText = secs === 1 ? "second" : "seconds";
+  
+  return `${mins} ${minText} ${secs} ${secText}`;
 };
 
 export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: EndScreenProps) => {
