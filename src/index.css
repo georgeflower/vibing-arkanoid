@@ -455,4 +455,57 @@ All colors MUST be HSL.
   }
 }
 
+/* Mobile Fullscreen Mode - Remove ALL frames and metal styling */
+.metal-frame.mobile-fullscreen-mode {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  margin: 0;
+}
+
+.metal-frame.mobile-fullscreen-mode .metal-title-bar,
+.metal-frame.mobile-fullscreen-mode .metal-bottom-bar,
+.metal-frame.mobile-fullscreen-mode .metal-side-panel,
+.metal-frame.mobile-fullscreen-mode .metal-side-panel-left,
+.metal-frame.mobile-fullscreen-mode .metal-side-panel-right {
+  display: none !important;
+}
+
+.metal-frame.mobile-fullscreen-mode .metal-main-content {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+}
+
+.metal-frame.mobile-fullscreen-mode .metal-game-area {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  max-width: 100vw;
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+}
+
+.metal-frame.mobile-fullscreen-mode .game-glow {
+  width: 100%;
+  height: 100%;
+  box-shadow: none !important;
+}
+
+.metal-frame.mobile-fullscreen-mode .game-glow canvas {
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
 

@@ -2247,7 +2247,7 @@ export const Game = ({
       )}
       
       {showEndScreen ? <EndScreen onContinue={handleEndScreenContinue} onReturnToMenu={onReturnToMenu} /> : showHighScoreDisplay ? <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} /> : <>
-          {showHighScoreEntry ? <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} /> : <div className="metal-frame">
+          {showHighScoreEntry ? <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} /> : <div className={`metal-frame ${isMobileDevice && isFullscreen ? 'mobile-fullscreen-mode' : ''}`}>
               {/* Title Bar - Adaptive Visibility (Desktop: only title hides, Mobile: all hides) */}
               <div className={`metal-title-bar transition-all duration-150 ${titleVisible ? 'opacity-100 max-h-[60px]' : 'opacity-0 max-h-0 overflow-hidden'}`} style={{
           transform: titleVisible ? 'translateY(0)' : 'translateY(-10px)',
