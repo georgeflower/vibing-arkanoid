@@ -1081,21 +1081,24 @@ export const Game = ({
               }));
             } else {
               // No destructible bricks
-              // Only auto-advance if there's no active boss fight
-              if (!bossActive) {
-                soundManager.playWin();
-                if (level >= 50) {
-                  setScore(prev => prev + 1000000);
-                  setBeatLevel50Completed(true);
-                  setGameState("won");
-                  setShowEndScreen(true);
-                  soundManager.stopBackgroundMusic();
-                  toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
-                } else {
-                  nextLevel(); // Automatically advance since no bricks to destroy
-                }
+              // On boss levels, never auto-advance based on bricks (there are none by design)
+              if (BOSS_LEVELS.includes(level)) {
+                // Boss defeat handler will handle progression
+                return newBricks;
               }
-              // If bossActive, do nothing - boss defeat handler will call nextLevel()
+
+              // Non-boss levels: auto-advance as before
+              soundManager.playWin();
+              if (level >= 50) {
+                setScore(prev => prev + 1000000);
+                setBeatLevel50Completed(true);
+                setGameState("won");
+                setShowEndScreen(true);
+                soundManager.stopBackgroundMusic();
+                toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
+              } else {
+                nextLevel(); // Automatically advance since no bricks to destroy
+              }
             }
           }
           return newBricks;
