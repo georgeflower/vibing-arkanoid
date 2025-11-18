@@ -303,24 +303,37 @@ class SoundManager {
   }
 
   // Power-up specific sounds
+  // Cache for power-up audio elements
+  private powerUpSounds: { [key: string]: HTMLAudioElement } = {};
+  
+  private getOrCreateAudio(url: string, volume: number): HTMLAudioElement {
+    if (!this.powerUpSounds[url]) {
+      const audio = new Audio(url);
+      audio.volume = volume;
+      audio.preload = 'auto';
+      this.powerUpSounds[url] = audio;
+    }
+    return this.powerUpSounds[url];
+  }
+
   playMultiballSound() {
     if (!this.sfxEnabled) return;
-    const audio = new Audio('/multiball.mp3');
-    audio.volume = 0.6; // +20%
+    const audio = this.getOrCreateAudio('/multiball.mp3', 0.6);
+    audio.currentTime = 0;
     audio.play().catch(err => console.log('Multiball sound failed:', err));
   }
 
   playTurretsSound() {
     if (!this.sfxEnabled) return;
-    const audio = new Audio('/turrets.mp3');
-    audio.volume = 0.6; // +20%
+    const audio = this.getOrCreateAudio('/turrets.mp3', 0.6);
+    audio.currentTime = 0;
     audio.play().catch(err => console.log('Turrets sound failed:', err));
   }
 
   playFireballSound() {
     if (!this.sfxEnabled) return;
-    const audio = new Audio('/fireball.mp3');
-    audio.volume = 0.6; // +20%
+    const audio = this.getOrCreateAudio('/fireball.mp3', 0.6);
+    audio.currentTime = 0;
     audio.play().catch(err => console.log('Fireball sound failed:', err));
   }
 
@@ -369,36 +382,36 @@ class SoundManager {
 
   playExtraLifeSound() {
     if (!this.sfxEnabled) return;
-    const audio = new Audio('/extra_life.mp3');
-    audio.volume = 0.6; // +20%
+    const audio = this.getOrCreateAudio('/extra_life.mp3', 0.6);
+    audio.currentTime = 0;
     audio.play().catch(err => console.log('Extra life sound failed:', err));
   }
 
   playSlowerSound() {
     if (!this.sfxEnabled) return;
-    const audio = new Audio('/slower.mp3');
-    audio.volume = 0.6; // +20%
+    const audio = this.getOrCreateAudio('/slower.mp3', 0.6);
+    audio.currentTime = 0;
     audio.play().catch(err => console.log('Slower sound failed:', err));
   }
 
   playWiderSound() {
     if (!this.sfxEnabled) return;
-    const audio = new Audio('/wider.mp3');
-    audio.volume = 0.6; // +20%
+    const audio = this.getOrCreateAudio('/wider.mp3', 0.6);
+    audio.currentTime = 0;
     audio.play().catch(err => console.log('Wider sound failed:', err));
   }
 
   playShrinkSound() {
     if (!this.sfxEnabled) return;
-    const audio = new Audio('/smaller.mp3');
-    audio.volume = 0.6; // +20%
+    const audio = this.getOrCreateAudio('/smaller.mp3', 0.6);
+    audio.currentTime = 0;
     audio.play().catch(err => console.log('Shrink sound failed:', err));
   }
 
   playShieldSound() {
     if (!this.sfxEnabled) return;
-    const audio = new Audio('/shield.mp3');
-    audio.volume = 0.6; // +20%
+    const audio = this.getOrCreateAudio('/shield.mp3', 0.6);
+    audio.currentTime = 0;
     audio.play().catch(err => console.log('Shield sound failed:', err));
   }
 

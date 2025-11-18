@@ -91,6 +91,25 @@ export const Game = ({
   
   // Fixed-step game loop
   const gameLoopRef = useRef<FixedStepGameLoop | null>(null);
+  
+  // Initialize fixed-step game loop on mount
+  useEffect(() => {
+    if (!gameLoopRef.current) {
+      gameLoopRef.current = new FixedStepGameLoop({
+        fixedStep: 16.6667, // 60Hz
+        maxDeltaMs: 250,
+        maxUpdatesPerFrame: 8,
+        timeScale: 1.0,
+        mode: "fixedStep"
+      });
+    }
+    
+    return () => {
+      if (gameLoopRef.current) {
+        gameLoopRef.current.stop();
+      }
+    };
+  }, []);
   const {
     highScores,
     isHighScore,
@@ -697,7 +716,11 @@ export const Game = ({
         toast.success(enabled ? "Music on" : "Music muted");
       } else if (e.key === "l" || e.key === "L") {
         // Toggle debug overlay
-        setShowDebugOverlay(prev => !prev);
+        setShowDebugOverlay(prev => {
+          const newValue = !prev;
+          toast.success(newValue ? "Debug overlay enabled" : "Debug overlay disabled");
+          return newValue;
+        });
       } else if (e.key === "[") {
         // Decrease time scale
         if (gameLoopRef.current) {
