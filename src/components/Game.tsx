@@ -459,11 +459,11 @@ export const Game = ({
         x: newX
       } : null);
     } else if (gameState === "playing") {
-      const rect = canvasRef.current.getBoundingClientRect();
-      // Account for visual scale when mapping input coordinates
-      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
-      const mouseX = (e.clientX - rect.left) * scaleX;
-      const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, mouseX - paddle.width / 2));
+      // Convert screen coordinates to game coordinates accounting for scale
+      const container = document.getElementById('game-canvas-container');
+      const rect = container?.getBoundingClientRect() || canvasRef.current.getBoundingClientRect();
+      const gameX = (e.clientX - rect.left) / gameScale;
+      const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, gameX - paddle.width / 2));
       setPaddle(prev => prev ? {
         ...prev,
         x: newX
@@ -503,10 +503,9 @@ export const Game = ({
             secondTouchRef.current = e.touches[i].identifier;
 
             // Calculate launch angle from second finger position relative to paddle
-            const rect = canvasRef.current.getBoundingClientRect();
-            // Account for visual scale when mapping input coordinates
-            const scaleX = SCALED_CANVAS_WIDTH / rect.width;
-            const touchX = (e.touches[i].clientX - rect.left) * scaleX;
+            const container = document.getElementById('game-canvas-container');
+            const rect = container?.getBoundingClientRect() || canvasRef.current.getBoundingClientRect();
+            const touchX = (e.touches[i].clientX - rect.left) / gameScale;
 
             // Calculate angle: -60 to +60 degrees based on second finger position relative to paddle center
             const paddleCenter = paddle.x + paddle.width / 2;
@@ -540,10 +539,9 @@ export const Game = ({
       activeTouchRef.current = e.touches[0].identifier;
 
       // Update paddle position immediately on touch start
-      const rect = canvasRef.current.getBoundingClientRect();
-      // Account for visual scale when mapping input coordinates
-      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
-      const touchX = (e.touches[0].clientX - rect.left) * scaleX;
+      const container = document.getElementById('game-canvas-container');
+      const rect = container?.getBoundingClientRect() || canvasRef.current.getBoundingClientRect();
+      const touchX = (e.touches[0].clientX - rect.left) / gameScale;
       const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
       setPaddle(prev => prev ? {
         ...prev,
@@ -590,10 +588,9 @@ export const Game = ({
     if (waitingBall && secondTouchRef.current !== null) {
       for (let i = 0; i < e.touches.length; i++) {
         if (e.touches[i].identifier === secondTouchRef.current) {
-          const rect = canvasRef.current.getBoundingClientRect();
-          // Account for visual scale when mapping input coordinates
-          const scaleX = SCALED_CANVAS_WIDTH / rect.width;
-          const touchX = (e.touches[i].clientX - rect.left) * scaleX;
+          const container = document.getElementById('game-canvas-container');
+          const rect = container?.getBoundingClientRect() || canvasRef.current.getBoundingClientRect();
+          const touchX = (e.touches[i].clientX - rect.left) / gameScale;
 
           // Calculate angle from second finger position relative to paddle center
           const paddleCenter = paddle.x + paddle.width / 2;
@@ -622,10 +619,9 @@ export const Game = ({
       activeTouchRef.current = activeTouch.identifier;
     }
     if (!activeTouch) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    // Account for visual scale when mapping input coordinates
-    const scaleX = SCALED_CANVAS_WIDTH / rect.width;
-    const touchX = (activeTouch.clientX - rect.left) * scaleX;
+    const container = document.getElementById('game-canvas-container');
+    const rect = container?.getBoundingClientRect() || canvasRef.current.getBoundingClientRect();
+    const touchX = (activeTouch.clientX - rect.left) / gameScale;
     const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
     setPaddle(prev => prev ? {
       ...prev,
@@ -2148,16 +2144,26 @@ export const Game = ({
             `available: ${Math.round(availableWidthForCanvas)}x${Math.round(availableHeightForCanvas)}`
           );
 
-          // 5) Apply transform to canvas container (keep HUD outside)
+          // 5) Position and size canvas container to fill available space
           const canvasContainer = document.getElementById('game-canvas-container');
           if (canvasContainer) {
-            canvasContainer.style.transformOrigin = 'top left';
-            canvasContainer.style.transform = `scale(${scaleFactor})`;
+            // Set logical container size to scaled canvas dimensions
             canvasContainer.style.width = `${Math.round(SCALED_CANVAS_WIDTH * scaleFactor)}px`;
             canvasContainer.style.height = `${Math.round(SCALED_CANVAS_HEIGHT * scaleFactor)}px`;
-            canvasContainer.style.position = 'relative';
-            canvasContainer.style.left = `0px`;
-            canvasContainer.style.top = `0px`;
+
+            // Apply transform with top-left origin for precise scaling
+            canvasContainer.style.transformOrigin = 'top left';
+            canvasContainer.style.transform = `scale(${scaleFactor})`;
+
+            // Center horizontally between left and right panels, pin top below title
+            const availableLeft = leftPanelWidth + horizontalGaps / 2;
+            const availableRight = containerWidth - rightPanelWidth - horizontalGaps / 2;
+            const availableCenterX = Math.round((availableLeft + availableRight - (SCALED_CANVAS_WIDTH * scaleFactor)) / 2);
+            canvasContainer.style.left = `${Math.max(availableLeft, availableCenterX)}px`;
+            canvasContainer.style.top = `${effectiveTitleHeight}px`;
+
+            // Ensure absolute positioning
+            canvasContainer.style.position = 'absolute';
           }
         }
 

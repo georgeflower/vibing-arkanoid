@@ -350,6 +350,7 @@ All colors MUST be HSL.
   border: 4px ridge hsl(210, 15%, 50%);
   border-radius: 4px;
   padding: 4px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
