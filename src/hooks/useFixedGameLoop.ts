@@ -46,9 +46,9 @@ export function useFixedGameLoop(speedMultiplier: number = 1) {
   // Initialize game loop
   useEffect(() => {
     const loop = new FixedStepGameLoop({
-      fixedStep: 16.6667, // 60Hz
+      fixedStep: 16.6667, // 60Hz (1000/60)
       maxDeltaMs: 250,
-      maxUpdatesPerFrame: 10,
+      maxUpdatesPerFrame: 8,
       timeScale: speedMultiplier,
       mode: "fixedStep"
     });
