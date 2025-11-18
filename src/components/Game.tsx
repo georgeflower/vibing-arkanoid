@@ -337,7 +337,7 @@ export const Game = ({
     });
 
     // Initialize ball with speed multiplier - waiting to launch
-    const baseSpeed = 3.45; // 15% faster than original base speed of 3
+    const baseSpeed = 5.175; // 50% faster than previous base speed of 3.45
     const initialBall: Ball = {
       x: SCALED_CANVAS_WIDTH / 2,
       y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
@@ -408,7 +408,7 @@ export const Game = ({
     });
 
     // Initialize ball with new speed - waiting to launch (capped at 175%)
-    const baseSpeed = 3.45 * Math.min(newSpeedMultiplier, 1.75); // 15% faster base speed
+    const baseSpeed = 5.175 * Math.min(newSpeedMultiplier, 1.75); // 50% faster base speed
     const initialBall: Ball = {
       x: SCALED_CANVAS_WIDTH / 2,
       y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
@@ -1082,7 +1082,7 @@ export const Game = ({
             }
           } else {
             // Reset ball and clear power-ups, but wait for click to continue
-            const baseSpeed = 3.45; // 15% faster base speed
+            const baseSpeed = 5.175; // 50% faster base speed
             const resetBall: Ball = {
               x: SCALED_CANVAS_WIDTH / 2,
               y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
@@ -1592,7 +1592,7 @@ export const Game = ({
               }
             } else {
               // Reset ball and clear power-ups, but wait for click to continue
-              const baseSpeed = 3.45; // 15% faster base speed
+              const baseSpeed = 5.175; // 50% faster base speed
               const resetBall: Ball = {
                 x: SCALED_CANVAS_WIDTH / 2,
                 y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
@@ -1669,7 +1669,7 @@ export const Game = ({
               }
             } else {
               // Reset ball and clear power-ups, but wait for click to continue
-              const baseSpeed = 3.45; // 15% faster base speed
+              const baseSpeed = 5.175; // 50% faster base speed
               const resetBall: Ball = {
                 x: SCALED_CANVAS_WIDTH / 2,
                 y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
