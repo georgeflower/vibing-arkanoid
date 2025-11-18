@@ -499,7 +499,6 @@ export const Game = ({
     // Don't reset collected letters between levels
     // Reset accumulated slowdown speed on level clear
     setBrickHitSpeedAccumulated(0);
-    setEnemiesKilled(0); // Reset enemy kills on level clear
     setTimer(0); // Reset timer on level clear (for turret drop chance reset)
     // Only clear boss state if the new level is NOT a boss level
     if (!BOSS_LEVELS.includes(newLevel)) {
