@@ -2537,7 +2537,29 @@ export const Game = ({
         </div>
       )}
       
-      {showEndScreen ? <EndScreen onContinue={handleEndScreenContinue} onReturnToMenu={onReturnToMenu} /> : showHighScoreDisplay ? <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} /> : <>
+      {showEndScreen ? <EndScreen onContinue={handleEndScreenContinue} onReturnToMenu={onReturnToMenu} /> : showHighScoreDisplay ? <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} /> : gameState === "gameOver" && !showHighScoreEntry ? (
+        <div 
+          className="fixed inset-0 flex items-center justify-center bg-black/80 z-50 cursor-pointer"
+          onClick={onReturnToMenu}
+        >
+          <div className="text-center space-y-6 px-4">
+            <h2 className="text-5xl retro-pixel-text text-red-500" style={{
+              textShadow: "3px 3px 6px rgba(0,0,0,0.9)"
+            }}>
+              GAME OVER
+            </h2>
+            <p className="text-2xl retro-pixel-text" style={{ color: "hsl(0, 0%, 85%)" }}>
+              Final Score: {score}
+            </p>
+            <p className="text-2xl retro-pixel-text" style={{ color: "hsl(0, 0%, 85%)" }}>
+              Level: {level}
+            </p>
+            <p className="text-xl retro-pixel-text mt-8" style={{ color: "hsl(0, 0%, 70%)" }}>
+              Click to continue
+            </p>
+          </div>
+        </div>
+      ) : <>
           {showHighScoreEntry ? <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} /> : <div className={`metal-frame ${isMobileDevice && isFullscreen ? 'mobile-fullscreen-mode' : ''}`}>
               {/* Title Bar - Adaptive Visibility (Desktop: only title hides, Mobile: all hides) */}
               <div className={`metal-title-bar transition-all duration-150 ${titleVisible ? 'opacity-100 max-h-[60px]' : 'opacity-0 max-h-0 overflow-hidden'}`} style={{
