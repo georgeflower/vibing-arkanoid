@@ -14,6 +14,7 @@ interface GameStats {
   bricksDestroyedByTurrets?: number;
   enemiesKilled?: number;
   bossesKilled?: number;
+  totalPlayTime?: number; // in seconds
 }
 
 interface EndScreenProps {
@@ -55,6 +56,17 @@ const useAnimatedCounter = (targetValue: number, duration: number, delay: number
   return count;
 };
 
+const formatTime = (seconds: number): string => {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${minutes}:${secs.toString().padStart(2, '0')}`;
+};
+
 export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: EndScreenProps) => {
   // Animate each counter with different speeds and delays
   const animatedScore = useAnimatedCounter(stats?.finalScore ?? 0, 2000, 0);
@@ -65,6 +77,7 @@ export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: E
   const animatedTurretKills = useAnimatedCounter(stats?.bricksDestroyedByTurrets ?? 0, 1300, 500);
   const animatedEnemies = useAnimatedCounter(stats?.enemiesKilled ?? 0, 1400, 600);
   const animatedBosses = useAnimatedCounter(stats?.bossesKilled ?? 0, 900, 700);
+  const animatedPlayTime = useAnimatedCounter(stats?.totalPlayTime ?? 0, 1600, 150);
   
   return (
     <div 
@@ -97,6 +110,11 @@ export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: E
           <div className="flex justify-between text-xl">
             <span className="text-gray-300">Level Reached:</span>
             <span className="text-white font-bold">{animatedLevel}</span>
+          </div>
+          
+          <div className="flex justify-between text-xl">
+            <span className="text-gray-300">Time Played:</span>
+            <span className="text-cyan-400 font-bold">{formatTime(animatedPlayTime)}</span>
           </div>
           
           <div className="flex justify-between text-xl">
