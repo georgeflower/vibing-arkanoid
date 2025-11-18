@@ -2571,8 +2571,57 @@ export const Game = ({
   };
   
   const handleRetryLevel = useCallback(() => {
-    setShowEndScreen(false);
-    setShowHighScoreEntry(false);
+    // Stop game loop before restarting level
+    if (gameLoopRef.current) {
+      gameLoopRef.current.stop();
+    }
+
+    // Clear timer interval before resetting
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+    timerStartedRef.current = false;
+    bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+    bombIntervalsRef.current.clear();
+
+    // Keep the current level
+    const currentLevel = level;
+    const maxSpeedMultiplier = settings.difficulty === "godlike" ? 1.75 : 1.5;
+    const baseMultiplier = settings.difficulty === "godlike" ? 1.25 : 1.0;
+    const levelSpeedMultiplier = Math.min(maxSpeedMultiplier, baseMultiplier + (currentLevel - 1) * 0.05);
+    setSpeedMultiplier(levelSpeedMultiplier);
+
+    // Reset paddle
+    setPaddle({
+      x: SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2,
+      y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+      width: SCALED_PADDLE_WIDTH,
+      height: SCALED_PADDLE_HEIGHT,
+      hasTurrets: false
+    });
+
+    // Initialize ball with level speed - waiting to launch
+    const baseSpeed = 5.175 * Math.min(levelSpeedMultiplier, 1.75);
+    const initialBall: Ball = {
+      x: SCALED_CANVAS_WIDTH / 2,
+      y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+      dx: baseSpeed,
+      dy: -baseSpeed,
+      radius: SCALED_BALL_RADIUS,
+      speed: baseSpeed,
+      id: nextBallId.current++,
+      isFireball: false,
+      waitingToLaunch: true
+    };
+    setBalls([initialBall]);
+    setLaunchAngle(-20);
+    launchAngleDirectionRef.current = 1;
+    setShowInstructions(true);
+
+    // Reset bricks for current level
+    setBricks(initBricksForLevel(currentLevel));
+    
+    // Reset all stats and score
     setScore(0);
     setTotalBricksDestroyed(0);
     setTotalShots(0);
@@ -2581,11 +2630,45 @@ export const Game = ({
     setCurrentCombo(0);
     setLevelSkipped(false);
     setLives(settings.startingLives);
-    const currentLevel = level;
-    setLevel(currentLevel - 1);
+    
+    // Clear all entities
+    setPowerUps([]);
+    setBullets([]);
+    setTimer(0);
+    setEnemies([]);
+    setBombs([]);
+    setExplosions([]);
+    setEnemySpawnCount(0);
+    setLastEnemySpawnTime(0);
+    setBonusLetters([]);
+    setBrickHitSpeedAccumulated(0);
+    setEnemiesKilled(0);
+    
+    // Clear boss state if not a boss level, or reset boss if it is
+    if (!BOSS_LEVELS.includes(currentLevel)) {
+      setBoss(null);
+      setResurrectedBosses([]);
+      setBossAttacks([]);
+      setBossActive(false);
+      setLaserWarnings([]);
+    } else {
+      // Reinitialize boss for boss level
+      setBoss(null);
+      setResurrectedBosses([]);
+      setBossAttacks([]);
+      setBossActive(false);
+      setLaserWarnings([]);
+    }
+
+    // Hide screens
+    setShowEndScreen(false);
+    setShowHighScoreEntry(false);
+    
+    // Set to ready state
     setGameState("ready");
-    nextLevel();
-  }, [level, settings.startingLives, nextLevel]);
+    
+    toast.info(`Retrying Level ${currentLevel}`);
+  }, [level, settings.startingLives, settings.difficulty, initBricksForLevel, setPowerUps]);
   
   const toggleFullscreen = async () => {
     if (!fullscreenContainerRef.current) return;
