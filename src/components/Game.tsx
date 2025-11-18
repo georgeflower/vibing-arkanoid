@@ -1887,7 +1887,8 @@ export const Game = ({
                           timeScale: 1,
                           fps: 0,
                           updatesThisFrame: 0,
-                          alpha: 0
+                          alpha: 0,
+                          isPaused: true
                         }}
                         visible={showDebugOverlay}
                       />
