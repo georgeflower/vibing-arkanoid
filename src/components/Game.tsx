@@ -2102,34 +2102,42 @@ export const Game = ({
 
       // Desktop-specific adaptive layout
       if (!isMobile) {
+        // UI chrome dimensions
+        const leftPanelWidth = 60;
+        const rightPanelWidth = 140;
+        const horizontalGaps = 16; // 8px gap on each side
         const playableAreaHeight = SCALED_CANVAS_HEIGHT;
         const statsAndBottomHeight = statsBarHeight + bottomBarHeight + sideFrameHeight;
         const fullHeightNeeded = playableAreaHeight + titleBarHeight + statsAndBottomHeight;
 
-        // Check if we need to hide title
+        // Compute available space for canvas
+        const availableWidthForCanvas = containerWidth - leftPanelWidth - rightPanelWidth - horizontalGaps;
+        const availableHeightForCanvas = containerHeight - titleBarHeight - statsAndBottomHeight;
+
+        // Check if we need to hide title (based on height only)
         const shouldShowTitle = containerHeight >= fullHeightNeeded;
         if (!shouldShowTitle && !disableAutoZoom) {
-          // Hide title and calculate scale
-          const availableHeight = containerHeight - statsAndBottomHeight;
-          const minimalTopMargin = 20;
-          const scalableHeight = playableAreaHeight + minimalTopMargin;
-          let scaleFactor = availableHeight / scalableHeight;
-
-          // Clamp scale to prevent unreadably small UI
-          const minScale = 0.5;
-          scaleFactor = Math.max(minScale, Math.min(1.0, scaleFactor));
-          if (titleVisible || gameScale !== scaleFactor) {
-            setTitleVisible(false);
-            setGameScale(scaleFactor);
-            console.log(`[Desktop Layout] desktopLayoutMode: titleHidden, scale: ${scaleFactor.toFixed(2)}`);
-          }
+          if (titleVisible) setTitleVisible(false);
         } else {
-          // Show title and reset scale
-          if (!titleVisible || gameScale !== 1) {
-            setTitleVisible(true);
-            setGameScale(1);
-            console.log(`[Desktop Layout] desktopLayoutMode: titleVisible, scale: 1.0`);
-          }
+          if (!titleVisible) setTitleVisible(true);
+        }
+
+        // Always compute and apply unified scale factor based on both width and height
+        const widthScale = availableWidthForCanvas / SCALED_CANVAS_WIDTH;
+        const heightScale = availableHeightForCanvas / SCALED_CANVAS_HEIGHT;
+        let scaleFactor = Math.min(widthScale, heightScale);
+
+        // Clamp scale to reasonable bounds
+        const minScale = 0.6;
+        const maxScale = 1.0;
+        scaleFactor = Math.max(minScale, Math.min(maxScale, scaleFactor));
+
+        // Only update state if scale actually changed (prevent layout thrashing)
+        if (Math.abs(gameScale - scaleFactor) > 0.01) {
+          setGameScale(scaleFactor);
+          console.log(
+            `[Desktop Layout] desktopLayoutMode: ${titleVisible ? "titleVisible" : "titleHidden"}, scale: ${scaleFactor.toFixed(2)}`
+          );
         }
 
         // Stats and controls always visible on desktop
