@@ -90,22 +90,22 @@ export const Game = ({
   const launchAngleIntervalRef = useRef<NodeJS.Timeout>();
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const timerStartedRef = useRef(false);
-
+  
   // Fixed-step game loop
   const gameLoopRef = useRef<FixedStepGameLoop | null>(null);
-
+  
   // Initialize fixed-step game loop on mount
   useEffect(() => {
     if (!gameLoopRef.current) {
       gameLoopRef.current = new FixedStepGameLoop({
-        fixedStep: 16.6667,
-        // 60Hz
+        fixedStep: 16.6667, // 60Hz
         maxDeltaMs: 250,
         maxUpdatesPerFrame: 8,
         timeScale: 1.0,
         mode: "fixedStep"
       });
     }
+    
     return () => {
       if (gameLoopRef.current) {
         gameLoopRef.current.stop();
@@ -771,7 +771,7 @@ export const Game = ({
           const currentIndex = levels.indexOf(quality);
           const nextIndex = (currentIndex + 1) % levels.length;
           const nextQuality = levels[nextIndex];
-
+          
           // Use the hook's setQuality which handles everything properly
           setQuality(nextQuality);
         }
@@ -1120,13 +1120,10 @@ export const Game = ({
       return updatedBalls;
     });
   }, [paddle, balls, createPowerUp, setPowerUps, nextLevel, speedMultiplier]);
-
+  
   // FPS tracking for adaptive quality
-  const fpsTrackerRef = useRef({
-    lastTime: performance.now(),
-    frameCount: 0,
-    fps: 60
-  });
+  const fpsTrackerRef = useRef({ lastTime: performance.now(), frameCount: 0, fps: 60 });
+  
   const gameLoop = useCallback(() => {
     if (gameState !== "playing") return;
 
@@ -1134,16 +1131,17 @@ export const Game = ({
     const now = performance.now();
     fpsTrackerRef.current.frameCount++;
     const deltaTime = now - fpsTrackerRef.current.lastTime;
+    
     if (deltaTime >= 1000) {
       const fps = Math.round(fpsTrackerRef.current.frameCount * 1000 / deltaTime);
       fpsTrackerRef.current.fps = fps;
       fpsTrackerRef.current.frameCount = 0;
       fpsTrackerRef.current.lastTime = now;
-
+      
       // Update adaptive quality system
       updateFps(fps);
     }
-
+    
     // Also feed real-time FPS from fixed-step game loop if available
     if (gameLoopRef.current) {
       const debugInfo = gameLoopRef.current.getDebugInfo();
@@ -1769,6 +1767,7 @@ export const Game = ({
     }
     animationFrameRef.current = requestAnimationFrame(gameLoop);
   }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemies, bombs, bricks, score, isHighScore, explosions, lastPaddleHitTime, lastScoreMilestone, updateFps]);
+  
   useEffect(() => {
     if (gameState === "playing") {
       animationFrameRef.current = requestAnimationFrame(gameLoop);
@@ -1783,6 +1782,7 @@ export const Game = ({
       }
     };
   }, [gameState, gameLoop]);
+
 
   // Separate useEffect for timer management - handle pause/resume
   useEffect(() => {
@@ -2270,7 +2270,11 @@ export const Game = ({
               {/* Main Content with Side Panels */}
               <div className="metal-main-content">
                 {/* Left Panel */}
-                
+                <div className="metal-side-panel metal-side-panel-left">
+                  <div className="panel-decoration"></div>
+                  <div className="panel-decoration"></div>
+                  <div className="panel-decoration"></div>
+                </div>
 
                 {/* Game Canvas - Apply scale transform when title is hidden (desktop only) */}
                 <div className="metal-game-area">
@@ -2279,22 +2283,51 @@ export const Game = ({
               transformOrigin: 'top center',
               transition: 'transform 150ms ease-in-out'
             }}>
-                    <GameCanvas ref={canvasRef} width={SCALED_CANVAS_WIDTH} height={SCALED_CANVAS_HEIGHT} bricks={bricks} balls={balls} paddle={paddle} gameState={gameState} powerUps={powerUps} bullets={bullets} enemy={enemies} bombs={bombs} level={level} backgroundPhase={backgroundPhase} explosions={explosions} launchAngle={launchAngle} bonusLetters={bonusLetters} collectedLetters={collectedLetters} screenShake={screenShake} backgroundFlash={backgroundFlash} qualitySettings={qualitySettings} />
-                    {showDebugOverlay && gameLoopRef.current && <GameLoopDebugOverlay getDebugInfo={() => gameLoopRef.current?.getDebugInfo() ?? {
-                mode: "legacy",
-                fixedHz: 60,
-                maxDeltaMs: 250,
-                accumulator: 0,
-                timeScale: 1,
-                fps: 0,
-                updatesThisFrame: 0,
-                alpha: 0
-              }} visible={showDebugOverlay} />}
+                    <GameCanvas 
+                      ref={canvasRef} 
+                      width={SCALED_CANVAS_WIDTH} 
+                      height={SCALED_CANVAS_HEIGHT} 
+                      bricks={bricks} 
+                      balls={balls} 
+                      paddle={paddle} 
+                      gameState={gameState} 
+                      powerUps={powerUps} 
+                      bullets={bullets} 
+                      enemy={enemies} 
+                      bombs={bombs} 
+                      level={level} 
+                      backgroundPhase={backgroundPhase} 
+                      explosions={explosions} 
+                      launchAngle={launchAngle} 
+                      bonusLetters={bonusLetters} 
+                      collectedLetters={collectedLetters} 
+                      screenShake={screenShake} 
+                      backgroundFlash={backgroundFlash}
+                      qualitySettings={qualitySettings}
+                    />
+                    {showDebugOverlay && gameLoopRef.current && (
+                      <GameLoopDebugOverlay 
+                        getDebugInfo={() => gameLoopRef.current?.getDebugInfo() ?? {
+                          mode: "legacy",
+                          fixedHz: 60,
+                          maxDeltaMs: 250,
+                          accumulator: 0,
+                          timeScale: 1,
+                          fps: 0,
+                          updatesThisFrame: 0,
+                          alpha: 0
+                        }}
+                        visible={showDebugOverlay}
+                      />
+                    )}
                   </div>
                 </div>
 
                 {/* Quality Indicator */}
-                <QualityIndicator quality={quality} autoAdjustEnabled={autoAdjustEnabled} />
+                <QualityIndicator 
+                  quality={quality}
+                  autoAdjustEnabled={autoAdjustEnabled}
+                />
 
                 {/* Right Panel */}
                 <div className="metal-side-panel metal-side-panel-right">
