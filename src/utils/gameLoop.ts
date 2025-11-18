@@ -35,6 +35,7 @@ export interface GameLoopDebug {
   fps: number;
   updatesThisFrame: number;
   alpha: number;
+  isPaused: boolean;
 }
 
 export class FixedStepGameLoop {
@@ -276,7 +277,8 @@ export class FixedStepGameLoop {
       timeScale: this.config.timeScale,
       fps: this.state.fps,
       updatesThisFrame: this.state.updatesThisFrame,
-      alpha: Math.round(this.state.alpha * 100) / 100
+      alpha: Math.round(this.state.alpha * 100) / 100,
+      isPaused: this.state.isPaused,
     };
   }
 

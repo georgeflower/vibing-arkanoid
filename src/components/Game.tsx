@@ -1421,7 +1421,8 @@ export const Game = ({
         renderFrame(alpha);
       });
       
-      // Reset accumulator for clean start
+      // Ensure loop is not paused and accumulator is clean before starting
+      (gameLoopRef.current as any).resume?.();
       gameLoopRef.current.resetAccumulator?.();
       gameLoopRef.current.start();
     } else {
