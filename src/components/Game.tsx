@@ -1325,8 +1325,7 @@ export const Game = ({
       setTimeout(() => setScoreBlinking(false), 1000);
     }
 
-    // Sync simulation state back to refs
-    simBallsRef.current = balls;
+    // Sync simulation state back to refs (for next frame)
     simPaddleRef.current = paddle;
     simBricksRef.current = bricks;
     simEnemiesRef.current = enemies;
@@ -1382,6 +1381,15 @@ export const Game = ({
     setBackgroundFlash(prev => Math.max(0, prev - 0.05));
   }, [gameState, updateFps]);
 
+  
+  // Keep simulation refs in sync with React state
+  useEffect(() => {
+    simBallsRef.current = balls;
+    simPaddleRef.current = paddle;
+    simBricksRef.current = bricks;
+    simEnemiesRef.current = enemies;
+    simBombsRef.current = bombs;
+  }, [balls, paddle, bricks, enemies, bombs]);
   
   // Update game loop time scale when speed multiplier changes
   useEffect(() => {
