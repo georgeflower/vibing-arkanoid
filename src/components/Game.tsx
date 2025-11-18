@@ -59,6 +59,7 @@ export const Game = ({
   const [showEndScreen, setShowEndScreen] = useState(false);
   const [beatLevel50Completed, setBeatLevel50Completed] = useState(false);
   const [timer, setTimer] = useState(0);
+  const [totalPlayTime, setTotalPlayTime] = useState(0);
   const [enemies, setEnemies] = useState<Enemy[]>([]);
   const [bombs, setBombs] = useState<Bomb[]>([]);
   const [backgroundPhase, setBackgroundPhase] = useState(0);
@@ -115,6 +116,8 @@ export const Game = ({
   const nextBallId = useRef(1);
   const nextEnemyId = useRef(1);
   const timerIntervalRef = useRef<NodeJS.Timeout>();
+  const totalPlayTimeIntervalRef = useRef<NodeJS.Timeout>();
+  const totalPlayTimeStartedRef = useRef(false);
   const bombIntervalsRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
   const launchAngleIntervalRef = useRef<NodeJS.Timeout>();
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
@@ -414,7 +417,9 @@ export const Game = ({
     setGameState("ready");
     setPowerUps([]);
     setTimer(0);
+    setTotalPlayTime(0);
     timerStartedRef.current = false;
+    totalPlayTimeStartedRef.current = false;
     setEnemies([]);
     setBombs([]);
     setBackgroundPhase(0);
@@ -653,6 +658,17 @@ export const Game = ({
             setTimer(prev => prev + 1);
           }, 1000);
         }
+        
+        // Start total play time on first ball launch
+        if (!totalPlayTimeStartedRef.current) {
+          totalPlayTimeStartedRef.current = true;
+          if (totalPlayTimeIntervalRef.current) {
+            clearInterval(totalPlayTimeIntervalRef.current);
+          }
+          totalPlayTimeIntervalRef.current = setInterval(() => {
+            setTotalPlayTime(prev => prev + 1);
+          }, 1000);
+        }
         console.log('[Launch Debug] audioAndLaunchMode: applied - Ball launched at angle:', launchAngle);
         setBalls(prev => prev.map(ball => {
           if (ball.waitingToLaunch) {
@@ -775,6 +791,17 @@ export const Game = ({
         }
         timerIntervalRef.current = setInterval(() => {
           setTimer(prev => prev + 1);
+        }, 1000);
+      }
+      
+      // Start total play time on first ball launch
+      if (!totalPlayTimeStartedRef.current) {
+        totalPlayTimeStartedRef.current = true;
+        if (totalPlayTimeIntervalRef.current) {
+          clearInterval(totalPlayTimeIntervalRef.current);
+        }
+        totalPlayTimeIntervalRef.current = setInterval(() => {
+          setTotalPlayTime(prev => prev + 1);
         }, 1000);
       }
       setBalls(prev => prev.map(ball => {
@@ -2343,9 +2370,35 @@ export const Game = ({
       bombIntervalsRef.current.forEach(interval => clearInterval(interval));
       bombIntervalsRef.current.clear();
     }
+    
+    // Handle total play time independently
+    if (gameState === "playing" && totalPlayTimeStartedRef.current) {
+      // Resume total play time if it was started and we're playing
+      if (!totalPlayTimeIntervalRef.current) {
+        totalPlayTimeIntervalRef.current = setInterval(() => {
+          setTotalPlayTime(prev => prev + 1);
+        }, 1000);
+      }
+    } else if (gameState === "paused") {
+      // Pause: clear interval but keep totalPlayTimeStartedRef true
+      if (totalPlayTimeIntervalRef.current) {
+        clearInterval(totalPlayTimeIntervalRef.current);
+        totalPlayTimeIntervalRef.current = undefined;
+      }
+    } else if (gameState !== "playing") {
+      // Game over or not started: clear total play time interval
+      if (totalPlayTimeIntervalRef.current) {
+        clearInterval(totalPlayTimeIntervalRef.current);
+        totalPlayTimeIntervalRef.current = undefined;
+      }
+    }
+    
     return () => {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
+      }
+      if (totalPlayTimeIntervalRef.current) {
+        clearInterval(totalPlayTimeIntervalRef.current);
       }
       bombIntervalsRef.current.forEach(interval => clearInterval(interval));
       bombIntervalsRef.current.clear();
@@ -2656,6 +2709,8 @@ export const Game = ({
     setPowerUps([]);
     setBullets([]);
     setTimer(0);
+    setTotalPlayTime(0);
+    totalPlayTimeStartedRef.current = false;
     setEnemies([]);
     setBombs([]);
     setExplosions([]);
@@ -2884,7 +2939,7 @@ export const Game = ({
           bricksDestroyedByTurrets,
           enemiesKilled,
           bossesKilled,
-          totalPlayTime: timer
+          totalPlayTime: totalPlayTime
         }}
       /> : showHighScoreDisplay ? <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} /> : <>
           {showHighScoreEntry ? <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} /> : <div className={`metal-frame ${isMobileDevice && isFullscreen ? 'mobile-fullscreen-mode' : ''}`}>
