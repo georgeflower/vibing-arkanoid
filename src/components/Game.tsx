@@ -2883,7 +2883,8 @@ export const Game = ({
           powerUpsCollected: powerUpsCollectedTypes.size,
           bricksDestroyedByTurrets,
           enemiesKilled,
-          bossesKilled
+          bossesKilled,
+          totalPlayTime: timer
         }}
       /> : showHighScoreDisplay ? <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} /> : <>
           {showHighScoreEntry ? <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} /> : <div className={`metal-frame ${isMobileDevice && isFullscreen ? 'mobile-fullscreen-mode' : ''}`}>
