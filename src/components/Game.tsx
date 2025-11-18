@@ -1858,12 +1858,18 @@ export const Game = ({
     // Boss collision with balls
     if (boss && paddle) {
       balls.forEach(ball => {
+        // Add cooldown check to prevent multiple hits
+        const now = Date.now();
+        if (ball.lastHitTime && now - ball.lastHitTime < 50) {
+          return; // Skip this collision check
+        }
+        
         if (!ball.waitingToLaunch && ball.x + ball.radius > boss.x && ball.x - ball.radius < boss.x + boss.width && ball.y + ball.radius > boss.y && ball.y - ball.radius < boss.y + boss.height) {
           soundManager.playBounce();
           setScreenShake(8);
           setTimeout(() => setScreenShake(0), 500);
           const angle = Math.atan2(ball.y - (boss.y + boss.height/2), ball.x - (boss.x + boss.width/2));
-          setBalls(prev => prev.map(b => b.id === ball.id ? { ...b, dx: Math.cos(angle) * b.speed, dy: Math.sin(angle) * b.speed } : b));
+          setBalls(prev => prev.map(b => b.id === ball.id ? { ...b, dx: Math.cos(angle) * b.speed, dy: Math.sin(angle) * b.speed, lastHitTime: now } : b));
           
           setBoss(prev => {
             if (!prev) return null;
@@ -1892,12 +1898,18 @@ export const Game = ({
     // Resurrected boss collisions with balls
     resurrectedBosses.forEach((resBoss, bossIdx) => {
       balls.forEach(ball => {
+        // Add cooldown check to prevent multiple hits
+        const now = Date.now();
+        if (ball.lastHitTime && now - ball.lastHitTime < 50) {
+          return; // Skip this collision check
+        }
+        
         if (!ball.waitingToLaunch && ball.x + ball.radius > resBoss.x && ball.x - ball.radius < resBoss.x + resBoss.width && ball.y + ball.radius > resBoss.y && ball.y - ball.radius < resBoss.y + resBoss.height) {
           soundManager.playBounce();
           setScreenShake(6);
           setTimeout(() => setScreenShake(0), 400);
           const angle = Math.atan2(ball.y - (resBoss.y + resBoss.height/2), ball.x - (resBoss.x + resBoss.width/2));
-          setBalls(prev => prev.map(b => b.id === ball.id ? { ...b, dx: Math.cos(angle) * b.speed, dy: Math.sin(angle) * b.speed } : b));
+          setBalls(prev => prev.map(b => b.id === ball.id ? { ...b, dx: Math.cos(angle) * b.speed, dy: Math.sin(angle) * b.speed, lastHitTime: now } : b));
           
           setResurrectedBosses(prev => {
             const updated = [...prev];
