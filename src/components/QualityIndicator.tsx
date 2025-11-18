@@ -46,7 +46,7 @@ export const QualityIndicator = ({ quality, autoAdjustEnabled, fps }: QualityInd
               className="font-bold"
               style={{ color: fps >= 55 ? 'hsl(120, 60%, 50%)' : fps >= 35 ? 'hsl(50, 90%, 55%)' : 'hsl(0, 70%, 55%)' }}
             >
-              {Math.round(fps)}
+              {Math.round(fps)}/60
             </span>
           </div>
         )}
