@@ -6,6 +6,7 @@ import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { EndScreen } from "./EndScreen";
 import { GameLoopDebugOverlay } from "./GameLoopDebugOverlay";
+import { SubstepDebugOverlay } from "./SubstepDebugOverlay";
 import { QualityIndicator } from "./QualityIndicator";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -99,6 +100,7 @@ export const Game = ({
   const [lastScoreMilestone, setLastScoreMilestone] = useState(0);
   const [scoreBlinking, setScoreBlinking] = useState(false);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
+  const [showSubstepDebug, setShowSubstepDebug] = useState(false);
   const [currentFps, setCurrentFps] = useState(60);
   
   // Game statistics tracking
@@ -929,6 +931,13 @@ export const Game = ({
       } else if (e.key === "m" || e.key === "M") {
         const enabled = soundManager.toggleMute();
         toast.success(enabled ? "Music on" : "Music muted");
+      } else if (e.key === "b" || e.key === "B") {
+        // Toggle substep debug overlay
+        setShowSubstepDebug(prev => {
+          const newValue = !prev;
+          toast.success(newValue ? "Ball substep debug enabled" : "Ball substep debug disabled");
+          return newValue;
+        });
       } else if (e.key === "l" || e.key === "L") {
         // Toggle debug overlay
         setShowDebugOverlay(prev => {
@@ -1004,6 +1013,26 @@ export const Game = ({
       document.removeEventListener("pointerlockchange", handlePointerLockChange);
     };
   }, [handleMouseMove, handleTouchMove, handleClick, nextLevel, gameState]);
+  
+  // Get substep debug info for overlay
+  const getSubstepDebugInfo = useCallback(() => {
+    if (balls.length === 0) {
+      return { substeps: 0, ballSpeed: 0, ballCount: 0, maxSpeed: 0 };
+    }
+    
+    const speeds = balls.map(ball => Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy));
+    const maxBallSpeed = Math.max(...speeds);
+    const minBrickDimension = Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT);
+    const substeps = Math.max(1, Math.ceil(maxBallSpeed * speedMultiplier / (minBrickDimension * 0.4)));
+    
+    return {
+      substeps,
+      ballSpeed: maxBallSpeed * speedMultiplier,
+      ballCount: balls.length,
+      maxSpeed: maxBallSpeed
+    };
+  }, [balls, speedMultiplier, SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT]);
+  
   const checkCollision = useCallback(() => {
     if (!paddle || balls.length === 0) return;
     setBalls(prevBalls => {
@@ -1026,19 +1055,54 @@ export const Game = ({
           newBall.x += substepDx * speedMultiplier;
           newBall.y += substepDy * speedMultiplier;
 
-          // Wall collision
-          if (newBall.x > SCALED_CANVAS_WIDTH - newBall.radius || newBall.x < newBall.radius) {
-            newBall.dx = -newBall.dx;
-            // Correct position
-            if (newBall.x > SCALED_CANVAS_WIDTH - newBall.radius) {
-              newBall.x = SCALED_CANVAS_WIDTH - newBall.radius;
+          // Wall collision with cooldown to prevent corner traps
+          const now = Date.now();
+          const wallCooldown = 10; // 10ms cooldown between wall hits
+          
+          const canHitWall = !newBall.lastWallHitTime || (now - newBall.lastWallHitTime >= wallCooldown);
+          
+          if (canHitWall) {
+            // Check for corner collision (both walls hit simultaneously)
+            const hitLeftWall = newBall.x < newBall.radius;
+            const hitRightWall = newBall.x > SCALED_CANVAS_WIDTH - newBall.radius;
+            const hitTopWall = newBall.y < newBall.radius;
+            
+            const isCornerCollision = (hitLeftWall || hitRightWall) && hitTopWall;
+            
+            if (isCornerCollision) {
+              // Special corner handling - reverse both velocities
+              newBall.dx = -newBall.dx;
+              newBall.dy = -newBall.dy;
+              
+              // Push ball away from BOTH walls with larger buffer
+              if (hitLeftWall) newBall.x = newBall.radius + 1;
+              if (hitRightWall) newBall.x = SCALED_CANVAS_WIDTH - newBall.radius - 1;
+              if (hitTopWall) newBall.y = newBall.radius + 1;
+              
+              newBall.lastWallHitTime = now;
+              soundManager.playBounce();
             } else {
-              newBall.x = newBall.radius;
+              // Normal wall collision handling
+              if (newBall.x > SCALED_CANVAS_WIDTH - newBall.radius || newBall.x < newBall.radius) {
+                newBall.dx = -newBall.dx;
+                newBall.lastWallHitTime = now;
+                soundManager.playBounce();
+                
+                // Correct position with buffer
+                if (newBall.x > SCALED_CANVAS_WIDTH - newBall.radius) {
+                  newBall.x = SCALED_CANVAS_WIDTH - newBall.radius - 0.5;
+                } else {
+                  newBall.x = newBall.radius + 0.5;
+                }
+              }
+              
+              if (newBall.y < newBall.radius) {
+                newBall.dy = -newBall.dy;
+                newBall.lastWallHitTime = now;
+                newBall.y = newBall.radius + 0.5;
+                soundManager.playBounce();
+              }
             }
-          }
-          if (newBall.y < newBall.radius) {
-            newBall.dy = -newBall.dy;
-            newBall.y = newBall.radius;
           }
 
           // Paddle collision - only bounce from top 50% of paddle
@@ -3325,6 +3389,12 @@ export const Game = ({
                   quality={quality}
                   autoAdjustEnabled={autoAdjustEnabled}
                   fps={currentFps}
+                />
+                
+                {/* Substep Debug Overlay */}
+                <SubstepDebugOverlay 
+                  getDebugInfo={getSubstepDebugInfo}
+                  visible={showSubstepDebug}
                 />
 
                 {/* Right Panel - Stats and Controls */}
