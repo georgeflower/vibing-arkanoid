@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 interface GameStats {
   totalBricksDestroyed: number;
   totalShots: number;
-  longestCombo: number;
   accuracy: number;
   levelSkipped: boolean;
   finalScore: number;
@@ -71,7 +70,6 @@ export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: E
   const animatedScore = useAnimatedCounter(stats?.finalScore ?? 0, 2000, 0);
   const animatedLevel = useAnimatedCounter(stats?.finalLevel ?? 1, 800, 100);
   const animatedBricks = useAnimatedCounter(stats?.totalBricksDestroyed ?? 0, 1500, 200);
-  const animatedCombo = useAnimatedCounter(stats?.longestCombo ?? 0, 1200, 300);
   const animatedPowerUps = useAnimatedCounter(stats?.powerUpsCollected ?? 0, 1000, 400);
   const animatedTurretKills = useAnimatedCounter(stats?.bricksDestroyedByTurrets ?? 0, 1300, 500);
   const animatedEnemies = useAnimatedCounter(stats?.enemiesKilled ?? 0, 1400, 600);
@@ -119,11 +117,6 @@ export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: E
           <div className="flex justify-between text-sm md:text-xl">
             <span className="text-gray-300">Bricks Destroyed:</span>
             <span className="text-white font-bold">{animatedBricks}</span>
-          </div>
-          
-          <div className="flex justify-between text-sm md:text-xl">
-            <span className="text-gray-300">Longest Combo:</span>
-            <span className="text-white font-bold">{animatedCombo}x</span>
           </div>
           
           <div className="flex justify-between text-sm md:text-xl">
