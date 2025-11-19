@@ -382,16 +382,20 @@ export const Game = ({
     for (let row = 0; row < BRICK_ROWS; row++) {
       for (let col = 0; col < BRICK_COLS; col++) {
         const cellValue = layout[row][col];
-        if (cellValue === true || cellValue === 2) {
+        if (cellValue === true || cellValue === 2 || cellValue === 3 || cellValue === 4) {
           const isIndestructible = cellValue === 2;
           
-          // Determine brick type based on level and random chance
+          // Determine brick type based on cell value or level
           let brickType: "normal" | "metal" | "cracked" | "explosive" = "normal";
-          if (isIndestructible) {
+          if (cellValue === 2) {
             brickType = "metal";
+          } else if (cellValue === 3) {
+            brickType = "explosive";
+          } else if (cellValue === 4) {
+            brickType = "cracked";
           } else {
+            // For true values, randomly assign special types after level 3
             const typeRoll = Math.random();
-            // After level 3, introduce special bricks
             if (currentLevel >= 3) {
               if (typeRoll < 0.08) {
                 brickType = "explosive"; // 8% chance
