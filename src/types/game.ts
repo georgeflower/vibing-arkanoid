@@ -1,3 +1,5 @@
+export type BrickType = "normal" | "metal" | "cracked" | "explosive";
+
 export interface Brick {
   x: number;
   y: number;
@@ -10,6 +12,7 @@ export interface Brick {
   maxHits: number;
   hitsRemaining: number;
   isIndestructible?: boolean;
+  type: BrickType;
 }
 
 export interface Ball {
