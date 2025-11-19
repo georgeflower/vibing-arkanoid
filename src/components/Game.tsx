@@ -465,11 +465,12 @@ export const Game = ({
 
     // Initialize ball with speed multiplier - waiting to launch
     const baseSpeed = 5.175; // 50% faster than previous base speed of 3.45
+    const initialAngle = -20 * Math.PI / 180; // Start from left side
     const initialBall: Ball = {
       x: SCALED_CANVAS_WIDTH / 2,
       y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
-      dx: baseSpeed,
-      dy: -baseSpeed,
+      dx: baseSpeed * Math.sin(initialAngle),  // Calculate from angle
+      dy: -baseSpeed * Math.cos(initialAngle), // Calculate from angle
       radius: SCALED_BALL_RADIUS,
       speed: baseSpeed,
       id: nextBallId.current++,
@@ -1468,11 +1469,12 @@ export const Game = ({
           } else {
             // Reset ball and clear power-ups, but wait for click to continue
             const baseSpeed = 5.175; // 50% faster base speed
+            const initialAngle = -20 * Math.PI / 180; // Start from left side
             const resetBall: Ball = {
               x: SCALED_CANVAS_WIDTH / 2,
               y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
-              dx: baseSpeed,
-              dy: -baseSpeed,
+              dx: baseSpeed * Math.sin(initialAngle),  // Calculate from angle
+              dy: -baseSpeed * Math.cos(initialAngle), // Calculate from angle
               radius: SCALED_BALL_RADIUS,
               speed: baseSpeed,
               id: nextBallId.current++,
