@@ -98,6 +98,8 @@ export const Game = ({
   const [lastPaddleHitTime, setLastPaddleHitTime] = useState(0);
   const [screenShake, setScreenShake] = useState(0);
   const [backgroundFlash, setBackgroundFlash] = useState(0);
+  const [lastBossSpawnTime, setLastBossSpawnTime] = useState(0);
+  const [bossSpawnAnimation, setBossSpawnAnimation] = useState<{active: boolean; startTime: number} | null>(null);
   const [lastScoreMilestone, setLastScoreMilestone] = useState(0);
   const [scoreBlinking, setScoreBlinking] = useState(false);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
@@ -518,6 +520,8 @@ export const Game = ({
     setBonusLetters([]);
     setCollectedLetters(new Set());
     setEnemiesKilled(0);
+    setLastBossSpawnTime(0);
+    setBossSpawnAnimation(null);
     setBoss(null);
     setResurrectedBosses([]);
     setBossAttacks([]);
@@ -588,6 +592,8 @@ export const Game = ({
     // Don't reset collected letters between levels
     // Reset accumulated slowdown speed on level clear
     setBrickHitSpeedAccumulated(0);
+    setLastBossSpawnTime(0);
+    setBossSpawnAnimation(null);
     setTimer(0); // Reset timer on level clear (for turret drop chance reset)
     // Only clear boss state if the new level is NOT a boss level
     if (!BOSS_LEVELS.includes(newLevel)) {
@@ -2835,6 +2841,140 @@ export const Game = ({
     }
   }, [timer, gameState, lastEnemySpawnTime, enemySpawnCount, level, settings.difficulty]);
 
+  // Boss enemy spawning system
+  useEffect(() => {
+    if (gameState !== "playing" || !boss) return;
+    
+    const BOSS_SPAWN_INTERVAL = 15; // 15 seconds
+    const MAX_BOSS_ENEMIES = 6; // Maximum enemies on screen
+    const ENEMIES_PER_SPAWN = 2; // Spawn 2 at a time
+    
+    // Check if enough time has passed and we haven't reached the cap
+    if (timer - lastBossSpawnTime >= BOSS_SPAWN_INTERVAL && enemies.length < MAX_BOSS_ENEMIES) {
+      const enemiesToSpawn = Math.min(ENEMIES_PER_SPAWN, MAX_BOSS_ENEMIES - enemies.length);
+      const newEnemies: Enemy[] = [];
+      
+      for (let i = 0; i < enemiesToSpawn; i++) {
+        const enemyId = nextEnemyId.current++;
+        const enemyType = boss.type;
+        
+        // Calculate spawn position (from boss center with slight offset)
+        const spawnAngle = (Math.PI / 3) * i - Math.PI / 6;
+        const spawnOffsetX = Math.cos(spawnAngle) * 40;
+        const spawnOffsetY = Math.sin(spawnAngle) * 40;
+        
+        // Create enemy based on type with smaller size
+        let newEnemy: Enemy;
+        const baseSpeed = 2.0;
+        
+        if (enemyType === "pyramid") {
+          const angle = Math.random() * Math.PI * 2;
+          newEnemy = {
+            id: enemyId,
+            type: "pyramid",
+            x: boss.x + boss.width / 2 - 17.5 + spawnOffsetX,
+            y: boss.y + boss.height / 2 - 17.5 + spawnOffsetY,
+            width: 35,
+            height: 35,
+            rotation: 0,
+            rotationX: Math.random() * Math.PI,
+            rotationY: Math.random() * Math.PI,
+            rotationZ: Math.random() * Math.PI,
+            speed: baseSpeed,
+            dx: Math.cos(angle) * baseSpeed,
+            dy: Math.sin(angle) * baseSpeed
+          };
+        } else if (enemyType === "sphere") {
+          const angle = Math.random() * Math.PI * 2;
+          newEnemy = {
+            id: enemyId,
+            type: "sphere",
+            x: boss.x + boss.width / 2 - 15 + spawnOffsetX,
+            y: boss.y + boss.height / 2 - 15 + spawnOffsetY,
+            width: 30,
+            height: 30,
+            rotation: 0,
+            rotationX: Math.random() * Math.PI,
+            rotationY: Math.random() * Math.PI,
+            rotationZ: Math.random() * Math.PI,
+            speed: baseSpeed * 1.25,
+            dx: Math.cos(angle) * baseSpeed * 1.25,
+            dy: Math.sin(angle) * baseSpeed * 1.25,
+            hits: 0,
+            isAngry: false
+          };
+        } else { // cube
+          const angle = Math.random() * Math.PI * 2;
+          newEnemy = {
+            id: enemyId,
+            type: "cube",
+            x: boss.x + boss.width / 2 - 12.5 + spawnOffsetX,
+            y: boss.y + boss.height / 2 - 12.5 + spawnOffsetY,
+            width: 25,
+            height: 25,
+            rotation: 0,
+            rotationX: 0,
+            rotationY: 0,
+            rotationZ: 0,
+            speed: baseSpeed,
+            dx: Math.cos(angle) * baseSpeed,
+            dy: Math.abs(Math.sin(angle)) * baseSpeed
+          };
+        }
+        
+        newEnemies.push(newEnemy);
+        
+        // Set up bomb dropping for this enemy
+        const minInterval = 5;
+        const maxInterval = 10;
+        const randomInterval = minInterval * 1000 + Math.random() * (maxInterval - minInterval) * 1000;
+        
+        const projectileInterval = setInterval(() => {
+          setEnemies(currentEnemies => {
+            const currentEnemy = currentEnemies.find(e => e.id === enemyId);
+            if (!currentEnemy) {
+              clearInterval(projectileInterval);
+              bombIntervalsRef.current.delete(enemyId);
+              return currentEnemies;
+            }
+            
+            const projectileType = enemyType === "pyramid" ? "pyramidBullet" : "bomb";
+            
+            setBombs(prev => [...prev, {
+              x: currentEnemy.x + currentEnemy.width / 2 - 5,
+              y: currentEnemy.y + currentEnemy.height,
+              width: 10,
+              height: 10,
+              speed: 3,
+              enemyId: enemyId,
+              type: projectileType
+            }]);
+            
+            if (enemyType === "pyramid") {
+              soundManager.playPyramidBulletSound();
+            } else {
+              soundManager.playBombDropSound();
+            }
+            
+            return currentEnemies;
+          });
+        }, randomInterval);
+        
+        bombIntervalsRef.current.set(enemyId, projectileInterval);
+      }
+      
+      setEnemies(prev => [...prev, ...newEnemies]);
+      setLastBossSpawnTime(timer);
+      
+      // Trigger spawn animation
+      setBossSpawnAnimation({ active: true, startTime: Date.now() });
+      setTimeout(() => setBossSpawnAnimation(null), 500);
+      
+      soundManager.playExplosion();
+      toast.warning(`${boss.type.toUpperCase()} spawned ${enemiesToSpawn} minion${enemiesToSpawn > 1 ? 's' : ''}!`, { duration: 2000 });
+    }
+  }, [timer, gameState, boss, enemies.length, lastBossSpawnTime, SCALED_CANVAS_WIDTH]);
+
   // Keyboard controls for launch angle
   useEffect(() => {
     const waitingBall = balls.find(ball => ball.waitingToLaunch);
@@ -3028,6 +3168,8 @@ export const Game = ({
     setCollectedLetters(new Set());
     setLetterLevelAssignments(createRandomLetterAssignments());
     setBrickHitSpeedAccumulated(0);
+    setLastBossSpawnTime(0);
+    setBossSpawnAnimation(null);
     setEnemiesKilled(0);
     
     // Clear boss state if not a boss level, or reset and trigger intro if it is
@@ -3387,6 +3529,7 @@ export const Game = ({
                       highScoreParticles={highScoreParticles}
                       showHighScoreEntry={showHighScoreEntry}
                       bossIntroActive={bossIntroActive}
+                      bossSpawnAnimation={bossSpawnAnimation}
                     />
                     {showDebugOverlay && gameLoopRef.current && (
                       <GameLoopDebugOverlay 
