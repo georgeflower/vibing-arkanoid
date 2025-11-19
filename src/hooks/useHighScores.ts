@@ -1,64 +1,130 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+export type LeaderboardType = 'all-time' | 'weekly' | 'daily';
 
 export interface HighScore {
+  id?: string;
   name: string;
   score: number;
   level: number;
   difficulty?: string;
   beatLevel50?: boolean;
   startingLives?: number;
+  createdAt?: string;
 }
 
-const STORAGE_KEY = "neon_breaker_high_scores";
-const MAX_HIGH_SCORES = 10;
+const MAX_HIGH_SCORES = 20;
 
-export const useHighScores = () => {
+export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => {
   const [highScores, setHighScores] = useState<HighScore[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load high scores from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setHighScores(parsed);
-      } catch (e) {
-        console.error("Failed to load high scores:", e);
+  const fetchHighScores = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      let query = supabase
+        .from('high_scores')
+        .select('*')
+        .order('starting_lives', { ascending: true })
+        .order('score', { ascending: false })
+        .limit(MAX_HIGH_SCORES);
+
+      // Apply time filters based on leaderboard type
+      if (leaderboardType === 'weekly') {
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        query = query.gte('created_at', weekAgo.toISOString());
+      } else if (leaderboardType === 'daily') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        query = query.gte('created_at', today.toISOString());
       }
-    }
-  }, []);
 
-  // Save high scores to localStorage whenever they change
-  useEffect(() => {
-    if (highScores.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(highScores));
-    }
-  }, [highScores]);
+      const { data, error: fetchError } = await query;
 
-  const isHighScore = (score: number): boolean => {
-    if (highScores.length < MAX_HIGH_SCORES) return true;
-    return score > highScores[highScores.length - 1].score;
+      if (fetchError) throw fetchError;
+
+      const scores: HighScore[] = (data || []).map(row => ({
+        id: row.id,
+        name: row.player_name,
+        score: row.score,
+        level: row.level,
+        difficulty: row.difficulty || undefined,
+        beatLevel50: row.beat_level_50 || undefined,
+        startingLives: row.starting_lives || undefined,
+        createdAt: row.created_at,
+      }));
+
+      setHighScores(scores);
+    } catch (err) {
+      console.error('Failed to fetch high scores:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load high scores');
+      toast.error('Failed to load high scores');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const addHighScore = (name: string, score: number, level: number, difficulty?: string, beatLevel50?: boolean, startingLives?: number) => {
-    const newScore: HighScore = { name, score, level, difficulty, beatLevel50, startingLives };
-    const updatedScores = [...highScores, newScore]
-      .sort((a, b) => {
-        // Sort by starting lives first (lower is better), then by score (higher is better)
-        const aLives = a.startingLives || 3;
-        const bLives = b.startingLives || 3;
-        if (aLives !== bLives) {
-          return aLives - bLives;
-        }
-        return b.score - a.score;
-      })
-      .slice(0, MAX_HIGH_SCORES);
-    setHighScores(updatedScores);
+  useEffect(() => {
+    fetchHighScores();
+  }, [leaderboardType]);
+
+  const isHighScore = async (score: number): Promise<boolean> => {
+    try {
+      const { count, error } = await supabase
+        .from('high_scores')
+        .select('*', { count: 'exact', head: true })
+        .gte('score', score);
+
+      if (error) throw error;
+      
+      return (count || 0) < MAX_HIGH_SCORES || highScores.some(hs => score > hs.score);
+    } catch (err) {
+      console.error('Failed to check high score:', err);
+      return false;
+    }
+  };
+
+  const addHighScore = async (
+    name: string,
+    score: number,
+    level: number,
+    difficulty?: string,
+    beatLevel50?: boolean,
+    startingLives?: number
+  ) => {
+    try {
+      const { error: insertError } = await supabase
+        .from('high_scores')
+        .insert({
+          player_name: name,
+          score,
+          level,
+          difficulty,
+          beat_level_50: beatLevel50,
+          starting_lives: startingLives,
+        });
+
+      if (insertError) throw insertError;
+
+      toast.success('High score submitted!');
+      
+      await fetchHighScores();
+    } catch (err) {
+      console.error('Failed to add high score:', err);
+      toast.error('Failed to submit high score');
+      throw err;
+    }
   };
 
   const clearHighScores = () => {
-    setHighScores([]);
-    localStorage.removeItem(STORAGE_KEY);
+    console.warn('clearHighScores: Not available for cloud storage');
+    toast.error('Cannot clear cloud high scores');
   };
 
   return {
@@ -66,5 +132,8 @@ export const useHighScores = () => {
     isHighScore,
     addHighScore,
     clearHighScores,
+    isLoading,
+    error,
+    refetch: fetchHighScores,
   };
 };

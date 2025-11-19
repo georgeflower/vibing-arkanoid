@@ -14,7 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      high_scores: {
+        Row: {
+          beat_level_50: boolean | null
+          created_at: string
+          difficulty: string | null
+          id: string
+          level: number
+          player_name: string
+          score: number
+          starting_lives: number | null
+        }
+        Insert: {
+          beat_level_50?: boolean | null
+          created_at?: string
+          difficulty?: string | null
+          id?: string
+          level: number
+          player_name: string
+          score: number
+          starting_lives?: number | null
+        }
+        Update: {
+          beat_level_50?: boolean | null
+          created_at?: string
+          difficulty?: string | null
+          id?: string
+          level?: number
+          player_name?: string
+          score?: number
+          starting_lives?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
