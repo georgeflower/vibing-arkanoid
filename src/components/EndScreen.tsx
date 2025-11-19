@@ -88,70 +88,70 @@ export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: E
         backgroundRepeat: 'no-repeat'
       }}
     >
-      <div className="text-center bg-black/70 p-8 rounded-lg border-4 border-red-500/50 max-w-2xl animate-fade-in">
-        <h1 className="text-6xl font-bold text-red-500 mb-6 animate-pulse">GAME OVER</h1>
+      <div className="text-center bg-black/70 p-4 md:p-8 rounded-lg border-4 border-red-500/50 w-[95vw] md:w-auto max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in">
+        <h1 className="text-3xl md:text-6xl font-bold text-red-500 mb-3 md:mb-6 animate-pulse">GAME OVER</h1>
         
         {stats?.levelSkipped && (
-          <div className="mb-6 p-4 bg-yellow-900/50 border-2 border-yellow-500 rounded animate-pulse">
-            <p className="text-3xl font-bold text-yellow-400">LEVEL SKIPPER!</p>
-            <p className="text-xl text-yellow-300">CHEATER - DISQUALIFIED FROM HIGH SCORES</p>
+          <div className="mb-3 md:mb-6 p-2 md:p-4 bg-yellow-900/50 border-2 border-yellow-500 rounded animate-pulse">
+            <p className="text-xl md:text-3xl font-bold text-yellow-400">LEVEL SKIPPER!</p>
+            <p className="text-sm md:text-xl text-yellow-300">CHEATER - DISQUALIFIED FROM HIGH SCORES</p>
           </div>
         )}
         
-        <div className="mb-6 space-y-3 text-left">
-          <h2 className="text-3xl font-bold text-cyan-400 mb-4 text-center">STATISTICS</h2>
+        <div className="mb-3 md:mb-6 space-y-1.5 md:space-y-3 text-left">
+          <h2 className="text-xl md:text-3xl font-bold text-cyan-400 mb-2 md:mb-4 text-center">STATISTICS</h2>
           
-          <div className="flex justify-between text-xl">
+          <div className="flex justify-between text-sm md:text-xl">
             <span className="text-gray-300">Final Score:</span>
             <span className="text-white font-bold">{animatedScore.toString().padStart(6, '0')}</span>
           </div>
           
-          <div className="flex justify-between text-xl">
+          <div className="flex justify-between text-sm md:text-xl">
             <span className="text-gray-300">Level Reached:</span>
             <span className="text-white font-bold">{animatedLevel}</span>
           </div>
           
-          <div className="flex justify-between text-xl">
+          <div className="flex justify-between text-sm md:text-xl">
             <span className="text-gray-300">Time Played:</span>
             <span className="text-cyan-400 font-bold">{formatTime(animatedPlayTime)}</span>
           </div>
           
-          <div className="flex justify-between text-xl">
+          <div className="flex justify-between text-sm md:text-xl">
             <span className="text-gray-300">Bricks Destroyed:</span>
             <span className="text-white font-bold">{animatedBricks}</span>
           </div>
           
-          <div className="flex justify-between text-xl">
+          <div className="flex justify-between text-sm md:text-xl">
             <span className="text-gray-300">Longest Combo:</span>
             <span className="text-white font-bold">{animatedCombo}x</span>
           </div>
           
-          <div className="flex justify-between text-xl">
+          <div className="flex justify-between text-sm md:text-xl">
             <span className="text-gray-300">Power-ups Collected:</span>
             <span className="text-white font-bold">{animatedPowerUps}</span>
           </div>
           
-          <div className="flex justify-between text-xl">
+          <div className="flex justify-between text-sm md:text-xl">
             <span className="text-gray-300">Turret Brick Kills:</span>
             <span className="text-white font-bold">{animatedTurretKills}</span>
           </div>
           
-          <div className="flex justify-between text-xl">
+          <div className="flex justify-between text-sm md:text-xl">
             <span className="text-gray-300">Enemies Killed:</span>
             <span className="text-white font-bold">{animatedEnemies}</span>
           </div>
           
-          <div className="flex justify-between text-xl">
+          <div className="flex justify-between text-sm md:text-xl">
             <span className="text-gray-300">Bosses Defeated:</span>
             <span className="text-white font-bold">{animatedBosses}</span>
           </div>
         </div>
         
-        <div className="flex flex-col gap-3 mt-8">
+        <div className="flex flex-col gap-2 md:gap-3 mt-4 md:mt-8">
           {onRetryLevel && (
             <Button 
               onClick={onRetryLevel}
-              className="w-full text-xl py-6 bg-orange-600 hover:bg-orange-700 text-white font-bold"
+              className="w-full text-base md:text-xl py-3 md:py-6 bg-orange-600 hover:bg-orange-700 text-white font-bold"
             >
               RETRY LEVEL (Score Reset)
             </Button>
@@ -159,7 +159,7 @@ export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: E
           
           <Button 
             onClick={onContinue}
-            className="w-full text-xl py-6 bg-cyan-600 hover:bg-cyan-700 text-white font-bold"
+            className="w-full text-base md:text-xl py-3 md:py-6 bg-cyan-600 hover:bg-cyan-700 text-white font-bold"
           >
             HIGH SCORES
           </Button>
@@ -167,7 +167,7 @@ export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: E
           <Button 
             onClick={onReturnToMenu}
             variant="outline"
-            className="w-full text-xl py-6 border-2 border-white/30 text-white font-bold hover:bg-white/10"
+            className="w-full text-base md:text-xl py-3 md:py-6 border-2 border-white/30 text-white font-bold hover:bg-white/10"
           >
             MAIN MENU
           </Button>
