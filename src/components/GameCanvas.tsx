@@ -206,14 +206,14 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             
             ctx.shadowBlur = 0;
           } else if (brick.type === "cracked") {
-            // Cracked brick - use texture based on hits remaining
+            // Cracked brick - use texture based on hits remaining (1.png = least damaged, 3.png = most damaged)
             let crackedImage: HTMLImageElement | null = null;
-            if (brick.hitsRemaining === 3 && crackedBrick3Ref.current) {
-              crackedImage = crackedBrick3Ref.current;
+            if (brick.hitsRemaining === 3 && crackedBrick1Ref.current) {
+              crackedImage = crackedBrick1Ref.current;
             } else if (brick.hitsRemaining === 2 && crackedBrick2Ref.current) {
               crackedImage = crackedBrick2Ref.current;
-            } else if (brick.hitsRemaining === 1 && crackedBrick1Ref.current) {
-              crackedImage = crackedBrick1Ref.current;
+            } else if (brick.hitsRemaining === 1 && crackedBrick3Ref.current) {
+              crackedImage = crackedBrick3Ref.current;
             }
             
             if (crackedImage && isImageValid(crackedImage)) {
