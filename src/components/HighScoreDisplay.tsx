@@ -48,6 +48,8 @@ const Scene3D = () => (
 
 export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time' }: HighScoreDisplayProps) => {
   const { highScores, isLoading } = useHighScores(leaderboardType);
+  const [selectedType, setSelectedType] = useState<LeaderboardType>(leaderboardType);
+  const { highScores: currentScores, isLoading: currentLoading } = useHighScores(selectedType);
 
   return (
     <div className="fixed inset-0 w-full h-screen overflow-hidden">
@@ -58,34 +60,57 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time' }: High
       </div>
       <div className="absolute inset-0 w-full h-full flex items-center justify-center p-4">
         <div className="relative z-10 bg-slate-900/90 backdrop-blur-md rounded-lg p-8 border-2 border-cyan-500/50 max-w-3xl w-full">
-          <h2 className="text-5xl font-bold text-center mb-8 text-cyan-400 font-mono">
-            {leaderboardType === 'daily' && 'DAILY '}
-            {leaderboardType === 'weekly' && 'WEEKLY '}
+          <h2 className="text-5xl font-bold text-center mb-4 text-cyan-400">
             HIGH SCORES
           </h2>
-          <div className="space-y-3 mb-8 max-h-[60vh] overflow-y-auto">
-            {isLoading ? (
-              <div className="text-center text-slate-400 py-12 font-mono">Loading scores...</div>
-            ) : highScores.length === 0 ? (
-              <div className="text-center text-slate-500 py-12 font-mono">No scores yet!</div>
+          
+          <div className="flex justify-center gap-2 mb-6">
+            <Button
+              onClick={() => setSelectedType('all-time')}
+              variant={selectedType === 'all-time' ? 'default' : 'outline'}
+              className="px-4 py-2 text-sm font-bold"
+            >
+              ALL TIME
+            </Button>
+            <Button
+              onClick={() => setSelectedType('weekly')}
+              variant={selectedType === 'weekly' ? 'default' : 'outline'}
+              className="px-4 py-2 text-sm font-bold"
+            >
+              WEEKLY
+            </Button>
+            <Button
+              onClick={() => setSelectedType('daily')}
+              variant={selectedType === 'daily' ? 'default' : 'outline'}
+              className="px-4 py-2 text-sm font-bold"
+            >
+              DAILY
+            </Button>
+          </div>
+
+          <div className="space-y-2 mb-8 max-h-[60vh] overflow-y-auto">
+            {currentLoading ? (
+              <div className="text-center text-slate-400 py-12">Loading scores...</div>
+            ) : currentScores.length === 0 ? (
+              <div className="text-center text-slate-500 py-12">No scores yet!</div>
             ) : (
-              highScores.map((entry, index) => (
-                <div key={entry.id || index} className="flex justify-between items-center text-sm md:text-xl px-4 py-2 bg-slate-800/60 rounded-lg border border-cyan-500/30">
-                  <span className="text-cyan-300 w-12">{index + 1}.</span>
-                  <span className="text-white font-bold flex items-center flex-1">
+              currentScores.map((entry, index) => (
+                <div key={entry.id || index} className="flex items-center text-sm md:text-xl px-4 py-2 bg-slate-800/60 rounded-lg border border-cyan-500/30 whitespace-nowrap">
+                  <span className="text-cyan-300 w-8 flex-shrink-0">{index + 1}.</span>
+                  <span className="text-white font-bold flex items-center min-w-0 mr-2 flex-shrink-0">
                     {entry.beatLevel50 && <span className="mr-1">👑</span>}
                     <span>{entry.name}</span>
                     {entry.difficulty === "godlike" && <span className="text-red-500 text-xs ml-1">GOD-MODE</span>}
                   </span>
-                  <span className="text-white font-bold">{entry.score.toString().padStart(6, '0')}</span>
-                  <span className="text-white w-16 text-right">LVL {entry.level}</span>
-                  <span className="text-white w-20 text-right">{entry.startingLives || 3}❤️</span>
+                  <span className="text-white font-bold mx-2 flex-shrink-0">{entry.score.toString().padStart(6, '0')}</span>
+                  <span className="text-white flex-shrink-0 mx-2">LVL{entry.level}</span>
+                  <span className="text-white flex-shrink-0 ml-auto">{entry.startingLives || 3}❤️</span>
                 </div>
               ))
             )}
           </div>
           <div className="flex justify-center">
-            <Button onClick={onClose} className="px-8 py-4 text-xl font-bold font-mono">CONTINUE</Button>
+            <Button onClick={onClose} className="px-8 py-4 text-xl font-bold">CONTINUE</Button>
           </div>
         </div>
       </div>
