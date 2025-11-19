@@ -1025,7 +1025,7 @@ export const Game = ({
     const speeds = balls.map(ball => Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy));
     const maxBallSpeed = Math.max(...speeds);
     const minBrickDimension = Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT);
-    const substeps = Math.max(2, Math.ceil(maxBallSpeed * speedMultiplier / (minBrickDimension * 0.25)));
+    const substeps = Math.max(2, Math.ceil(maxBallSpeed * speedMultiplier / (minBrickDimension * 0.15)));
     
     return {
       substeps,
@@ -1045,7 +1045,7 @@ export const Game = ({
         
         // Calculate required substeps based on ball speed (adaptive)
         // Minimum 2 substeps to prevent tunneling even at normal speeds
-        const PHYSICS_SUBSTEPS = Math.max(2, Math.ceil(ballSpeed * speedMultiplier / (minBrickDimension * 0.25)));
+        const PHYSICS_SUBSTEPS = Math.max(2, Math.ceil(ballSpeed * speedMultiplier / (minBrickDimension * 0.15)));
         
         let newBall = { ...ball };
         const substepDx = ball.dx / PHYSICS_SUBSTEPS;
