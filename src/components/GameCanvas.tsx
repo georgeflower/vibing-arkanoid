@@ -60,6 +60,33 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       return !!(img && img.complete && img.naturalHeight !== 0);
     };
     
+    // Helper function to detect adjacent metal bricks for seamless rendering
+    const getAdjacentMetalBricks = (brick: Brick, allBricks: Brick[]) => {
+      const tolerance = 2; // Small tolerance for floating point comparison
+      return {
+        top: allBricks.find(b => 
+          b.visible && b.type === "metal" && 
+          Math.abs(b.x - brick.x) < tolerance && 
+          Math.abs((b.y + b.height) - brick.y) < tolerance
+        ),
+        bottom: allBricks.find(b => 
+          b.visible && b.type === "metal" && 
+          Math.abs(b.x - brick.x) < tolerance && 
+          Math.abs(b.y - (brick.y + brick.height)) < tolerance
+        ),
+        left: allBricks.find(b => 
+          b.visible && b.type === "metal" && 
+          Math.abs(b.y - brick.y) < tolerance && 
+          Math.abs((b.x + b.width) - brick.x) < tolerance
+        ),
+        right: allBricks.find(b => 
+          b.visible && b.type === "metal" && 
+          Math.abs(b.y - brick.y) < tolerance && 
+          Math.abs(b.x - (brick.x + brick.width)) < tolerance
+        )
+      };
+    };
+    
     // Load power-up images, bonus letter images, and paddle image
     useEffect(() => {
       Object.entries(powerUpImages).forEach(([type, src]) => {
@@ -123,48 +150,62 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.shadowBlur = 0;
           
           // Metal (Indestructible) bricks - steel appearance
-          if (brick.type === "metal") {
-            // Steel base color
-            ctx.fillStyle = 'hsl(0, 0%, 33%)';
-            ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
-            
-            // Metallic highlight
-            ctx.shadowBlur = 0;
+        if (brick.type === "metal") {
+          // Detect adjacent metal bricks for seamless melting
+          const adjacent = getAdjacentMetalBricks(brick, bricks);
+          
+          // Steel base color - fill entire brick area
+          ctx.fillStyle = 'hsl(0, 0%, 33%)';
+          ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+          
+          ctx.shadowBlur = 0;
+          
+          // Top metallic highlight - only if no brick above
+          if (!adjacent.top) {
             ctx.fillStyle = "rgba(200, 200, 200, 0.4)";
             ctx.fillRect(brick.x, brick.y, brick.width, 4);
-            
-            // Left metallic shine
+          }
+          
+          // Left metallic shine - only if no brick to the left
+          if (!adjacent.left) {
+            ctx.fillStyle = "rgba(200, 200, 200, 0.4)";
             ctx.fillRect(brick.x, brick.y, 4, brick.height);
-            
-            // Darker bottom
+          }
+          
+          // Darker bottom - only if no brick below
+          if (!adjacent.bottom) {
             ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
             ctx.fillRect(brick.x, brick.y + brick.height - 4, brick.width, 4);
-            
-            // Right shadow
+          }
+          
+          // Right shadow - only if no brick to the right
+          if (!adjacent.right) {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
             ctx.fillRect(brick.x + brick.width - 4, brick.y, 4, brick.height);
-            
-            // Steel rivets pattern
-            ctx.fillStyle = "rgba(100, 100, 100, 0.8)";
-            const rivetSize = 3;
-            const spacing = 12;
-            for (let py = brick.y + spacing / 2; py < brick.y + brick.height; py += spacing) {
-              for (let px = brick.x + spacing / 2; px < brick.x + brick.width; px += spacing) {
-                ctx.beginPath();
-                ctx.arc(px, py, rivetSize, 0, Math.PI * 2);
-                ctx.fill();
-              }
-            }
-            
-            // Diagonal hatching pattern
-            ctx.strokeStyle = "rgba(150, 150, 150, 0.15)";
-            ctx.lineWidth = 1;
-            for (let i = 0; i < brick.width + brick.height; i += 6) {
+          }
+          
+          // Steel rivets pattern - draw across entire brick
+          ctx.fillStyle = "rgba(100, 100, 100, 0.8)";
+          const rivetSize = 3;
+          const spacing = 12;
+          for (let py = brick.y + spacing / 2; py < brick.y + brick.height; py += spacing) {
+            for (let px = brick.x + spacing / 2; px < brick.x + brick.width; px += spacing) {
               ctx.beginPath();
-              ctx.moveTo(brick.x + i, brick.y);
-              ctx.lineTo(brick.x, brick.y + i);
-              ctx.stroke();
+              ctx.arc(px, py, rivetSize, 0, Math.PI * 2);
+              ctx.fill();
             }
-          } else if (brick.type === "explosive") {
+          }
+          
+          // Diagonal hatching pattern - continuous across brick
+          ctx.strokeStyle = "rgba(150, 150, 150, 0.15)";
+          ctx.lineWidth = 1;
+          for (let i = 0; i < brick.width + brick.height; i += 6) {
+            ctx.beginPath();
+            ctx.moveTo(brick.x + i, brick.y);
+            ctx.lineTo(brick.x, brick.y + i);
+            ctx.stroke();
+          }
+        } else if (brick.type === "explosive") {
             // Explosive brick - orange/red with warning pattern
             ctx.fillStyle = brick.color;
             ctx.fillRect(brick.x, brick.y, brick.width, brick.height);

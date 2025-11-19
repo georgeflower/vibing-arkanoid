@@ -420,10 +420,10 @@ export const Game = ({
           }
 
           // Indestructible/metal bricks are bigger (no padding), so they take up the space including padding
-          const brickWidth = isIndestructible ? SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING * 2 : SCALED_BRICK_WIDTH;
-          const brickHeight = isIndestructible ? SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING * 2 : SCALED_BRICK_HEIGHT;
-          const xPos = col * (SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_LEFT - (isIndestructible ? SCALED_BRICK_PADDING : 0);
-          const yPos = row * (SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_TOP - (isIndestructible ? SCALED_BRICK_PADDING : 0);
+          const brickWidth = SCALED_BRICK_WIDTH;
+          const brickHeight = SCALED_BRICK_HEIGHT;
+          const xPos = col * (SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_LEFT;
+          const yPos = row * (SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_TOP;
           newBricks.push({
             x: xPos,
             y: yPos,
