@@ -1,6 +1,15 @@
-export const GAME_VERSION = "0.7.0";
+export const GAME_VERSION = "0.7.1";
 
 export const CHANGELOG = [
+  {
+    version: "0.7.1",
+    changes: [
+      "Boss music system: Fixed boss music properly pausing background music and continuing throughout boss level",
+      "Audio improvements: Fixed multiple background music tracks playing simultaneously",
+      "Music flow: Background music now only resumes after boss defeat, not when skipping or retrying levels",
+      "Fixed: Music no longer restarts when transitioning from 'ready to play' to playing state",
+    ],
+  },
   {
     version: "0.7.0",
     changes: [
