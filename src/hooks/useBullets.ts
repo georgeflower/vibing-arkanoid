@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import type { Bullet, Paddle, Brick, Enemy } from "@/types/game";
+import type { Bullet, Paddle, Brick, Enemy, Boss } from "@/types/game";
 import { BULLET_WIDTH, BULLET_HEIGHT, BULLET_SPEED, CANVAS_HEIGHT, BRICK_PADDING } from "@/constants/game";
 import { soundManager } from "@/utils/sounds";
 import { getHitColor } from "@/constants/game";
@@ -11,7 +11,11 @@ export const useBullets = (
   bricks: Brick[],
   enemies: Enemy[],
   setPaddle: React.Dispatch<React.SetStateAction<Paddle | null>>,
-  onBrickDestroyedByTurret?: () => void
+  onBrickDestroyedByTurret?: () => void,
+  boss?: Boss | null,
+  resurrectedBosses?: Boss[],
+  setBoss?: React.Dispatch<React.SetStateAction<Boss | null>>,
+  setResurrectedBosses?: React.Dispatch<React.SetStateAction<Boss[]>>
 ) => {
   const [bullets, setBullets] = useState<Bullet[]>([]);
 
@@ -85,6 +89,79 @@ export const useBullets = (
         });
       });
       
+      // Check boss collisions (only for bullets going up, not bounced)
+      const bossDamageMap = new Map<number, number>();
+      
+      if (boss || (resurrectedBosses && resurrectedBosses.length > 0)) {
+        movedBullets.forEach((bullet, bulletIdx) => {
+          if (bulletIndicesHit.has(bulletIdx) || bulletIndicesToBounce.has(bulletIdx) || bullet.isBounced) return;
+          
+          // Check main boss
+          if (boss) {
+            if (
+              bullet.x + bullet.width > boss.x &&
+              bullet.x < boss.x + boss.width &&
+              bullet.y < boss.y + boss.height &&
+              bullet.y + bullet.height > boss.y
+            ) {
+              bulletIndicesHit.add(bulletIdx);
+              bossDamageMap.set(boss.id, (bossDamageMap.get(boss.id) || 0) + 0.5);
+              soundManager.playBounce();
+            }
+          }
+          
+          // Check resurrected bosses
+          if (resurrectedBosses) {
+            resurrectedBosses.forEach((resBoss) => {
+              if (bulletIndicesHit.has(bulletIdx)) return;
+              
+              if (
+                bullet.x + bullet.width > resBoss.x &&
+                bullet.x < resBoss.x + resBoss.width &&
+                bullet.y < resBoss.y + resBoss.height &&
+                bullet.y + bullet.height > resBoss.y
+              ) {
+                bulletIndicesHit.add(bulletIdx);
+                bossDamageMap.set(resBoss.id, (bossDamageMap.get(resBoss.id) || 0) + 0.5);
+                soundManager.playBounce();
+              }
+            });
+          }
+        });
+        
+        // Apply boss damage
+        if (bossDamageMap.size > 0 && setBoss && setResurrectedBosses) {
+          // Damage main boss
+          if (boss && bossDamageMap.has(boss.id)) {
+            const damage = bossDamageMap.get(boss.id)!;
+            setBoss(prev => {
+              if (!prev) return null;
+              const newHealth = Math.max(0, prev.currentHealth - damage);
+              
+              if (newHealth > 0) {
+                soundManager.playBossHitSound();
+                return { ...prev, currentHealth: newHealth };
+              }
+              return prev;
+            });
+          }
+          
+          // Damage resurrected bosses
+          setResurrectedBosses(prev => prev.map(resBoss => {
+            if (bossDamageMap.has(resBoss.id)) {
+              const damage = bossDamageMap.get(resBoss.id)!;
+              const newHealth = Math.max(0, resBoss.currentHealth - damage);
+              
+              if (newHealth > 0) {
+                soundManager.playBossHitSound();
+                return { ...resBoss, currentHealth: newHealth };
+              }
+            }
+            return resBoss;
+          }));
+        }
+      }
+      
       // Check brick collisions (only for bullets going up)
       movedBullets.forEach((bullet, bulletIdx) => {
         if (bulletIndicesHit.has(bulletIdx) || bulletIndicesToBounce.has(bulletIdx) || bullet.isBounced) return;
@@ -152,10 +229,10 @@ export const useBullets = (
           if (bulletIndicesToBounce.has(idx)) {
             return { ...bullet, isBounced: true };
           }
-          return bullet;
+      return bullet;
         });
     });
-  }, [setBricks, setScore, enemies]);
+  }, [setBricks, setScore, enemies, boss, resurrectedBosses, setBoss, setResurrectedBosses]);
 
   return {
     bullets,

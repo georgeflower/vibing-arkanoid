@@ -536,31 +536,93 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
       });
 
-      // Draw shield if paddle has it - wraps around paddle
+      // Draw shield if paddle has it - animated yellow energy force field
       if (paddle && paddle.hasShield) {
-        const topHeight = 8;
-        const sideWidth = 3;
+        const time = Date.now() / 1000;
+        const pulseIntensity = 0.5 + Math.sin(time * 4) * 0.3;
         
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "hsl(280, 100%, 70%)";
-        ctx.fillStyle = "hsl(280, 80%, 60%)";
+        const shieldPadding = 8;
+        const shieldX = paddle.x - shieldPadding;
+        const shieldY = paddle.y - shieldPadding - 5;
+        const shieldWidth = paddle.width + shieldPadding * 2;
+        const shieldHeight = paddle.height + shieldPadding * 2 + 5;
         
-        // Top shield (thicker)
-        ctx.fillRect(paddle.x, paddle.y - topHeight - 2, paddle.width, topHeight);
+        // Multiple layers for depth
+        for (let layer = 0; layer < 3; layer++) {
+          const layerOffset = layer * 2;
+          const layerAlpha = (1 - layer * 0.3) * pulseIntensity;
+          
+          ctx.shadowBlur = 20 - layer * 5;
+          ctx.shadowColor = `rgba(255, 220, 0, ${layerAlpha})`;
+          ctx.strokeStyle = `rgba(255, 220, 0, ${layerAlpha * 0.8})`;
+          ctx.lineWidth = 3 - layer;
+          
+          // Draw rounded shield outline
+          ctx.beginPath();
+          const radius = 8;
+          ctx.moveTo(shieldX - layerOffset + radius, shieldY - layerOffset);
+          ctx.lineTo(shieldX - layerOffset + shieldWidth - radius, shieldY - layerOffset);
+          ctx.arcTo(shieldX - layerOffset + shieldWidth, shieldY - layerOffset, 
+                    shieldX - layerOffset + shieldWidth, shieldY - layerOffset + radius, radius);
+          ctx.lineTo(shieldX - layerOffset + shieldWidth, shieldY - layerOffset + shieldHeight - radius);
+          ctx.arcTo(shieldX - layerOffset + shieldWidth, shieldY - layerOffset + shieldHeight, 
+                    shieldX - layerOffset + shieldWidth - radius, shieldY - layerOffset + shieldHeight, radius);
+          ctx.lineTo(shieldX - layerOffset + radius, shieldY - layerOffset + shieldHeight);
+          ctx.arcTo(shieldX - layerOffset, shieldY - layerOffset + shieldHeight, 
+                    shieldX - layerOffset, shieldY - layerOffset + shieldHeight - radius, radius);
+          ctx.lineTo(shieldX - layerOffset, shieldY - layerOffset + radius);
+          ctx.arcTo(shieldX - layerOffset, shieldY - layerOffset, 
+                    shieldX - layerOffset + radius, shieldY - layerOffset, radius);
+          ctx.closePath();
+          ctx.stroke();
+        }
         
-        // Left side (thin)
-        ctx.fillRect(paddle.x - sideWidth, paddle.y - topHeight, sideWidth, paddle.height + topHeight);
+        // Electrical arcs animation
+        const arcCount = qualitySettings.level !== 'low' ? 6 : 3;
+        for (let i = 0; i < arcCount; i++) {
+          const arcTime = time * 3 + i * (Math.PI * 2 / arcCount);
+          const arcX = shieldX + shieldWidth / 2 + Math.cos(arcTime) * (shieldWidth / 2 - 5);
+          const arcY = shieldY + shieldHeight / 2 + Math.sin(arcTime) * (shieldHeight / 2 - 5);
+          const arcEndX = shieldX + shieldWidth / 2 + Math.cos(arcTime + 0.5) * (shieldWidth / 2);
+          const arcEndY = shieldY + shieldHeight / 2 + Math.sin(arcTime + 0.5) * (shieldHeight / 2);
+          
+          const branchIntensity = (Math.sin(arcTime * 5) + 1) / 2;
+          
+          ctx.strokeStyle = `rgba(255, 255, 100, ${branchIntensity * 0.7})`;
+          ctx.lineWidth = 2;
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = "rgba(255, 220, 0, 0.8)";
+          
+          ctx.beginPath();
+          ctx.moveTo(arcX, arcY);
+          
+          // Create jagged electrical path
+          const segments = 4;
+          for (let s = 1; s <= segments; s++) {
+            const t = s / segments;
+            const baseX = arcX + (arcEndX - arcX) * t;
+            const baseY = arcY + (arcEndY - arcY) * t;
+            const jitterX = (Math.random() - 0.5) * 8;
+            const jitterY = (Math.random() - 0.5) * 8;
+            ctx.lineTo(baseX + jitterX, baseY + jitterY);
+          }
+          ctx.stroke();
+        }
         
-        // Right side (thin)
-        ctx.fillRect(paddle.x + paddle.width, paddle.y - topHeight, sideWidth, paddle.height + topHeight);
+        // Inner energy fill (semi-transparent)
+        const gradient = ctx.createRadialGradient(
+          shieldX + shieldWidth / 2, shieldY + shieldHeight / 2, 0,
+          shieldX + shieldWidth / 2, shieldY + shieldHeight / 2, shieldWidth / 2
+        );
+        gradient.addColorStop(0, `rgba(255, 255, 150, ${0.15 * pulseIntensity})`);
+        gradient.addColorStop(1, `rgba(255, 220, 0, ${0.05 * pulseIntensity})`);
         
-        // Bottom (thin)
-        ctx.fillRect(paddle.x - sideWidth, paddle.y + paddle.height, paddle.width + sideWidth * 2, sideWidth);
-        
-        // Shield highlight
         ctx.shadowBlur = 0;
-        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-        ctx.fillRect(paddle.x, paddle.y - topHeight - 2, paddle.width, 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = "transparent";
       }
 
       // Draw turrets if paddle has them
