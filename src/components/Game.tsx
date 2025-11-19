@@ -2767,20 +2767,42 @@ export const Game = ({
     setBrickHitSpeedAccumulated(0);
     setEnemiesKilled(0);
     
-    // Clear boss state if not a boss level, or reset boss if it is
+    // Clear boss state if not a boss level, or reset and trigger intro if it is
     if (!BOSS_LEVELS.includes(currentLevel)) {
       setBoss(null);
       setResurrectedBosses([]);
       setBossAttacks([]);
       setBossActive(false);
       setLaserWarnings([]);
+      setBossIntroActive(false);
     } else {
-      // Reinitialize boss for boss level
+      // Boss level - clear everything first
       setBoss(null);
       setResurrectedBosses([]);
       setBossAttacks([]);
       setBossActive(false);
       setLaserWarnings([]);
+      
+      // Trigger boss intro sequence after a brief delay to ensure clean state
+      setTimeout(() => {
+        // Reinitialize the boss
+        setBricks(initBricksForLevel(currentLevel));
+        
+        // Start intro sequence
+        setBossIntroActive(true);
+        soundManager.playBossIntroSound();
+        
+        // Show boss name after 1 second
+        setTimeout(() => {
+          const bossName = currentLevel === 5 ? 'CUBE GUARDIAN' : currentLevel === 10 ? 'SPHERE DESTROYER' : 'PYRAMID LORD';
+          toast.error(`⚠️ BOSS APPROACHING: ${bossName} ⚠️`, { duration: 3000 });
+        }, 1000);
+        
+        // End intro after 3 seconds
+        setTimeout(() => {
+          setBossIntroActive(false);
+        }, 3000);
+      }, 100);
     }
 
     // Hide screens
