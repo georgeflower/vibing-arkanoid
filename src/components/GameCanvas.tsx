@@ -62,7 +62,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     
     // Helper function to detect adjacent metal bricks for seamless rendering
     const getAdjacentMetalBricks = (brick: Brick, allBricks: Brick[]) => {
-      const tolerance = 2; // Small tolerance for floating point comparison
+      const tolerance = 6; // Increased to detect bricks across padding boundaries
       return {
         top: allBricks.find(b => 
           b.visible && b.type === "metal" && 

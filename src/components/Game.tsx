@@ -419,11 +419,19 @@ export const Game = ({
             baseColor = levelColors[row % levelColors.length];
           }
 
-          // Indestructible/metal bricks are bigger (no padding), so they take up the space including padding
-          const brickWidth = SCALED_BRICK_WIDTH;
-          const brickHeight = SCALED_BRICK_HEIGHT;
-          const xPos = col * (SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_LEFT;
-          const yPos = row * (SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_TOP;
+          // Metal bricks expand to fill padding space, creating continuous surfaces
+          const brickWidth = isIndestructible 
+            ? SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING 
+            : SCALED_BRICK_WIDTH;
+          const brickHeight = isIndestructible 
+            ? SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING 
+            : SCALED_BRICK_HEIGHT;
+
+          // Metal bricks are positioned to overlap into the padding space
+          const xPos = col * (SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_LEFT 
+            - (isIndestructible && col > 0 ? SCALED_BRICK_PADDING / 2 : 0);
+          const yPos = row * (SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_TOP 
+            - (isIndestructible && row > 0 ? SCALED_BRICK_PADDING / 2 : 0);
           newBricks.push({
             x: xPos,
             y: yPos,
@@ -1220,10 +1228,10 @@ export const Game = ({
                   setBackgroundFlash(10);
                   setTimeout(() => setBackgroundFlash(0), 100);
                   
-                  // Destroy nearby bricks (after current update)
+                  // Destroy nearby bricks including metal within explosion radius
                   setTimeout(() => {
                     setBricks(prev => prev.map(b => {
-                      if (b.visible && !b.isIndestructible) {
+                      if (b.visible) {
                         const bDist = Math.sqrt(
                           Math.pow((b.x + b.width / 2) - brickCenterX, 2) +
                           Math.pow((b.y + b.height / 2) - brickCenterY, 2)
