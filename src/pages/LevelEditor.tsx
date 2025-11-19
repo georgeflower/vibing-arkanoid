@@ -232,6 +232,20 @@ export default function LevelEditor() {
     setIsPainting(false);
   };
 
+  const handleCellRightClick = (rowIndex: number, colIndex: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    const newGrid = grid.map((row, rIdx) => 
+      row.map((cell, cIdx) => {
+        if (rIdx === rowIndex && cIdx === colIndex) {
+          return false;
+        }
+        return cell;
+      })
+    );
+    setGrid(newGrid);
+    setHasChanges(true);
+  };
+
   // Keyboard shortcuts for brush selection
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -455,11 +469,11 @@ export default function LevelEditor() {
                           onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
                           onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
                           onClick={() => handleCellClick(rowIndex, colIndex)}
-                          onContextMenu={(e) => e.preventDefault()}
+                          onContextMenu={(e) => handleCellRightClick(rowIndex, colIndex, e)}
                           onTouchStart={() => handleCellMouseDown(rowIndex, colIndex)}
                           className={`w-8 h-8 border border-white/20 ${getCellColor(cell)} hover:opacity-80 transition-opacity flex items-center justify-center text-xs font-bold text-white select-none`}
                           style={{ cursor: 'crosshair' }}
-                          title={`Paint with ${selectedBrush === false ? "Empty" : selectedBrush === true ? "Normal" : selectedBrush === 2 ? "Metal" : selectedBrush === 3 ? "Explosive" : "Cracked"}`}
+                          title={`Left-click: Paint | Right-click: Clear`}
                         >
                           {getCellLabel(cell)}
                         </button>
