@@ -109,6 +109,7 @@ export const Game = ({
   const [levelSkipped, setLevelSkipped] = useState(false);
   const [bossIntroActive, setBossIntroActive] = useState(false);
   const [gameOverParticles, setGameOverParticles] = useState<Particle[]>([]);
+  const [highScoreParticles, setHighScoreParticles] = useState<Particle[]>([]);
   const [retryLevelData, setRetryLevelData] = useState<{level: number, layout: any} | null>(null);
   const [powerUpsCollectedTypes, setPowerUpsCollectedTypes] = useState<Set<string>>(new Set());
   const [bricksDestroyedByTurrets, setBricksDestroyedByTurrets] = useState(0);
@@ -242,6 +243,35 @@ export const Game = ({
     }
     return particles;
   }, [qualitySettings.explosionParticles]);
+
+  const createHighScoreParticles = useCallback((): Particle[] => {
+    const particles: Particle[] = [];
+    const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
+    const centerX = SCALED_CANVAS_WIDTH / 2;
+    const centerY = SCALED_CANVAS_HEIGHT / 2;
+    
+    const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE'];
+    
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (Math.PI * 2 * i / particleCount) + Math.random() * 0.5;
+      const speed = 3 + Math.random() * 5;
+      const vx = Math.cos(angle) * speed;
+      const vy = Math.sin(angle) * speed - 2;
+      
+      particles.push({
+        x: centerX + (Math.random() - 0.5) * 200,
+        y: centerY + (Math.random() - 0.5) * 100,
+        vx,
+        vy,
+        size: 4 + Math.random() * 6,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        life: 120,
+        maxLife: 120
+      });
+    }
+    
+    return particles;
+  }, [qualitySettings.explosionParticles, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT]);
 
   // Initialize sound settings - always enabled
   useEffect(() => {
@@ -1237,6 +1267,7 @@ export const Game = ({
             isHighScore(score).then(result => {
               if (!levelSkipped && result) {
                 setShowHighScoreEntry(true);
+                setHighScoreParticles(createHighScoreParticles());
                 soundManager.playHighScoreMusic();
                 toast.error("Game Over - New High Score!");
               } else {
@@ -1758,6 +1789,15 @@ export const Game = ({
       y: p.y + p.vy,
       vy: p.vy + 0.15, // Gravity
       vx: p.vx * 0.98, // Air resistance
+      life: p.life - 1
+    })).filter(p => p.life > 0));
+
+    // Update high score celebration particles
+    setHighScoreParticles(prev => prev.map(p => ({
+      ...p,
+      x: p.x + p.vx,
+      y: p.y + p.vy,
+      vy: p.vy + 0.2, // Gravity effect
       life: p.life - 1
     })).filter(p => p.life > 0));
 
@@ -2647,9 +2687,24 @@ export const Game = ({
   }, [initGame]);
   const handleHighScoreSubmit = async (name: string) => {
     try {
+      // Create a burst of particles on submission
+      setHighScoreParticles(createHighScoreParticles());
+      
+      // Flash the screen
+      setBackgroundFlash(1);
+      setTimeout(() => setBackgroundFlash(0), 200);
+      
       await addHighScore(name, score, level, settings.difficulty, beatLevel50Completed, settings.startingLives);
-      setShowHighScoreEntry(false);
-      setShowHighScoreDisplay(true);
+      
+      toast.success('🎉 HIGH SCORE SAVED! 🎉', {
+        duration: 3000,
+      });
+      
+      // Delay transition to show celebration
+      setTimeout(() => {
+        setShowHighScoreEntry(false);
+        setShowHighScoreDisplay(true);
+      }, 1000);
     } catch (err) {
       console.error('Failed to submit high score:', err);
       setShowHighScoreEntry(false);
@@ -2665,6 +2720,8 @@ export const Game = ({
     soundManager.stopHighScoreMusic();
     soundManager.stopBackgroundMusic();
     setShowEndScreen(false);
+    setHighScoreParticles([]);
+    setGameOverParticles([]);
     onReturnToMenu();
   };
   
@@ -2745,6 +2802,8 @@ export const Game = ({
     setPowerUpsCollectedTypes(new Set());
     setBricksDestroyedByTurrets(0);
     setBossesKilled(0);
+    setHighScoreParticles([]);
+    setGameOverParticles([]);
     setLives(settings.startingLives);
     
     // Clear all entities
@@ -3116,6 +3175,8 @@ export const Game = ({
                       bossAttacks={bossAttacks}
                       laserWarnings={laserWarnings}
                       gameOverParticles={gameOverParticles}
+                      highScoreParticles={highScoreParticles}
+                      showHighScoreEntry={showHighScoreEntry}
                       bossIntroActive={bossIntroActive}
                     />
                     {showDebugOverlay && gameLoopRef.current && (
