@@ -149,7 +149,6 @@ export const Game = ({
     };
   }, []);
   const {
-    highScores,
     isHighScore,
     addHighScore
   } = useHighScores();
@@ -1240,14 +1239,16 @@ export const Game = ({
             setGameOverParticles(particles);
 
             // Check for high score immediately
-            if (!levelSkipped && isHighScore(score)) {
-              setShowHighScoreEntry(true);
-              soundManager.playHighScoreMusic();
-              toast.error("Game Over - New High Score!");
-            } else {
-              setShowEndScreen(true);
-              toast.error("Game Over!");
-            }
+            isHighScore(score).then(result => {
+              if (!levelSkipped && result) {
+                setShowHighScoreEntry(true);
+                soundManager.playHighScoreMusic();
+                toast.error("Game Over - New High Score!");
+              } else {
+                setShowEndScreen(true);
+                toast.error("Game Over!");
+              }
+            });
           } else {
             // Reset ball and clear power-ups, but wait for click to continue
             const baseSpeed = 5.175; // 50% faster base speed
@@ -1808,14 +1809,16 @@ export const Game = ({
               setBossAttacks([]);
               setLaserWarnings([]);
               // Check for high score immediately
-              if (!levelSkipped && isHighScore(score)) {
-                setShowHighScoreEntry(true);
-                soundManager.playHighScoreMusic();
-                toast.error("Game Over - New High Score!");
-              } else {
-                setShowEndScreen(true);
-                toast.error("Game Over!");
-              }
+              isHighScore(score).then(result => {
+                if (!levelSkipped && result) {
+                  setShowHighScoreEntry(true);
+                  soundManager.playHighScoreMusic();
+                  toast.error("Game Over - New High Score!");
+                } else {
+                  setShowEndScreen(true);
+                  toast.error("Game Over!");
+                }
+              });
             } else {
               // Reset ball and clear power-ups, but wait for click to continue
               const baseSpeed = 5.175; // 50% faster base speed
@@ -1893,14 +1896,16 @@ export const Game = ({
             setBossAttacks([]);
             setLaserWarnings([]);
             // Check for high score immediately
-            if (!levelSkipped && isHighScore(score)) {
-              setShowHighScoreEntry(true);
-              soundManager.playHighScoreMusic();
-              toast.error("Game Over - New High Score!");
-            } else {
-              setShowEndScreen(true);
-              toast.error("Game Over!");
-            }
+            isHighScore(score).then(result => {
+              if (!levelSkipped && result) {
+                setShowHighScoreEntry(true);
+                soundManager.playHighScoreMusic();
+                toast.error("Game Over - New High Score!");
+              } else {
+                setShowEndScreen(true);
+                toast.error("Game Over!");
+              }
+            });
           } else {
               // Reset ball and clear power-ups, but wait for click to continue
               const baseSpeed = 5.175; // 50% faster base speed
@@ -2008,14 +2013,16 @@ export const Game = ({
             setBossAttacks([]);
             setLaserWarnings([]);
             // Check for high score immediately
-            if (!levelSkipped && isHighScore(score)) {
-              setShowHighScoreEntry(true);
-              soundManager.playHighScoreMusic();
-              toast.error("Game Over - New High Score!");
-            } else {
-              setShowEndScreen(true);
-              toast.error("Game Over!");
-            }
+            isHighScore(score).then(result => {
+              if (!levelSkipped && result) {
+                setShowHighScoreEntry(true);
+                soundManager.playHighScoreMusic();
+                toast.error("Game Over - New High Score!");
+              } else {
+                setShowEndScreen(true);
+                toast.error("Game Over!");
+              }
+            });
           } else {
             // Reset ball and clear power-ups, wait for click to continue
             const baseSpeed = 5.175;
@@ -2068,14 +2075,16 @@ export const Game = ({
             setBossAttacks([]);
             setLaserWarnings([]);
             // Check for high score immediately
-            if (!levelSkipped && isHighScore(score)) {
-              setShowHighScoreEntry(true);
-              soundManager.playHighScoreMusic();
-              toast.error("Game Over - New High Score!");
-            } else {
-              setShowEndScreen(true);
-              toast.error("Game Over!");
-            }
+            isHighScore(score).then(result => {
+              if (!levelSkipped && result) {
+                setShowHighScoreEntry(true);
+                soundManager.playHighScoreMusic();
+                toast.error("Game Over - New High Score!");
+              } else {
+                setShowEndScreen(true);
+                toast.error("Game Over!");
+              }
+            });
           } else {
               // Reset game to ready state
               const baseSpeed = 5.175;
@@ -2654,11 +2663,16 @@ export const Game = ({
     initGame();
     toast("Game Reset!");
   }, [initGame]);
-  const handleHighScoreSubmit = (name: string) => {
-    addHighScore(name, score, level, settings.difficulty, beatLevel50Completed, settings.startingLives);
-    setShowHighScoreEntry(false);
-    setShowHighScoreDisplay(true);
-    toast.success("High score saved!");
+  const handleHighScoreSubmit = async (name: string) => {
+    try {
+      await addHighScore(name, score, level, settings.difficulty, beatLevel50Completed, settings.startingLives);
+      setShowHighScoreEntry(false);
+      setShowHighScoreDisplay(true);
+    } catch (err) {
+      console.error('Failed to submit high score:', err);
+      setShowHighScoreEntry(false);
+      setShowHighScoreDisplay(true);
+    }
   };
   const handleEndScreenContinue = () => {
     setShowEndScreen(false);
@@ -3064,7 +3078,7 @@ export const Game = ({
           bossesKilled,
           totalPlayTime: totalPlayTime
         }}
-      /> : showHighScoreDisplay ? <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} /> : <>
+      /> : showHighScoreDisplay ? <HighScoreDisplay onClose={handleCloseHighScoreDisplay} /> : <>
           {showHighScoreEntry ? <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} /> : <div className={`metal-frame ${isIOSDevice ? 'mobile-fullscreen-mode' : (isMobileDevice && isFullscreen ? 'mobile-fullscreen-mode' : '')}`}>
               {/* Title Bar - Adaptive Visibility (Desktop: only title hides, Mobile: all hides) */}
               <div className={`metal-title-bar transition-all duration-150 ${titleVisible ? 'opacity-100 max-h-[60px]' : 'opacity-0 max-h-0 overflow-hidden'}`} style={{
