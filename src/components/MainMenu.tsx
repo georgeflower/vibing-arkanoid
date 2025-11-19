@@ -251,7 +251,6 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 <li>Ball bounces only from top half of paddle</li>
                 <li>If ball doesn't touch paddle for 15s, it auto-diverts</li>
                 <li>After 25s without paddle, closest enemy kamikazes the ball</li>
-                <li>Get extra life every 50,000 score points</li>
                 <li>Powerup drops every 3 enemies destroyed</li>
                 <li>Game automatically adjusts visual quality based on performance</li>
               </ul>

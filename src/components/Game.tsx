@@ -105,7 +105,6 @@ export const Game = ({
   const [totalBricksDestroyed, setTotalBricksDestroyed] = useState(0);
   const [totalShots, setTotalShots] = useState(0);
   const [bricksHit, setBricksHit] = useState(0);
-  const [longestCombo, setLongestCombo] = useState(0);
   const [currentCombo, setCurrentCombo] = useState(0);
   const [levelSkipped, setLevelSkipped] = useState(false);
   const [bossIntroActive, setBossIntroActive] = useState(false);
@@ -1129,11 +1128,7 @@ export const Game = ({
                 // Track brick destroyed
                 setTotalBricksDestroyed(prev => prev + 1);
                 setBricksHit(prev => prev + 1);
-                setCurrentCombo(prev => {
-                  const newCombo = prev + 1;
-                  setLongestCombo(current => Math.max(current, newCombo));
-                  return newCombo;
-                });
+                setCurrentCombo(prev => prev + 1);
                 
                 // Only add speed when brick is fully destroyed
                 // Cap accumulated speed at 30%
@@ -2359,19 +2354,6 @@ export const Game = ({
       }
     }
 
-    // Check score milestones for extra lives (every 50000)
-    const currentMilestone = Math.floor(score / 50000);
-    if (currentMilestone > lastScoreMilestone && currentMilestone > 0) {
-      setLastScoreMilestone(currentMilestone);
-      setLives(prev => prev + 1);
-      soundManager.playExtraLifeSound();
-      toast.success("Extra life awarded! +1 Life", {
-        duration: 3000
-      });
-      // Blink score
-      setScoreBlinking(true);
-      setTimeout(() => setScoreBlinking(false), 1000);
-    }
     animationFrameRef.current = requestAnimationFrame(gameLoop);
   }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemies, bombs, bricks, score, isHighScore, explosions, lastPaddleHitTime, lastScoreMilestone, updateFps]);
   
@@ -2758,7 +2740,6 @@ export const Game = ({
     setTotalBricksDestroyed(0);
     setTotalShots(0);
     setBricksHit(0);
-    setLongestCombo(0);
     setCurrentCombo(0);
     setLevelSkipped(false);
     setPowerUpsCollectedTypes(new Set());
@@ -3067,7 +3048,6 @@ export const Game = ({
         stats={{
           totalBricksDestroyed,
           totalShots,
-          longestCombo,
           accuracy: totalShots > 0 ? (bricksHit / totalShots) * 100 : 0,
           levelSkipped,
           finalScore: score,
