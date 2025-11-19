@@ -70,15 +70,16 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time' }: High
               <div className="text-center text-slate-500 py-12 font-mono">No scores yet!</div>
             ) : (
               highScores.map((entry, index) => (
-                <div key={entry.id || index} className="flex justify-between items-center font-mono px-6 py-3 bg-slate-800/60 rounded-lg border border-cyan-500/30">
+                <div key={entry.id || index} className="flex justify-between items-center font-mono px-6 py-3 bg-slate-800/60 rounded-lg border border-cyan-500/30 gap-4">
                   <span className="text-cyan-300 w-12">{index + 1}.</span>
-                  <span className="text-pink-400 font-bold flex items-center gap-2 flex-1 justify-center">
+                  <span className="text-pink-400 font-bold flex items-center gap-2 flex-1">
                     {entry.beatLevel50 && <span>👑</span>}
                     <span>{entry.name}</span>
                     {entry.difficulty === "godlike" && <span className="text-red-500 text-xs">GOD-MODE</span>}
                   </span>
                   <span className="text-amber-300 font-bold">{entry.score.toLocaleString()}</span>
                   <span className="text-purple-400 w-20 text-right">LVL {entry.level}</span>
+                  <span className="text-green-400 w-24 text-right">{entry.startingLives || 3} ❤️</span>
                 </div>
               ))
             )}
