@@ -104,10 +104,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           // Reset shadow to prevent bleeding from other elements
           ctx.shadowBlur = 0;
           
-          // Indestructible bricks - steel appearance
-          if (brick.isIndestructible) {
+          // Metal (Indestructible) bricks - steel appearance
+          if (brick.type === "metal") {
             // Steel base color
-            ctx.fillStyle = '#555555';
+            ctx.fillStyle = 'hsl(0, 0%, 33%)';
             ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
             
             // Metallic highlight
@@ -145,6 +145,95 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
               ctx.moveTo(brick.x + i, brick.y);
               ctx.lineTo(brick.x, brick.y + i);
               ctx.stroke();
+            }
+          } else if (brick.type === "explosive") {
+            // Explosive brick - orange/red with warning pattern
+            ctx.fillStyle = brick.color;
+            ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+            
+            // Pulsing glow effect (if quality allows)
+            if (qualitySettings.glowEnabled) {
+              const pulseIntensity = Math.sin(Date.now() * 0.005) * 0.3 + 0.7;
+              ctx.shadowBlur = 8 * pulseIntensity;
+              ctx.shadowColor = 'hsl(15, 100%, 50%)';
+            }
+            
+            // Top highlight
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "rgba(255, 255, 100, 0.3)";
+            ctx.fillRect(brick.x, brick.y, brick.width, 3);
+            
+            // Bottom shadow
+            ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+            ctx.fillRect(brick.x, brick.y + brick.height - 3, brick.width, 3);
+            
+            // Warning stripes (diagonal)
+            ctx.strokeStyle = "rgba(255, 255, 0, 0.4)";
+            ctx.lineWidth = 2;
+            for (let i = 0; i < brick.width + brick.height; i += 8) {
+              ctx.beginPath();
+              ctx.moveTo(brick.x + i, brick.y);
+              ctx.lineTo(brick.x, brick.y + i);
+              ctx.stroke();
+            }
+            
+            // Explosion icon in center
+            ctx.fillStyle = "rgba(255, 200, 0, 0.8)";
+            ctx.font = "bold 14px monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("💥", brick.x + brick.width / 2, brick.y + brick.height / 2);
+            
+            ctx.shadowBlur = 0;
+          } else if (brick.type === "cracked") {
+            // Cracked brick - brownish with crack pattern
+            ctx.fillStyle = brick.color;
+            ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+            
+            // Top highlight
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+            ctx.fillRect(brick.x, brick.y, brick.width, 3);
+            
+            // Left highlight
+            ctx.fillRect(brick.x, brick.y, 3, brick.height);
+            
+            // Bottom shadow
+            ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+            ctx.fillRect(brick.x, brick.y + brick.height - 3, brick.width, 3);
+            
+            // Right shadow
+            ctx.fillRect(brick.x + brick.width - 3, brick.y, 3, brick.height);
+            
+            // Crack pattern
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+            ctx.lineWidth = 1.5;
+            const centerX = brick.x + brick.width / 2;
+            const centerY = brick.y + brick.height / 2;
+            
+            // Multiple cracks radiating from center
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(brick.x + 2, brick.y + 2);
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(brick.x + brick.width - 2, brick.y + 2);
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(brick.x + 2, brick.y + brick.height - 2);
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(brick.x + brick.width - 2, brick.y + brick.height - 2);
+            ctx.stroke();
+            
+            // Draw hit counter for multi-hit bricks
+            if (brick.maxHits > 1) {
+              ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+              ctx.font = "bold 12px 'Courier New', monospace";
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              ctx.fillText(
+                brick.hitsRemaining.toString(),
+                brick.x + brick.width / 2,
+                brick.y + brick.height / 2
+              );
             }
           } else {
             // Normal brick - Base brick color

@@ -384,11 +384,38 @@ export const Game = ({
         const cellValue = layout[row][col];
         if (cellValue === true || cellValue === 2) {
           const isIndestructible = cellValue === 2;
+          
+          // Determine brick type based on level and random chance
+          let brickType: "normal" | "metal" | "cracked" | "explosive" = "normal";
+          if (isIndestructible) {
+            brickType = "metal";
+          } else {
+            const typeRoll = Math.random();
+            // After level 3, introduce special bricks
+            if (currentLevel >= 3) {
+              if (typeRoll < 0.08) {
+                brickType = "explosive"; // 8% chance
+              } else if (typeRoll < 0.20) {
+                brickType = "cracked"; // 12% chance (requires 2 hits)
+              }
+            }
+          }
+          
           const hasPowerUp = isIndestructible ? false : Math.random() < POWERUP_DROP_CHANCE;
-          const maxHits = isIndestructible ? 1 : getBrickHits(currentLevel, row);
-          const baseColor = isIndestructible ? "#333333" : levelColors[row % levelColors.length];
+          const maxHits = isIndestructible ? 1 : (brickType === "cracked" ? 2 : getBrickHits(currentLevel, row));
+          
+          let baseColor: string;
+          if (isIndestructible) {
+            baseColor = "hsl(0, 0%, 20%)"; // Dark gray for metal
+          } else if (brickType === "explosive") {
+            baseColor = "hsl(15, 90%, 50%)"; // Orange-red for explosive
+          } else if (brickType === "cracked") {
+            baseColor = "hsl(40, 15%, 45%)"; // Brownish-gray for cracked
+          } else {
+            baseColor = levelColors[row % levelColors.length];
+          }
 
-          // Indestructible bricks are bigger (no padding), so they take up the space including padding
+          // Indestructible/metal bricks are bigger (no padding), so they take up the space including padding
           const brickWidth = isIndestructible ? SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING * 2 : SCALED_BRICK_WIDTH;
           const brickHeight = isIndestructible ? SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING * 2 : SCALED_BRICK_HEIGHT;
           const xPos = col * (SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_LEFT - (isIndestructible ? SCALED_BRICK_PADDING : 0);
@@ -404,7 +431,8 @@ export const Game = ({
             hasPowerUp,
             maxHits,
             hitsRemaining: maxHits,
-            isIndestructible
+            isIndestructible,
+            type: brickType
           });
         }
       }
@@ -1151,6 +1179,62 @@ export const Game = ({
                     setPowerUps(prev => [...prev, powerUp]);
                   }
                 }
+                
+                // Handle explosive brick destruction
+                if (brick.type === "explosive") {
+                  const explosionRadius = 80;
+                  const brickCenterX = brick.x + brick.width / 2;
+                  const brickCenterY = brick.y + brick.height / 2;
+                  
+                  // Create visual explosion
+                  const explosionParticles: Particle[] = [];
+                  const particleCount = Math.round(30 * (qualitySettings.explosionParticles / 50));
+                  for (let i = 0; i < particleCount; i++) {
+                    const angle = (Math.PI * 2 * i) / particleCount;
+                    const speed = 3 + Math.random() * 4;
+                    explosionParticles.push({
+                      x: brickCenterX,
+                      y: brickCenterY,
+                      vx: Math.cos(angle) * speed,
+                      vy: Math.sin(angle) * speed,
+                      size: 3 + Math.random() * 5,
+                      color: 'hsl(25, 100%, 50%)',
+                      life: 30,
+                      maxLife: 30
+                    });
+                  }
+                  
+                  setExplosions(prev => [...prev, {
+                    x: brickCenterX,
+                    y: brickCenterY,
+                    frame: 0,
+                    maxFrames: 15,
+                    particles: explosionParticles
+                  }]);
+                  
+                  soundManager.playExplosion();
+                  setBackgroundFlash(10);
+                  setTimeout(() => setBackgroundFlash(0), 100);
+                  
+                  // Destroy nearby bricks (after current update)
+                  setTimeout(() => {
+                    setBricks(prev => prev.map(b => {
+                      if (b.visible && !b.isIndestructible) {
+                        const bDist = Math.sqrt(
+                          Math.pow((b.x + b.width / 2) - brickCenterX, 2) +
+                          Math.pow((b.y + b.height / 2) - brickCenterY, 2)
+                        );
+                        if (bDist <= explosionRadius) {
+                          setScore(s => s + b.points);
+                          setTotalBricksDestroyed(t => t + 1);
+                          setBricksHit(bh => bh + 1);
+                          return { ...b, visible: false, hitsRemaining: 0 };
+                        }
+                      }
+                      return b;
+                    }));
+                  }, 0);
+                }
               }
 
               // Increase ball speed slightly with each brick hit (but not for indestructible bricks)
@@ -1590,7 +1674,8 @@ export const Game = ({
                       hasPowerUp: true,
                       hitsRemaining: 0,
                       maxHits: 1,
-                      isIndestructible: false
+                      isIndestructible: false,
+                      type: "normal"
                     };
                     // Keep trying until we get a powerup (guaranteed drop)
                     let powerUp = createPowerUp(fakeBrick);
@@ -1669,7 +1754,8 @@ export const Game = ({
                       hasPowerUp: true,
                       hitsRemaining: 0,
                       maxHits: 1,
-                      isIndestructible: false
+                      isIndestructible: false,
+                      type: "normal"
                     };
                     // Keep trying until we get a powerup (guaranteed drop)
                     let powerUp = createPowerUp(fakeBrick);
@@ -1734,7 +1820,8 @@ export const Game = ({
                     hasPowerUp: true,
                     hitsRemaining: 0,
                     maxHits: 1,
-                    isIndestructible: false
+                    isIndestructible: false,
+                    type: "normal"
                   };
                   // Keep trying until we get a powerup (guaranteed drop)
                   let powerUp = createPowerUp(fakeBrick);
