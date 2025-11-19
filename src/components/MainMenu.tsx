@@ -27,6 +27,9 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [showPressToStart, setShowPressToStart] = useState(true);
   const [showChangelog, setShowChangelog] = useState(false);
   const { highScores } = useHighScores();
+  
+  const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
   const handleStart = () => {
     const settings: GameSettings = {
@@ -183,6 +186,20 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 </li>
               </ul>
             </div>
+            
+            {isIOSDevice && (
+              <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(330,100%,65%)]/20 p-3 sm:p-4 rounded-lg border-2 border-[hsl(200,70%,50%)]/50">
+                <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">
+                  📱 iOS Tip: True Fullscreen Experience
+                </h3>
+                <p className="text-xs sm:text-sm leading-relaxed">
+                  For the best fullscreen gaming experience on iPhone/iPad, add this game to your Home Screen:
+                  Tap the <span className="font-bold">Share</span> button in Safari → 
+                  <span className="font-bold"> Add to Home Screen</span>. 
+                  Then launch from your home screen to play without any browser UI!
+                </p>
+              </div>
+            )}
 
             <div>
               <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">Gameplay</h3>
