@@ -890,7 +890,6 @@ export const Game = ({
         // Start game - start music only if not already playing (and not boss music)
         setGameState("playing");
         if (!soundManager.isMusicPlaying() && !soundManager.isBossMusicPlaying()) {
-          soundManager.initializeRandomTrack();
           soundManager.playBackgroundMusic(level);
         }
         toast.success("Click again to launch!");
@@ -1033,8 +1032,9 @@ export const Game = ({
       } else if (e.key === "0") {
         // Clear level and advance - mark as level skipped (disqualified from high scores)
         setLevelSkipped(true);
-        soundManager.stopBossMusic();
-        soundManager.resumeBackgroundMusic();
+        if (soundManager.isBossMusicPlaying()) {
+          soundManager.stopBossMusic();
+        }
         nextLevel();
         toast.warning("Level skipped! You are DISQUALIFIED from high scores!", { duration: 3000 });
       }
@@ -3329,7 +3329,6 @@ export const Game = ({
       setBossActive(false);
       setLaserWarnings([]);
       soundManager.stopBossMusic();
-      soundManager.resumeBackgroundMusic();
       
       // Trigger boss intro sequence after a brief delay to ensure clean state
       setTimeout(() => {
