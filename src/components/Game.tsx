@@ -72,6 +72,7 @@ export const Game = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
+  const [letterLevelAssignments, setLetterLevelAssignments] = useState<Record<number, BonusLetterType>>({});
   const [boss, setBoss] = useState<Boss | null>(null);
   const [resurrectedBosses, setResurrectedBosses] = useState<Boss[]>([]);
   const [bossAttacks, setBossAttacks] = useState<BossAttack[]>([]);
@@ -281,41 +282,51 @@ export const Game = ({
     soundManager.setSfxEnabled(true);
   }, []);
 
-  // Bonus letter drop logic - each letter drops on specific levels
-  const letterLevels: Record<BonusLetterType, number[]> = {
-    Q: [4, 11],
-    U: [6, 12],
-    M: [7, 13],
-    R: [8, 14],
-    A: [9, 15],
-    N: [10, 16]
-  };
-  const dropBonusLetter = useCallback((x: number, y: number) => {
-    // Check each letter to see if it should drop on this level
-    for (const letter of Object.keys(letterLevels) as BonusLetterType[]) {
-      const levels = letterLevels[letter];
-
-      // Drop if: current level matches AND letter hasn't been collected yet
-      if (levels.includes(level) && !collectedLetters.has(letter)) {
-        // Check if this letter is already falling
-        const alreadyFalling = bonusLetters.some(bl => bl.type === letter && bl.active);
-        if (alreadyFalling) continue;
-        setBonusLetters(prev => [...prev, {
-          x: x - 15,
-          y: y,
-          width: 30,
-          height: 30,
-          type: letter,
-          speed: 2,
-          active: true
-        }]);
-        toast(`Bonus letter ${letter} dropped!`, {
-          icon: "🎯"
-        });
-        break; // Only drop one letter at a time
-      }
+  // Create random letter assignments for a new game
+  const createRandomLetterAssignments = useCallback(() => {
+    const availableLevels = [4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19];
+    const allLetters: BonusLetterType[] = ["Q", "U", "M", "R", "A", "N"];
+    
+    // Shuffle letters
+    const shuffledLetters = [...allLetters].sort(() => Math.random() - 0.5);
+    
+    // Assign first 6 letters to first 6 levels
+    const assignments: Record<number, BonusLetterType> = {};
+    for (let i = 0; i < 6; i++) {
+      assignments[availableLevels[i]] = shuffledLetters[i];
     }
-  }, [level, collectedLetters, bonusLetters]);
+    
+    return assignments;
+  }, []);
+
+  // Bonus letter drop logic - random letters on random levels
+  const dropBonusLetter = useCallback((x: number, y: number) => {
+    // Check if this level has a letter assigned
+    const assignedLetter = letterLevelAssignments[level];
+    
+    if (!assignedLetter) return; // No letter for this level
+    
+    // Only drop if letter hasn't been collected yet
+    if (collectedLetters.has(assignedLetter)) return;
+    
+    // Check if this letter is already falling
+    const alreadyFalling = bonusLetters.some(bl => bl.type === assignedLetter && bl.active);
+    if (alreadyFalling) return;
+    
+    setBonusLetters(prev => [...prev, {
+      x: x - 15,
+      y: y,
+      width: 30,
+      height: 30,
+      type: assignedLetter,
+      speed: 2,
+      active: true
+    }]);
+    
+    toast(`Bonus letter ${assignedLetter} dropped!`, {
+      icon: "🎯"
+    });
+  }, [level, collectedLetters, bonusLetters, letterLevelAssignments]);
   const checkBonusLetterCollision = useCallback(() => {
     if (!paddle) return;
     setBonusLetters(prev => {
@@ -483,6 +494,9 @@ export const Game = ({
     launchAngleDirectionRef.current = 1; // Move right initially
     setShowInstructions(true); // Show instructions for new game
 
+    // Create random letter assignments
+    setLetterLevelAssignments(createRandomLetterAssignments());
+    
     // Initialize bricks for level 1
     setBricks(initBricksForLevel(1));
     setScore(0);
@@ -511,7 +525,7 @@ export const Game = ({
     setLaserWarnings([]);
     bombIntervalsRef.current.forEach(interval => clearInterval(interval));
     bombIntervalsRef.current.clear();
-  }, [setPowerUps, initBricksForLevel]);
+  }, [setPowerUps, initBricksForLevel, createRandomLetterAssignments]);
   const nextLevel = useCallback(() => {
     // Stop game loop before starting new level
     if (gameLoopRef.current) {
@@ -3011,6 +3025,8 @@ export const Game = ({
     setEnemySpawnCount(0);
     setLastEnemySpawnTime(0);
     setBonusLetters([]);
+    setCollectedLetters(new Set());
+    setLetterLevelAssignments(createRandomLetterAssignments());
     setBrickHitSpeedAccumulated(0);
     setEnemiesKilled(0);
     
@@ -3060,7 +3076,7 @@ export const Game = ({
     setGameState("ready");
     
     toast.info(`Retrying Level ${currentLevel}`);
-  }, [level, settings.startingLives, settings.difficulty, initBricksForLevel, setPowerUps]);
+  }, [level, settings.startingLives, settings.difficulty, initBricksForLevel, setPowerUps, createRandomLetterAssignments]);
   
   const toggleFullscreen = async () => {
     if (!fullscreenContainerRef.current) return;
