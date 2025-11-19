@@ -13,7 +13,12 @@ interface SubstepDebugOverlayProps {
 }
 
 export const SubstepDebugOverlay = ({ getDebugInfo, visible = true }: SubstepDebugOverlayProps) => {
-  const [debugInfo, setDebugInfo] = useState<SubstepDebugInfo>(getDebugInfo());
+  const [debugInfo, setDebugInfo] = useState<SubstepDebugInfo>({
+    substeps: 0,
+    ballSpeed: 0,
+    ballCount: 0,
+    maxSpeed: 0
+  });
 
   useEffect(() => {
     if (!visible) return;
