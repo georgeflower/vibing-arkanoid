@@ -2799,7 +2799,24 @@ export const Game = ({
     // iOS doesn't support the Fullscreen API
     // Use CSS-based fullscreen instead
     if (isIOSDevice) {
-      setIsFullscreen(!isFullscreen);
+      const entering = !isFullscreen;
+      setIsFullscreen(entering);
+      
+      if (entering) {
+        // Scroll to top to minimize Safari UI
+        window.scrollTo(0, 0);
+        // Prevent scrolling during gameplay
+        document.body.style.overflow = "hidden";
+        document.body.style.position = "fixed";
+        document.body.style.width = "100%";
+        document.body.style.height = "100%";
+      } else {
+        // Restore scrolling
+        document.body.style.overflow = "";
+        document.body.style.position = "";
+        document.body.style.width = "";
+        document.body.style.height = "";
+      }
       return;
     }
     
@@ -2858,16 +2875,16 @@ export const Game = ({
     };
   }, [isMobileDevice, gameState, isIOSDevice]);
 
-  // Auto-enter fullscreen on mobile when game starts
+  // Auto-enter fullscreen on mobile when game starts (disabled for iOS - user gesture required)
   useEffect(() => {
-    if (isMobileDevice && gameState === "ready" && !isFullscreen && fullscreenContainerRef.current) {
+    if (isMobileDevice && !isIOSDevice && gameState === "ready" && !isFullscreen && fullscreenContainerRef.current) {
       // Small delay to ensure DOM is ready
       const timer = setTimeout(() => {
         toggleFullscreen();
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [isMobileDevice, gameState]);
+  }, [isMobileDevice, isIOSDevice, gameState]);
 
   // F key to toggle fullscreen
   useEffect(() => {
