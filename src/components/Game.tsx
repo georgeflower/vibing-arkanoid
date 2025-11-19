@@ -562,7 +562,8 @@ export const Game = ({
       y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
       width: SCALED_PADDLE_WIDTH,
       height: SCALED_PADDLE_HEIGHT,
-      hasTurrets: false
+      hasTurrets: false,
+      hasShield: false
     });
 
     // Initialize ball with new speed - waiting to launch (capped at 175%)
@@ -1537,6 +1538,7 @@ export const Game = ({
             setPaddle(prev => prev ? {
               ...prev,
               hasTurrets: false,
+              hasShield: false,
               width: SCALED_PADDLE_WIDTH
             } : null);
             setBullets([]); // Clear all bullets

@@ -91,6 +91,7 @@ export const HighScoreEntry = ({ score, level, onSubmit }: HighScoreEntryProps) 
             maxLength={3}
             placeholder="___"
             autoFocus
+            autoComplete="off"
             className="w-64 text-center text-6xl font-bold font-mono bg-slate-800 text-cyan-300 border-4 border-cyan-500 rounded-lg px-6 py-4 focus:outline-none focus:border-cyan-300 focus:ring-4 focus:ring-cyan-400/50 uppercase tracking-widest animate-pulse"
           />
         </div>
