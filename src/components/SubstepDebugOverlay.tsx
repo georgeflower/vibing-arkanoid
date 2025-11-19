@@ -61,7 +61,7 @@ export const SubstepDebugOverlay = ({ getDebugInfo, visible = true }: SubstepDeb
         {debugInfo.substeps > 1 && (
           <div className="text-yellow-400">⚡ Multi-substep active</div>
         )}
-        Press 'M' to toggle this overlay
+        Press 'TAB' to toggle this overlay
       </div>
     </div>
   );
