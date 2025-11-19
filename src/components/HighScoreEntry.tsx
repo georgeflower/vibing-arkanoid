@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 
 interface HighScoreEntryProps {
@@ -9,6 +9,7 @@ interface HighScoreEntryProps {
 
 export const HighScoreEntry = ({ score, level, onSubmit }: HighScoreEntryProps) => {
   const [name, setName] = useState("");
+  const [displayScore, setDisplayScore] = useState(0);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toUpperCase().slice(0, 3);
@@ -27,41 +28,81 @@ export const HighScoreEntry = ({ score, level, onSubmit }: HighScoreEntryProps) 
     }
   };
 
+  useEffect(() => {
+    const duration = 1500;
+    const steps = 60;
+    const increment = score / steps;
+    let current = 0;
+    
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= score) {
+        setDisplayScore(score);
+        clearInterval(timer);
+      } else {
+        setDisplayScore(Math.floor(current));
+      }
+    }, duration / steps);
+    
+    return () => clearInterval(timer);
+  }, [score]);
+
   return (
-    <div className="retro-border bg-slate-900/95 rounded-lg p-12 w-full max-w-2xl text-center animate-scale-in">
-      <h2 className="text-6xl font-bold mb-4 font-mono">
-        <span className="retro-title">HIGH SCORE!</span>
-      </h2>
-      <div className="text-4xl text-cyan-300 mb-4 font-mono font-bold animate-pulse">
-        {score.toLocaleString()} POINTS
-      </div>
-      <div className="text-2xl text-purple-400 mb-8 font-mono">
-        LEVEL {level}
+    <div className="retro-border bg-slate-900/95 rounded-lg p-12 w-full max-w-2xl text-center animate-scale-in relative overflow-hidden">
+      {/* Animated glow background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-purple-500/20 to-pink-500/20 animate-pulse pointer-events-none" />
+      
+      {/* Rotating glow rings */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 border-4 border-cyan-400/30 rounded-full animate-spin" style={{ animationDuration: '8s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 border-4 border-purple-400/30 rounded-full animate-spin" style={{ animationDuration: '6s', animationDirection: 'reverse' }} />
       </div>
       
-      <div className="mb-8">
-        <label className="block text-pink-400 mb-4 font-mono text-2xl tracking-wider">
-          ENTER YOUR INITIALS:
-        </label>
-        <input
-          type="text"
-          value={name}
-          onChange={handleInputChange}
-          onKeyPress={handleKeyPress}
-          maxLength={3}
-          placeholder="___"
-          autoFocus
-          className="w-64 text-center text-6xl font-bold font-mono bg-slate-800 text-cyan-300 border-4 border-cyan-500 rounded-lg px-6 py-4 focus:outline-none focus:border-cyan-300 focus:ring-4 focus:ring-cyan-400/50 uppercase tracking-widest animate-pulse"
-        />
+      {/* Content with relative positioning */}
+      <div className="relative z-10">
+        {/* Trophy Icon */}
+        <div className="flex justify-center mb-4">
+          <div className="text-8xl animate-bounce">
+            🏆
+          </div>
+        </div>
+        
+        <h2 className="text-6xl font-bold mb-4 font-mono relative">
+          <span className="retro-title inline-block animate-pulse">HIGH SCORE!</span>
+          <span className="absolute -top-2 -left-4 text-yellow-400 animate-ping">✨</span>
+          <span className="absolute -top-2 -right-4 text-yellow-400 animate-ping" style={{ animationDelay: '0.5s' }}>✨</span>
+        </h2>
+        <div className="text-4xl text-cyan-300 mb-4 font-mono font-bold animate-pulse">
+          {displayScore.toLocaleString()} POINTS
+        </div>
+        <div className="text-2xl text-purple-400 mb-8 font-mono">
+          LEVEL {level}
+        </div>
+        
+        <div className="mb-8">
+          <label className="block text-pink-400 mb-4 font-mono text-2xl tracking-wider">
+            ENTER YOUR INITIALS:
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={handleInputChange}
+            onKeyPress={handleKeyPress}
+            maxLength={3}
+            placeholder="___"
+            autoFocus
+            className="w-64 text-center text-6xl font-bold font-mono bg-slate-800 text-cyan-300 border-4 border-cyan-500 rounded-lg px-6 py-4 focus:outline-none focus:border-cyan-300 focus:ring-4 focus:ring-cyan-400/50 uppercase tracking-widest animate-pulse"
+          />
+        </div>
+        
+        <Button
+          onClick={handleSubmit}
+          disabled={name.length !== 3}
+          className="px-12 py-6 text-2xl font-bold font-mono bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-lg disabled:opacity-30 disabled:cursor-not-allowed retro-button"
+        >
+          SUBMIT SCORE
+        </Button>
       </div>
-      
-      <Button
-        onClick={handleSubmit}
-        disabled={name.length !== 3}
-        className="px-12 py-6 text-2xl font-bold font-mono bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-lg disabled:opacity-30 disabled:cursor-not-allowed retro-button"
-      >
-        SUBMIT SCORE
-      </Button>
     </div>
   );
 };

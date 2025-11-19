@@ -31,11 +31,13 @@ interface GameCanvasProps {
   bossAttacks: BossAttack[];
   laserWarnings: Array<{ x: number; startTime: number }>;
   gameOverParticles: Particle[];
+  highScoreParticles: Particle[];
+  showHighScoreEntry: boolean;
   bossIntroActive: boolean;
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, bossIntroActive }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -1326,6 +1328,25 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.restore();
       }
       
+      // Draw high score celebration particles
+      if (showHighScoreEntry && highScoreParticles.length > 0) {
+        ctx.save();
+        highScoreParticles.forEach((particle: Particle) => {
+          const alpha = particle.life / particle.maxLife;
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = particle.color;
+          
+          // Draw as confetti rectangles with rotation
+          ctx.save();
+          ctx.translate(particle.x, particle.y);
+          ctx.rotate(particle.life * 0.1);
+          ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size * 2);
+          ctx.restore();
+        });
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
+      
       // Boss intro cinematic overlay
       if (bossIntroActive) {
         ctx.save();
@@ -1393,7 +1414,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       // Restore context after shake
       ctx.restore();
     
-    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, bossIntroActive, qualitySettings]);
+    }, [ref, width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, qualitySettings]);
 
     return (
       <canvas
