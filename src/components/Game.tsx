@@ -1008,52 +1008,75 @@ export const Game = ({
     if (!paddle || balls.length === 0) return;
     setBalls(prevBalls => {
       let updatedBalls = prevBalls.map(ball => {
-        let newBall = {
-          ...ball
-        };
+        // Multi-substep collision detection to prevent tunneling at high speeds
+        const ballSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+        const minBrickDimension = Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT);
+        
+        // Calculate required substeps based on ball speed (adaptive)
+        // If ball moves more than half a brick width per frame, increase substeps
+        const PHYSICS_SUBSTEPS = Math.max(1, Math.ceil(ballSpeed * speedMultiplier / (minBrickDimension * 0.4)));
+        
+        let newBall = { ...ball };
+        const substepDx = ball.dx / PHYSICS_SUBSTEPS;
+        const substepDy = ball.dy / PHYSICS_SUBSTEPS;
+        
+        // Process each substep
+        for (let substep = 0; substep < PHYSICS_SUBSTEPS; substep++) {
+          // Move ball by substep amount
+          newBall.x += substepDx * speedMultiplier;
+          newBall.y += substepDy * speedMultiplier;
 
-        // Wall collision
-        if (newBall.x + newBall.dx > SCALED_CANVAS_WIDTH - newBall.radius || newBall.x + newBall.dx < newBall.radius) {
-          newBall.dx = -newBall.dx;
-        }
-        if (newBall.y + newBall.dy < newBall.radius) {
-          newBall.dy = -newBall.dy;
-        }
-
-        // Paddle collision - only bounce from top 50% of paddle
-        if (newBall.y + newBall.dy > paddle.y - newBall.radius && newBall.x > paddle.x && newBall.x < paddle.x + paddle.width && newBall.dy > 0) {
-          // Calculate where on paddle the ball hit (0 = top, 1 = bottom)
-          const verticalHitPosition = (newBall.y - paddle.y) / paddle.height;
-
-          // Only bounce if hitting top 50% of paddle
-          if (verticalHitPosition <= 0.5) {
-            soundManager.playBounce();
-
-            // Update last paddle hit time
-            setLastPaddleHitTime(Date.now());
-            const hitPos = (newBall.x - paddle.x) / paddle.width;
-            const angle = (hitPos - 0.5) * Math.PI * 0.6;
-            const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-            newBall.dx = speed * Math.sin(angle);
-            newBall.dy = -speed * Math.cos(angle);
+          // Wall collision
+          if (newBall.x > SCALED_CANVAS_WIDTH - newBall.radius || newBall.x < newBall.radius) {
+            newBall.dx = -newBall.dx;
+            // Correct position
+            if (newBall.x > SCALED_CANVAS_WIDTH - newBall.radius) {
+              newBall.x = SCALED_CANVAS_WIDTH - newBall.radius;
+            } else {
+              newBall.x = newBall.radius;
+            }
           }
-        }
-
-        // Bottom collision (lose life)
-        if (newBall.y + newBall.dy > SCALED_CANVAS_HEIGHT - newBall.radius) {
-          // Remove this ball
-          return null;
-        }
-
-        // Brick collision (expand collision area to cover padding gaps)
-        setBricks(prevBricks => {
-          let brickHit = false;
-
-          // Check cooldown - prevent hitting multiple bricks too quickly
-          const now = Date.now();
-          if (newBall.lastHitTime && now - newBall.lastHitTime < 10) {
-            return prevBricks;
+          if (newBall.y < newBall.radius) {
+            newBall.dy = -newBall.dy;
+            newBall.y = newBall.radius;
           }
+
+          // Paddle collision - only bounce from top 50% of paddle
+          if (newBall.y > paddle.y - newBall.radius && newBall.x > paddle.x && newBall.x < paddle.x + paddle.width && newBall.dy > 0) {
+            // Calculate where on paddle the ball hit (0 = top, 1 = bottom)
+            const verticalHitPosition = (newBall.y - paddle.y) / paddle.height;
+
+            // Only bounce if hitting top 50% of paddle
+            if (verticalHitPosition <= 0.5) {
+              soundManager.playBounce();
+
+              // Update last paddle hit time
+              setLastPaddleHitTime(Date.now());
+              const hitPos = (newBall.x - paddle.x) / paddle.width;
+              const angle = (hitPos - 0.5) * Math.PI * 0.6;
+              const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
+              newBall.dx = speed * Math.sin(angle);
+              newBall.dy = -speed * Math.cos(angle);
+              // Correct position
+              newBall.y = paddle.y - newBall.radius;
+            }
+          }
+
+          // Bottom collision (lose life)
+          if (newBall.y > SCALED_CANVAS_HEIGHT - newBall.radius) {
+            // Remove this ball
+            return null;
+          }
+
+          // Brick collision (substep-safe)
+          setBricks(prevBricks => {
+            let brickHit = false;
+
+            // Check cooldown - prevent hitting same brick in consecutive substeps
+            const now = Date.now();
+            if (newBall.lastHitTime && now - newBall.lastHitTime < 5) {
+              return prevBricks;
+            }
 
           // First check for padding collisions between indestructible bricks
           const indestructibleBricks = prevBricks.filter(b => b.isIndestructible && b.visible);
@@ -1322,6 +1345,9 @@ export const Game = ({
           }
           return newBricks;
         });
+        
+        } // End substep loop
+        
         return newBall;
       }).filter(Boolean) as Ball[];
 
@@ -1505,7 +1531,7 @@ export const Game = ({
     // Update background animation
     setBackgroundPhase(prev => (prev + 1) % 360);
 
-    // Update balls (only if not waiting to launch)
+    // Update balls rotation only (position is updated in checkCollision with substeps)
     setBalls(prev => prev.map(ball => {
       if (ball.waitingToLaunch && paddle) {
         // Keep ball attached to paddle
@@ -1517,8 +1543,6 @@ export const Game = ({
       }
       return {
         ...ball,
-        x: ball.x + ball.dx * speedMultiplier,
-        y: ball.y + ball.dy * speedMultiplier,
         rotation: ((ball.rotation || 0) + 3) % 360 // Spinning rotation
       };
     }));
