@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { GameSettings, Difficulty } from "@/types/game";
 import startScreenImg from "@/assets/start-screen-new.png";
-import { useHighScores, type LeaderboardType } from "@/hooks/useHighScores";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { Changelog } from "./Changelog";
 import { soundManager } from "@/utils/sounds";
@@ -26,7 +25,6 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [showAbout, setShowAbout] = useState(false);
   const [showPressToStart, setShowPressToStart] = useState(true);
   const [showChangelog, setShowChangelog] = useState(false);
-  const [leaderboardType, setLeaderboardType] = useState<LeaderboardType>('all-time');
   
   const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -42,41 +40,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   if (showHighScores) {
     return (
       <div className="fixed inset-0 w-full h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)]">
-        <div className="flex justify-center gap-2 mb-4 z-10">
-          <Button
-            onClick={() => {
-              setLeaderboardType('all-time');
-              soundManager.playBrickHit();
-            }}
-            variant={leaderboardType === 'all-time' ? 'default' : 'outline'}
-            className="font-mono"
-          >
-            All Time
-          </Button>
-          <Button
-            onClick={() => {
-              setLeaderboardType('weekly');
-              soundManager.playBrickHit();
-            }}
-            variant={leaderboardType === 'weekly' ? 'default' : 'outline'}
-            className="font-mono"
-          >
-            Weekly
-          </Button>
-          <Button
-            onClick={() => {
-              setLeaderboardType('daily');
-              soundManager.playBrickHit();
-            }}
-            variant={leaderboardType === 'daily' ? 'default' : 'outline'}
-            className="font-mono"
-          >
-            Daily
-          </Button>
-        </div>
         <HighScoreDisplay 
           onClose={() => setShowHighScores(false)} 
-          leaderboardType={leaderboardType}
         />
       </div>
     );
