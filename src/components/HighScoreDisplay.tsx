@@ -96,14 +96,14 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time' }: High
             ) : (
               currentScores.map((entry, index) => (
                 <div key={entry.id || index} className="flex items-center text-sm md:text-xl px-4 py-2 bg-slate-800/60 rounded-lg border border-cyan-500/30 whitespace-nowrap">
-                  <span className="text-cyan-300 w-8 flex-shrink-0">{index + 1}.</span>
-                  <span className="text-white font-bold flex items-center min-w-0 mr-2 flex-shrink-0">
+                  <span className="text-cyan-300 w-10 flex-shrink-0">{index + 1}.</span>
+                  <span className="text-white font-bold flex items-center w-20 flex-shrink-0">
                     {entry.beatLevel50 && <span className="mr-1">👑</span>}
                     <span>{entry.name}</span>
                     {entry.difficulty === "godlike" && <span className="text-red-500 text-xs ml-1">GOD-MODE</span>}
                   </span>
-                  <span className="text-white font-bold mx-2 flex-shrink-0">{entry.score.toString().padStart(6, '0')}</span>
-                  <span className="text-white flex-shrink-0 mx-2">LVL{entry.level}</span>
+                  <span className="text-white font-bold w-24 flex-shrink-0 ml-4">{entry.score.toString().padStart(6, '0')}</span>
+                  <span className="text-white flex-shrink-0 ml-4">LVL{entry.level}</span>
                   <span className="text-white flex-shrink-0 ml-auto">{entry.startingLives || 3}❤️</span>
                 </div>
               ))
