@@ -99,6 +99,22 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => 
     startingLives?: number
   ) => {
     try {
+      // Rate limiting: prevent submissions more than once per 30 seconds
+      const lastSubmissionKey = 'lastHighScoreSubmission';
+      const lastSubmission = sessionStorage.getItem(lastSubmissionKey);
+      const now = Date.now();
+      
+      if (lastSubmission) {
+        const timeSinceLastSubmission = now - parseInt(lastSubmission, 10);
+        const cooldownMs = 30000; // 30 seconds
+        
+        if (timeSinceLastSubmission < cooldownMs) {
+          const remainingSeconds = Math.ceil((cooldownMs - timeSinceLastSubmission) / 1000);
+          toast.error(`Please wait ${remainingSeconds} seconds before submitting another score`);
+          throw new Error('Rate limit exceeded');
+        }
+      }
+
       const { error: insertError } = await supabase
         .from('high_scores')
         .insert({
@@ -112,12 +128,17 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => 
 
       if (insertError) throw insertError;
 
+      // Record successful submission time
+      sessionStorage.setItem(lastSubmissionKey, now.toString());
+
       toast.success('High score submitted!');
       
       await fetchHighScores();
     } catch (err) {
       console.error('Failed to add high score:', err);
-      toast.error('Failed to submit high score');
+      if (err instanceof Error && err.message !== 'Rate limit exceeded') {
+        toast.error('Failed to submit high score');
+      }
       throw err;
     }
   };
