@@ -18,8 +18,8 @@ export const levelLayouts: (boolean | number)[][][] = [
   [
     [false, false, true, true, true, true, true, true, true, true, true, false, false],
     [false, true, true, true, true, true, true, true, true, true, true, true, false],
-    [false, true, true, false, false, true, true, false, false, true, true, true, false],
-    [false, true, true, false, false, true, true, false, false, true, true, true, false],
+    [false, true, true, 2, 2, true, true, 2, 2, true, true, true, false],
+    [false, true, true, 2, 2, true, true, 2, 2, true, true, true, false],
     [false, true, true, true, true, true, true, true, true, true, true, true, false],
     [false, true, true, true, true, true, true, true, true, true, true, true, false],
     [false, true, true, true, true, true, true, true, true, true, true, true, false],
@@ -31,7 +31,6 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false],
   ],
-
   // Level 2
   [
     [false, false, false, true, true, true, false, true, true, true, false, false, false],
