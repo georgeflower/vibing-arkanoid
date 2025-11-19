@@ -1163,7 +1163,7 @@ export const Game = ({
                 const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
                 newBall.dx += speed * Math.sin(angleVariation) * 0.1;
               }
-              soundManager.playBrickHit();
+              soundManager.playBrickHit(brick.type, brick.hitsRemaining);
               const updatedBrick = {
                 ...brick,
                 hitsRemaining: brick.hitsRemaining - 1
