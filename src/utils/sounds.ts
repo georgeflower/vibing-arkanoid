@@ -501,9 +501,9 @@ class SoundManager {
     oscillator.frequency.setValueAtTime(100, ctx.currentTime);
     oscillator.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.8);
     
-    gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.4);
-    gainNode.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.8);
+    gainNode.gain.setValueAtTime(0.075, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.125, ctx.currentTime + 0.4);
+    gainNode.gain.linearRampToValueAtTime(0.005, ctx.currentTime + 0.8);
     
     oscillator.start(ctx.currentTime);
     oscillator.stop(ctx.currentTime + 0.8);

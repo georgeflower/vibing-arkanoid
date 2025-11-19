@@ -78,6 +78,7 @@ export const Game = ({
   const [bossAttacks, setBossAttacks] = useState<BossAttack[]>([]);
   const [bossActive, setBossActive] = useState(false);
   const [laserWarnings, setLaserWarnings] = useState<Array<{ x: number; startTime: number }>>([]);
+  const bossSpawnedEnemiesRef = useRef<Set<number>>(new Set());
   const [isMobileDevice] = useState(() => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
            ('ontouchstart' in window && window.matchMedia('(max-width: 768px)').matches);
@@ -182,7 +183,11 @@ export const Game = ({
     bricks, 
     enemies, 
     setPaddle,
-    () => setBricksDestroyedByTurrets(prev => prev + 1)
+    () => setBricksDestroyedByTurrets(prev => prev + 1),
+    boss,
+    resurrectedBosses,
+    setBoss,
+    setResurrectedBosses
   );
 
   // Adaptive quality system
@@ -1127,24 +1132,47 @@ export const Game = ({
             }
           }
 
-          // Paddle collision - only bounce from top 50% of paddle
+          // Paddle collision - check shield first
           if (newBall.y > paddle.y - newBall.radius && newBall.x > paddle.x && newBall.x < paddle.x + paddle.width && newBall.dy > 0) {
             // Calculate where on paddle the ball hit (0 = top, 1 = bottom)
             const verticalHitPosition = (newBall.y - paddle.y) / paddle.height;
 
-            // Only bounce if hitting top 50% of paddle
-            if (verticalHitPosition <= 0.5) {
+            // Check if shield is active - protect entire paddle
+            if (paddle.hasShield) {
               soundManager.playBounce();
-
-              // Update last paddle hit time
+              
+              // Remove shield and bounce ball away
+              setPaddle(prev => prev ? {
+                ...prev,
+                hasShield: false
+              } : null);
+              
+              toast.success("Shield absorbed the hit!");
+              
+              // Bounce ball upward (normal paddle physics)
               setLastPaddleHitTime(Date.now());
               const hitPos = (newBall.x - paddle.x) / paddle.width;
               const angle = (hitPos - 0.5) * Math.PI * 0.6;
               const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
               newBall.dx = speed * Math.sin(angle);
               newBall.dy = -speed * Math.cos(angle);
-              // Correct position
               newBall.y = paddle.y - newBall.radius;
+            } else if (verticalHitPosition <= 0.5) {
+              // Only bounce if hitting top 50% of paddle (no shield)
+              soundManager.playBounce();
+
+              setLastPaddleHitTime(Date.now());
+              const hitPos = (newBall.x - paddle.x) / paddle.width;
+              const angle = (hitPos - 0.5) * Math.PI * 0.6;
+              const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
+              newBall.dx = speed * Math.sin(angle);
+              newBall.dy = -speed * Math.cos(angle);
+              newBall.y = paddle.y - newBall.radius;
+            } else {
+              // Ball hit bottom half without shield - lose life
+              soundManager.playLoseLife();
+              toast.error("Hit paddle from the side!");
+              return null;
             }
           }
 
@@ -1784,11 +1812,19 @@ export const Game = ({
                 // Remove enemy
                 setEnemies(prev => prev.filter(e => e.id !== enemy.id));
 
-                // Track enemy kill and drop powerup every 3 kills
+                // Track enemy kill and drop powerup
                 setEnemiesKilled(prev => {
                   const newCount = prev + 1;
-                  if (newCount % 3 === 0) {
-                    // Create a powerup at enemy location - always drop (retry until success)
+                  
+                  // Check if this is a boss-spawned enemy
+                  const isBossSpawned = bossSpawnedEnemiesRef.current.has(enemy.id || -1);
+                  
+                  // Boss-spawned enemies: 50% chance to drop power-up
+                  // Regular enemies: drop every 3 kills
+                  const shouldDrop = isBossSpawned ? Math.random() < 0.5 : newCount % 3 === 0;
+                  
+                  if (shouldDrop) {
+                    // Create a powerup at enemy location
                     const fakeBrick: Brick = {
                       x: enemy.x,
                       y: enemy.y,
@@ -1803,7 +1839,7 @@ export const Game = ({
                       isIndestructible: false,
                       type: "normal"
                     };
-                    // Keep trying until we get a powerup (guaranteed drop)
+                    // Keep trying until we get a powerup
                     let powerUp = createPowerUp(fakeBrick);
                     let attempts = 0;
                     while (!powerUp && attempts < 10) {
@@ -1812,9 +1848,15 @@ export const Game = ({
                     }
                     if (powerUp) {
                       setPowerUps(prev => [...prev, powerUp]);
-                      toast.success("Enemy kill bonus! Power-up dropped!");
+                      toast.success(isBossSpawned ? "Boss minion bonus! Power-up dropped!" : "Enemy kill bonus! Power-up dropped!");
                     }
                   }
+                  
+                  // Clean up boss-spawned enemy tracking
+                  if (enemy.id !== undefined) {
+                    bossSpawnedEnemiesRef.current.delete(enemy.id);
+                  }
+                  
                   return newCount;
                 });
 
@@ -2857,6 +2899,9 @@ export const Game = ({
       for (let i = 0; i < enemiesToSpawn; i++) {
         const enemyId = nextEnemyId.current++;
         const enemyType = boss.type;
+        
+        // Track that this enemy was spawned by the boss
+        bossSpawnedEnemiesRef.current.add(enemyId);
         
         // Calculate spawn position (from boss center with slight offset)
         const spawnAngle = (Math.PI / 3) * i - Math.PI / 6;
