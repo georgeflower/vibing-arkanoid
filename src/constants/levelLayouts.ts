@@ -69,10 +69,10 @@ export const levelLayouts: (boolean | number)[][][] = [
 
   // Level 4
   [
-    [false, false, false, false, false, false, false, false, false, false, false, false, false],
-    [false, false, false, false, false, false, false, false, false, false, false, false, false],
-    [false, false, true, false, false, false, false, false, false, false, true, false, false],
-    [false, false, false, true, false, false, false, false, false, true, false, false, false],
+    [false, false, false, false, 2, 2, 2, 2, 2, false, false, false, false],
+    [false, false, false, false, 2, 3, 3, 3, 2, false, false, false, false],
+    [false, false, true, false, 2, false, false, false, 2, false, true, false, false],
+    [false, 4, 4, true, false, false, false, false, false, true, 4, 4, false],
     [false, false, true, true, true, false, false, false, true, true, true, false, false],
     [false, true, true, false, true, true, false, true, true, false, true, true, false],
     [true, false, false, false, false, false, true, false, false, false, false, false, true],
