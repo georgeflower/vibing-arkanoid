@@ -102,8 +102,8 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time' }: High
                     <span>{entry.name}</span>
                     {entry.difficulty === "godlike" && <span className="text-red-500 text-xs ml-1">GOD-MODE</span>}
                   </span>
-                  <span className="text-white font-bold w-24 flex-shrink-0 ml-4">{entry.score.toString().padStart(6, '0')}</span>
-                  <span className="text-white flex-shrink-0 ml-4">LVL{entry.level}</span>
+                  <span className="text-white font-bold w-28 flex-shrink-0 ml-4">{entry.score.toString().padStart(6, '0')}</span>
+                  <span className="text-white flex-shrink-0 ml-8">LVL{entry.level}</span>
                   <span className="text-white flex-shrink-0 ml-auto">{entry.startingLives || 3}❤️</span>
                 </div>
               ))
