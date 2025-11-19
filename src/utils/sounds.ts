@@ -327,6 +327,55 @@ class SoundManager {
     oscillator.stop(ctx.currentTime + 0.4);
   }
 
+  playExplosiveBrickSound() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Dramatic multi-layered explosion sound
+    // Layer 1: Deep bass rumble
+    const bass = ctx.createOscillator();
+    const bassGain = ctx.createGain();
+    bass.connect(bassGain);
+    bassGain.connect(ctx.destination);
+    bass.type = 'sawtooth';
+    bass.frequency.setValueAtTime(80, ctx.currentTime);
+    bass.frequency.exponentialRampToValueAtTime(20, ctx.currentTime + 0.6);
+    bassGain.gain.setValueAtTime(0.25, ctx.currentTime);
+    bassGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+    bass.start(ctx.currentTime);
+    bass.stop(ctx.currentTime + 0.6);
+    
+    // Layer 2: Mid-range crack
+    const mid = ctx.createOscillator();
+    const midGain = ctx.createGain();
+    mid.connect(midGain);
+    midGain.connect(ctx.destination);
+    mid.type = 'square';
+    mid.frequency.setValueAtTime(300, ctx.currentTime);
+    mid.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.3);
+    midGain.gain.setValueAtTime(0.15, ctx.currentTime);
+    midGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    mid.start(ctx.currentTime);
+    mid.stop(ctx.currentTime + 0.3);
+    
+    // Layer 3: High sizzle/shrapnel
+    const high = ctx.createOscillator();
+    const highGain = ctx.createGain();
+    const highFilter = ctx.createBiquadFilter();
+    high.connect(highFilter);
+    highFilter.connect(highGain);
+    highGain.connect(ctx.destination);
+    high.type = 'sawtooth';
+    high.frequency.setValueAtTime(2000, ctx.currentTime);
+    high.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.2);
+    highFilter.type = 'bandpass';
+    highFilter.frequency.value = 1500;
+    highGain.gain.setValueAtTime(0.12, ctx.currentTime);
+    highGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+    high.start(ctx.currentTime);
+    high.stop(ctx.currentTime + 0.2);
+  }
+
   // Power-up specific sounds
   // AudioBuffer cache for preloaded sounds
   private audioBuffers: { [key: string]: AudioBuffer } = {};
@@ -414,7 +463,7 @@ class SoundManager {
     if (!this.sfxEnabled) return;
     const buffer = this.audioBuffers['/glass-breaking.ogg'];
     if (buffer) {
-      this.playAudioBuffer(buffer, 0.7 * 1.2); // 0.7 base + 20% boost
+      this.playAudioBuffer(buffer, 0.588); // 0.7 * 1.2 * 0.7 (30% reduction)
     }
   }
 
@@ -474,7 +523,7 @@ class SoundManager {
     oscillator.frequency.setValueAtTime(200, ctx.currentTime);
     oscillator.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.2);
     
-    gainNode.gain.setValueAtTime(0.4, ctx.currentTime);
+    gainNode.gain.setValueAtTime(0.32, ctx.currentTime); // 0.4 * 0.8 (20% reduction)
     gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
     
     oscillator.start(ctx.currentTime);
@@ -532,8 +581,27 @@ class SoundManager {
   playBossIntroSound() {
     if (!this.sfxEnabled) return;
     
+    // Duck music volume by 80% during boss intro
+    const originalVolumes: number[] = [];
+    this.musicTracks.forEach((track, index) => {
+      if (track) {
+        originalVolumes[index] = track.volume;
+        track.volume = track.volume * 0.2; // Reduce to 20%
+      }
+    });
+    
     const audio = new Audio('/siren-alarm-boss.ogg');
     audio.volume = 0.7;
+    
+    // Restore music volume after boss intro sound ends
+    audio.addEventListener('ended', () => {
+      this.musicTracks.forEach((track, index) => {
+        if (track && originalVolumes[index] !== undefined) {
+          track.volume = originalVolumes[index];
+        }
+      });
+    });
+    
     audio.play().catch(err => console.log('Boss intro sound failed:', err));
   }
 
