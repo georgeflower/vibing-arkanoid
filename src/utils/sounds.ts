@@ -448,8 +448,9 @@ class SoundManager {
     oscillator.frequency.setValueAtTime(100, ctx.currentTime);
     oscillator.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.8);
     
-    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
+    gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.4);
+    gainNode.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.8);
     
     oscillator.start(ctx.currentTime);
     oscillator.stop(ctx.currentTime + 0.8);
@@ -527,27 +528,9 @@ class SoundManager {
   playBossIntroSound() {
     if (!this.sfxEnabled) return;
     
-    const ctx = this.getAudioContext();
-    
-    // Dramatic intro sound
-    for (let i = 0; i < 5; i++) {
-      setTimeout(() => {
-        const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        
-        oscillator.type = 'triangle';
-        oscillator.frequency.setValueAtTime(100 + i * 50, ctx.currentTime);
-        
-        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-        
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.2);
-      }, i * 100);
-    }
+    const audio = new Audio('/siren-alarm-boss.ogg');
+    audio.volume = 0.7;
+    audio.play().catch(err => console.log('Boss intro sound failed:', err));
   }
 
   playPyramidBulletSound() {
