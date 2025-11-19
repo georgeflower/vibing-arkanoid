@@ -71,6 +71,7 @@ export const Game = ({
   const [showInstructions, setShowInstructions] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
+  const [droppedLettersThisLevel, setDroppedLettersThisLevel] = useState<Set<BonusLetterType>>(new Set());
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
   const [letterLevelAssignments, setLetterLevelAssignments] = useState<Record<number, BonusLetterType>>({});
   const [boss, setBoss] = useState<Boss | null>(null);
@@ -316,9 +317,15 @@ export const Game = ({
     // Only drop if letter hasn't been collected yet
     if (collectedLetters.has(assignedLetter)) return;
     
+    // Check if letter was already dropped this level
+    if (droppedLettersThisLevel.has(assignedLetter)) return;
+    
     // Check if this letter is already falling
     const alreadyFalling = bonusLetters.some(bl => bl.type === assignedLetter && bl.active);
     if (alreadyFalling) return;
+    
+    // Mark letter as dropped for this level
+    setDroppedLettersThisLevel(prev => new Set(prev).add(assignedLetter));
     
     setBonusLetters(prev => [...prev, {
       x: x - 15,
@@ -333,7 +340,7 @@ export const Game = ({
     toast(`Bonus letter ${assignedLetter} dropped!`, {
       icon: "🎯"
     });
-  }, [level, collectedLetters, bonusLetters, letterLevelAssignments]);
+  }, [level, collectedLetters, bonusLetters, droppedLettersThisLevel, letterLevelAssignments]);
   const checkBonusLetterCollision = useCallback(() => {
     if (!paddle) return;
     setBonusLetters(prev => {
@@ -523,6 +530,7 @@ export const Game = ({
     setEnemySpawnCount(0);
     setLastEnemySpawnTime(0);
     setBonusLetters([]);
+    setDroppedLettersThisLevel(new Set());
     setCollectedLetters(new Set());
     setEnemiesKilled(0);
     setLastBossSpawnTime(0);
@@ -548,6 +556,8 @@ export const Game = ({
     timerStartedRef.current = false;
     bombIntervalsRef.current.forEach(interval => clearInterval(interval));
     bombIntervalsRef.current.clear();
+    setBonusLetters([]);
+    setDroppedLettersThisLevel(new Set());
     const newLevel = level + 1;
     const maxSpeedMultiplier = settings.difficulty === "godlike" ? 1.75 : 1.5; // 175% godlike, 150% normal
     // Godlike starts at 125%, normal at 100%, both increase 5% per level
@@ -1133,33 +1143,13 @@ export const Game = ({
             }
           }
 
-          // Paddle collision - check shield first
+          // Paddle collision - ball should always bounce normally
           if (newBall.y > paddle.y - newBall.radius && newBall.x > paddle.x && newBall.x < paddle.x + paddle.width && newBall.dy > 0) {
             // Calculate where on paddle the ball hit (0 = top, 1 = bottom)
             const verticalHitPosition = (newBall.y - paddle.y) / paddle.height;
 
-            // Check if shield is active - protect entire paddle
-            if (paddle.hasShield) {
-              soundManager.playBounce();
-              
-              // Remove shield and bounce ball away
-              setPaddle(prev => prev ? {
-                ...prev,
-                hasShield: false
-              } : null);
-              
-              toast.success("Shield absorbed the hit!");
-              
-              // Bounce ball upward (normal paddle physics)
-              setLastPaddleHitTime(Date.now());
-              const hitPos = (newBall.x - paddle.x) / paddle.width;
-              const angle = (hitPos - 0.5) * Math.PI * 0.6;
-              const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-              newBall.dx = speed * Math.sin(angle);
-              newBall.dy = -speed * Math.cos(angle);
-              newBall.y = paddle.y - newBall.radius;
-            } else if (verticalHitPosition <= 0.5) {
-              // Only bounce if hitting top 50% of paddle (no shield)
+            if (verticalHitPosition <= 0.5) {
+              // Only bounce if hitting top 50% of paddle
               soundManager.playBounce();
 
               setLastPaddleHitTime(Date.now());
@@ -1170,7 +1160,7 @@ export const Game = ({
               newBall.dy = -speed * Math.cos(angle);
               newBall.y = paddle.y - newBall.radius;
             } else {
-              // Ball hit bottom half without shield - lose life
+              // Ball hit bottom half - lose life
               soundManager.playLoseLife();
               toast.error("Hit paddle from the side!");
               return null;
@@ -2130,9 +2120,11 @@ export const Game = ({
               launchAngleDirectionRef.current = 1;
               setShowInstructions(true); // Show instructions when resetting ball
               setPowerUps([]);
+              setBonusLetters([]);
               setPaddle(prev => prev ? {
                 ...prev,
                 hasTurrets: false,
+                hasShield: false,
                 width: SCALED_PADDLE_WIDTH
               } : null);
               setBullets([]); // Clear all bullets
@@ -2217,9 +2209,11 @@ export const Game = ({
               launchAngleDirectionRef.current = 1;
               setShowInstructions(true); // Show instructions when resetting ball
               setPowerUps([]);
+              setBonusLetters([]);
               setPaddle(prev => prev ? {
                 ...prev,
                 hasTurrets: false,
+                hasShield: false,
                 width: SCALED_PADDLE_WIDTH
               } : null);
               setBullets([]); // Clear all bullets
@@ -2295,7 +2289,17 @@ export const Game = ({
       if (newX < 0 || newX > SCALED_CANVAS_WIDTH || newY < 0 || newY > SCALED_CANVAS_HEIGHT) return false;
       attack.x = newX;
       attack.y = newY;
+      // Check boss shot collisions with paddle
       if (paddle && attack.x + attack.width > paddle.x && attack.x < paddle.x + paddle.width && attack.y + attack.height > paddle.y && attack.y < paddle.y + paddle.height) {
+        // Check for shield first
+        if (paddle.hasShield) {
+          soundManager.playBounce();
+          setPaddle(prev => prev ? { ...prev, hasShield: false } : null);
+          toast.success("Shield absorbed boss attack!");
+          return false; // Remove attack
+        }
+        
+        // No shield - take damage
         soundManager.playLoseLife();
         setLives(prev => {
           const newLives = prev - 1;
@@ -2329,13 +2333,23 @@ export const Game = ({
               waitingToLaunch: true,
               isFireball: false
             }]);
+            setLaunchAngle(-20);
+            launchAngleDirectionRef.current = 1;
+            setShowInstructions(true);
             setPowerUps([]);
+            setBonusLetters([]);
             setBullets([]);
             setEnemies([]);
             setBossAttacks([]);
             setLaserWarnings([]);
             setBombs([]);
             setExplosions([]);
+            setPaddle(prev => prev ? {
+              ...prev,
+              hasTurrets: false,
+              hasShield: false,
+              width: SCALED_PADDLE_WIDTH
+            } : null);
             // Clear all bomb intervals
             bombIntervalsRef.current.forEach(interval => clearInterval(interval));
             bombIntervalsRef.current.clear();
@@ -2357,7 +2371,17 @@ export const Game = ({
         const paddleRight = paddle.x + paddle.width;
         
         if (paddle.x < laserRight && paddleRight > attack.x) {
-          // Paddle is hit by laser!
+          // Check for shield first
+          if (paddle.hasShield) {
+            soundManager.playBounce();
+            setPaddle(prev => prev ? { ...prev, hasShield: false } : null);
+            toast.success("Shield absorbed laser!");
+            // Remove laser attack
+            setBossAttacks(prev => prev.filter(a => a !== attack));
+            return;
+          }
+          
+          // No shield - paddle is hit by laser!
           soundManager.playLoseLife();
           setLives(prev => {
             const newLives = prev - 1;
@@ -2391,13 +2415,23 @@ export const Game = ({
                 waitingToLaunch: true,
                 isFireball: false
               }]);
+              setLaunchAngle(-20);
+              launchAngleDirectionRef.current = 1;
+              setShowInstructions(true);
               setPowerUps([]);
+              setBonusLetters([]);
               setBullets([]);
               setEnemies([]);
               setBossAttacks([]);
               setLaserWarnings([]);
               setBombs([]);
               setExplosions([]);
+              setPaddle(prev => prev ? {
+                ...prev,
+                hasTurrets: false,
+                hasShield: false,
+                width: SCALED_PADDLE_WIDTH
+              } : null);
               bombIntervalsRef.current.forEach(interval => clearInterval(interval));
               bombIntervalsRef.current.clear();
               setGameState("ready");
