@@ -63,7 +63,7 @@ export const ATTACK_PATTERNS = {
   laser: {
     width: 8,
     height: 400,
-    duration: 1000,
+    duration: 500,
     warningDuration: 800,
     speed: 0
   },

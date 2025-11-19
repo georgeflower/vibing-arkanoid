@@ -37,10 +37,11 @@ interface GameCanvasProps {
   highScoreParticles: Particle[];
   showHighScoreEntry: boolean;
   bossIntroActive: boolean;
+  bossSpawnAnimation: {active: boolean; startTime: number} | null;
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -1244,6 +1245,46 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.font = 'bold 12px monospace';
         ctx.textAlign = 'center';
         ctx.fillText(`${boss.type.toUpperCase()} BOSS`, boss.x + boss.width / 2, healthBarY - 8);
+        
+        // Boss spawn animation overlay
+        if (bossSpawnAnimation?.active) {
+          const elapsed = Date.now() - bossSpawnAnimation.startTime;
+          const progress = Math.min(elapsed / 500, 1); // 500ms animation
+          
+          // Pulsing glow effect
+          const glowIntensity = Math.sin(progress * Math.PI * 4) * (1 - progress);
+          ctx.shadowBlur = 30 * glowIntensity;
+          ctx.shadowColor = '#00ffff';
+          
+          // Draw hatch opening lines (expanding from center)
+          ctx.strokeStyle = `rgba(0, 255, 255, ${1 - progress})`;
+          ctx.lineWidth = 3;
+          const hatchSize = boss.width * 0.35 * progress;
+          
+          ctx.beginPath();
+          ctx.moveTo(boss.x + boss.width / 2 - hatchSize, boss.y + boss.height / 2);
+          ctx.lineTo(boss.x + boss.width / 2 + hatchSize, boss.y + boss.height / 2);
+          ctx.stroke();
+          
+          ctx.beginPath();
+          ctx.moveTo(boss.x + boss.width / 2, boss.y + boss.height / 2 - hatchSize);
+          ctx.lineTo(boss.x + boss.width / 2, boss.y + boss.height / 2 + hatchSize);
+          ctx.stroke();
+          
+          // Particle burst effect
+          for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const dist = 35 * progress;
+            const px = boss.x + boss.width / 2 + Math.cos(angle) * dist;
+            const py = boss.y + boss.height / 2 + Math.sin(angle) * dist;
+            const size = 4 * (1 - progress);
+            
+            ctx.fillStyle = `rgba(0, 255, 255, ${1 - progress})`;
+            ctx.fillRect(px - size/2, py - size/2, size, size);
+          }
+          
+          ctx.shadowBlur = 0;
+        }
       }
 
       // Draw resurrected bosses
