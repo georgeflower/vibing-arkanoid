@@ -109,8 +109,15 @@ export const useBullets = (
           }
           
           // Collision detected
-          bulletIndicesHit.add(bulletIdx);
-          brickIndicesToDestroy.add(brickIdx);
+          if (brick.isIndestructible) {
+            // Metal brick: remove bullet but don't damage brick
+            bulletIndicesHit.add(bulletIdx);
+            soundManager.playBounce(); // Metallic ricochet sound
+          } else {
+            // Normal brick: remove bullet and damage brick
+            bulletIndicesHit.add(bulletIdx);
+            brickIndicesToDestroy.add(brickIdx);
+          }
         });
       });
       
