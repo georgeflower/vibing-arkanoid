@@ -118,6 +118,13 @@ export interface Particle {
   maxLife: number;
 }
 
+export interface ShieldImpact {
+  x: number;
+  y: number;
+  startTime: number;
+  duration: number;
+}
+
 export interface Explosion {
   x: number;
   y: number;

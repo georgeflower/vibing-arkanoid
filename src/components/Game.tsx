@@ -11,7 +11,7 @@ import { QualityIndicator } from "./QualityIndicator";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Maximize2, Minimize2, Home } from "lucide-react";
-import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, GameSettings, EnemyType, Particle, Boss, BossAttack } from "@/types/game";
+import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, GameSettings, EnemyType, Particle, Boss, BossAttack, ShieldImpact } from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
 import { CANVAS_WIDTH, CANVAS_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, BRICK_ROWS, BRICK_COLS, BRICK_WIDTH, BRICK_HEIGHT, BRICK_PADDING, BRICK_OFFSET_TOP, BRICK_OFFSET_LEFT, brickColors, POWERUP_DROP_CHANCE, getHitColor, getBrickColors } from "@/constants/game";
 import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
@@ -102,6 +102,7 @@ export const Game = ({
   const [backgroundFlash, setBackgroundFlash] = useState(0);
   const [lastBossSpawnTime, setLastBossSpawnTime] = useState(0);
   const [bossSpawnAnimation, setBossSpawnAnimation] = useState<{active: boolean; startTime: number} | null>(null);
+  const [shieldImpacts, setShieldImpacts] = useState<ShieldImpact[]>([]);
   const [lastScoreMilestone, setLastScoreMilestone] = useState(0);
   const [scoreBlinking, setScoreBlinking] = useState(false);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
@@ -288,6 +289,16 @@ export const Game = ({
   useEffect(() => {
     soundManager.setMusicEnabled(true);
     soundManager.setSfxEnabled(true);
+  }, []);
+
+  // Cleanup expired shield impacts periodically
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      setShieldImpacts(prev => prev.filter(impact => now - impact.startTime < impact.duration));
+    }, 100);
+    
+    return () => clearInterval(cleanupInterval);
   }, []);
 
   // Create random letter assignments for a new game
@@ -2071,6 +2082,15 @@ export const Game = ({
         if (paddle.hasShield && bomb.x + bomb.width > paddle.x && bomb.x < paddle.x + paddle.width && bomb.y + bomb.height > paddle.y - 10 && bomb.y < paddle.y) {
           // Bomb hit shield - destroy both
           soundManager.playBounce();
+          
+          // Add shield impact effect at bomb position
+          setShieldImpacts(prev => [...prev, {
+            x: bomb.x + bomb.width / 2,
+            y: bomb.y + bomb.height / 2,
+            startTime: Date.now(),
+            duration: 600
+          }]);
+          
           setBombs(prev => prev.filter(b => b.enemyId !== bomb.enemyId));
           setPaddle(prev => prev ? {
             ...prev,
@@ -2160,6 +2180,15 @@ export const Game = ({
         if (paddle.hasShield && bullet.isBounced && bullet.x + bullet.width > paddle.x && bullet.x < paddle.x + paddle.width && bullet.y + bullet.height > paddle.y - 10 && bullet.y < paddle.y) {
           // Bullet hit shield - destroy both
           soundManager.playBounce();
+          
+          // Add shield impact effect at bullet position
+          setShieldImpacts(prev => [...prev, {
+            x: bullet.x + bullet.width / 2,
+            y: bullet.y + bullet.height / 2,
+            startTime: Date.now(),
+            duration: 600
+          }]);
+          
           setBullets(prev => prev.filter(b => b !== bullet));
           setPaddle(prev => prev ? {
             ...prev,
@@ -2294,6 +2323,15 @@ export const Game = ({
         // Check for shield first
         if (paddle.hasShield) {
           soundManager.playBounce();
+          
+          // Add shield impact effect at attack position
+          setShieldImpacts(prev => [...prev, {
+            x: attack.x + attack.width / 2,
+            y: attack.y + attack.height / 2,
+            startTime: Date.now(),
+            duration: 600
+          }]);
+          
           setPaddle(prev => prev ? { ...prev, hasShield: false } : null);
           toast.success("Shield absorbed boss attack!");
           return false; // Remove attack
@@ -2374,6 +2412,15 @@ export const Game = ({
           // Check for shield first
           if (paddle.hasShield) {
             soundManager.playBounce();
+            
+            // Add shield impact effect at paddle center (laser is wide)
+            setShieldImpacts(prev => [...prev, {
+              x: paddle.x + paddle.width / 2,
+              y: paddle.y,
+              startTime: Date.now(),
+              duration: 600
+            }]);
+            
             setPaddle(prev => prev ? { ...prev, hasShield: false } : null);
             toast.success("Shield absorbed laser!");
             // Remove laser attack
@@ -3611,6 +3658,7 @@ export const Game = ({
                       showHighScoreEntry={showHighScoreEntry}
                       bossIntroActive={bossIntroActive}
                       bossSpawnAnimation={bossSpawnAnimation}
+                      shieldImpacts={shieldImpacts}
                     />
                     {showDebugOverlay && gameLoopRef.current && (
                       <GameLoopDebugOverlay 
