@@ -634,8 +634,9 @@ export const Game = ({
       setBossIntroActive(true);
       soundManager.playBossIntroSound();
       
-      // Show boss name after 1 second
+      // Show boss name and start boss music after 1 second
       setTimeout(() => {
+        soundManager.playBossMusic(newLevel);
         const bossName = newLevel === 5 ? 'CUBE GUARDIAN' : newLevel === 10 ? 'SPHERE DESTROYER' : 'PYRAMID LORD';
         toast.error(`⚠️ BOSS APPROACHING: ${bossName} ⚠️`, { duration: 3000 });
       }, 1000);
@@ -1480,6 +1481,7 @@ export const Game = ({
           soundManager.playLoseLife();
           if (newLives <= 0) {
             setGameState("gameOver");
+            soundManager.stopBossMusic();
             soundManager.stopBackgroundMusic();
             
             // Clear boss attacks on death
@@ -1602,6 +1604,8 @@ export const Game = ({
     
     // Progress to next level after delay
     setTimeout(() => {
+      soundManager.stopBossMusic();
+      soundManager.resumeBackgroundMusic();
       setBossActive(false);
       nextLevel();
     }, 3000);
@@ -2107,6 +2111,7 @@ export const Game = ({
             const newLives = prev - 1;
             if (newLives <= 0) {
               setGameState("gameOver");
+              soundManager.stopBossMusic();
               soundManager.stopBackgroundMusic();
               setBossAttacks([]);
               setLaserWarnings([]);
@@ -2205,6 +2210,7 @@ export const Game = ({
             const newLives = prev - 1;
           if (newLives <= 0) {
             setGameState("gameOver");
+            soundManager.stopBossMusic();
             soundManager.stopBackgroundMusic();
             setBossAttacks([]);
             setLaserWarnings([]);
@@ -2343,6 +2349,7 @@ export const Game = ({
           const newLives = prev - 1;
           if (newLives <= 0) {
             setGameState("gameOver");
+            soundManager.stopBossMusic();
             soundManager.stopBackgroundMusic();
             setBossAttacks([]);
             setLaserWarnings([]);
@@ -2434,6 +2441,7 @@ export const Game = ({
             const newLives = prev - 1;
           if (newLives <= 0) {
             setGameState("gameOver");
+            soundManager.stopBossMusic();
             soundManager.stopBackgroundMusic();
             setBossAttacks([]);
             setLaserWarnings([]);
@@ -3151,6 +3159,7 @@ export const Game = ({
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
+    soundManager.stopBossMusic();
     soundManager.stopBackgroundMusic();
     soundManager.stopHighScoreMusic();
     setShowHighScoreEntry(false);
@@ -3193,6 +3202,7 @@ export const Game = ({
   
   const handleEndScreenReturnToMenu = () => {
     soundManager.stopHighScoreMusic();
+    soundManager.stopBossMusic();
     soundManager.stopBackgroundMusic();
     setShowEndScreen(false);
     setHighScoreParticles([]);
@@ -3215,6 +3225,7 @@ export const Game = ({
   const handleRetryLevel = useCallback(() => {
     // Stop all music first
     soundManager.stopHighScoreMusic();
+    soundManager.stopBossMusic();
     soundManager.stopBackgroundMusic();
     
     // Stop game loop before restarting level
@@ -3315,6 +3326,8 @@ export const Game = ({
       setBossAttacks([]);
       setBossActive(false);
       setLaserWarnings([]);
+      soundManager.stopBossMusic();
+      soundManager.resumeBackgroundMusic();
       
       // Trigger boss intro sequence after a brief delay to ensure clean state
       setTimeout(() => {
@@ -3325,8 +3338,9 @@ export const Game = ({
         setBossIntroActive(true);
         soundManager.playBossIntroSound();
         
-        // Show boss name after 1 second
+        // Show boss name and start boss music after 1 second
         setTimeout(() => {
+          soundManager.playBossMusic(currentLevel);
           const bossName = currentLevel === 5 ? 'CUBE GUARDIAN' : currentLevel === 10 ? 'SPHERE DESTROYER' : 'PYRAMID LORD';
           toast.error(`⚠️ BOSS APPROACHING: ${bossName} ⚠️`, { duration: 3000 });
         }, 1000);

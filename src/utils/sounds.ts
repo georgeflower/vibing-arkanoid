@@ -4,6 +4,9 @@ class SoundManager {
   private musicTracks: HTMLAudioElement[] = [];
   private currentTrackIndex = 0;
   private highScoreMusic: HTMLAudioElement | null = null;
+  private bossMusic: HTMLAudioElement | null = null;
+  private savedBackgroundMusicPosition: number = 0;
+  private savedBackgroundMusicIndex: number = 0;
   private musicEnabled = true;
   private sfxEnabled = true;
   private trackUrls = [
@@ -822,6 +825,78 @@ class SoundManager {
 
     oscillator.start(ctx.currentTime);
     oscillator.stop(ctx.currentTime + 0.03);
+  }
+
+  playBossMusic(bossLevel: number) {
+    if (!this.musicEnabled) return;
+    
+    // Save current background music state
+    const currentTrack = this.musicTracks[this.currentTrackIndex];
+    if (currentTrack && !currentTrack.paused) {
+      this.savedBackgroundMusicPosition = currentTrack.currentTime;
+      this.savedBackgroundMusicIndex = this.currentTrackIndex;
+    }
+    
+    // Pause background music
+    this.pauseBackgroundMusic();
+    
+    // Determine which boss music to play
+    let bossTrackUrl = '';
+    if (bossLevel === 5) {
+      bossTrackUrl = '/Boss_level_cube.mp3';
+    } else if (bossLevel === 10) {
+      bossTrackUrl = '/Boss_level_sphere.mp3';
+    } else if (bossLevel === 15) {
+      bossTrackUrl = '/Boss_level_pyramid.mp3';
+    }
+    
+    // Stop any existing boss music
+    if (this.bossMusic) {
+      this.bossMusic.pause();
+      this.bossMusic.currentTime = 0;
+    }
+    
+    // Create and play new boss music with looping
+    this.bossMusic = new Audio(bossTrackUrl);
+    this.bossMusic.loop = true;
+    this.bossMusic.volume = 0.3;
+    this.bossMusic.play().catch(err => console.log('Boss music play failed:', err));
+  }
+
+  stopBossMusic() {
+    if (this.bossMusic) {
+      this.bossMusic.pause();
+      this.bossMusic.currentTime = 0;
+      this.bossMusic = null;
+    }
+  }
+
+  resumeBackgroundMusic() {
+    if (!this.musicEnabled) return;
+    
+    // Restore the saved track and position
+    this.currentTrackIndex = this.savedBackgroundMusicIndex;
+    
+    // Initialize track if not already loaded
+    if (!this.musicTracks[this.currentTrackIndex]) {
+      const audio = new Audio(this.trackUrls[this.currentTrackIndex]);
+      audio.volume = 0.3;
+      audio.addEventListener('ended', () => this.handleTrackEnd());
+      this.musicTracks[this.currentTrackIndex] = audio;
+    }
+    
+    const track = this.musicTracks[this.currentTrackIndex];
+    if (track) {
+      track.currentTime = this.savedBackgroundMusicPosition;
+      track.play().catch(err => console.log('Resume music failed:', err));
+    }
+    
+    // Reset saved position
+    this.savedBackgroundMusicPosition = 0;
+  }
+
+  isBossMusicPlaying(): boolean {
+    return this.bossMusic !== null && !this.bossMusic.paused;
   }
 }
 
