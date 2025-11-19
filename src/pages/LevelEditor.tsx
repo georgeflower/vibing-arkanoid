@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { levelLayouts } from "@/constants/levelLayouts";
 import { toast } from "sonner";
+import crackedBrick3 from "@/assets/brick-cracked-3.png";
 
 type CellValue = boolean | number;
 
@@ -87,28 +88,16 @@ const BrickPreview = ({ type, isSelected, onClick }: {
       ctx.textBaseline = 'middle';
       ctx.fillText('💥', 30, 15);
     } else if (type === 4) {
-      // Cracked brick
-      ctx.fillStyle = 'hsl(40, 15%, 45%)';
-      ctx.fillRect(0, 0, 60, 30);
-      
-      // Highlights
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.fillRect(0, 0, 60, 2);
-      ctx.fillRect(0, 0, 2, 30);
-      
-      // Crack pattern
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(30, 15);
-      ctx.lineTo(2, 2);
-      ctx.moveTo(30, 15);
-      ctx.lineTo(58, 2);
-      ctx.moveTo(30, 15);
-      ctx.lineTo(2, 28);
-      ctx.moveTo(30, 15);
-      ctx.lineTo(58, 28);
-      ctx.stroke();
+      // Cracked brick - load and use the texture
+      const img = new Image();
+      img.src = crackedBrick3;
+      if (img.complete) {
+        ctx.drawImage(img, 0, 0, 60, 30);
+      } else {
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, 60, 30);
+        };
+      }
     } else {
       // Normal brick (true)
       ctx.fillStyle = 'hsl(200, 70%, 50%)';
