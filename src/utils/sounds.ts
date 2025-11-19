@@ -202,14 +202,9 @@ class SoundManager {
         oscillator.start(ctx.currentTime);
         oscillator.stop(ctx.currentTime + 0.06);
       } else if (hitsRemaining === 1) {
-        // Heavy crack - low pitch, longer with rumble
-        oscillator.frequency.setValueAtTime(500, ctx.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.08);
-        oscillator.type = 'sawtooth';
-        gainNode.gain.setValueAtTime(0.12, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.08);
+        // Final hit - play glass breaking sound
+        this.playCrackedBrickBreakSound();
+        return;
       }
     } else {
       // Default brick hit sound
@@ -345,7 +340,8 @@ class SoundManager {
     '/slower.mp3',
     '/wider.mp3',
     '/smaller.mp3',
-    '/shield.mp3'
+    '/shield.mp3',
+    '/glass-breaking.ogg'
   ];
 
   async preloadSounds(): Promise<void> {
@@ -411,6 +407,14 @@ class SoundManager {
     const buffer = this.audioBuffers['/fireball.mp3'];
     if (buffer) {
       this.playAudioBuffer(buffer, 0.6);
+    }
+  }
+
+  playCrackedBrickBreakSound() {
+    if (!this.sfxEnabled) return;
+    const buffer = this.audioBuffers['/glass-breaking.ogg'];
+    if (buffer) {
+      this.playAudioBuffer(buffer, 0.7 * 1.2); // 0.7 base + 20% boost
     }
   }
 
