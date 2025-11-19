@@ -119,7 +119,7 @@ export const useBullets = (
         setBricks(prevBricks => 
           prevBricks.map((brick, idx) => {
             if (brickIndicesToDestroy.has(idx)) {
-              soundManager.playBrickHit();
+              soundManager.playBrickHit(brick.type, brick.hitsRemaining);
               const updatedBrick = { ...brick, hitsRemaining: brick.hitsRemaining - 1 };
               
               // Update brick color or make invisible

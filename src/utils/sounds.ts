@@ -174,7 +174,7 @@ class SoundManager {
     oscillator.stop(ctx.currentTime + 0.1);
   }
 
-  playBrickHit() {
+  playBrickHit(brickType?: string, hitsRemaining?: number) {
     if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
     const oscillator = ctx.createOscillator();
@@ -183,14 +183,45 @@ class SoundManager {
     oscillator.connect(gainNode);
     gainNode.connect(ctx.destination);
 
-    oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0.092, ctx.currentTime); // +15%
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+    // Progressive sound effects for cracked bricks
+    if (brickType === "cracked" && hitsRemaining !== undefined) {
+      if (hitsRemaining === 3) {
+        // Light crack - high pitch, quick
+        oscillator.frequency.value = 1000;
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0.08, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.04);
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + 0.04);
+      } else if (hitsRemaining === 2) {
+        // Medium crack - mid pitch, slightly longer
+        oscillator.frequency.value = 700;
+        oscillator.type = 'triangle';
+        gainNode.gain.setValueAtTime(0.10, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.06);
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + 0.06);
+      } else if (hitsRemaining === 1) {
+        // Heavy crack - low pitch, longer with rumble
+        oscillator.frequency.setValueAtTime(500, ctx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.08);
+        oscillator.type = 'sawtooth';
+        gainNode.gain.setValueAtTime(0.12, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + 0.08);
+      }
+    } else {
+      // Default brick hit sound
+      oscillator.frequency.value = 800;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.092, ctx.currentTime); // +15%
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
 
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.05);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.05);
+    }
   }
 
   playPowerUp() {
