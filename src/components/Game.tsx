@@ -931,7 +931,8 @@ export const Game = ({
       } else if (e.key === "m" || e.key === "M") {
         const enabled = soundManager.toggleMute();
         toast.success(enabled ? "Music on" : "Music muted");
-      } else if (e.key === "b" || e.key === "B") {
+      } else if (e.key === "Tab") {
+        e.preventDefault(); // Prevent default tab behavior
         // Toggle substep debug overlay
         setShowSubstepDebug(prev => {
           const newValue = !prev;
