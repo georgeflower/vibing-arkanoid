@@ -167,15 +167,17 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
             ctx.fillRect(brick.x, brick.y + brick.height - 3, brick.width, 3);
             
-            // Warning stripes (diagonal)
-            ctx.strokeStyle = "rgba(255, 255, 0, 0.4)";
+            // Warning pattern (dotted)
+            ctx.strokeStyle = "rgba(50, 50, 50, 0.4)";
             ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
             for (let i = 0; i < brick.width + brick.height; i += 8) {
               ctx.beginPath();
               ctx.moveTo(brick.x + i, brick.y);
               ctx.lineTo(brick.x, brick.y + i);
               ctx.stroke();
             }
+            ctx.setLineDash([]);
             
             // Explosion icon in center
             ctx.fillStyle = "rgba(255, 200, 0, 0.8)";

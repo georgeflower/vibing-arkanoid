@@ -53,9 +53,11 @@ export default function LevelEditor() {
     const newGrid = grid.map((row, rIdx) => 
       row.map((cell, cIdx) => {
         if (rIdx === rowIndex && cIdx === colIndex) {
-          // Cycle: false -> true -> 2 -> false
+          // Cycle: false -> true -> 2 (metal) -> 3 (explosive) -> 4 (cracked) -> false
           if (cell === false) return true;
           if (cell === true) return 2;
+          if (cell === 2) return 3;
+          if (cell === 3) return 4;
           return false;
         }
         return cell;
@@ -84,7 +86,10 @@ export default function LevelEditor() {
       const cells = row.map(cell => {
         if (cell === false) return "false";
         if (cell === true) return "true";
-        return "2";
+        if (cell === 2) return "2"; // metal
+        if (cell === 3) return "3"; // explosive
+        if (cell === 4) return "4"; // cracked
+        return "false";
       }).join(", ");
       return `    [${cells}]`;
     }).join(",\n");
@@ -94,14 +99,20 @@ export default function LevelEditor() {
 
   const getCellColor = (value: CellValue): string => {
     if (value === false) return "bg-gray-800";
-    if (value === true) return "bg-[hsl(200,70%,50%)]";
-    return "bg-[hsl(0,85%,55%)]"; // Indestructible
+    if (value === true) return "bg-[hsl(200,70%,50%)]"; // Normal brick
+    if (value === 2) return "bg-[hsl(0,0%,33%)]"; // Metal (indestructible)
+    if (value === 3) return "bg-[hsl(15,90%,50%)]"; // Explosive
+    if (value === 4) return "bg-[hsl(40,15%,45%)]"; // Cracked
+    return "bg-gray-800";
   };
 
   const getCellLabel = (value: CellValue): string => {
     if (value === false) return "";
-    if (value === true) return "B";
-    return "I";
+    if (value === true) return "N"; // Normal
+    if (value === 2) return "M"; // Metal
+    if (value === 3) return "E"; // Explosive
+    if (value === 4) return "C"; // Cracked
+    return "";
   };
 
   return (
@@ -144,12 +155,20 @@ export default function LevelEditor() {
                     <span>Empty (false)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-[hsl(200,70%,50%)] border border-white/20 flex items-center justify-center text-xs font-bold">B</div>
-                    <span>Brick (true)</span>
+                    <div className="w-6 h-6 bg-[hsl(200,70%,50%)] border border-white/20 flex items-center justify-center text-xs font-bold">N</div>
+                    <span>Normal (true)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-[hsl(0,85%,55%)] border border-white/20 flex items-center justify-center text-xs font-bold">I</div>
-                    <span>Indestructible (2)</span>
+                    <div className="w-6 h-6 bg-[hsl(0,0%,33%)] border border-white/20 flex items-center justify-center text-xs font-bold">M</div>
+                    <span>Metal (2)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-[hsl(15,90%,50%)] border border-white/20 flex items-center justify-center text-xs font-bold">E</div>
+                    <span>Explosive (3)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-[hsl(40,15%,45%)] border border-white/20 flex items-center justify-center text-xs font-bold">C</div>
+                    <span>Cracked (4)</span>
                   </div>
                 </div>
               </div>
