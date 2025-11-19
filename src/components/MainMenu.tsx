@@ -18,7 +18,6 @@ interface MainMenuProps {
 
 export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const navigate = useNavigate();
-  const [startingLives, setStartingLives] = useState(3);
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const [showInstructions, setShowInstructions] = useState(false);
   const [showHighScores, setShowHighScores] = useState(false);
@@ -31,7 +30,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   const handleStart = () => {
     const settings: GameSettings = {
-      startingLives,
+      startingLives: 3,
       difficulty,
     };
     onStartGame(settings);
@@ -304,22 +303,6 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
       <Card className="max-w-sm w-full p-6 bg-black/60 backdrop-blur-sm border-[hsl(200,70%,50%)]">
         {/* Settings */}
         <div className="space-y-4">
-          {/* Starting Lives */}
-          <div className="space-y-2">
-            <Label className="text-white text-base">Starting Lives: {startingLives}</Label>
-            <Slider
-              value={[startingLives]}
-              onValueChange={(value) => {
-                setStartingLives(value[0]);
-                soundManager.playSliderChange();
-              }}
-              min={1}
-              max={10}
-              step={1}
-              className="w-full"
-            />
-          </div>
-
           {/* Difficulty */}
           <div className="space-y-2">
             <Label className="text-white text-base">Difficulty</Label>
