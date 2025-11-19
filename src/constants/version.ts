@@ -1,6 +1,36 @@
-export const GAME_VERSION = "0.6.6";
+export const GAME_VERSION = "0.7.0";
 
 export const CHANGELOG = [
+  {
+    version: "0.7.0",
+    changes: [
+      "Boss enhancements: Bosses now spawn minions every 15 seconds (2 at a time, max 6 on screen)",
+      "Boss minions: 50% power-up drop rate with toast notification when dropping bonus power-ups",
+      "Turret damage: Turret shots now damage bosses (0.5 HP per shot) for both main and resurrected bosses",
+      "Special brick types: Metal bricks (indestructible, visually melt together), Cracked bricks (3 hits required with damage textures), Explosive bricks (destroy surrounding bricks)",
+      "Metal brick interactions: Destroyed by explosive blasts, block turret shots, automatically re-form melted shapes",
+      "Shield mechanics: Now protects entire paddle from ball collisions with animated yellow energy force field and electrical arcs",
+      "Collision system: Multi-substep detection (up to 5x at high speeds) with 0.15 threshold to prevent ball tunneling through bricks",
+      "Ball physics: Fixed corner trapping with buffer distance, cooldowns, and early exit mechanism after brick hits",
+      "Level editor: Paint brush system for placing bricks, visual previews for each brick type, right-click to clear cells",
+      "Bonus letters: Now awarded in random order from eligible levels, no repeats within same game session",
+      "High scores: Cloud-based leaderboards with all-time, weekly, and daily rankings, improved display styling",
+      "Statistics screen: Added counters for power-ups collected, bricks destroyed by turrets, enemies killed, bosses killed, and total play time",
+      "High score entry: Celebratory particle effects, pulsing glow, rotating rings, sparkle effects, and trophy icon",
+      "Boss spawn visual: Hatch opening effect with pulsing glow, opening lines, and particle burst lasting 500ms",
+      "Sound balance: Wall bounce reduced 80%, boss hit reduced 30%, laser charging reduced 50%",
+      "Sound effects: Glass breaking sound for cracked bricks, dramatic explosion sound for explosive bricks",
+      "Boss audio: Alarm klaxon now ducks music volume by 80% during boss intro",
+      "Brick sizing: Adjusted to 56x21 with 4px padding for larger bricks and tighter gaps",
+      "Debug overlay: Added substep count and ball speed display, toggled with TAB key",
+      "Game mechanics: Removed combo scoring, removed extra life bonus per 50k points, removed starting lives selection (fixed at 3)",
+      "iOS improvements: Frameless layout for mobile devices, improved fullscreen behavior",
+      "Performance: Adaptive quality settings with FPS-based automatic adjustments",
+      "Fixed: Boss laser duration reduced to 0.5 seconds for better gameplay flow",
+      "Fixed: Initial ball velocity now properly initialized with 2x substeps from game start",
+      "Fixed: Statistics properly reset when retrying a level",
+    ],
+  },
   {
     version: "0.6.6",
     changes: [
