@@ -28,6 +28,7 @@ export interface Ball {
   rotation?: number; // For 3D spinning effect
   lastHitTime?: number; // Timestamp of last brick hit
   lastWallHitTime?: number; // Timestamp of last wall hit (for cooldown)
+  skipRemainingSubsteps?: boolean; // Exit substep loop after brick hit to prevent tunneling
 }
 
 export interface Paddle {
