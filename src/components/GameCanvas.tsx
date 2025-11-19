@@ -5,6 +5,9 @@ import { powerUpImages } from "@/utils/powerUpImages";
 import { bonusLetterImages } from "@/utils/bonusLetterImages";
 import paddleImg from "@/assets/paddle.png";
 import paddleTurretsImg from "@/assets/paddle-turrets.png";
+import crackedBrick1 from "@/assets/brick-cracked-1.png";
+import crackedBrick2 from "@/assets/brick-cracked-2.png";
+import crackedBrick3 from "@/assets/brick-cracked-3.png";
 
 interface GameCanvasProps {
   width: number;
@@ -42,6 +45,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
     const paddleTurretsImageRef = useRef<HTMLImageElement | null>(null);
+    const crackedBrick1Ref = useRef<HTMLImageElement | null>(null);
+    const crackedBrick2Ref = useRef<HTMLImageElement | null>(null);
+    const crackedBrick3Ref = useRef<HTMLImageElement | null>(null);
     const bgRotationRef = useRef(0);
     const bgZoomRef = useRef(1);
     const rotationSpeedRef = useRef(0.5);
@@ -75,6 +81,18 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       const paddleTurretsImage = new Image();
       paddleTurretsImage.src = paddleTurretsImg;
       paddleTurretsImageRef.current = paddleTurretsImage;
+      
+      const crackedBrick1Image = new Image();
+      crackedBrick1Image.src = crackedBrick1;
+      crackedBrick1Ref.current = crackedBrick1Image;
+      
+      const crackedBrick2Image = new Image();
+      crackedBrick2Image.src = crackedBrick2;
+      crackedBrick2Ref.current = crackedBrick2Image;
+      
+      const crackedBrick3Image = new Image();
+      crackedBrick3Image.src = crackedBrick3;
+      crackedBrick3Ref.current = crackedBrick3Image;
     }, []);
 
     useEffect(() => {
@@ -188,42 +206,39 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             
             ctx.shadowBlur = 0;
           } else if (brick.type === "cracked") {
-            // Cracked brick - brownish with crack pattern
-            ctx.fillStyle = brick.color;
-            ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+            // Cracked brick - use texture based on hits remaining
+            let crackedImage: HTMLImageElement | null = null;
+            if (brick.hitsRemaining === 3 && crackedBrick3Ref.current) {
+              crackedImage = crackedBrick3Ref.current;
+            } else if (brick.hitsRemaining === 2 && crackedBrick2Ref.current) {
+              crackedImage = crackedBrick2Ref.current;
+            } else if (brick.hitsRemaining === 1 && crackedBrick1Ref.current) {
+              crackedImage = crackedBrick1Ref.current;
+            }
             
-            // Top highlight
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
-            ctx.fillRect(brick.x, brick.y, brick.width, 3);
-            
-            // Left highlight
-            ctx.fillRect(brick.x, brick.y, 3, brick.height);
-            
-            // Bottom shadow
-            ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-            ctx.fillRect(brick.x, brick.y + brick.height - 3, brick.width, 3);
-            
-            // Right shadow
-            ctx.fillRect(brick.x + brick.width - 3, brick.y, 3, brick.height);
-            
-            // Crack pattern
-            ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
-            ctx.lineWidth = 1.5;
-            const centerX = brick.x + brick.width / 2;
-            const centerY = brick.y + brick.height / 2;
-            
-            // Multiple cracks radiating from center
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(brick.x + 2, brick.y + 2);
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(brick.x + brick.width - 2, brick.y + 2);
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(brick.x + 2, brick.y + brick.height - 2);
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(brick.x + brick.width - 2, brick.y + brick.height - 2);
-            ctx.stroke();
+            if (crackedImage && isImageValid(crackedImage)) {
+              // Draw the texture image, ensuring it stays within brick dimensions
+              ctx.drawImage(
+                crackedImage,
+                brick.x,
+                brick.y,
+                brick.width,
+                brick.height
+              );
+            } else {
+              // Fallback rendering if texture not loaded
+              ctx.fillStyle = brick.color;
+              ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+              
+              ctx.shadowBlur = 0;
+              ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+              ctx.fillRect(brick.x, brick.y, brick.width, 3);
+              ctx.fillRect(brick.x, brick.y, 3, brick.height);
+              
+              ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+              ctx.fillRect(brick.x, brick.y + brick.height - 3, brick.width, 3);
+              ctx.fillRect(brick.x + brick.width - 3, brick.y, 3, brick.height);
+            }
             
             // Draw hit counter for multi-hit bricks
             if (brick.maxHits > 1) {
