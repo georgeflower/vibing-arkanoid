@@ -80,6 +80,10 @@ export const Game = ({
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
            ('ontouchstart' in window && window.matchMedia('(max-width: 768px)').matches);
   });
+  const [isIOSDevice] = useState(() => {
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPad Pro detection
+  });
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
@@ -2791,23 +2795,48 @@ export const Game = ({
   
   const toggleFullscreen = async () => {
     if (!fullscreenContainerRef.current) return;
+    
+    // iOS doesn't support the Fullscreen API
+    // Use CSS-based fullscreen instead
+    if (isIOSDevice) {
+      setIsFullscreen(!isFullscreen);
+      return;
+    }
+    
+    // Standard Fullscreen API for other browsers
     try {
       if (!document.fullscreenElement) {
-        await fullscreenContainerRef.current.requestFullscreen();
+        // Try standard API
+        if (fullscreenContainerRef.current.requestFullscreen) {
+          await fullscreenContainerRef.current.requestFullscreen();
+        } 
+        // Try webkit prefix (for older Safari on non-iOS)
+        else if ((fullscreenContainerRef.current as any).webkitRequestFullscreen) {
+          await (fullscreenContainerRef.current as any).webkitRequestFullscreen();
+        }
         setIsFullscreen(true);
       } else {
-        await document.exitFullscreen();
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        }
         setIsFullscreen(false);
       }
     } catch (err) {
       console.error("Fullscreen error:", err);
+      // Fallback to CSS-based fullscreen on error
+      setIsFullscreen(!isFullscreen);
     }
   };
 
   // Listen for fullscreen changes
   useEffect(() => {
+    // iOS doesn't fire fullscreenchange events
+    if (isIOSDevice) return;
+    
     const handleFullscreenChange = () => {
-      const isNowFullscreen = !!document.fullscreenElement;
+      const isNowFullscreen = !!document.fullscreenElement || !!(document as any).webkitFullscreenElement;
       setIsFullscreen(isNowFullscreen);
       
       // On mobile: if exiting fullscreen and game is playing, pause and show prompt
@@ -2819,9 +2848,15 @@ export const Game = ({
         setShowFullscreenPrompt(true);
       }
     };
+    
     document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, [isMobileDevice, gameState]);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+    };
+  }, [isMobileDevice, gameState, isIOSDevice]);
 
   // Auto-enter fullscreen on mobile when game starts
   useEffect(() => {
@@ -2951,7 +2986,13 @@ export const Game = ({
     }
   };
 
-  return <div ref={fullscreenContainerRef} className={`flex items-center justify-center ${isFullscreen ? "h-screen bg-background overflow-hidden" : "h-screen overflow-hidden"}`}>
+  return <div ref={fullscreenContainerRef} className={`flex items-center justify-center ${
+    isFullscreen 
+      ? isIOSDevice 
+        ? "ios-fullscreen-container" 
+        : "h-screen bg-background overflow-hidden"
+      : "h-screen overflow-hidden"
+  }`}>
       {/* Mobile fullscreen prompt overlay */}
       {showFullscreenPrompt && isMobileDevice && (
         <div 

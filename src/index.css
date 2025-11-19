@@ -508,4 +508,31 @@ All colors MUST be HSL.
   height: 100vh !important;
 }
 
+/* iOS Fullscreen Simulation */
+.ios-fullscreen-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  /* Use dvh (dynamic viewport height) for iOS to account for Safari UI */
+  height: 100dvh;
+  overflow: hidden;
+  z-index: 9999;
+  background: hsl(var(--background));
+}
+
+/* Force minimal UI on iOS Safari */
+@supports (-webkit-touch-callout: none) {
+  .ios-fullscreen-container {
+    /* Trigger minimal UI mode */
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    height: -webkit-fill-available;
+  }
+}
+
 
