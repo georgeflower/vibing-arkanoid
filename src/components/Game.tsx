@@ -1330,7 +1330,7 @@ export const Game = ({
                     particles: explosionParticles
                   }]);
                   
-                  soundManager.playExplosion();
+                  soundManager.playExplosiveBrickSound();
                   setBackgroundFlash(10);
                   setTimeout(() => setBackgroundFlash(0), 100);
                   
