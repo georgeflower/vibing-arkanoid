@@ -124,8 +124,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   if (showPressToStart) {
     return (
       <div
-        className="min-h-screen w-full flex items-center justify-center bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)] cursor-pointer"
-        style={{ backgroundImage: `url(${startScreenImg})` }}
+        className="min-h-screen w-full flex items-center justify-center relative bg-[hsl(220,25%,12%)] cursor-pointer"
         onClick={() => {
           soundManager.playMenuClick();
           soundManager.initializeRandomTrack();
@@ -140,7 +139,13 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
         }}
         tabIndex={0}
       >
-        <div className="text-center animate-pulse">
+        <img
+          src={startScreenImg}
+          alt="Game start screen"
+          fetchPriority="high"
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+        />
+        <div className="text-center animate-pulse relative z-10">
           <p className="text-white text-2xl font-bold">Press key/mouse to continue</p>
         </div>
       </div>
