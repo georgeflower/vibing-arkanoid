@@ -3026,11 +3026,11 @@ export const Game = ({
   };
 
   return <div ref={fullscreenContainerRef} className={`flex items-center justify-center ${
-    isFullscreen 
-      ? isIOSDevice 
-        ? "ios-fullscreen-container" 
-        : "h-screen bg-background overflow-hidden"
-      : "h-screen overflow-hidden"
+    isIOSDevice
+      ? "ios-fullscreen-container"  // Always use iOS container on iOS devices
+      : (isFullscreen 
+          ? "h-screen bg-background overflow-hidden"
+          : "h-screen overflow-hidden")
   }`}>
       {/* Mobile fullscreen prompt overlay */}
       {showFullscreenPrompt && isMobileDevice && (
@@ -3065,7 +3065,7 @@ export const Game = ({
           totalPlayTime: totalPlayTime
         }}
       /> : showHighScoreDisplay ? <HighScoreDisplay scores={highScores} onClose={handleCloseHighScoreDisplay} /> : <>
-          {showHighScoreEntry ? <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} /> : <div className={`metal-frame ${isMobileDevice && isFullscreen ? 'mobile-fullscreen-mode' : ''}`}>
+          {showHighScoreEntry ? <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} /> : <div className={`metal-frame ${isIOSDevice ? 'mobile-fullscreen-mode' : (isMobileDevice && isFullscreen ? 'mobile-fullscreen-mode' : '')}`}>
               {/* Title Bar - Adaptive Visibility (Desktop: only title hides, Mobile: all hides) */}
               <div className={`metal-title-bar transition-all duration-150 ${titleVisible ? 'opacity-100 max-h-[60px]' : 'opacity-0 max-h-0 overflow-hidden'}`} style={{
           transform: titleVisible ? 'translateY(0)' : 'translateY(-10px)',
@@ -3156,9 +3156,11 @@ export const Game = ({
                     <button onClick={onReturnToMenu} className="right-panel-btn" title="Return to Main Menu">
                       <Home size={20} />
                     </button>
-                    <button onClick={toggleFullscreen} className="right-panel-btn" title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}>
-                      {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
-                    </button>
+                    {!isIOSDevice && (
+                      <button onClick={toggleFullscreen} className="right-panel-btn" title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}>
+                        {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                      </button>
+                    )}
                   </div>
 
                   {/* Stats */}
