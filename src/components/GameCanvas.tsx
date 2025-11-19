@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useRef } from "react";
-import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, Particle, Boss, BossAttack } from "@/types/game";
+import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, Particle, Boss, BossAttack, ShieldImpact } from "@/types/game";
 import type { QualitySettings } from "@/hooks/useAdaptiveQuality";
 import { powerUpImages } from "@/utils/powerUpImages";
 import { bonusLetterImages } from "@/utils/bonusLetterImages";
@@ -38,10 +38,11 @@ interface GameCanvasProps {
   showHighScoreEntry: boolean;
   bossIntroActive: boolean;
   bossSpawnAnimation: {active: boolean; startTime: number} | null;
+  shieldImpacts: ShieldImpact[];
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -615,14 +616,84 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           shieldX + shieldWidth / 2, shieldY + shieldHeight / 2, shieldWidth / 2
         );
         gradient.addColorStop(0, `rgba(255, 255, 150, ${0.15 * pulseIntensity})`);
-        gradient.addColorStop(1, `rgba(255, 220, 0, ${0.05 * pulseIntensity})`);
-        
-        ctx.shadowBlur = 0;
+        gradient.addColorStop(1, `rgba(255, 220, 0, 0)`);
         ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.moveTo(shieldX + 8, shieldY);
+        ctx.lineTo(shieldX + shieldWidth - 8, shieldY);
+        ctx.arcTo(shieldX + shieldWidth, shieldY, shieldX + shieldWidth, shieldY + 8, 8);
+        ctx.lineTo(shieldX + shieldWidth, shieldY + shieldHeight - 8);
+        ctx.arcTo(shieldX + shieldWidth, shieldY + shieldHeight, shieldX + shieldWidth - 8, shieldY + shieldHeight, 8);
+        ctx.lineTo(shieldX + 8, shieldY + shieldHeight);
+        ctx.arcTo(shieldX, shieldY + shieldHeight, shieldX, shieldY + shieldHeight - 8, 8);
+        ctx.lineTo(shieldX, shieldY + 8);
+        ctx.arcTo(shieldX, shieldY, shieldX + 8, shieldY, 8);
+        ctx.closePath();
         ctx.fill();
         
         ctx.shadowBlur = 0;
-        ctx.shadowColor = "transparent";
+        
+        // Draw impact effects
+        const now = Date.now();
+        shieldImpacts.forEach(impact => {
+          const elapsed = now - impact.startTime;
+          if (elapsed >= impact.duration) return;
+          
+          const progress = elapsed / impact.duration;
+          const fadeOut = 1 - progress;
+          
+          // Expanding ripple effect
+          const rippleRadius = 15 + progress * 40;
+          const rippleCount = qualitySettings.level !== 'low' ? 3 : 2;
+          
+          for (let i = 0; i < rippleCount; i++) {
+            const offset = i * 10;
+            const alpha = fadeOut * (1 - i * 0.3);
+            
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
+            ctx.lineWidth = 3 - i;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = `rgba(255, 255, 100, ${alpha})`;
+            
+            ctx.beginPath();
+            ctx.arc(impact.x, impact.y, rippleRadius + offset, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          
+          // Flash effect at impact point
+          const flashSize = 8 * (1 - progress * 0.5);
+          const flashGradient = ctx.createRadialGradient(
+            impact.x, impact.y, 0,
+            impact.x, impact.y, flashSize
+          );
+          flashGradient.addColorStop(0, `rgba(255, 255, 255, ${fadeOut * 0.9})`);
+          flashGradient.addColorStop(0.5, `rgba(255, 220, 0, ${fadeOut * 0.6})`);
+          flashGradient.addColorStop(1, `rgba(255, 220, 0, 0)`);
+          
+          ctx.fillStyle = flashGradient;
+          ctx.beginPath();
+          ctx.arc(impact.x, impact.y, flashSize, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Spark particles
+          if (qualitySettings.level !== 'low') {
+            const sparkCount = 6;
+            for (let i = 0; i < sparkCount; i++) {
+              const angle = (i / sparkCount) * Math.PI * 2 + progress * Math.PI;
+              const dist = 5 + progress * 25;
+              const sx = impact.x + Math.cos(angle) * dist;
+              const sy = impact.y + Math.sin(angle) * dist;
+              const sparkSize = 3 * fadeOut;
+              
+              ctx.fillStyle = `rgba(255, 255, 200, ${fadeOut * 0.8})`;
+              ctx.shadowBlur = 8;
+              ctx.shadowColor = `rgba(255, 220, 0, ${fadeOut})`;
+              ctx.fillRect(sx - sparkSize / 2, sy - sparkSize / 2, sparkSize, sparkSize);
+            }
+          }
+          
+          ctx.shadowBlur = 0;
+        });
       }
 
       // Draw turrets if paddle has them
