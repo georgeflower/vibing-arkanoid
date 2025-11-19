@@ -1024,7 +1024,7 @@ export const Game = ({
     const speeds = balls.map(ball => Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy));
     const maxBallSpeed = Math.max(...speeds);
     const minBrickDimension = Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT);
-    const substeps = Math.max(2, Math.ceil(maxBallSpeed * speedMultiplier / (minBrickDimension * 0.4)));
+    const substeps = Math.max(2, Math.ceil(maxBallSpeed * speedMultiplier / (minBrickDimension * 0.25)));
     
     return {
       substeps,
@@ -1044,7 +1044,7 @@ export const Game = ({
         
         // Calculate required substeps based on ball speed (adaptive)
         // Minimum 2 substeps to prevent tunneling even at normal speeds
-        const PHYSICS_SUBSTEPS = Math.max(2, Math.ceil(ballSpeed * speedMultiplier / (minBrickDimension * 0.4)));
+        const PHYSICS_SUBSTEPS = Math.max(2, Math.ceil(ballSpeed * speedMultiplier / (minBrickDimension * 0.25)));
         
         let newBall = { ...ball };
         const substepDx = ball.dx / PHYSICS_SUBSTEPS;
@@ -1139,7 +1139,7 @@ export const Game = ({
 
             // Check cooldown - prevent hitting same brick in consecutive substeps
             const now = Date.now();
-            if (newBall.lastHitTime && now - newBall.lastHitTime < 5) {
+            if (newBall.lastHitTime && now - newBall.lastHitTime < 8) {
               return prevBricks;
             }
 
@@ -1160,11 +1160,12 @@ export const Game = ({
                 // Ball is in horizontal padding - bounce horizontally
                 newBall.dx = -newBall.dx;
                 if (newBall.x < paddingLeft + SCALED_BRICK_PADDING / 2) {
-                  newBall.x = paddingLeft - newBall.radius - 1;
+                  newBall.x = paddingLeft - newBall.radius - 2;
                 } else {
-                  newBall.x = paddingRight + newBall.radius + 1;
+                  newBall.x = paddingRight + newBall.radius + 2;
                 }
                 newBall.lastHitTime = now;
+                newBall.skipRemainingSubsteps = true;
                 soundManager.playBounce();
                 return prevBricks;
               }
@@ -1180,11 +1181,12 @@ export const Game = ({
                 // Ball is in vertical padding - bounce vertically
                 newBall.dy = -newBall.dy;
                 if (newBall.y < paddingTop + SCALED_BRICK_PADDING / 2) {
-                  newBall.y = paddingTop - newBall.radius - 1;
+                  newBall.y = paddingTop - newBall.radius - 2;
                 } else {
-                  newBall.y = paddingBottom + newBall.radius + 1;
+                  newBall.y = paddingBottom + newBall.radius + 2;
                 }
                 newBall.lastHitTime = now;
+                newBall.skipRemainingSubsteps = true;
                 soundManager.playBounce();
                 return prevBricks;
               }
@@ -1194,8 +1196,9 @@ export const Game = ({
             if (!brickHit && brick.visible && newBall.x + newBall.radius > brick.x && newBall.x - newBall.radius < brick.x + brick.width && newBall.y + newBall.radius > brick.y && newBall.y - newBall.radius < brick.y + brick.height) {
               brickHit = true;
 
-              // Set hit cooldown
+              // Set hit cooldown and exit remaining substeps
               newBall.lastHitTime = now;
+              newBall.skipRemainingSubsteps = true;
 
               // Calculate which side was hit by checking penetration depth
               const leftPenetration = newBall.x + newBall.radius - brick.x;
@@ -1212,19 +1215,19 @@ export const Game = ({
               if (brick.isIndestructible) {
                 if (hitFromSide) {
                   newBall.dx = -newBall.dx;
-                  // Move ball out horizontally
+                  // Move ball out horizontally with 2px buffer
                   if (leftPenetration < rightPenetration) {
-                    newBall.x = brick.x - newBall.radius - 1;
+                    newBall.x = brick.x - newBall.radius - 2;
                   } else {
-                    newBall.x = brick.x + brick.width + newBall.radius + 1;
+                    newBall.x = brick.x + brick.width + newBall.radius + 2;
                   }
                 } else {
                   newBall.dy = -newBall.dy;
-                  // Move ball out vertically
+                  // Move ball out vertically with 2px buffer
                   if (topPenetration < bottomPenetration) {
-                    newBall.y = brick.y - newBall.radius - 1;
+                    newBall.y = brick.y - newBall.radius - 2;
                   } else {
-                    newBall.y = brick.y + brick.height + newBall.radius + 1;
+                    newBall.y = brick.y + brick.height + newBall.radius + 2;
                   }
                 }
                 // Add slight random angle variation (±1 degree) to horizontal direction
@@ -1239,19 +1242,19 @@ export const Game = ({
               if (!newBall.isFireball) {
                 if (hitFromSide) {
                   newBall.dx = -newBall.dx;
-                  // Move ball out horizontally
+                  // Move ball out horizontally with 2px buffer
                   if (leftPenetration < rightPenetration) {
-                    newBall.x = brick.x - newBall.radius - 1;
+                    newBall.x = brick.x - newBall.radius - 2;
                   } else {
-                    newBall.x = brick.x + brick.width + newBall.radius + 1;
+                    newBall.x = brick.x + brick.width + newBall.radius + 2;
                   }
                 } else {
                   newBall.dy = -newBall.dy;
-                  // Move ball out vertically
+                  // Move ball out vertically with 2px buffer
                   if (topPenetration < bottomPenetration) {
-                    newBall.y = brick.y - newBall.radius - 1;
+                    newBall.y = brick.y - newBall.radius - 2;
                   } else {
-                    newBall.y = brick.y + brick.height + newBall.radius + 1;
+                    newBall.y = brick.y + brick.height + newBall.radius + 2;
                   }
                 }
                 // Add slight random angle variation (±1 degree) to horizontal direction
