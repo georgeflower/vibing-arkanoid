@@ -1140,7 +1140,10 @@ export const Game = ({
       ballResults.forEach((result, ballIndex) => {
         if (!result.ball) return;
 
-        result.events.forEach(event => {
+        // Sort events chronologically by time-of-impact (CCD already provides this, but explicit for safety)
+        const sortedEvents = result.events.sort((a, b) => a.t - b.t);
+
+        sortedEvents.forEach(event => {
           const now = Date.now();
           const objectKey = `${event.objectType}-${event.objectId}`;
           
@@ -1295,69 +1298,75 @@ export const Game = ({
                 break;
               }
               
-              // Handle brick collision - ALWAYS apply damage, deduplicate only sounds/score
+              // Handle brick collision - Re-validate before processing
               const brick = bricks.find(b => b.id === objectId);
-              if (brick) {
-                
-                if (!brick.visible) break;
+              
+              // Re-validation: Skip if brick doesn't exist, already destroyed, or already damaged this frame
+              if (!brick || !brick.visible) break;
+              
+              // CRITICAL: Check if brick already processed this frame (prevents diagonal grazing multi-hits)
+              if (brickUpdates.has(brick.id)) {
+                console.log('[CCD-Revalidation] Brick already damaged this frame, skipping', {
+                  brickId: brick.id,
+                  eventTime: event.t,
+                  ballIndex
+                });
+                break;
+              }
 
-                // Handle indestructible (metal) bricks
-                if (brick.isIndestructible) {
-                  if (!isDuplicate) {
-                    soundManager.playBounce();
-                    setCurrentCombo(0);
-                  }
-                  break;
-                }
-
-                // Check if already updated this frame - prevent double damage
-                if (brickUpdates.has(brick.id)) break;
-
-                const currentHitsRemaining = brick.hitsRemaining;
-                const newHitsRemaining = currentHitsRemaining - 1;
-                const brickDestroyed = newHitsRemaining <= 0;
-
-                // Play sound only if not duplicate
+              // Handle indestructible (metal) bricks
+              if (brick.isIndestructible) {
                 if (!isDuplicate) {
-                  if (brick.type === 'cracked') {
-                    soundsToPlay.push({ type: 'cracked', param: currentHitsRemaining });
-                  } else {
-                    soundsToPlay.push({ type: 'brick' });
-                  }
+                  soundManager.playBounce();
+                  setCurrentCombo(0);
                 }
+                break;
+              }
 
-                if (brickDestroyed) {
-                  // Mark brick for destruction
-                  brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
-                  
-                  // Only add score/combo once per brick
-                  if (!isDuplicate) {
-                    scoreIncrease += brick.points;
-                    bricksDestroyedCount += 1;
-                    comboIncrease += 1;
-                  }
+              const currentHitsRemaining = brick.hitsRemaining;
+              const newHitsRemaining = currentHitsRemaining - 1;
+              const brickDestroyed = newHitsRemaining <= 0;
 
-                  // Speed increase (cap at 30%)
-                  if (brickHitSpeedAccumulated < 0.3) {
-                    const speedIncrease = 0.005;
-                    setBrickHitSpeedAccumulated(prev => Math.min(0.3, prev + speedIncrease));
-                    result.ball.dx *= (1 + speedIncrease);
-                    result.ball.dy *= (1 + speedIncrease);
-                  }
-
-                  // Power-up drop - only once per brick
-                  if (!isDuplicate && Math.random() < POWERUP_DROP_CHANCE) {
-                    powerUpsToCreate.push(brick);
-                  }
-
-                  // Explosive brick handling - only once per brick
-                  if (!isDuplicate && brick.type === 'explosive') {
-                    explosiveBricksToDetonate.push(brick);
-                  }
+              // Play sound only if not duplicate
+              if (!isDuplicate) {
+                if (brick.type === 'cracked') {
+                  soundsToPlay.push({ type: 'cracked', param: currentHitsRemaining });
                 } else {
-                  // Brick damaged but not destroyed
-                  brickUpdates.set(brick.id, { visible: true, hitsRemaining: newHitsRemaining });
+                  soundsToPlay.push({ type: 'brick' });
                 }
+              }
+
+              if (brickDestroyed) {
+                // Mark brick for destruction
+                brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
+                
+                // Only add score/combo once per brick
+                if (!isDuplicate) {
+                  scoreIncrease += brick.points;
+                  bricksDestroyedCount += 1;
+                  comboIncrease += 1;
+                }
+
+                // Speed increase (cap at 30%)
+                if (brickHitSpeedAccumulated < 0.3) {
+                  const speedIncrease = 0.005;
+                  setBrickHitSpeedAccumulated(prev => Math.min(0.3, prev + speedIncrease));
+                  result.ball.dx *= (1 + speedIncrease);
+                  result.ball.dy *= (1 + speedIncrease);
+                }
+
+                // Power-up drop - only once per brick
+                if (!isDuplicate && Math.random() < POWERUP_DROP_CHANCE) {
+                  powerUpsToCreate.push(brick);
+                }
+
+                // Explosive brick handling - only once per brick
+                if (!isDuplicate && brick.type === 'explosive') {
+                  explosiveBricksToDetonate.push(brick);
+                }
+              } else {
+                // Brick damaged but not destroyed
+                brickUpdates.set(brick.id, { visible: true, hitsRemaining: newHitsRemaining });
               }
               break;
           }
