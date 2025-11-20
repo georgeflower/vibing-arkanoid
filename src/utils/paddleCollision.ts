@@ -87,9 +87,9 @@ export function checkCircleVsRoundedPaddle(
 
       // Apply spin/deflection for top surface hits
       if (Math.abs(result.normal.y + 1) < 0.1) {
-        // This is a top surface hit - apply horizontal deflection based on impact position
+        // This is a top surface hit - apply horizontal deflection based on ball center position
         const paddleCenterX = paddle.x + paddle.width / 2;
-        const impactOffsetX = closestPoint.x - paddleCenterX;
+        const impactOffsetX = ball.x - paddleCenterX; // Use ball.x, not closestPoint.x
         const maxDeflection = 0.5; // Maximum horizontal deflection factor
         const deflectionFactor = (impactOffsetX / (paddle.width / 2)) * maxDeflection;
         
@@ -106,14 +106,16 @@ export function checkCircleVsRoundedPaddle(
 
       // Emergency fallback: if the ball is horizontally over the paddle and has any penetration,
       // force it above the paddle to avoid getting stuck, even if the normal points sideways.
-      const withinPaddleX = ball.x >= paddle.x && ball.x <= paddle.x + paddle.width;
-      if (withinPaddleX && ball.y >= paddle.y && result.penetration > 0.5) {
+      const withinPaddleX = result.newX >= paddle.x && result.newX <= paddle.x + paddle.width; // Use result.newX
+      if (withinPaddleX && result.newY >= paddle.y && result.penetration > 0.5) {
         const targetY = paddle.y - ball.radius - SAFETY_MARGIN;
         if (result.newY > targetY) {
           result.newY = targetY;
         }
-        // Ensure the ball is moving upwards after correction
-        result.newVelocityY = -Math.abs(result.newVelocityY || ball.dy || 0);
+        // Enforce minimum upward speed and damp horizontal velocity
+        const minUpwardSpeed = 2.0; // Minimum px/frame upward
+        result.newVelocityY = -Math.max(minUpwardSpeed, Math.abs(result.newVelocityY || ball.dy || minUpwardSpeed));
+        result.newVelocityX *= 0.95; // Slight horizontal damping
         result.normal = { x: 0, y: -1 };
       }
     }
