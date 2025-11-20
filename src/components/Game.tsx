@@ -1613,7 +1613,7 @@ export const Game = ({
       // Hitbox is 1 pixel WIDER than the visual shape and rotates with the boss
       
       // Helper: Circle vs Rotated Rectangle (for cube boss)
-      const checkCircleVsRotatedRect = (ball: Ball, boss: Boss): { newVelocityX: number; newVelocityY: number } | null => {
+      const checkCircleVsRotatedRect = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
         const centerX = boss.x + boss.width / 2;
         const centerY = boss.y + boss.height / 2;
         const HITBOX_EXPAND = 1;
@@ -1653,6 +1653,18 @@ export const Game = ({
           }
         }
         
+        // Calculate penetration and push out in unrotated space
+        const dist = Math.sqrt(distSq);
+        const penetration = ball.radius - dist;
+        const pushX = ux + (distX / dist) * penetration;
+        const pushY = uy + (distY / dist) * penetration;
+        
+        // Rotate corrected position back to world space
+        const worldPushX = pushX * Math.cos(boss.rotationY) - pushY * Math.sin(boss.rotationY);
+        const worldPushY = pushX * Math.sin(boss.rotationY) + pushY * Math.cos(boss.rotationY);
+        const newX = centerX + worldPushX;
+        const newY = centerY + worldPushY;
+        
         const worldNormalX = normalX * cos + normalY * sin;
         const worldNormalY = -normalX * sin + normalY * cos;
         
@@ -1660,11 +1672,11 @@ export const Game = ({
         const newVx = ball.dx - 2 * dot * worldNormalX;
         const newVy = ball.dy - 2 * dot * worldNormalY;
         
-        return { newVelocityX: newVx, newVelocityY: newVy };
+        return { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
       };
       
       // Helper: Circle vs Circle (for sphere boss)
-      const checkCircleVsCircle = (ball: Ball, boss: Boss): { newVelocityX: number; newVelocityY: number } | null => {
+      const checkCircleVsCircle = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
         const centerX = boss.x + boss.width / 2;
         const centerY = boss.y + boss.height / 2;
         const HITBOX_EXPAND = 1;
@@ -1681,15 +1693,20 @@ export const Game = ({
         const normalX = dx / dist;
         const normalY = dy / dist;
         
+        // Push ball out to correct position
+        const overlap = totalRadius - dist;
+        const newX = ball.x + normalX * overlap;
+        const newY = ball.y + normalY * overlap;
+        
         const dot = ball.dx * normalX + ball.dy * normalY;
         const newVx = ball.dx - 2 * dot * normalX;
         const newVy = ball.dy - 2 * dot * normalY;
         
-        return { newVelocityX: newVx, newVelocityY: newVy };
+        return { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
       };
       
       // Helper: Circle vs Rotated Triangle (for pyramid boss)
-      const checkCircleVsRotatedTriangle = (ball: Ball, boss: Boss): { newVelocityX: number; newVelocityY: number } | null => {
+      const checkCircleVsRotatedTriangle = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
         const centerX = boss.x + boss.width / 2;
         const centerY = boss.y + boss.height / 2;
         const HITBOX_EXPAND = 1;
@@ -1758,11 +1775,16 @@ export const Game = ({
         
         if (closestDist >= ball.radius) return null;
         
+        // Push ball out to correct position
+        const penetration = ball.radius - closestDist;
+        const newX = ball.x + closestNormal.x * penetration;
+        const newY = ball.y + closestNormal.y * penetration;
+        
         const dot = ball.dx * closestNormal.x + ball.dy * closestNormal.y;
         const newVx = ball.dx - 2 * dot * closestNormal.x;
         const newVy = ball.dy - 2 * dot * closestNormal.y;
         
-        return { newVelocityX: newVx, newVelocityY: newVy };
+        return { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
       };
       
       // Dispatch to shape-specific collision check
@@ -1788,6 +1810,9 @@ export const Game = ({
           if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 700) {
             result.ball.lastHitTime = now;
             
+            // Apply both position and velocity corrections
+            result.ball.x = collision.newX;
+            result.ball.y = collision.newY;
             result.ball.dx = collision.newVelocityX;
             result.ball.dy = collision.newVelocityY;
             
@@ -1815,6 +1840,54 @@ export const Game = ({
               }
               return { ...prev, currentHealth: newHealth };
             });
+          }
+        }
+      });
+
+      // Phase 3.5: Explicit Paddle Overlap Resolution
+      ballResults.forEach((result) => {
+        if (!result.ball || !paddle) return;
+        
+        const ball = result.ball;
+        const ballLeft = ball.x - ball.radius;
+        const ballRight = ball.x + ball.radius;
+        const ballTop = ball.y - ball.radius;
+        const ballBottom = ball.y + ball.radius;
+        
+        const paddleLeft = paddle.x;
+        const paddleRight = paddle.x + paddle.width;
+        const paddleTop = paddle.y;
+        const paddleBottom = paddle.y + paddle.height;
+        
+        // Check overlap
+        if (ballRight > paddleLeft && ballLeft < paddleRight && 
+            ballBottom > paddleTop && ballTop < paddleBottom) {
+          
+          // Calculate overlap depths on each axis
+          const overlapLeft = ballRight - paddleLeft;
+          const overlapRight = paddleRight - ballLeft;
+          const overlapTop = ballBottom - paddleTop;
+          const overlapBottom = paddleBottom - ballTop;
+          
+          // Find minimum overlap (push out along shortest axis)
+          const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+          
+          if (minOverlap === overlapTop) {
+            // Push ball up (most common case - ball inside paddle from top)
+            ball.y = paddleTop - ball.radius;
+            if (ball.dy > 0) ball.dy = -Math.abs(ball.dy);
+          } else if (minOverlap === overlapBottom) {
+            // Push ball down
+            ball.y = paddleBottom + ball.radius;
+            if (ball.dy < 0) ball.dy = Math.abs(ball.dy);
+          } else if (minOverlap === overlapLeft) {
+            // Push ball left
+            ball.x = paddleLeft - ball.radius;
+            if (ball.dx > 0) ball.dx = -Math.abs(ball.dx);
+          } else if (minOverlap === overlapRight) {
+            // Push ball right
+            ball.x = paddleRight + ball.radius;
+            if (ball.dx < 0) ball.dx = Math.abs(ball.dx);
           }
         }
       });
