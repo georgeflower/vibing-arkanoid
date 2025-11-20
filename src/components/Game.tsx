@@ -1121,6 +1121,14 @@ export const Game = ({
       const explosiveBricksToDetonate: Brick[] = [];
       const soundsToPlay: Array<{ type: string; param?: any }> = [];
       
+      // Enemy batched updates
+      const enemiesToUpdate = new Map<number, Partial<Enemy>>();
+      const enemiesToDestroy = new Set<number>();
+      const explosionsToCreate: Array<{x: number, y: number, type: EnemyType}> = [];
+      const bonusLetterDrops: Array<{x: number, y: number}> = [];
+      const bombIntervalsToClean: number[] = [];
+      let enemiesKilledIncrease = 0;
+      
       ballResults.forEach((result, ballIndex) => {
         if (!result.ball) return;
 
@@ -1161,14 +1169,27 @@ export const Game = ({
                   result.ball.lastHitTime = now;
                   soundManager.playBossHitSound();
                   
+                  // Visual feedback
+                  setScreenShake(8);
+                  setTimeout(() => setScreenShake(0), 400);
+                  
                   setBoss(prev => {
                     if (!prev) return prev;
                     const newHealth = Math.max(0, prev.currentHealth - 1);
                     if (newHealth <= 0) {
                       soundManager.playExplosion();
-                      toast.success(`Boss defeated!`);
+                      toast.success(`Boss defeated! +${BOSS_CONFIG[prev.type].points} points`);
+                      // Create massive explosion
+                      explosionsToCreate.push({
+                        x: prev.x + prev.width / 2,
+                        y: prev.y + prev.height / 2,
+                        type: prev.type as EnemyType
+                      });
                     } else {
-                      toast.info(`BOSS: ${newHealth} HP`);
+                      toast.info(`BOSS: ${newHealth} HP`, { 
+                        duration: 1000,
+                        style: { background: '#ff0000', color: '#fff' }
+                      });
                     }
                     return { ...prev, currentHealth: newHealth };
                   });
@@ -1205,20 +1226,102 @@ export const Game = ({
               if (objectId >= 100000) {
                 const enemyIndex = objectId - 100000;
                 const enemy = enemies[enemyIndex];
+                
                 if (enemy) {
-                  soundManager.playExplosion();
-                  setEnemies(prev => prev.filter((_, idx) => idx !== enemyIndex));
-                  scoreIncrease += 500;
-                  setEnemiesKilled(k => k + 1);
-                  
-                  // 1 in 3 chance for power-up drop
-                  if (Math.random() < 0.33) {
-                    createPowerUp({
-                      x: enemy.x,
-                      y: enemy.y,
-                      width: enemy.width,
-                      height: enemy.height
-                    } as any);
+                  // Handle different enemy types with multi-hit logic
+                  if (enemy.type === "pyramid") {
+                    const currentHits = enemy.hits || 0;
+                    
+                    if (currentHits < 2) {
+                      // Pyramid not destroyed yet - damage it
+                      soundManager.playBounce();
+                      enemiesToUpdate.set(enemy.id!, {
+                        hits: currentHits + 1,
+                        isAngry: currentHits === 1,
+                        speed: currentHits === 1 ? enemy.speed * 1.5 : enemy.speed,
+                        dx: currentHits === 1 ? enemy.dx * 1.5 : enemy.dx,
+                        dy: currentHits === 1 ? enemy.dy * 1.5 : enemy.dy
+                      });
+                      if (currentHits === 0) {
+                        toast.warning("Pyramid hit! 2 more hits needed");
+                      } else {
+                        toast.warning("Pyramid is angry! 1 more hit!");
+                      }
+                      setScreenShake(5);
+                      setTimeout(() => setScreenShake(0), 500);
+                    } else {
+                      // Third hit - destroy pyramid
+                      enemiesToDestroy.add(enemyIndex);
+                      explosionsToCreate.push({
+                        x: enemy.x + enemy.width / 2,
+                        y: enemy.y + enemy.height / 2,
+                        type: enemy.type
+                      });
+                      scoreIncrease += 300;
+                      toast.success("Pyramid destroyed! +300 points");
+                      soundManager.playExplosion();
+                      enemiesKilledIncrease++;
+                      bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
+                      
+                      if (enemy.id !== undefined) {
+                        bombIntervalsToClean.push(enemy.id);
+                      }
+                    }
+                  } 
+                  else if (enemy.type === "sphere") {
+                    const currentHits = enemy.hits || 0;
+                    
+                    if (currentHits === 0) {
+                      // First hit - make angry
+                      soundManager.playBounce();
+                      enemiesToUpdate.set(enemy.id!, {
+                        hits: 1,
+                        isAngry: true,
+                        speed: enemy.speed * 1.3,
+                        dx: enemy.dx * 1.3,
+                        dy: enemy.dy * 1.3
+                      });
+                      toast.warning("Sphere enemy is angry!");
+                      setScreenShake(5);
+                      setTimeout(() => setScreenShake(0), 500);
+                    } else {
+                      // Second hit - destroy sphere
+                      enemiesToDestroy.add(enemyIndex);
+                      explosionsToCreate.push({
+                        x: enemy.x + enemy.width / 2,
+                        y: enemy.y + enemy.height / 2,
+                        type: enemy.type
+                      });
+                      scoreIncrease += 200;
+                      toast.success("Sphere enemy destroyed! +200 points");
+                      soundManager.playExplosion();
+                      enemiesKilledIncrease++;
+                      bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
+                      
+                      if (enemy.id !== undefined) {
+                        bombIntervalsToClean.push(enemy.id);
+                      }
+                    }
+                  } 
+                  else {
+                    // Cube enemy - one hit kill
+                    enemiesToDestroy.add(enemyIndex);
+                    explosionsToCreate.push({
+                      x: enemy.x + enemy.width / 2,
+                      y: enemy.y + enemy.height / 2,
+                      type: enemy.type
+                    });
+                    scoreIncrease += 100;
+                    toast.success("Cube enemy destroyed! +100 points");
+                    soundManager.playExplosion();
+                    enemiesKilledIncrease++;
+                    setScreenShake(3);
+                    setTimeout(() => setScreenShake(0), 300);
+                    bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
+                    
+                    if (enemy.id !== undefined) {
+                      bombIntervalsToClean.push(enemy.id);
+                    }
                   }
                 }
                 break;
@@ -1395,6 +1498,94 @@ export const Game = ({
         setBricksHit(b => b + bricksDestroyedCount);
       }
       if (comboIncrease > 0) setCurrentCombo(c => c + comboIncrease);
+
+      // Apply enemy updates
+      setEnemies(prev => {
+        const updated = prev.map((e, idx) => {
+          if (enemiesToDestroy.has(idx)) return null;
+          if (e.id !== undefined && enemiesToUpdate.has(e.id)) {
+            return { ...e, ...enemiesToUpdate.get(e.id)! };
+          }
+          return e;
+        }).filter((e): e is Enemy => e !== null);
+        return updated;
+      });
+
+      // Create explosions with particles
+      explosionsToCreate.forEach(exp => {
+        setExplosions(prev => [...prev, {
+          x: exp.x,
+          y: exp.y,
+          frame: 0,
+          maxFrames: 20,
+          enemyType: exp.type,
+          particles: createExplosionParticles(exp.x, exp.y, exp.type)
+        }]);
+      });
+
+      // Handle bonus letter drops
+      bonusLetterDrops.forEach(drop => {
+        dropBonusLetter(drop.x, drop.y);
+      });
+
+      // Clean up bomb intervals
+      bombIntervalsToClean.forEach(enemyId => {
+        const interval = bombIntervalsRef.current.get(enemyId);
+        if (interval) {
+          clearInterval(interval);
+          bombIntervalsRef.current.delete(enemyId);
+        }
+      });
+
+      // Update enemies killed counter and handle power-up drops
+      if (enemiesKilledIncrease > 0) {
+        setEnemiesKilled(prev => {
+          const newCount = prev + enemiesKilledIncrease;
+          
+          // Check for power-up drops based on enemy kill count
+          enemiesToDestroy.forEach(idx => {
+            const enemy = enemies[idx];
+            if (!enemy) return;
+            
+            const isBossSpawned = bossSpawnedEnemiesRef.current.has(enemy.id || -1);
+            const shouldDrop = isBossSpawned ? Math.random() < 0.5 : (newCount % 3 === 0);
+            
+            if (shouldDrop) {
+              const fakeBrick: Brick = {
+                id: -1,
+                x: enemy.x,
+                y: enemy.y,
+                width: enemy.width,
+                height: enemy.height,
+                visible: true,
+                color: "",
+                points: 0,
+                hasPowerUp: true,
+                hitsRemaining: 0,
+                maxHits: 1,
+                isIndestructible: false,
+                type: "normal"
+              };
+              let powerUp = createPowerUp(fakeBrick);
+              let attempts = 0;
+              while (!powerUp && attempts < 10) {
+                powerUp = createPowerUp(fakeBrick);
+                attempts++;
+              }
+              if (powerUp) {
+                setPowerUps(prev => [...prev, powerUp]);
+                if (isBossSpawned) {
+                  toast.success("Boss minion bonus! Power-up dropped!");
+                } else {
+                  toast.success("Enemy kill bonus! Power-up dropped!");
+                }
+              }
+            }
+          });
+          
+          return newCount;
+        });
+      }
 
       // Phase 4: Update ball positions and check for lost balls
       const updatedBalls = ballResults
@@ -1660,308 +1851,6 @@ export const Game = ({
       };
     }));
 
-    // Check ball-enemy collisions and destroy enemies immediately
-    const hitEnemiesThisFrame = new Set<number>(); // Track which enemies were hit this frame
-    setBalls(prevBalls => {
-      let ballsUpdated = false;
-      const newBalls = prevBalls.map(ball => {
-        if (ball.waitingToLaunch) return ball;
-        for (const enemy of enemies) {
-          // Skip if this enemy was already hit this frame
-          if (hitEnemiesThisFrame.has(enemy.id || -1)) {
-            continue;
-          }
-          if (ball.x + ball.radius > enemy.x && ball.x - ball.radius < enemy.x + enemy.width && ball.y + ball.radius > enemy.y && ball.y - ball.radius < enemy.y + enemy.height) {
-            // Mark this enemy as hit in this frame
-            if (enemy.id !== undefined) {
-              hitEnemiesThisFrame.add(enemy.id);
-            }
-
-            // Change ball trajectory immediately
-            const ballCenterX = ball.x;
-            const ballCenterY = ball.y;
-            const enemyCenterX = enemy.x + enemy.width / 2;
-            const enemyCenterY = enemy.y + enemy.height / 2;
-            const dx = ballCenterX - enemyCenterX;
-            const dy = ballCenterY - enemyCenterY;
-            ballsUpdated = true;
-            let updatedBall = ball;
-
-            // Reverse ball direction based on collision side
-            if (Math.abs(dx) > Math.abs(dy)) {
-              updatedBall = {
-                ...ball,
-                dx: -ball.dx
-              };
-            } else {
-              updatedBall = {
-                ...ball,
-                dy: -ball.dy
-              };
-            }
-
-            // Handle enemy destruction/damage
-            if (enemy.type === "pyramid") {
-              const currentHits = enemy.hits || 0;
-              if (currentHits === 0) {
-                // First hit - change color to yellow
-                soundManager.playBounce();
-                toast.warning("Pyramid hit! 2 more hits needed");
-                // Screen shake on enemy hit
-                setScreenShake(5);
-                setTimeout(() => setScreenShake(0), 500);
-                setEnemies(prev => prev.map(e => e.id === enemy.id ? {
-                  ...e,
-                  hits: 1
-                } : e));
-              } else if (currentHits === 1) {
-                // Second hit - change color to red, make it angry and faster
-                soundManager.playBounce();
-                toast.warning("Pyramid is angry! 1 more hit!");
-                // Screen shake on enemy hit
-                setScreenShake(5);
-                setTimeout(() => setScreenShake(0), 500);
-                setEnemies(prev => prev.map(e => e.id === enemy.id ? {
-                  ...e,
-                  hits: 2,
-                  isAngry: true,
-                  speed: e.speed * 1.5,
-                  dx: e.dx * 1.5,
-                  dy: e.dy * 1.5
-                } : e));
-              } else {
-                // Third hit - destroy it
-                setExplosions(prev => [...prev, {
-                  x: enemy.x + enemy.width / 2,
-                  y: enemy.y + enemy.height / 2,
-                  frame: 0,
-                  maxFrames: 20,
-                  enemyType: enemy.type,
-                  particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type)
-                }]);
-                soundManager.playExplosion();
-                setScore(s => s + 300);
-                toast.success("Pyramid destroyed! +300 points");
-
-                // Check for bonus letter drop
-                dropBonusLetter(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
-
-                // Remove enemy
-                setEnemies(prev => prev.filter(e => e.id !== enemy.id));
-
-                // Track enemy kill and drop powerup
-                setEnemiesKilled(prev => {
-                  const newCount = prev + 1;
-                  
-                  // Check if this is a boss-spawned enemy
-                  const isBossSpawned = bossSpawnedEnemiesRef.current.has(enemy.id || -1);
-                  
-                  // Boss-spawned enemies: 50% chance to drop power-up
-                  // Regular enemies: drop every 3 kills
-                  const shouldDrop = isBossSpawned ? Math.random() < 0.5 : newCount % 3 === 0;
-                  
-                  if (shouldDrop) {
-                    // Create a powerup at enemy location
-                    const fakeBrick: Brick = {
-                      id: -1,
-                      x: enemy.x,
-                      y: enemy.y,
-                      width: enemy.width,
-                      height: enemy.height,
-                      visible: true,
-                      color: "",
-                      points: 0,
-                      hasPowerUp: true,
-                      hitsRemaining: 0,
-                      maxHits: 1,
-                      isIndestructible: false,
-                      type: "normal"
-                    };
-                    // Keep trying until we get a powerup
-                    let powerUp = createPowerUp(fakeBrick);
-                    let attempts = 0;
-                    while (!powerUp && attempts < 10) {
-                      powerUp = createPowerUp(fakeBrick);
-                      attempts++;
-                    }
-                    if (powerUp) {
-                      setPowerUps(prev => [...prev, powerUp]);
-                      toast.success(isBossSpawned ? "Boss minion bonus! Power-up dropped!" : "Enemy kill bonus! Power-up dropped!");
-                    }
-                  }
-                  
-                  // Clean up boss-spawned enemy tracking
-                  if (enemy.id !== undefined) {
-                    bossSpawnedEnemiesRef.current.delete(enemy.id);
-                  }
-                  
-                  return newCount;
-                });
-
-                // Clear bomb interval
-                if (enemy.id !== undefined) {
-                  const interval = bombIntervalsRef.current.get(enemy.id);
-                  if (interval) {
-                    clearInterval(interval);
-                    bombIntervalsRef.current.delete(enemy.id);
-                  }
-                }
-              }
-            } else if (enemy.type === "sphere") {
-              const currentHits = enemy.hits || 0;
-              if (currentHits === 0) {
-                // First hit - make it angry and faster
-                soundManager.playBounce();
-                toast.warning("Sphere enemy is angry!");
-                // Screen shake on enemy hit
-                setScreenShake(5);
-                setTimeout(() => setScreenShake(0), 500);
-                setEnemies(prev => prev.map(e => e.id === enemy.id ? {
-                  ...e,
-                  hits: 1,
-                  isAngry: true,
-                  speed: e.speed * 1.3,
-                  dx: e.dx * 1.3,
-                  dy: e.dy * 1.3
-                } : e));
-              } else {
-                // Second hit - destroy it
-                setExplosions(prev => [...prev, {
-                  x: enemy.x + enemy.width / 2,
-                  y: enemy.y + enemy.height / 2,
-                  frame: 0,
-                  maxFrames: 20,
-                  enemyType: enemy.type,
-                  particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type)
-                }]);
-                soundManager.playExplosion();
-                setScore(s => s + 200);
-                toast.success("Sphere enemy destroyed! +200 points");
-
-                // Check for bonus letter drop
-                dropBonusLetter(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
-
-                // Remove enemy
-                setEnemies(prev => prev.filter(e => e.id !== enemy.id));
-
-                // Track enemy kill and drop powerup every 3 kills
-                setEnemiesKilled(prev => {
-                  const newCount = prev + 1;
-                  if (newCount % 3 === 0) {
-                    // Create a powerup at enemy location - always drop (retry until success)
-                    const fakeBrick: Brick = {
-                      id: -1,
-                      x: enemy.x,
-                      y: enemy.y,
-                      width: enemy.width,
-                      height: enemy.height,
-                      visible: true,
-                      color: "",
-                      points: 0,
-                      hasPowerUp: true,
-                      hitsRemaining: 0,
-                      maxHits: 1,
-                      isIndestructible: false,
-                      type: "normal"
-                    };
-                    // Keep trying until we get a powerup (guaranteed drop)
-                    let powerUp = createPowerUp(fakeBrick);
-                    let attempts = 0;
-                    while (!powerUp && attempts < 10) {
-                      powerUp = createPowerUp(fakeBrick);
-                      attempts++;
-                    }
-                    if (powerUp) {
-                      setPowerUps(prev => [...prev, powerUp]);
-                      toast.success("Enemy kill bonus! Power-up dropped!");
-                    }
-                  }
-                  return newCount;
-                });
-
-                // Clear bomb interval
-                if (enemy.id !== undefined) {
-                  const interval = bombIntervalsRef.current.get(enemy.id);
-                  if (interval) {
-                    clearInterval(interval);
-                    bombIntervalsRef.current.delete(enemy.id);
-                  }
-                }
-              }
-            } else {
-              // Cube enemy - destroy on first hit
-              // Screen shake on enemy hit
-              setScreenShake(5);
-              setTimeout(() => setScreenShake(0), 500);
-              setExplosions(prev => [...prev, {
-                x: enemy.x + enemy.width / 2,
-                y: enemy.y + enemy.height / 2,
-                frame: 0,
-                maxFrames: 20,
-                enemyType: enemy.type,
-                particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type)
-              }]);
-              soundManager.playExplosion();
-              setScore(s => s + 100);
-              toast.success("Enemy destroyed! +100 points");
-
-              // Check for bonus letter drop
-              dropBonusLetter(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
-
-              // Remove enemy
-              setEnemies(prev => prev.filter(e => e.id !== enemy.id));
-
-              // Track enemy kill and drop powerup every 3 kills
-              setEnemiesKilled(prev => {
-                const newCount = prev + 1;
-                if (newCount % 3 === 0) {
-                  // Create a powerup at enemy location - always drop (retry until success)
-                  const fakeBrick: Brick = {
-                    id: -1,
-                    x: enemy.x,
-                    y: enemy.y,
-                    width: enemy.width,
-                    height: enemy.height,
-                    visible: true,
-                    color: "",
-                    points: 0,
-                    hasPowerUp: true,
-                    hitsRemaining: 0,
-                    maxHits: 1,
-                    isIndestructible: false,
-                    type: "normal"
-                  };
-                  // Keep trying until we get a powerup (guaranteed drop)
-                  let powerUp = createPowerUp(fakeBrick);
-                  let attempts = 0;
-                  while (!powerUp && attempts < 10) {
-                    powerUp = createPowerUp(fakeBrick);
-                    attempts++;
-                  }
-                  if (powerUp) {
-                    setPowerUps(prev => [...prev, powerUp]);
-                    toast.success("Enemy kill bonus! Power-up dropped!");
-                  }
-                }
-                return newCount;
-              });
-
-              // Clear bomb interval
-              if (enemy.id !== undefined) {
-                const interval = bombIntervalsRef.current.get(enemy.id);
-                if (interval) {
-                  clearInterval(interval);
-                  bombIntervalsRef.current.delete(enemy.id);
-                }
-              }
-            }
-            return updatedBall;
-          }
-        }
-        return ball;
-      });
-      return ballsUpdated ? newBalls : prevBalls;
-    });
 
     // Update explosions and their particles
     setExplosions(prev => prev.map(exp => ({
