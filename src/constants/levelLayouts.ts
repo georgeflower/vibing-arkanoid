@@ -89,10 +89,10 @@ export const levelLayouts: (boolean | number)[][][] = [
   [
     [false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, true, false, false, true, false, false, true, false, false, false],
-    [true, false, true, true, false, true, true, true, false, true, true, false, true],
+    [3, false, true, true, false, true, true, true, false, true, true, false, 3],
     [false, false, true, true, false, true, true, true, false, true, true, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false],
-    [false, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, true, true, 3, true, true, true, true, true, false],
     [true, false, true, true, false, false, false, false, false, true, true, false, true],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
     [true, false, true, false, false, false, true, false, false, false, true, false, true],
@@ -100,7 +100,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, true, false, false, 2, false, 2, false, 2, false, false, true, true],
     [false, true, true, true, true, true, true, true, true, true, true, true, false],
     [false, false, true, false, false, false, false, false, false, false, true, false, false],
-    [false, false, false, true, false, false, false, false, false, true, false, false, false],
+    [false, false, false, true, false, false, false, false, false, true, false, false, false]
   ],
 
   // Level 6
@@ -121,59 +121,60 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, true, false, true, false, true, false, true, false, true, false, true, false],
   ],
 
-  // Level 7: X Pattern
+  // Level 7
   [
-    [true, true, false, false, false, false, false, false, false, false, false, true, true],
-    [true, true, true, false, false, false, false, false, false, false, true, true, true],
-    [false, true, true, true, false, false, false, false, false, true, true, true, false],
-    [false, false, true, true, true, false, false, false, true, true, true, false, false],
-    [false, false, false, true, true, true, false, true, true, true, false, false, false],
-    [false, false, false, false, true, true, true, true, true, false, false, false, false],
+    [true, true, 4, false, false, false, false, false, false, false, 4, true, true],
+    [true, true, true, 4, false, false, false, false, false, 4, true, true, true],
+    [4, true, true, true, 4, false, false, false, 4, true, true, true, 4],
+    [false, 4, true, true, true, 4, false, 4, true, true, true, 4, false],
+    [false, false, 4, true, true, true, 4, true, true, true, 4, false, false],
+    [false, false, false, 4, true, true, true, true, true, 4, false, false, false],
+    [false, false, false, false, 4, true, true, true, 4, false, false, false, false],
+    [false, false, false, false, 2, 2, 3, 2, 2, false, false, false, false],
     [false, false, false, false, false, true, true, true, false, false, false, false, false],
-    [false, false, false, false, false, false, true, false, false, false, false, false, false],
-    [false, false, false, false, false, true, true, true, false, false, false, false, false],
     [false, false, false, false, true, true, true, true, true, false, false, false, false],
     [false, false, false, true, true, true, false, true, true, true, false, false, false],
     [false, false, true, true, true, false, false, false, true, true, true, false, false],
     [false, true, true, true, false, false, false, false, false, true, true, true, false],
-    [true, true, true, false, false, false, false, false, false, false, true, true, true],
+    [true, true, true, false, false, false, false, false, false, false, true, true, true]
   ],
 
   // Level 8
   [
     [false, true, true, true, true, true, true, true, true, true, true, true, false],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
+    [true, true, true, true, true, true, 3, true, true, true, true, true, true],
+    [true, true, true, true, 3, true, true, true, 3, true, true, true, true],
+    [true, true, true, true, 2, 2, 2, 2, 2, true, true, true, true],
+    [2, true, true, true, 2, true, true, true, 2, true, true, true, 2],
+    [true, 2, true, true, 2, true, true, true, 2, true, true, 2, true],
+    [2, true, true, true, 2, 2, 2, 2, 2, true, true, true, 2],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [2, true, true, true, true, true, true, true, true, true, true, true, 2],
-    [true, 2, true, true, true, true, true, true, true, true, true, 2, true],
-    [2, true, true, true, true, true, 2, true, true, true, true, true, 2],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [false, true, true, true, true, true, true, true, true, true, true, true, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, false]
   ],
 
   // Level 9
   [
-    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
+    [4, 4, 4, 4, 4, 4, 2, 4, 4, 4, 4, 4, 4],
     [true, true, true, true, true, true, 2, true, true, true, true, true, true],
     [false, true, true, true, true, true, 2, true, true, true, true, true, false],
-    [true, false, true, true, true, true, 2, true, true, true, true, false, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
-    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
-    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
-    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
-    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
-    [true, true, true, false, true, true, 2, true, true, false, true, true, true],
-    [true, true, false, true, true, true, 2, true, true, true, false, true, true],
+    [4, false, true, true, true, true, 2, true, true, true, true, false, 4],
+    [4, true, true, true, true, true, 3, true, true, true, true, true, 4],
+    [4, true, true, true, true, true, 2, true, true, true, true, true, 4],
+    [4, true, true, true, true, true, 2, true, true, true, true, true, 4],
+    [4, true, true, true, true, true, 2, true, true, true, true, true, 4],
+    [4, true, true, true, true, true, true, true, true, true, true, true, 4],
+    [4, true, true, true, true, true, 2, true, true, true, true, true, 4],
+    [4, true, true, true, true, true, 2, true, true, true, true, true, 4],
+    [4, true, true, true, true, true, 2, true, true, true, true, true, 4],
+    [4, true, true, false, true, true, 2, true, true, false, true, true, 4],
+    [4, true, false, true, true, true, 2, true, true, true, false, true, 4]
   ],
+
 
   // Level 10
   [
@@ -197,45 +198,45 @@ export const levelLayouts: (boolean | number)[][][] = [
   [
     [false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, 2, 2, 2, 2, true, true, true, 2, 2, 2, 2, false],
-    [false, true, false, true, 2, true, true, true, 2, true, false, true, false],
-    [false, true, false, true, 2, true, true, true, 2, true, false, true, false],
+    [false, 4, false, true, 2, true, true, true, 2, true, false, 4, false],
+    [false, 4, false, true, 2, true, true, true, 2, true, false, 4, false],
     [false, 2, true, true, true, true, true, true, true, true, true, 2, false],
-    [false, 2, true, true, true, true, true, true, true, true, true, 2, false],
+    [false, 2, true, true, true, true, 3, true, true, true, true, 2, false],
     [false, 2, true, true, true, 2, 2, 2, true, true, true, 2, false],
     [false, 2, true, true, true, true, true, true, true, true, true, 2, false],
     [false, 2, true, true, true, true, true, true, true, true, true, 2, false],
     [false, 2, true, true, true, true, true, true, true, true, true, 2, false],
-    [false, 2, true, true, 2, true, true, true, 2, true, true, 2, false],
+    [false, 2, 4, 4, 2, 4, 4, 4, 2, 4, 4, 2, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false],
-    [false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false]
   ],
 
-  // Level 12: Diamond
+  // Level 12
   [
-    [false, false, false, false, false, false, true, false, false, false, false, false, false],
-    [false, false, false, false, false, true, true, true, false, false, false, false, false],
-    [false, false, false, false, true, true, true, true, true, false, false, false, false],
-    [false, false, false, true, true, true, true, true, true, true, false, false, false],
-    [false, false, true, true, true, true, true, true, true, true, true, false, false],
-    [false, true, true, true, true, true, true, true, true, true, true, true, false],
-    [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [false, true, true, true, true, true, true, true, true, true, true, true, false],
-    [false, false, true, true, true, true, true, true, true, true, true, false, false],
-    [false, false, false, true, true, true, true, true, true, true, false, false, false],
-    [false, false, false, false, true, true, true, true, true, false, false, false, false],
-    [false, false, false, false, false, true, true, true, false, false, false, false, false],
-    [false, false, false, false, false, false, true, false, false, false, false, false, false],
-    [false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, 3, false, false, false, false, false, false],
+    [false, false, false, false, false, 2, true, 2, false, false, false, false, false],
+    [false, false, false, false, 2, true, true, true, 2, false, false, false, false],
+    [false, false, false, 4, true, true, true, true, true, 4, false, false, false],
+    [false, false, 2, true, true, true, true, true, true, true, 2, false, false],
+    [false, 4, true, true, true, true, 4, true, true, true, true, 4, false],
+    [2, true, true, true, true, 4, 3, 4, true, true, true, true, 2],
+    [false, 4, true, true, true, true, 4, true, true, true, true, 4, false],
+    [false, false, 2, true, true, true, true, true, true, true, 2, false, false],
+    [false, false, false, 2, true, true, true, true, true, 2, false, false, false],
+    [false, false, false, false, 2, true, 3, true, 2, false, false, false, false],
+    [false, false, false, false, false, 2, true, 2, false, false, false, false, false],
+    [false, false, false, false, false, false, 2, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false]
   ],
 
   // Level 13
   [
     [2, 2, 2, 2, 2, 2, false, 2, 2, 2, 2, 2, 2],
-    [false, false, false, true, true, true, false, true, true, true, false, false, false],
-    [false, false, 2, 2, 2, true, false, true, 2, 2, 2, false, false],
-    [2, false, 2, false, false, true, false, true, false, false, 2, false, 2],
-    [2, false, true, false, 2, true, true, true, 2, false, true, false, 2],
+    [false, false, false, true, true, true, 4, true, true, true, false, false, false],
+    [false, false, 2, 2, 2, true, 3, true, 2, 2, 2, false, false],
+    [2, false, 2, 3, 4, true, false, true, 4, 3, 2, false, 2],
+    [2, false, true, 4, 2, true, true, true, 2, 4, true, false, 2],
     [2, false, true, false, 2, false, true, false, 2, false, true, false, 2],
     [2, false, true, false, 2, false, 2, false, 2, false, true, false, 2],
     [2, false, true, false, true, false, 2, false, true, false, true, false, 2],
@@ -244,26 +245,25 @@ export const levelLayouts: (boolean | number)[][][] = [
     [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
     [false, false, false, false, false, false, false, false, false, false, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false],
-    [false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false]
   ],
 
-  // Level 14: Spiral
+  // Level 14
   [
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [true, false, false, false, false, false, false, false, false, false, false, false, true],
-    [true, false, true, true, true, true, true, true, true, true, true, false, true],
-    [true, false, true, false, false, false, false, false, false, false, true, false, true],
-    [true, false, true, false, true, true, true, true, true, false, true, false, true],
-    [true, false, true, false, true, false, false, false, true, false, true, false, true],
-    [true, false, true, false, true, false, true, false, true, false, true, false, true],
-    [true, false, true, false, true, false, false, false, true, false, true, false, true],
-    [true, false, true, false, true, true, true, true, true, false, true, false, true],
-    [true, false, true, false, false, false, false, false, false, false, true, false, true],
-    [true, false, true, true, true, true, true, true, true, true, true, false, true],
-    [true, false, false, false, false, false, false, false, false, false, false, false, true],
+    [true, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, true],
+    [true, 4, true, true, true, true, true, true, true, true, true, 4, true],
+    [true, 4, true, 4, 4, 4, 4, 4, 4, 4, true, 4, true],
+    [true, 4, true, 4, true, true, true, true, true, 4, true, 4, true],
+    [true, 4, true, 4, true, 4, 4, 4, true, 4, true, 4, true],
+    [true, 4, true, 4, true, 4, 3, 4, true, 4, true, 4, true],
+    [true, 4, true, 4, true, 4, 4, 4, true, 4, true, 4, true],
+    [true, 4, true, 4, true, true, true, true, true, 4, true, 4, true],
+    [true, 4, true, 4, 4, 4, 4, 4, 4, 4, true, 4, true],
+    [true, 4, true, true, true, true, true, true, true, true, true, 4, true],
+    [true, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, true],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
-    [false, false, false, false, false, false, false, false, false, false, false, false, false],
-  ],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false]
 
   // Level 15: Stripes
   [
@@ -286,8 +286,8 @@ export const levelLayouts: (boolean | number)[][][] = [
   // Level 16
   [
     [false, false, false, false, false, false, false, false, false, false, false, false, false],
-    [false, false, false, false, false, true, true, true, false, false, false, false, false],
-    [false, false, false, 2, true, true, true, true, true, 2, false, false, false],
+    [false, false, false, false, false, 4, 4, 4, false, false, false, false, false],
+    [false, false, false, 2, 4, true, true, true, 4, 2, false, false, false],
     [false, false, 2, 2, true, true, true, true, true, 2, 2, false, false],
     [false, 2, 2, true, true, true, true, true, true, true, 2, 2, false],
     [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
@@ -297,26 +297,26 @@ export const levelLayouts: (boolean | number)[][][] = [
     [2, 2, true, true, true, false, true, false, true, true, true, 2, 2],
     [false, 2, 2, true, true, true, true, true, true, true, 2, 2, false],
     [false, false, 2, 2, true, true, true, true, true, 2, 2, false, false],
-    [false, false, false, 2, 2, true, true, true, 2, 2, false, false, false],
-    [false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, 2, 2, 4, 4, 4, 2, 2, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false]
   ],
 
-  // Level 17: Arrows
+  // Level 17
   [
     [false, false, false, false, false, false, true, false, false, false, false, false, false],
     [false, false, false, false, false, true, true, true, false, false, false, false, false],
     [false, false, false, false, true, true, true, true, true, false, false, false, false],
-    [false, false, false, true, true, true, true, true, true, true, false, false, false],
+    [false, false, 3, true, true, true, true, true, true, true, 3, false, false],
     [false, false, false, false, false, true, true, true, false, false, false, false, false],
-    [false, false, false, false, false, true, true, true, false, false, false, false, false],
-    [true, true, true, false, false, true, true, true, false, false, true, true, true],
-    [false, true, true, true, false, true, true, true, false, true, true, true, false],
-    [false, false, true, true, true, true, true, true, true, true, true, false, false],
-    [false, false, false, true, true, true, true, true, true, true, false, false, false],
-    [false, false, false, false, true, true, true, true, true, false, false, false, false],
-    [false, false, false, false, false, true, true, true, false, false, false, false, false],
-    [false, false, false, false, false, false, true, false, false, false, false, false, false],
-    [false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, 2, 2, 2, 2, true, true, true, 2, 2, 2, 2, false],
+    [4, true, true, false, false, true, true, true, false, false, true, true, 4],
+    [false, 4, true, true, false, true, true, true, false, true, true, 4, false],
+    [false, false, 4, true, true, true, true, true, true, true, 4, false, false],
+    [false, false, false, 4, true, true, true, true, true, 4, false, false, false],
+    [false, false, false, false, 4, true, true, true, 4, false, false, false, false],
+    [false, false, false, false, false, 4, true, 4, false, false, false, false, false],
+    [false, false, false, false, false, false, 4, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false]
   ],
 
   // Level 18
@@ -326,50 +326,50 @@ export const levelLayouts: (boolean | number)[][][] = [
     [2, true, 2, 2, 2, 2, 2, 2, 2, 2, 2, true, 2],
     [false, true, true, true, true, true, true, true, true, true, true, true, false],
     [false, false, true, true, true, true, true, true, true, true, true, false, false],
-    [false, false, false, 2, 2, 2, true, 2, 2, 2, false, false, false],
+    [false, false, false, 2, 2, 2, 4, 2, 2, 2, false, false, false],
     [false, false, false, 2, true, true, true, true, true, 2, false, false, false],
     [false, false, false, 2, true, false, false, false, true, 2, false, false, false],
-    [false, false, false, 2, true, false, 2, false, true, 2, false, false, false],
+    [false, false, false, 2, true, false, 3, false, true, 2, false, false, false],
     [false, false, false, 2, true, false, false, false, true, 2, false, false, false],
     [false, false, false, 2, true, true, true, true, true, 2, false, false, false],
     [false, false, false, 2, 2, 2, 2, 2, 2, 2, false, false, false],
     [false, false, false, false, false, false, false, false, false, false, false, false, false],
-    [false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false]
   ],
 
-  // Level 19: Circles
+  // Level 19
   [
     [false, false, false, true, true, true, true, true, true, true, false, false, false],
     [false, false, true, true, true, true, true, true, true, true, true, false, false],
     [false, true, true, true, false, false, false, false, false, true, true, true, false],
-    [true, true, true, false, false, false, false, false, false, false, true, true, true],
-    [true, true, false, false, true, true, true, true, true, false, false, true, true],
-    [true, true, false, false, true, false, false, false, true, false, false, true, true],
-    [true, true, false, false, true, false, 2, false, true, false, false, true, true],
-    [true, true, false, false, true, false, false, false, true, false, false, true, true],
-    [true, true, false, false, true, true, true, true, true, false, false, true, true],
-    [true, true, true, false, false, false, false, false, false, false, true, true, true],
+    [true, true, true, 4, 4, 4, 4, 4, 4, 4, true, true, true],
+    [true, true, 4, 4, true, true, true, true, true, 4, 4, true, true],
+    [true, true, 4, 4, true, 2, 3, 2, true, 4, 4, true, true],
+    [true, true, 4, 4, true, 2, true, 2, true, 4, 4, true, true],
+    [true, true, 4, 4, true, 2, 2, 2, true, 4, 4, true, true],
+    [true, true, 4, 4, true, true, true, true, true, 4, 4, true, true],
+    [true, true, true, 4, 4, 4, 4, 4, 4, 4, true, true, true],
     [false, true, true, true, false, false, false, false, false, true, true, true, false],
     [false, false, true, true, true, true, true, true, true, true, true, false, false],
     [false, false, false, true, true, true, true, true, true, true, false, false, false],
-    [false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false]
   ],
 
   // Level 20
   [
     [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
-    [true, true, true, true, true, true, 2, true, true, true, true, true, true],
-    [true, true, 2, 2, 2, true, 2, true, 2, 2, 2, true, true],
-    [2, true, 2, true, 2, true, 2, true, 2, true, 2, true, 2],
+    [4, true, true, true, true, true, 2, true, true, true, true, true, 4],
+    [4, true, 2, 2, 2, true, 2, true, 2, 2, 2, true, 4],
+    [2, true, 2, 3, 2, true, 2, true, 2, 3, 2, true, 2],
     [2, true, 2, true, 2, true, true, true, 2, true, 2, true, 2],
     [2, true, 2, true, 2, 2, true, 2, 2, true, 2, true, 2],
-    [2, true, true, true, true, true, true, true, true, true, true, true, 2],
+    [2, true, true, true, true, true, 3, true, true, true, true, true, 2],
     [2, true, 2, true, 2, 2, true, 2, 2, true, 2, true, 2],
     [2, true, 2, true, 2, true, true, true, 2, true, 2, true, 2],
-    [2, true, 2, true, 2, true, 2, true, 2, true, 2, true, 2],
+    [2, true, 2, 3, 2, true, 2, true, 2, 3, 2, true, 2],
     [2, true, 2, 2, 2, true, 2, true, 2, 2, 2, true, 2],
-    [2, true, true, true, true, true, 2, true, true, true, true, true, 2],
-    [2, 2, 2, 2, 2, true, 2, true, 2, 2, 2, 2, 2],
-    [false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [2, true, true, true, true, 4, 2, 4, true, true, true, true, 2],
+    [2, 2, 2, 4, 2, 4, 2, 4, 2, 4, 2, 2, 2],
+    [false, false, false, false, false, false, false, false, false, false, false, false, false]
   ],
 ];
