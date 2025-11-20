@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { GameSettings, Difficulty } from "@/types/game";
 import startScreenImg from "@/assets/start-screen-new.png";
+import startScreenWebp from "@/assets/start-screen-new.webp";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { Changelog } from "./Changelog";
 import { soundManager } from "@/utils/sounds";
@@ -139,12 +140,15 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
         }}
         tabIndex={0}
       >
-        <img
-          src={startScreenImg}
-          alt="Game start screen"
-          fetchPriority="high"
-          className="absolute inset-0 w-full h-full object-contain pointer-events-none"
-        />
+        <picture className="absolute inset-0 w-full h-full pointer-events-none">
+          <source srcSet={startScreenWebp} type="image/webp" />
+          <img
+            src={startScreenImg}
+            alt="Game start screen"
+            fetchPriority="high"
+            className="w-full h-full object-contain"
+          />
+        </picture>
         <div className="text-center animate-pulse relative z-10">
           <p className="text-white text-2xl font-bold">Press key/mouse to continue</p>
         </div>
