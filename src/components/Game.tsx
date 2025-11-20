@@ -1136,6 +1136,17 @@ export const Game = ({
           const now = Date.now();
           const objectKey = `${event.objectType}-${event.objectId}`;
           
+          // Debug log for boss-related IDs
+          if (typeof event.objectId === 'number' && event.objectId <= 0) {
+            console.log('[CCD] Negative objectId event', {
+              objectType: event.objectType,
+              objectId: event.objectId,
+              point: event.point,
+              bossPresent: !!boss,
+              bossRect: boss ? { x: boss.x, y: boss.y, w: boss.width, h: boss.height } : null,
+            });
+          }
+          
           // Skip if already processed this frame
           if (event.objectType !== 'wall' && event.objectType !== 'paddle' && processedObjects.has(objectKey)) {
             return;
@@ -1165,6 +1176,13 @@ export const Game = ({
               
               // Handle boss collision (ID = -1)
               if (objectId === -1 && boss) {
+                console.log('[BossHit] Boss collision detected', { 
+                  currentHealth: boss.currentHealth,
+                  lastHitTime: result.ball.lastHitTime,
+                  now,
+                  cooldownRemaining: result.ball.lastHitTime ? now - result.ball.lastHitTime : 'none'
+                });
+                
                 if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 1000) {
                   result.ball.lastHitTime = now;
                   soundManager.playBossHitSound();
@@ -1176,6 +1194,8 @@ export const Game = ({
                   setBoss(prev => {
                     if (!prev) return prev;
                     const newHealth = Math.max(0, prev.currentHealth - 1);
+                    console.log('[BossHit] HP updated', { oldHealth: prev.currentHealth, newHealth });
+                    
                     if (newHealth <= 0) {
                       soundManager.playExplosion();
                       toast.success(`Boss defeated! +${BOSS_CONFIG[prev.type].points} points`);
