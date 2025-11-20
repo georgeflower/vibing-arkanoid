@@ -1617,7 +1617,7 @@ export const Game = ({
         // Safety check: prevent division by zero
         if (dist < 0.1) dist = 0.1;
         
-        const penetration = ball.radius - dist + 2; // +2 pixels safety margin
+        const penetration = ball.radius - dist; // +2 pixels safety margin
         const pushX = ux + (distX / dist) * penetration;
         const pushY = uy + (distY / dist) * penetration;
         
@@ -1659,7 +1659,7 @@ export const Game = ({
         const normalY = dy / dist;
         
         // Push ball out to correct position with extra safety margin
-        const overlap = totalRadius - dist + 2; // +2 pixels safety margin
+        const overlap = totalRadius - dist; // +2 pixels safety margin
         const newX = ball.x + normalX * overlap;
         const newY = ball.y + normalY * overlap;
         
@@ -1744,7 +1744,7 @@ export const Game = ({
         if (closestDist < 0.1) closestDist = 0.1;
         
         // Push ball out to correct position with extra safety margin
-        const penetration = ball.radius - closestDist + 2; // +2 pixels safety margin
+        const penetration = ball.radius - closestDist; // +2 pixels safety margin
         const newX = ball.x + closestNormal.x * penetration;
         const newY = ball.y + closestNormal.y * penetration;
         
@@ -1773,9 +1773,16 @@ export const Game = ({
             break;
         }
         
-        if (collision) {
-          const now = Date.now();
-          if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 700) {
+          if (collision) {
+            console.log('[BossCollision]', {
+              bossType: boss.type,
+              ballPos: { x: result.ball.x, y: result.ball.y },
+              correctedPos: { x: collision.newX, y: collision.newY },
+              cooldownReady: !result.ball.lastHitTime || (Date.now() - result.ball.lastHitTime >= 700)
+            });
+            
+            const now = Date.now();
+            if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 700) {
             result.ball.lastHitTime = now;
             
             // Apply both position and velocity corrections
@@ -1831,17 +1838,17 @@ export const Game = ({
         let minSafeDist = 0;
         
         if (boss.type === 'sphere') {
-          minSafeDist = boss.width / 2 + ball.radius + 2; // +2 for safety margin
+          minSafeDist = boss.width / 2 + ball.radius + 0.5; // +0.5 for safety margin
           isInside = dist < minSafeDist;
         } else if (boss.type === 'cube' || boss.type === 'pyramid') {
           // Conservative check: use bounding circle
-          minSafeDist = (boss.width * 0.707) + ball.radius + 2; // diagonal * 0.707 + radius + margin
+          minSafeDist = (boss.width * 0.707) + ball.radius + 0.5; // diagonal * 0.707 + radius + margin
           isInside = dist < minSafeDist;
         }
         
         // If ball is inside, push it out forcefully
         if (isInside) {
-          const pushDist = minSafeDist - dist + 3; // +3 extra pixels
+          const pushDist = minSafeDist - dist + 0.5; // +0.5 extra pixels
           const normalX = dx / dist;
           const normalY = dy / dist;
           ball.x += normalX * pushDist;
