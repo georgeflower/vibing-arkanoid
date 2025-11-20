@@ -1785,7 +1785,7 @@ export const Game = ({
         
         if (collision) {
           const now = Date.now();
-          if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 1000) {
+          if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 700) {
             result.ball.lastHitTime = now;
             
             result.ball.dx = collision.newVelocityX;
