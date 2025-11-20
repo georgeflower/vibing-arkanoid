@@ -25,6 +25,7 @@ import { createBoss, createResurrectedPyramid } from "@/utils/bossUtils";
 import { performBossAttack } from "@/utils/bossAttacks";
 import { BOSS_LEVELS, BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
 import { processBallWithCCD } from "@/utils/gameCCD";
+import { checkCircleVsRoundedPaddle } from "@/utils/paddleCollision";
 interface GameProps {
   settings: GameSettings;
   onReturnToMenu: () => void;
@@ -60,6 +61,7 @@ export const Game = ({
   const [balls, setBalls] = useState<Ball[]>([]);
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
+  const prevPaddleX = useRef(0);
   const [showHighScoreEntry, setShowHighScoreEntry] = useState(false);
   const [showHighScoreDisplay, setShowHighScoreDisplay] = useState(false);
   const [showEndScreen, setShowEndScreen] = useState(false);
@@ -1981,6 +1983,17 @@ export const Game = ({
           }
         });
       });
+      // Calculate paddle velocity
+      const paddleVelocity = {
+        x: paddle ? (paddle.x - prevPaddleX.current) / (dt / 1000) : 0,
+        y: 0
+      };
+      
+      // Update previous paddle position for next frame
+      if (paddle) {
+        prevPaddleX.current = paddle.x;
+      }
+
       ballResults.forEach((result) => {
         if (!result.ball || !paddle) return;
         
@@ -1990,47 +2003,27 @@ export const Game = ({
           return;
         }
         
-        const ball = result.ball;
-        const ballLeft = ball.x - ball.radius;
-        const ballRight = ball.x + ball.radius;
-        const ballTop = ball.y - ball.radius;
-        const ballBottom = ball.y + ball.radius;
+        // Use geometry-based collision with rounded corners
+        const collision = checkCircleVsRoundedPaddle(
+          result.ball,
+          paddle,
+          paddleVelocity
+        );
         
-        const paddleLeft = paddle.x;
-        const paddleRight = paddle.x + paddle.width;
-        const paddleTop = paddle.y;
-        const paddleBottom = paddle.y + paddle.height;
-        
-        // Check overlap
-        if (ballRight > paddleLeft && ballLeft < paddleRight && 
-            ballBottom > paddleTop && ballTop < paddleBottom) {
+        if (collision.collided) {
+          // Apply position correction
+          result.ball.x = collision.newX;
+          result.ball.y = collision.newY;
           
-          // Calculate overlap depths on each axis
-          const overlapLeft = ballRight - paddleLeft;
-          const overlapRight = paddleRight - ballLeft;
-          const overlapTop = ballBottom - paddleTop;
-          const overlapBottom = paddleBottom - ballTop;
+          // Apply velocity correction
+          result.ball.dx = collision.newVelocityX;
+          result.ball.dy = collision.newVelocityY;
           
-          // Find minimum overlap (push out along shortest axis)
-          const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
-          
-          if (minOverlap === overlapTop) {
-            // Push ball up (most common case - ball inside paddle from top)
-            ball.y = paddleTop - ball.radius;
-            if (ball.dy > 0) ball.dy = -Math.abs(ball.dy);
-          } else if (minOverlap === overlapBottom) {
-            // Push ball down
-            ball.y = paddleBottom + ball.radius;
-            if (ball.dy < 0) ball.dy = Math.abs(ball.dy);
-          } else if (minOverlap === overlapLeft) {
-            // Push ball left
-            ball.x = paddleLeft - ball.radius;
-            if (ball.dx > 0) ball.dx = -Math.abs(ball.dx);
-          } else if (minOverlap === overlapRight) {
-            // Push ball right
-            ball.x = paddleRight + ball.radius;
-            if (ball.dx < 0) ball.dx = Math.abs(ball.dx);
-          }
+          console.log('[PaddleResolver] Geometry collision resolved', {
+            penetration: collision.penetration.toFixed(2),
+            normalY: collision.normal.y.toFixed(2),
+            paddleVx: paddleVelocity.x.toFixed(2)
+          });
         }
       });
 
