@@ -52,27 +52,9 @@ export function processBallWithCCD(
     }))
     .filter(b => b.visible);
 
-  // Add boss as a large brick if present (use negative ID to distinguish from bricks)
-  // Boss already stores TOP-LEFT coordinates (verified in bossUtils.ts)
-  if (gameState.boss) {
-    const HITBOX_MARGIN = 2; // Tighten hitbox slightly to match visual edges
-    
-    ccdBricks.push({
-      id: -1, // Boss ID
-      x: gameState.boss.x + HITBOX_MARGIN,
-      y: gameState.boss.y + HITBOX_MARGIN,
-      width: gameState.boss.width - 2 * HITBOX_MARGIN,
-      height: gameState.boss.height - 2 * HITBOX_MARGIN,
-      visible: true
-    });
-    console.log('[CCD] Boss brick added with tight hitbox', {
-      id: -1,
-      x: gameState.boss.x + HITBOX_MARGIN,
-      y: gameState.boss.y + HITBOX_MARGIN,
-      width: gameState.boss.width - 2 * HITBOX_MARGIN,
-      height: gameState.boss.height - 2 * HITBOX_MARGIN
-    });
-  }
+  // Boss collision is now handled by explicit shape-specific collision checks in Game.tsx
+  // (CCD cannot handle rotating shapes like cube and pyramid)
+  // Boss has been removed from CCD system
 
   // Add resurrected bosses as bricks (use negative IDs)
   // Resurrected bosses also use TOP-LEFT coordinates

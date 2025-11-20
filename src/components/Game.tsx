@@ -1609,66 +1609,192 @@ export const Game = ({
         });
       }
 
-      // Phase 3.5: Explicit Boss Collision Check (post-CCD fallback)
-      // This guarantees boss hits when the ball touches the visual hitbox
-      const BOSS_HITBOX_MARGIN = 2; // Must match gameCCD.ts
+      // Phase 3.5: Shape-Specific Boss Collision Check (rotating hitboxes)
+      // Hitbox is 1 pixel WIDER than the visual shape and rotates with the boss
       
+      // Helper: Circle vs Rotated Rectangle (for cube boss)
+      const checkCircleVsRotatedRect = (ball: Ball, boss: Boss): { newVelocityX: number; newVelocityY: number } | null => {
+        const centerX = boss.x + boss.width / 2;
+        const centerY = boss.y + boss.height / 2;
+        const HITBOX_EXPAND = 1;
+        
+        const dx = ball.x - centerX;
+        const dy = ball.y - centerY;
+        
+        const cos = Math.cos(-boss.rotationY);
+        const sin = Math.sin(-boss.rotationY);
+        const ux = dx * cos - dy * sin;
+        const uy = dx * sin + dy * cos;
+        
+        const halfW = (boss.width + 2 * HITBOX_EXPAND) / 2;
+        const halfH = (boss.height + 2 * HITBOX_EXPAND) / 2;
+        
+        const closestX = Math.max(-halfW, Math.min(ux, halfW));
+        const closestY = Math.max(-halfH, Math.min(uy, halfH));
+        
+        const distX = ux - closestX;
+        const distY = uy - closestY;
+        const distSq = distX * distX + distY * distY;
+        
+        if (distSq > ball.radius * ball.radius) return null;
+        
+        let normalX = 0, normalY = 0;
+        if (Math.abs(ux) > halfW) {
+          normalX = ux > 0 ? 1 : -1;
+        } else if (Math.abs(uy) > halfH) {
+          normalY = uy > 0 ? 1 : -1;
+        } else {
+          const overlapX = halfW - Math.abs(ux);
+          const overlapY = halfH - Math.abs(uy);
+          if (overlapX < overlapY) {
+            normalX = ux > 0 ? 1 : -1;
+          } else {
+            normalY = uy > 0 ? 1 : -1;
+          }
+        }
+        
+        const worldNormalX = normalX * cos + normalY * sin;
+        const worldNormalY = -normalX * sin + normalY * cos;
+        
+        const dot = ball.dx * worldNormalX + ball.dy * worldNormalY;
+        const newVx = ball.dx - 2 * dot * worldNormalX;
+        const newVy = ball.dy - 2 * dot * worldNormalY;
+        
+        return { newVelocityX: newVx, newVelocityY: newVy };
+      };
+      
+      // Helper: Circle vs Circle (for sphere boss)
+      const checkCircleVsCircle = (ball: Ball, boss: Boss): { newVelocityX: number; newVelocityY: number } | null => {
+        const centerX = boss.x + boss.width / 2;
+        const centerY = boss.y + boss.height / 2;
+        const HITBOX_EXPAND = 1;
+        
+        const dx = ball.x - centerX;
+        const dy = ball.y - centerY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        const bossRadius = boss.width / 2 + HITBOX_EXPAND;
+        const totalRadius = ball.radius + bossRadius;
+        
+        if (dist >= totalRadius) return null;
+        
+        const normalX = dx / dist;
+        const normalY = dy / dist;
+        
+        const dot = ball.dx * normalX + ball.dy * normalY;
+        const newVx = ball.dx - 2 * dot * normalX;
+        const newVy = ball.dy - 2 * dot * normalY;
+        
+        return { newVelocityX: newVx, newVelocityY: newVy };
+      };
+      
+      // Helper: Circle vs Rotated Triangle (for pyramid boss)
+      const checkCircleVsRotatedTriangle = (ball: Ball, boss: Boss): { newVelocityX: number; newVelocityY: number } | null => {
+        const centerX = boss.x + boss.width / 2;
+        const centerY = boss.y + boss.height / 2;
+        const HITBOX_EXPAND = 1;
+        const size = boss.width / 2 + HITBOX_EXPAND;
+        
+        const v0 = { x: 0, y: -size };
+        const v1 = { x: size, y: size };
+        const v2 = { x: -size, y: size };
+        
+        const cos = Math.cos(boss.rotationY);
+        const sin = Math.sin(boss.rotationY);
+        
+        const rotatePoint = (p: { x: number; y: number }) => ({
+          x: p.x * cos - p.y * sin,
+          y: p.x * sin + p.y * cos
+        });
+        
+        const rv0 = rotatePoint(v0);
+        const rv1 = rotatePoint(v1);
+        const rv2 = rotatePoint(v2);
+        
+        const wv0 = { x: centerX + rv0.x, y: centerY + rv0.y };
+        const wv1 = { x: centerX + rv1.x, y: centerY + rv1.y };
+        const wv2 = { x: centerX + rv2.x, y: centerY + rv2.y };
+        
+        const edges = [
+          { a: wv0, b: wv1 },
+          { a: wv1, b: wv2 },
+          { a: wv2, b: wv0 }
+        ];
+        
+        let closestDist = Infinity;
+        let closestNormal = { x: 0, y: 0 };
+        
+        for (const edge of edges) {
+          const ex = edge.b.x - edge.a.x;
+          const ey = edge.b.y - edge.a.y;
+          const len = Math.sqrt(ex * ex + ey * ey);
+          const edgeNormX = ex / len;
+          const edgeNormY = ey / len;
+          
+          const normalX = -edgeNormY;
+          const normalY = edgeNormX;
+          
+          const toBallX = ball.x - edge.a.x;
+          const toBallY = ball.y - edge.a.y;
+          const t = Math.max(0, Math.min(len, toBallX * edgeNormX + toBallY * edgeNormY));
+          
+          const closestX = edge.a.x + t * edgeNormX;
+          const closestY = edge.a.y + t * edgeNormY;
+          
+          const distX = ball.x - closestX;
+          const distY = ball.y - closestY;
+          const dist = Math.sqrt(distX * distX + distY * distY);
+          
+          if (dist < closestDist) {
+            closestDist = dist;
+            const toCenterX = ball.x - centerX;
+            const toCenterY = ball.y - centerY;
+            const dotProduct = normalX * toCenterX + normalY * toCenterY;
+            closestNormal = dotProduct > 0 
+              ? { x: normalX, y: normalY }
+              : { x: -normalX, y: -normalY };
+          }
+        }
+        
+        if (closestDist >= ball.radius) return null;
+        
+        const dot = ball.dx * closestNormal.x + ball.dy * closestNormal.y;
+        const newVx = ball.dx - 2 * dot * closestNormal.x;
+        const newVy = ball.dy - 2 * dot * closestNormal.y;
+        
+        return { newVelocityX: newVx, newVelocityY: newVy };
+      };
+      
+      // Dispatch to shape-specific collision check
       ballResults.forEach((result) => {
         if (!result.ball || !boss) return;
         
-        const ball = result.ball;
-        const r = ball.radius;
+        let collision = null;
         
-        // Boss hitbox with same margin as CCD
-        const bossLeft   = boss.x + BOSS_HITBOX_MARGIN;
-        const bossTop    = boss.y + BOSS_HITBOX_MARGIN;
-        const bossRight  = boss.x + boss.width  - BOSS_HITBOX_MARGIN;
-        const bossBottom = boss.y + boss.height - BOSS_HITBOX_MARGIN;
+        switch (boss.type) {
+          case 'cube':
+            collision = checkCircleVsRotatedRect(result.ball, boss);
+            break;
+          case 'sphere':
+            collision = checkCircleVsCircle(result.ball, boss);
+            break;
+          case 'pyramid':
+            collision = checkCircleVsRotatedTriangle(result.ball, boss);
+            break;
+        }
         
-        // Circle-AABB overlap test
-        const cx = ball.x;
-        const cy = ball.y;
-        
-        // Find closest point on AABB to circle center
-        const closestX = Math.max(bossLeft, Math.min(cx, bossRight));
-        const closestY = Math.max(bossTop,  Math.min(cy, bossBottom));
-        const dx = cx - closestX;
-        const dy = cy - closestY;
-        const distSq = dx * dx + dy * dy;
-        
-        // Check collision
-        if (distSq <= r * r) {
+        if (collision) {
           const now = Date.now();
-          if (!ball.lastHitTime || now - ball.lastHitTime >= 1000) {
-            ball.lastHitTime = now;
+          if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 1000) {
+            result.ball.lastHitTime = now;
             
-            // Determine collision normal (which side was hit)
-            const bossCenterX = (bossLeft + bossRight) / 2;
-            const bossCenterY = (bossTop + bossBottom) / 2;
-            const offsetX = cx - bossCenterX;
-            const offsetY = cy - bossCenterY;
+            result.ball.dx = collision.newVelocityX;
+            result.ball.dy = collision.newVelocityY;
             
-            let normalX = 0;
-            let normalY = 0;
-            if (Math.abs(offsetX) > Math.abs(offsetY)) {
-              // Hit left or right side
-              normalX = offsetX > 0 ? 1 : -1;
-            } else {
-              // Hit top or bottom side
-              normalY = offsetY > 0 ? 1 : -1;
-            }
-            
-            // Reflect velocity across normal
-            const dot = ball.dx * normalX + ball.dy * normalY;
-            ball.dx = ball.dx - 2 * dot * normalX;
-            ball.dy = ball.dy - 2 * dot * normalY;
-            
-            // Visual & audio feedback
             soundManager.playBossHitSound();
             setScreenShake(8);
             setTimeout(() => setScreenShake(0), 400);
             
-            // Update boss HP
             setBoss(prev => {
               if (!prev) return prev;
               const newHealth = Math.max(0, prev.currentHealth - 1);
