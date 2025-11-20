@@ -29,8 +29,8 @@ export function processBallWithCCD(
     id: ball.id,
     x: ball.x,
     y: ball.y,
-    dx: ball.dx * gameState.speedMultiplier, // Apply speed multiplier once
-    dy: ball.dy * gameState.speedMultiplier,
+    dx: ball.dx * 60 * gameState.speedMultiplier, // Convert px/frame to px/sec and apply multiplier
+    dy: ball.dy * 60 * gameState.speedMultiplier,
     radius: ball.radius,
     lastHitTick: ball.lastHitTime
   };
@@ -82,8 +82,8 @@ export function processBallWithCCD(
     ...ball,
     x: result.ball.x,
     y: result.ball.y,
-    dx: result.ball.dx / gameState.speedMultiplier, // Remove speed multiplier from stored velocity
-    dy: result.ball.dy / gameState.speedMultiplier,
+    dx: result.ball.dx / (60 * gameState.speedMultiplier), // Convert px/sec back to px/frame
+    dy: result.ball.dy / (60 * gameState.speedMultiplier),
     lastHitTime: result.ball.lastHitTick
   };
 
