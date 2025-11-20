@@ -571,15 +571,15 @@ export const Game = ({
     setLevel(newLevel);
     setSpeedMultiplier(newSpeedMultiplier);
 
-    // Reset paddle
-    setPaddle({
+    // Reset paddle (preserve shield across levels)
+    setPaddle(prev => ({
       x: SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2,
       y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
       width: SCALED_PADDLE_WIDTH,
       height: SCALED_PADDLE_HEIGHT,
       hasTurrets: false,
-      hasShield: false
-    });
+      hasShield: prev?.hasShield || false
+    }));
 
     // Initialize ball with new speed - waiting to launch (capped at 175%)
     const baseSpeed = 5.175 * Math.min(newSpeedMultiplier, 1.75); // 50% faster base speed
@@ -1103,7 +1103,7 @@ export const Game = ({
 
           // Wall collision with cooldown to prevent corner traps
           const now = Date.now();
-          const wallCooldown = 10; // 10ms cooldown between wall hits
+          const wallCooldown = 50; // 50ms cooldown between wall hits (increased from 10ms)
           
           const canHitWall = !newBall.lastWallHitTime || (now - newBall.lastWallHitTime >= wallCooldown);
           
@@ -1116,14 +1116,14 @@ export const Game = ({
             const isCornerCollision = (hitLeftWall || hitRightWall) && hitTopWall;
             
             if (isCornerCollision) {
-              // Special corner handling - reverse both velocities
-              newBall.dx = -newBall.dx;
-              newBall.dy = -newBall.dy;
+              // Special corner handling - reverse both velocities with random perturbation
+              newBall.dx = -newBall.dx * (0.95 + Math.random() * 0.1); // ±5% perturbation
+              newBall.dy = -newBall.dy * (0.95 + Math.random() * 0.1); // ±5% perturbation
               
               // Push ball away from BOTH walls with larger buffer
-              if (hitLeftWall) newBall.x = newBall.radius + 1;
-              if (hitRightWall) newBall.x = SCALED_CANVAS_WIDTH - newBall.radius - 1;
-              if (hitTopWall) newBall.y = newBall.radius + 1;
+              if (hitLeftWall) newBall.x = newBall.radius + 3;
+              if (hitRightWall) newBall.x = SCALED_CANVAS_WIDTH - newBall.radius - 3;
+              if (hitTopWall) newBall.y = newBall.radius + 3;
               
               newBall.lastWallHitTime = now;
               soundManager.playBounce();
@@ -1136,16 +1136,16 @@ export const Game = ({
                 
                 // Correct position with buffer
                 if (newBall.x > SCALED_CANVAS_WIDTH - newBall.radius) {
-                  newBall.x = SCALED_CANVAS_WIDTH - newBall.radius - 0.5;
+                  newBall.x = SCALED_CANVAS_WIDTH - newBall.radius - 3;
                 } else {
-                  newBall.x = newBall.radius + 0.5;
+                  newBall.x = newBall.radius + 3;
                 }
               }
               
               if (newBall.y < newBall.radius) {
                 newBall.dy = -newBall.dy;
                 newBall.lastWallHitTime = now;
-                newBall.y = newBall.radius + 0.5;
+                newBall.y = newBall.radius + 3;
                 soundManager.playBounce();
               }
             }
@@ -1333,7 +1333,7 @@ export const Game = ({
                 
                 // Handle explosive brick destruction
                 if (brick.type === "explosive") {
-                  const explosionRadius = 80;
+                  const explosionRadius = 55;
                   const brickCenterX = brick.x + brick.width / 2;
                   const brickCenterY = brick.y + brick.height / 2;
                   
