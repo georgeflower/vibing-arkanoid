@@ -1174,13 +1174,15 @@ export const Game = ({
               // Find the object by ID
               const objectId = typeof event.objectId === 'number' ? event.objectId : -1;
               
-              // Handle boss collision (ID = -1)
-              if (objectId === -1 && boss) {
+              // Handle boss collision (ID = -1) or explicit boss event
+              if ((objectId === -1 || (event as any).objectType === 'boss' || (boss && objectId === boss.id)) && boss) {
                 console.log('[BossHit] Boss collision detected', { 
                   currentHealth: boss.currentHealth,
                   lastHitTime: result.ball.lastHitTime,
                   now,
-                  cooldownRemaining: result.ball.lastHitTime ? now - result.ball.lastHitTime : 'none'
+                  cooldownRemaining: result.ball.lastHitTime ? now - result.ball.lastHitTime : 'none',
+                  eventType: (event as any).objectType,
+                  objectId
                 });
                 
                 if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 1000) {
@@ -1608,6 +1610,7 @@ export const Game = ({
       }
 
       // Phase 4: Update ball positions and check for lost balls
+      // CRITICAL: Use the ball instances from ballResults to preserve lastHitTime
       const updatedBalls = ballResults
         .map(r => r.ball)
         .filter((ball): ball is NonNullable<typeof ball> => {
