@@ -1,6 +1,17 @@
-export const GAME_VERSION = "0.7.2";
+export const GAME_VERSION = "0.7.3";
 
 export const CHANGELOG = [
+  {
+    version: "0.7.3",
+    changes: [
+      "Paddle Collision: Fixed ball getting stuck inside paddle with emergency resolver and geometric corner collision",
+      "Boss Collision: Added comprehensive debug logging for ball penetration issues with position, distance, and correction data",
+      "Collision Safety: Increased safety margins to 2 pixels for all boss collision types to prevent micro-penetration",
+      "Position Correction: All boss collisions now apply position and velocity corrections regardless of damage cooldown",
+      "Paddle Geometry: Implemented rounded rectangle collision detection to prevent ball entrapment during paddle movement",
+      "Debug Visibility: Added detailed console logging for cube, sphere, and pyramid boss collision detection and resolution",
+    ],
+  },
   {
     version: "0.7.2",
     changes: [
