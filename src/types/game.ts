@@ -1,6 +1,7 @@
 export type BrickType = "normal" | "metal" | "cracked" | "explosive";
 
 export interface Brick {
+  id: number;
   x: number;
   y: number;
   width: number;

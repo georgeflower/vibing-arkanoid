@@ -466,6 +466,7 @@ export const Game = ({
           const yPos = row * (SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_TOP 
             - (isIndestructible && row > 0 ? SCALED_BRICK_PADDING / 2 : 0);
           newBricks.push({
+            id: newBricks.length, // Unique ID based on array index
             x: xPos,
             y: yPos,
             width: brickWidth,
@@ -1110,12 +1111,28 @@ export const Game = ({
         })
       );
 
-      // Phase 2: Process collision events and update game state
+      // Phase 2: Deduplicate collision events by object
+      const processedObjects = new Set<string>();
+      const brickUpdates = new Map<number, { hitsRemaining: number; visible: boolean }>();
+      let scoreIncrease = 0;
+      let bricksDestroyedCount = 0;
+      let comboIncrease = 0;
+      const powerUpsToCreate: Brick[] = [];
+      const explosiveBricksToDetonate: Brick[] = [];
+      const soundsToPlay: Array<{ type: string; param?: any }> = [];
+      
       ballResults.forEach((result, ballIndex) => {
         if (!result.ball) return;
 
         result.events.forEach(event => {
           const now = Date.now();
+          const objectKey = `${event.objectType}-${event.objectId}`;
+          
+          // Skip if already processed this frame
+          if (event.objectType !== 'wall' && event.objectType !== 'paddle' && processedObjects.has(objectKey)) {
+            return;
+          }
+          processedObjects.add(objectKey);
           
           switch (event.objectType) {
             case 'wall':
@@ -1140,7 +1157,6 @@ export const Game = ({
               
               // Handle boss collision (ID = -1)
               if (objectId === -1 && boss) {
-                const now = Date.now();
                 if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 1000) {
                   result.ball.lastHitTime = now;
                   soundManager.playBossHitSound();
@@ -1149,7 +1165,6 @@ export const Game = ({
                     if (!prev) return prev;
                     const newHealth = Math.max(0, prev.currentHealth - 1);
                     if (newHealth <= 0) {
-                      // Boss defeated
                       soundManager.playExplosion();
                       toast.success(`Boss defeated!`);
                     } else {
@@ -1165,7 +1180,6 @@ export const Game = ({
               if (objectId < -1) {
                 const resBossIndex = Math.abs(objectId) - 2;
                 if (resBossIndex >= 0 && resBossIndex < resurrectedBosses.length) {
-                  const now = Date.now();
                   if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 1000) {
                     result.ball.lastHitTime = now;
                     soundManager.playBossHitSound();
@@ -1190,15 +1204,15 @@ export const Game = ({
               // Handle enemy collision (ID >= 100000)
               if (objectId >= 100000) {
                 const enemyIndex = objectId - 100000;
-                if (enemyIndex >= 0 && enemyIndex < enemies.length) {
+                const enemy = enemies[enemyIndex];
+                if (enemy) {
                   soundManager.playExplosion();
                   setEnemies(prev => prev.filter((_, idx) => idx !== enemyIndex));
-                  setScore(s => s + 500);
+                  scoreIncrease += 500;
                   setEnemiesKilled(k => k + 1);
                   
                   // 1 in 3 chance for power-up drop
                   if (Math.random() < 0.33) {
-                    const enemy = enemies[enemyIndex];
                     createPowerUp({
                       x: enemy.x,
                       y: enemy.y,
@@ -1210,12 +1224,11 @@ export const Game = ({
                 break;
               }
               
-              // Handle brick collision (ID >= 0 and < bricks.length)
-              const brickIndex = objectId;
-              if (brickIndex >= 0 && brickIndex < bricks.length) {
-                const brick = bricks[brickIndex];
+              // Handle brick collision - find brick by ID
+              const brick = bricks.find(b => b.id === objectId);
+              if (brick) {
                 
-                if (!brick || !brick.visible) break;
+                if (!brick.visible) break;
 
                 // Handle indestructible (metal) bricks
                 if (brick.isIndestructible) {
@@ -1224,140 +1237,166 @@ export const Game = ({
                   break;
                 }
 
-                // Update brick via setState
-                setBricks(prevBricks => {
-                  const newBricks = [...prevBricks];
-                  const targetBrick = newBricks[brickIndex];
+                // Check if already updated this frame
+                if (brickUpdates.has(brick.id)) break;
+
+                const currentHitsRemaining = brick.hitsRemaining;
+                const newHitsRemaining = currentHitsRemaining - 1;
+                const brickDestroyed = newHitsRemaining <= 0;
+
+                // Play sound based on CURRENT state before hit
+                if (brick.type === 'cracked') {
+                  soundsToPlay.push({ type: 'cracked', param: currentHitsRemaining });
+                } else {
+                  soundsToPlay.push({ type: 'brick' });
+                }
+
+                if (brickDestroyed) {
+                  // Mark brick for destruction
+                  brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
                   
-                  if (!targetBrick.visible) return prevBricks;
+                  scoreIncrease += brick.points;
+                  bricksDestroyedCount += 1;
+                  comboIncrease += 1;
 
-                  const currentHitsRemaining = targetBrick.hitsRemaining;
-                  const newHitsRemaining = currentHitsRemaining - 1;
-                  const brickDestroyed = newHitsRemaining <= 0;
-
-                  // Cracked brick sound - play based on CURRENT state before hit
-                  if (targetBrick.type === 'cracked') {
-                    soundManager.playBrickHit('cracked', currentHitsRemaining);
-                  } else {
-                    soundManager.playBrickHit();
+                  // Speed increase (cap at 30%)
+                  if (brickHitSpeedAccumulated < 0.3) {
+                    const speedIncrease = 0.005;
+                    setBrickHitSpeedAccumulated(prev => Math.min(0.3, prev + speedIncrease));
+                    result.ball.dx *= (1 + speedIncrease);
+                    result.ball.dy *= (1 + speedIncrease);
                   }
 
-                  if (brickDestroyed) {
-                    // Brick destroyed
-                    newBricks[brickIndex] = {
-                      ...targetBrick,
-                      visible: false,
-                      hitsRemaining: 0
-                    };
-
-                    setScore(s => s + targetBrick.points);
-                    setTotalBricksDestroyed(t => t + 1);
-                    setBricksHit(b => b + 1);
-                    setCurrentCombo(c => c + 1);
-
-                    // Speed increase (cap at 30%)
-                    if (brickHitSpeedAccumulated < 0.3) {
-                      const speedIncrease = 0.005;
-                      setBrickHitSpeedAccumulated(prev => Math.min(0.3, prev + speedIncrease));
-                      result.ball.dx *= (1 + speedIncrease);
-                      result.ball.dy *= (1 + speedIncrease);
-                    }
-
-                    // Power-up drop
-                    if (Math.random() < POWERUP_DROP_CHANCE) {
-                      createPowerUp(targetBrick);
-                    }
-
-                    // Explosive brick handling
-                    if (targetBrick.type === 'explosive') {
-                      const explosionRadius = 55;
-                      const brickCenterX = targetBrick.x + targetBrick.width / 2;
-                      const brickCenterY = targetBrick.y + targetBrick.height / 2;
-
-                      // Create explosion visual
-                      setExplosions(prev => [...prev, {
-                        x: brickCenterX,
-                        y: brickCenterY,
-                        frame: 0,
-                        maxFrames: 30,
-                        particles: createExplosionParticles(brickCenterX, brickCenterY, 'cube')
-                      }]);
-
-                      // Destroy nearby bricks
-                      for (let i = 0; i < newBricks.length; i++) {
-                        const b = newBricks[i];
-                        if (!b.visible) continue;
-                        
-                        const dist = Math.sqrt(
-                          Math.pow((b.x + b.width / 2) - brickCenterX, 2) +
-                          Math.pow((b.y + b.height / 2) - brickCenterY, 2)
-                        );
-                        
-                        if (dist <= explosionRadius && i !== brickIndex) {
-                          newBricks[i] = { ...b, visible: false, hitsRemaining: 0 };
-                          setScore(s => s + b.points);
-                          setTotalBricksDestroyed(t => t + 1);
-                          setBricksHit(b => b + 1);
-                        }
-                      }
-
-                      soundManager.playExplosiveBrickSound();
-                      setBackgroundFlash(10);
-                      setTimeout(() => setBackgroundFlash(0), 100);
-                    }
-                  } else {
-                    // Brick damaged but not destroyed
-                    newBricks[brickIndex] = {
-                      ...targetBrick,
-                      hitsRemaining: newHitsRemaining
-                    };
+                  // Power-up drop
+                  if (Math.random() < POWERUP_DROP_CHANCE) {
+                    powerUpsToCreate.push(brick);
                   }
 
-                  // Check win condition
-                  if (newBricks.every(b => !b.visible || b.isIndestructible)) {
-                    const hasDestructibleBricks = newBricks.some(b => !b.isIndestructible);
-                    if (hasDestructibleBricks) {
-                      soundManager.playWin();
-
-                      if (level >= 50) {
-                        setScore(prev => prev + 1000000);
-                        setBeatLevel50Completed(true);
-                        setGameState("won");
-                        setShowEndScreen(true);
-                        soundManager.stopBackgroundMusic();
-                        toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
-                      } else {
-                        setGameState("ready");
-                        toast.success(`Level ${level} Complete! Click to continue.`);
-                      }
-
-                      return newBricks.map(b => ({ ...b, visible: false }));
-                    } else if (!BOSS_LEVELS.includes(level)) {
-                      soundManager.playWin();
-                      if (level >= 50) {
-                        setScore(prev => prev + 1000000);
-                        setBeatLevel50Completed(true);
-                        setGameState("won");
-                        setShowEndScreen(true);
-                        soundManager.stopBackgroundMusic();
-                        toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
-                      } else {
-                        setGameState("ready");
-                        toast.success(`Level ${level} Complete! Click to continue.`);
-                      }
-                      return newBricks.map(b => ({ ...b, visible: false }));
-                    }
+                  // Explosive brick handling
+                  if (brick.type === 'explosive') {
+                    explosiveBricksToDetonate.push(brick);
                   }
-
-                  return newBricks;
-                });
+                } else {
+                  // Brick damaged but not destroyed
+                  brickUpdates.set(brick.id, { visible: true, hitsRemaining: newHitsRemaining });
+                }
               }
               break;
           }
         });
       });
 
-      // Phase 3: Update ball positions and check for lost balls
+      // Phase 3: Apply all batched updates
+      // Play all sounds
+      soundsToPlay.forEach(sound => {
+        if (sound.type === 'cracked') {
+          soundManager.playBrickHit('cracked', sound.param);
+        } else {
+          soundManager.playBrickHit();
+        }
+      });
+
+      // Create all power-ups
+      powerUpsToCreate.forEach(brick => createPowerUp(brick));
+
+      // Handle explosive bricks
+      explosiveBricksToDetonate.forEach(brick => {
+        const explosionRadius = 55;
+        const brickCenterX = brick.x + brick.width / 2;
+        const brickCenterY = brick.y + brick.height / 2;
+
+        // Create explosion visual
+        setExplosions(prev => [...prev, {
+          x: brickCenterX,
+          y: brickCenterY,
+          frame: 0,
+          maxFrames: 30,
+          size: explosionRadius * 2,
+          particles: createExplosionParticles(brickCenterX, brickCenterY, 'cube')
+        }]);
+
+        // Destroy nearby bricks
+        bricks.forEach(otherBrick => {
+          if (otherBrick.id === brick.id || !otherBrick.visible) return;
+          
+          const otherCenterX = otherBrick.x + otherBrick.width / 2;
+          const otherCenterY = otherBrick.y + otherBrick.height / 2;
+          const distance = Math.sqrt(
+            Math.pow(otherCenterX - brickCenterX, 2) + 
+            Math.pow(otherCenterY - brickCenterY, 2)
+          );
+
+          if (distance <= explosionRadius) {
+            if (!brickUpdates.has(otherBrick.id)) {
+              brickUpdates.set(otherBrick.id, { visible: false, hitsRemaining: 0 });
+              scoreIncrease += otherBrick.points;
+              bricksDestroyedCount += 1;
+            }
+          }
+        });
+
+        soundManager.playExplosiveBrickSound();
+        setBackgroundFlash(10);
+        setTimeout(() => setBackgroundFlash(0), 100);
+      });
+
+      // Update brick state
+      if (brickUpdates.size > 0) {
+        setBricks(prevBricks => {
+          const newBricks = prevBricks.map(b => {
+            const update = brickUpdates.get(b.id);
+            return update ? { ...b, ...update } : b;
+          });
+
+          // Check win condition
+          if (newBricks.every(b => !b.visible || b.isIndestructible)) {
+            const hasDestructibleBricks = newBricks.some(b => !b.isIndestructible);
+            if (hasDestructibleBricks) {
+              soundManager.playWin();
+
+              if (level >= 50) {
+                setScore(prev => prev + 1000000);
+                setBeatLevel50Completed(true);
+                setGameState("won");
+                setShowEndScreen(true);
+                soundManager.stopBackgroundMusic();
+                toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
+              } else {
+                setGameState("ready");
+                toast.success(`Level ${level} Complete! Click to continue.`);
+              }
+
+              return newBricks.map(b => ({ ...b, visible: false }));
+            } else if (!BOSS_LEVELS.includes(level)) {
+              soundManager.playWin();
+              if (level >= 50) {
+                setScore(prev => prev + 1000000);
+                setBeatLevel50Completed(true);
+                setGameState("won");
+                setShowEndScreen(true);
+                soundManager.stopBackgroundMusic();
+                toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
+              } else {
+                setGameState("ready");
+                toast.success(`Level ${level} Complete! Click to continue.`);
+              }
+              return newBricks.map(b => ({ ...b, visible: false }));
+            }
+          }
+
+          return newBricks;
+        });
+      }
+
+      // Update score and stats
+      if (scoreIncrease > 0) setScore(s => s + scoreIncrease);
+      if (bricksDestroyedCount > 0) {
+        setTotalBricksDestroyed(t => t + bricksDestroyedCount);
+        setBricksHit(b => b + bricksDestroyedCount);
+      }
+      if (comboIncrease > 0) setCurrentCombo(c => c + comboIncrease);
+
+      // Phase 4: Update ball positions and check for lost balls
       const updatedBalls = ballResults
         .map(r => r.ball)
         .filter((ball): ball is NonNullable<typeof ball> => {
@@ -1724,6 +1763,7 @@ export const Game = ({
                   if (shouldDrop) {
                     // Create a powerup at enemy location
                     const fakeBrick: Brick = {
+                      id: -1,
                       x: enemy.x,
                       y: enemy.y,
                       width: enemy.width,
@@ -1810,6 +1850,7 @@ export const Game = ({
                   if (newCount % 3 === 0) {
                     // Create a powerup at enemy location - always drop (retry until success)
                     const fakeBrick: Brick = {
+                      id: -1,
                       x: enemy.x,
                       y: enemy.y,
                       width: enemy.width,
@@ -1876,6 +1917,7 @@ export const Game = ({
                 if (newCount % 3 === 0) {
                   // Create a powerup at enemy location - always drop (retry until success)
                   const fakeBrick: Brick = {
+                    id: -1,
                     x: enemy.x,
                     y: enemy.y,
                     width: enemy.width,
