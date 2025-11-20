@@ -1793,6 +1793,12 @@ export const Game = ({
                   });
                   setBossesKilled(k => k + 1);
                   setBossActive(false);
+                  // Clean up game entities
+                  setBalls([]);
+                  setEnemies([]);
+                  setBossAttacks([]);
+                  setBombs([]);
+                  setBullets([]);
                   // Stop boss music and resume background music
                   soundManager.stopBossMusic();
                   soundManager.resumeBackgroundMusic();
@@ -1831,6 +1837,12 @@ export const Game = ({
                     });
                     setBossesKilled(k => k + 1);
                     setBossActive(false);
+                    // Clean up game entities
+                    setBalls([]);
+                    setEnemies([]);
+                    setBossAttacks([]);
+                    setBombs([]);
+                    setBullets([]);
                     // Stop boss music and resume background music
                     soundManager.stopBossMusic();
                     soundManager.resumeBackgroundMusic();
@@ -1944,6 +1956,12 @@ export const Game = ({
                     toast.success("ALL PYRAMIDS DEFEATED!");
                     setBossActive(false);
                     setBossesKilled(k => k + 1);
+                    // Clean up game entities
+                    setBalls([]);
+                    setEnemies([]);
+                    setBossAttacks([]);
+                    setBombs([]);
+                    setBullets([]);
                     // Stop boss music and resume background music
                     soundManager.stopBossMusic();
                     soundManager.resumeBackgroundMusic();
