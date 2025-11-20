@@ -1569,13 +1569,13 @@ export const Game = ({
       }
 
       // Phase 3.5: Shape-Specific Boss Collision Check (rotating hitboxes)
-      // Hitbox is 1 pixel WIDER than the visual shape and rotates with the boss
+      // Hitbox is 1 pixel SMALLER than the visual shape and rotates with the boss
       
       // Helper: Circle vs Rotated Rectangle (for cube boss)
       const checkCircleVsRotatedRect = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
         const centerX = boss.x + boss.width / 2;
         const centerY = boss.y + boss.height / 2;
-        const HITBOX_EXPAND = 1;
+        const HITBOX_EXPAND = -1;
         
         const dx = ball.x - centerX;
         const dy = ball.y - centerY;
@@ -1641,7 +1641,7 @@ export const Game = ({
       const checkCircleVsCircle = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
         const centerX = boss.x + boss.width / 2;
         const centerY = boss.y + boss.height / 2;
-        const HITBOX_EXPAND = 1;
+        const HITBOX_EXPAND = -1;
         
         const dx = ball.x - centerX;
         const dy = ball.y - centerY;
@@ -1674,7 +1674,7 @@ export const Game = ({
       const checkCircleVsRotatedTriangle = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
         const centerX = boss.x + boss.width / 2;
         const centerY = boss.y + boss.height / 2;
-        const HITBOX_EXPAND = 1;
+        const HITBOX_EXPAND = -1;
         const size = boss.width / 2 + HITBOX_EXPAND;
         
         const v0 = { x: 0, y: -size };
