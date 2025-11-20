@@ -1,12 +1,16 @@
+import type { Boss } from "@/types/game";
+
 interface GameUIProps {
   score: number;
   lives: number;
   level: number;
   timer: number;
   speed: number;
+  bossHitCooldown?: number;
+  boss?: Boss | null;
 }
 
-export const GameUI = ({ score, lives, level, timer, speed }: GameUIProps) => {
+export const GameUI = ({ score, lives, level, timer, speed, bossHitCooldown = 0, boss = null }: GameUIProps) => {
   return (
     <div className="flex flex-row gap-4 flex-wrap justify-center">
       {/* Score */}
@@ -58,6 +62,18 @@ export const GameUI = ({ score, lives, level, timer, speed }: GameUIProps) => {
           {Math.round(speed * 100)}%
         </div>
       </div>
+
+      {/* Boss Cooldown - Only show when boss is active and cooldown > 0 */}
+      {boss && bossHitCooldown > 0 && (
+        <div className="amiga-box px-4 py-3 min-w-[140px]">
+          <div className="text-[10px] retro-pixel-text mb-2 text-center" style={{ color: 'hsl(0, 80%, 60%)' }}>
+            BOSS CD
+          </div>
+          <div className="text-xl retro-pixel-text text-center animate-pulse" style={{ color: 'hsl(0, 80%, 65%)' }}>
+            {(bossHitCooldown / 1000).toFixed(1)}s
+          </div>
+        </div>
+      )}
     </div>
   );
 };
