@@ -1580,6 +1580,17 @@ export const Game = ({
         
         if (distSq > ball.radius * ball.radius) return null;
         
+        const dist = Math.sqrt(distSq);
+        const penetration = ball.radius - dist;
+        
+        console.log('[BossCollision-Cube] Ball inside boss', {
+          ballPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
+          bossCenter: { x: centerX.toFixed(1), y: centerY.toFixed(1) },
+          penetration: penetration.toFixed(2),
+          dist: dist.toFixed(2),
+          ballRadius: ball.radius.toFixed(2)
+        });
+        
         let normalX = 0, normalY = 0;
         if (Math.abs(ux) > halfW) {
           normalX = ux > 0 ? 1 : -1;
@@ -1596,10 +1607,9 @@ export const Game = ({
         }
         
         // Calculate penetration and push out in unrotated space with safety margin
-        const dist = Math.sqrt(distSq);
-        const penetration = ball.radius - dist + 2; // +2 pixel safety margin (increased for better separation)
-        const pushX = ux + (distX / dist) * penetration;
-        const pushY = uy + (distY / dist) * penetration;
+        const correctionDist = penetration + 2; // +2 pixel safety margin (increased for better separation)
+        const pushX = ux + (distX / dist) * correctionDist;
+        const pushY = uy + (distY / dist) * correctionDist;
         
         // Rotate corrected position back to world space
         const worldPushX = pushX * Math.cos(boss.rotationY) - pushY * Math.sin(boss.rotationY);
@@ -1613,6 +1623,14 @@ export const Game = ({
         const dot = ball.dx * worldNormalX + ball.dy * worldNormalY;
         const newVx = ball.dx - 2 * dot * worldNormalX;
         const newVy = ball.dy - 2 * dot * worldNormalY;
+        
+        console.log('[BossCollision-Cube] Applying correction', {
+          oldPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
+          newPos: { x: newX.toFixed(1), y: newY.toFixed(1) },
+          normal: { x: worldNormalX.toFixed(2), y: worldNormalY.toFixed(2) },
+          oldVel: { dx: ball.dx.toFixed(2), dy: ball.dy.toFixed(2) },
+          newVel: { dx: newVx.toFixed(2), dy: newVy.toFixed(2) }
+        });
         
         return { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
       };
@@ -1633,17 +1651,35 @@ export const Game = ({
         
         if (dist >= totalRadius) return null;
         
+        const penetration = totalRadius - dist;
+        
+        console.log('[BossCollision-Sphere] Ball inside boss', {
+          ballPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
+          bossCenter: { x: centerX.toFixed(1), y: centerY.toFixed(1) },
+          penetration: penetration.toFixed(2),
+          dist: dist.toFixed(2),
+          totalRadius: totalRadius.toFixed(2)
+        });
+        
         const normalX = dx / dist;
         const normalY = dy / dist;
         
         // Push ball out to correct position with safety margin
-        const overlap = totalRadius - dist + SAFETY_MARGIN;
+        const overlap = penetration + SAFETY_MARGIN;
         const newX = ball.x + normalX * overlap;
         const newY = ball.y + normalY * overlap;
         
         const dot = ball.dx * normalX + ball.dy * normalY;
         const newVx = ball.dx - 2 * dot * normalX;
         const newVy = ball.dy - 2 * dot * normalY;
+        
+        console.log('[BossCollision-Sphere] Applying correction', {
+          oldPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
+          newPos: { x: newX.toFixed(1), y: newY.toFixed(1) },
+          normal: { x: normalX.toFixed(2), y: normalY.toFixed(2) },
+          oldVel: { dx: ball.dx.toFixed(2), dy: ball.dy.toFixed(2) },
+          newVel: { dx: newVx.toFixed(2), dy: newVy.toFixed(2) }
+        });
         
         return { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
       };
@@ -1718,14 +1754,31 @@ export const Game = ({
         
         if (closestDist >= ball.radius) return null;
         
+        const penetration = ball.radius - closestDist;
+        
+        console.log('[BossCollision-Pyramid] Ball inside boss', {
+          ballPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
+          bossCenter: { x: centerX.toFixed(1), y: centerY.toFixed(1) },
+          penetration: penetration.toFixed(2),
+          closestDist: closestDist.toFixed(2)
+        });
+        
         // Push ball out to correct position with +2 pixel safety margin
-        const penetration = ball.radius - closestDist + 2;
-        const newX = ball.x + closestNormal.x * penetration;
-        const newY = ball.y + closestNormal.y * penetration;
+        const correctionDist = penetration + 2;
+        const newX = ball.x + closestNormal.x * correctionDist;
+        const newY = ball.y + closestNormal.y * correctionDist;
         
         const dot = ball.dx * closestNormal.x + ball.dy * closestNormal.y;
         const newVx = ball.dx - 2 * dot * closestNormal.x;
         const newVy = ball.dy - 2 * dot * closestNormal.y;
+        
+        console.log('[BossCollision-Pyramid] Applying correction', {
+          oldPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
+          newPos: { x: newX.toFixed(1), y: newY.toFixed(1) },
+          normal: { x: closestNormal.x.toFixed(2), y: closestNormal.y.toFixed(2) },
+          oldVel: { dx: ball.dx.toFixed(2), dy: ball.dy.toFixed(2) },
+          newVel: { dx: newVx.toFixed(2), dy: newVy.toFixed(2) }
+        });
         
         return { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
       };
@@ -1749,6 +1802,18 @@ export const Game = ({
         }
         
         if (collision) {
+          const now = Date.now();
+          const BOSS_HIT_COOLDOWN_MS = 1000;
+          const lastHit = boss.lastHitAt || 0;
+          const canDamage = now - lastHit >= BOSS_HIT_COOLDOWN_MS;
+          
+          console.log('[BossCollision] Collision detected', {
+            bossType: boss.type,
+            canDamage,
+            cooldownRemaining: canDamage ? 0 : (BOSS_HIT_COOLDOWN_MS - (now - lastHit)),
+            correctionApplied: true
+          });
+          
           // ALWAYS apply position and velocity corrections (physics)
           result.ball.x = collision.newX;
           result.ball.y = collision.newY;
@@ -1759,9 +1824,6 @@ export const Game = ({
           (result.ball as any)._hitBossThisFrame = true;
           
           // ONLY deal damage if boss-local cooldown has elapsed (game logic)
-          const now = Date.now();
-          const BOSS_HIT_COOLDOWN_MS = 1000;
-          const lastHit = boss.lastHitAt || 0;
           
           if (now - lastHit >= BOSS_HIT_COOLDOWN_MS) {
             console.log('[BossDebug] Boss hit allowed', { now, lastHit, cooldown: now - lastHit, bossHealth: boss.currentHealth });
