@@ -12,6 +12,7 @@ import { Changelog } from "./Changelog";
 import { soundManager } from "@/utils/sounds";
 import { useNavigate } from "react-router-dom";
 import { GAME_VERSION } from "@/constants/version";
+import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 
 interface MainMenuProps {
   onStartGame: (settings: GameSettings) => void;
@@ -28,6 +29,9 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   
   const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  // Force service worker update check when main menu mounts
+  useServiceWorkerUpdate();
 
   const handleStart = () => {
     const settings: GameSettings = {
