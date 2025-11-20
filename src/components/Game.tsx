@@ -3242,6 +3242,17 @@ export const Game = ({
     }
   }, [timer, gameState, boss, enemies.length, lastBossSpawnTime, SCALED_CANVAS_WIDTH]);
 
+  // Boss hit cooldown timer
+  useEffect(() => {
+    if (bossHitCooldown <= 0) return;
+    
+    const interval = setInterval(() => {
+      setBossHitCooldown(prev => Math.max(0, prev - 50));
+    }, 50);
+    
+    return () => clearInterval(interval);
+  }, [bossHitCooldown]);
+
   // Keyboard controls for launch angle
   useEffect(() => {
     const waitingBall = balls.find(ball => ball.waitingToLaunch);
@@ -3908,6 +3919,18 @@ export const Game = ({
                         </div>
                       </div>
                     )}
+
+                    {/* Boss Cooldown - Only show when boss is active and cooldown > 0 */}
+                    {boss && bossHitCooldown > 0 && (
+                      <div className="right-stat-box">
+                        <div className="right-stat-label" style={{ color: "hsl(0, 80%, 60%)" }}>
+                          BOSS CD
+                        </div>
+                        <div className="right-stat-value animate-pulse" style={{ color: "hsl(0, 80%, 65%)" }}>
+                          {(bossHitCooldown / 1000).toFixed(1)}s
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3938,6 +3961,15 @@ export const Game = ({
                 color: "hsl(0, 0%, 95%)"
               }}>{lives}</span>
                     </div>
+                    {boss && bossHitCooldown > 0 && (
+                      <div className="retro-pixel-text text-xs animate-pulse" style={{
+                color: "hsl(0, 80%, 60%)"
+              }}>
+                        BOSS CD: <span style={{
+                  color: "hsl(0, 80%, 70%)"
+                }}>{(bossHitCooldown / 1000).toFixed(1)}s</span>
+                      </div>
+                    )}
                   </div>
                 </div>}
 
