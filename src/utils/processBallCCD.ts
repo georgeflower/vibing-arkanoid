@@ -247,8 +247,14 @@ export function processBallCCD(
             earliest = { t: rayHit.tEntry, normal: rayHit.normal, objectType: 'paddle', objectId: 'paddle', point: candidatePoint };
           }
         } else {
-          // corner checks (paddle corners)
-          const corners = [{ x: paddle.x, y: paddle.y }, { x: paddle.x + paddle.width, y: paddle.y }, { x: paddle.x, y: paddle.y + paddle.height }, { x: paddle.x + paddle.width, y: paddle.y + paddle.height }];
+          // corner checks (paddle rounded corners)
+          const cornerRadius = 5;
+          const corners = [
+            { x: paddle.x + cornerRadius, y: paddle.y + cornerRadius }, // top-left
+            { x: paddle.x + paddle.width - cornerRadius, y: paddle.y + cornerRadius }, // top-right
+            { x: paddle.x + cornerRadius, y: paddle.y + paddle.height - cornerRadius }, // bottom-left
+            { x: paddle.x + paddle.width - cornerRadius, y: paddle.y + paddle.height - cornerRadius } // bottom-right
+          ];
           for (const c of corners) {
             const sc = segmentCircleTOI(pos0, pos1, c, ball.radius);
             if (sc && (!earliest || sc.t < earliest.t)) {
