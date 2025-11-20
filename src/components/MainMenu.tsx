@@ -234,6 +234,15 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             </div>
 
             <div>
+              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">Special Brick Types</h3>
+              <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
+                <li><span className="text-gray-400">Metal Bricks</span> - Indestructible! Can only be destroyed by explosive blasts. Block turret shots.</li>
+                <li><span className="text-cyan-400">Cracked Bricks</span> - Require 3 hits to destroy. Visual damage progression with distinct sounds.</li>
+                <li><span className="text-[hsl(30,100%,60%)]">Explosive Bricks</span> - Detonate on impact! Destroy all surrounding bricks in blast radius.</li>
+              </ul>
+            </div>
+
+            <div>
               <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">Enemies & Bosses</h3>
               <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
                 <li><span className="text-cyan-400">Cube Enemies</span> - Basic enemies, 1 hit to destroy</li>
