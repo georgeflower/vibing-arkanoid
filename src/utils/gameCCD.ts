@@ -13,7 +13,8 @@ export interface CCDResult {
 
 export function processBallWithCCD(
   ball: Ball,
-  dt: number,
+  dtSeconds: number, // Changed from dt (ms) to dtSeconds
+  frameTick: number, // Added deterministic frame counter
   gameState: {
     bricks: Brick[];
     paddle: Paddle;
@@ -25,9 +26,12 @@ export function processBallWithCCD(
     enemies?: Enemy[];
   }
 ): CCDResult {
+  const MAX_SUBSTEPS = 20; // Adaptive upper bound
+  
   // Calculate adaptive substeps based on ball speed
   const ballSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-  const PHYSICS_SUBSTEPS = Math.max(2, Math.ceil(ballSpeed / (gameState.minBrickDimension * 0.15)));
+  const desiredSubsteps = Math.ceil(ballSpeed * gameState.speedMultiplier / (gameState.minBrickDimension * 0.15));
+  const PHYSICS_SUBSTEPS = Math.max(2, Math.min(desiredSubsteps, MAX_SUBSTEPS));
 
   // Convert game types to CCD types
   const ccdBall: CCDBall = {
@@ -95,7 +99,7 @@ export function processBallWithCCD(
 
   // Run CCD
   const result = processBallCCD(ccdBall, {
-    dt,
+    dt: dtSeconds, // Pass seconds, not milliseconds
     substeps: PHYSICS_SUBSTEPS,
     maxToiIterations: 3,
     epsilon: 0.5, // Small separation after collision
@@ -103,7 +107,7 @@ export function processBallWithCCD(
     paddle: ccdPaddle,
     bricks: ccdBricks,
     canvasSize: gameState.canvasSize,
-    currentTick: Date.now(),
+    currentTick: frameTick, // Pass deterministic frame tick
     maxSubstepTravelFactor: 0.9
   });
 

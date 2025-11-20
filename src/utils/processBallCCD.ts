@@ -1,6 +1,12 @@
 // processBallCCD.ts
 // Ready-to-paste TypeScript: swept-circle (CCD) per substep for Arkanoid-style ball
 // Exports: processBallCCD, types
+//
+// UNITS EXPECTED:
+// - ball.dx, ball.dy: px/sec (pixels per second)
+// - dt: seconds (fraction of a second for the frame)
+// - currentTick: integer frame counter (deterministic)
+// - lastHitTick: integer frame counter
 
 export type Vec2 = { x: number; y: number };
 
@@ -65,6 +71,7 @@ function rayAABB(
   r1: Vec2,
   aabb: { x: number; y: number; w: number; h: number }
 ): { tEntry: number; tExit: number; normal: Vec2 } | null {
+  const EPS = 1e-9;
   const dir = vSub(r1, r0);
   const invDirX = dir.x === 0 ? 1e12 : 1 / dir.x;
   const invDirY = dir.y === 0 ? 1e12 : 1 / dir.y;
@@ -77,9 +84,13 @@ function rayAABB(
   const entry = Math.max(tmin, tymin);
   const exit = Math.min(tmax, tymax);
   if (entry > exit || exit < 0 || entry > 1) return null;
-  // determine normal: which axis gave entry
+  // determine normal: which axis gave entry (with epsilon for tie-breaking)
   let normal: Vec2 = { x: 0, y: 0 };
-  if (tmin > tymin) {
+  if (Math.abs(tmin - tymin) < EPS) {
+    // Tie - use direction magnitude to choose axis
+    normal.x = Math.abs(dir.x) > Math.abs(dir.y) ? (invDirX < 0 ? 1 : -1) : 0;
+    normal.y = Math.abs(dir.y) > Math.abs(dir.x) ? (invDirY < 0 ? 1 : -1) : 0;
+  } else if (tmin > tymin) {
     normal.x = invDirX < 0 ? 1 : -1;
   } else {
     normal.y = invDirY < 0 ? 1 : -1;
@@ -95,10 +106,36 @@ function segmentCircleTOI(a: Vec2, b: Vec2, center: Vec2, r: number): { t: numbe
   const d = vSub(b, a);
   const f = vSub(a, center);
   const A = vDot(d, d);
+  
+  // Guard against zero-length segment (A === 0)
+  if (A < 1e-12) {
+    // Zero-length segment - treat as point-circle distance check
+    const dist = vLen(f);
+    if (dist <= r) {
+      const normal = dist > 0.001 ? normalize(f) : { x: 0, y: 1 };
+      return { t: 0, point: a, normal };
+    }
+    return null;
+  }
+  
   const B = 2 * vDot(f, d);
   const C = vDot(f, f) - r * r;
   const disc = B * B - 4 * A * C;
-  if (disc < 0) return null;
+  
+  // Clamp small negative discriminant to zero (numerical precision)
+  if (disc < 0) {
+    if (disc > -1e-9) {
+      // Numerical precision issue - treat as tangent
+      const t = -B / (2 * A);
+      if (t >= 0 && t <= 1) {
+        const point = vAdd(a, vScale(d, t));
+        const normal = normalize(vSub(point, center));
+        return { t, point, normal };
+      }
+    }
+    return null;
+  }
+  
   const sqrtD = Math.sqrt(disc);
   const t1 = (-B - sqrtD) / (2 * A);
   const t2 = (-B + sqrtD) / (2 * A);
@@ -304,8 +341,9 @@ export function processBallCCD(
       const newVel = reflect(vel, earliest.normal);
       ball.dx = newVel.x;
       ball.dy = newVel.y;
-      // small separation to avoid re-penetration
-      pos0 = vAdd(pos0, vScale(earliest.normal, epsilon));
+      // Proportional epsilon: scales with ball radius and travel distance
+      const proportionalEpsilon = Math.max(0.5, Math.min(ball.radius * 0.1, travelThisSubstep * 0.3));
+      pos0 = vAdd(pos0, vScale(earliest.normal, proportionalEpsilon));
 
       // record event (time is fraction of this substep: (1 - remaining) + remaining * tHit)
       const eventT = (1 - remaining) + remaining * tHit;

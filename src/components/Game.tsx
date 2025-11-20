@@ -430,6 +430,7 @@ export const Game = ({
     const layout = levelLayouts[layoutIndex];
     const levelColors = getBrickColors(currentLevel);
     const newBricks: Brick[] = [];
+    let nextBrickId = 1; // Monotonic ID counter for stable brick IDs
     for (let row = 0; row < BRICK_ROWS; row++) {
       for (let col = 0; col < BRICK_COLS; col++) {
         const cellValue = layout[row][col];
@@ -474,7 +475,7 @@ export const Game = ({
           const yPos = row * (SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_TOP 
             - (isIndestructible && row > 0 ? SCALED_BRICK_PADDING / 2 : 0);
           newBricks.push({
-            id: newBricks.length, // Unique ID based on array index
+            id: nextBrickId++, // Stable, monotonic ID
             x: xPos,
             y: yPos,
             width: brickWidth,
@@ -1144,13 +1145,19 @@ export const Game = ({
   const checkCollision = useCallback(() => {
     if (!paddle || balls.length === 0) return;
     
-    const dt = 1 / 60; // Fixed timestep (60 FPS)
+    const dtSeconds = 1 / 60; // Fixed timestep in seconds
+    const frameTick = gameLoopRef.current?.getFrameTick() || 0;
     const minBrickDimension = Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT);
     
     setBalls(prevBalls => {
+      // CRITICAL: Clear per-ball temp flags at start of collision pass
+      prevBalls.forEach(ball => {
+        delete (ball as any)._hitBossThisFrame;
+      });
+      
       // Phase 1: Run CCD for all balls
       const ballResults = prevBalls.map(ball => 
-        processBallWithCCD(ball, dt, {
+        processBallWithCCD(ball, dtSeconds, frameTick, {
           bricks,
           paddle,
           canvasSize: { w: SCALED_CANVAS_WIDTH, h: SCALED_CANVAS_HEIGHT },
@@ -1162,8 +1169,9 @@ export const Game = ({
         })
       );
 
-      // Phase 2: Deduplicate collision events by object
-      const processedObjects = new Set<string>();
+      // Phase 2: Deduplicate collision events by object with TOI tolerance
+      const EPS_TOI = 0.01; // Tolerance for considering events "simultaneous"
+      const processedObjects = new Map<string, number>(); // objectKey -> lastTOI
       const brickUpdates = new Map<number, { hitsRemaining: number; visible: boolean }>();
       let scoreIncrease = 0;
       let bricksDestroyedCount = 0;
@@ -1201,10 +1209,13 @@ export const Game = ({
             });
           }
           
-          // Track whether this is a duplicate collision for sound/score purposes
-          const isDuplicate = event.objectType !== 'wall' && event.objectType !== 'paddle' && processedObjects.has(objectKey);
+          // Check if this event is a duplicate (same object hit within EPS_TOI)
+          const lastTOI = processedObjects.get(objectKey);
+          const isDuplicate = event.objectType !== 'wall' && event.objectType !== 'paddle' && 
+                              lastTOI !== undefined && Math.abs(event.t - lastTOI) < EPS_TOI;
+          
           if (!isDuplicate) {
-            processedObjects.add(objectKey);
+            processedObjects.set(objectKey, event.t);
           }
           
           switch (event.objectType) {
@@ -2149,6 +2160,13 @@ export const Game = ({
             normalY: collision.normal.y.toFixed(2),
             paddleVx: paddleVelocity.x.toFixed(2)
           });
+        }
+      });
+
+      // Clear per-ball flags after all collision processing
+      ballResults.forEach(result => {
+        if (result.ball) {
+          delete (result.ball as any)._hitBossThisFrame;
         }
       });
 
