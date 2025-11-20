@@ -176,6 +176,9 @@ export interface Boss {
   // Resurrection (for pyramid)
   parentBossId?: number;
   isResurrected?: boolean;
+  
+  // Boss-local hit cooldown timestamp
+  lastHitAt?: number;
 }
 
 export interface BossAttack {

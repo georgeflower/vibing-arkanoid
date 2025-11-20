@@ -1174,76 +1174,10 @@ export const Game = ({
             case 'corner':
               // Find the object by ID
               const objectId = typeof event.objectId === 'number' ? event.objectId : -1;
-              
-              // Handle boss collision (ID = -1) or explicit boss event
-              if ((objectId === -1 || (event as any).objectType === 'boss' || (boss && objectId === boss.id)) && boss) {
-                console.log('[BossHit] Boss collision detected', { 
-                  currentHealth: boss.currentHealth,
-                  lastHitTime: result.ball.lastHitTime,
-                  now,
-                  cooldownRemaining: result.ball.lastHitTime ? now - result.ball.lastHitTime : 'none',
-                  eventType: (event as any).objectType,
-                  objectId
-                });
-                
-                if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 1000) {
-                  result.ball.lastHitTime = now;
-                  soundManager.playBossHitSound();
-                  
-                  // Visual feedback
-                  setScreenShake(8);
-                  setTimeout(() => setScreenShake(0), 400);
-                  
-                  setBoss(prev => {
-                    if (!prev) return prev;
-                    const newHealth = Math.max(0, prev.currentHealth - 1);
-                    console.log('[BossHit] HP updated', { oldHealth: prev.currentHealth, newHealth });
-                    
-                    if (newHealth <= 0) {
-                      soundManager.playExplosion();
-                      toast.success(`Boss defeated! +${BOSS_CONFIG[prev.type].points} points`);
-                      // Create massive explosion
-                      explosionsToCreate.push({
-                        x: prev.x + prev.width / 2,
-                        y: prev.y + prev.height / 2,
-                        type: prev.type as EnemyType
-                      });
-                    } else {
-                      toast.info(`BOSS: ${newHealth} HP`, { 
-                        duration: 1000,
-                        style: { background: '#ff0000', color: '#fff' }
-                      });
-                    }
-                    return { ...prev, currentHealth: newHealth };
-                  });
-                }
-                break;
-              }
-              
-              // Handle resurrected boss collision (ID = -2, -3, -4)
-              if (objectId < -1) {
-                const resBossIndex = Math.abs(objectId) - 2;
-                if (resBossIndex >= 0 && resBossIndex < resurrectedBosses.length) {
-                  if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 1000) {
-                    result.ball.lastHitTime = now;
-                    soundManager.playBossHitSound();
-                    
-                    setResurrectedBosses(prev => {
-                      const newBosses = [...prev];
-                      const resBoss = newBosses[resBossIndex];
-                      const newHealth = Math.max(0, resBoss.currentHealth - 1);
-                      if (newHealth <= 0) {
-                        newBosses.splice(resBossIndex, 1);
-                        soundManager.playExplosion();
-                      } else {
-                        newBosses[resBossIndex] = { ...resBoss, currentHealth: newHealth };
-                      }
-                      return newBosses;
-                    });
-                  }
-                }
-                break;
-              }
+              // Boss collisions now handled by shape-specific checks below (Phase 3.5)
+              // This section removed to prevent duplicate/conflicting collision logic
+              // Resurrected boss collisions now handled by shape-specific checks below
+              // This section removed to prevent duplicate/conflicting collision logic
               
               // Handle enemy collision (ID >= 100000)
               if (objectId >= 100000) {
@@ -1813,11 +1747,17 @@ export const Game = ({
           result.ball.dx = collision.newVelocityX;
           result.ball.dy = collision.newVelocityY;
           
-          // ONLY deal damage if cooldown has elapsed (game logic)
+          // ONLY deal damage if boss-local cooldown has elapsed (game logic)
           const now = Date.now();
-          if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 1000) {
+          const BOSS_HIT_COOLDOWN_MS = 1000;
+          const lastHit = boss.lastHitAt || 0;
+          
+          if (now - lastHit >= BOSS_HIT_COOLDOWN_MS) {
+            console.log('[BossDebug] Boss hit allowed', { now, lastHit, cooldown: now - lastHit, bossHealth: boss.currentHealth });
+            
+            // Update ball timestamp to prevent same-frame re-hits
             result.ball.lastHitTime = now;
-            setBossHitCooldown(1000); // Start 1 second cooldown
+            setBossHitCooldown(1000); // Visual cooldown indicator
             
             soundManager.playBossHitSound();
             setScreenShake(8);
@@ -1826,6 +1766,8 @@ export const Game = ({
             setBoss(prev => {
               if (!prev) return prev;
               const newHealth = Math.max(0, prev.currentHealth - 1);
+              
+              console.log('[BossDebug] Boss damage applied', { oldHealth: prev.currentHealth, newHealth });
               
               if (newHealth <= 0) {
                 soundManager.playExplosion();
@@ -1841,13 +1783,97 @@ export const Game = ({
                   style: { background: '#ff0000', color: '#fff' }
                 });
               }
-              return { ...prev, currentHealth: newHealth };
+              // Update boss with new health AND new lastHitAt timestamp
+              return { ...prev, currentHealth: newHealth, lastHitAt: now };
             });
+          } else {
+            console.log('[BossDebug] Boss hit blocked by cooldown', { now, lastHit, cooldownRemaining: BOSS_HIT_COOLDOWN_MS - (now - lastHit) });
           }
         }
       });
 
-      // Phase 3.5: Explicit Paddle Overlap Resolution
+      // Phase 3.6: Shape-Specific Resurrected Boss Collision Check
+      resurrectedBosses.forEach((resBoss, bossIdx) => {
+        ballResults.forEach((result) => {
+          if (!result.ball) return;
+          
+          // Resurrected pyramids are always pyramids, so use triangle collision
+          const collision = checkCircleVsRotatedTriangle(result.ball, resBoss);
+          
+          if (collision) {
+            // ALWAYS apply position and velocity corrections (physics)
+            result.ball.x = collision.newX;
+            result.ball.y = collision.newY;
+            result.ball.dx = collision.newVelocityX;
+            result.ball.dy = collision.newVelocityY;
+            
+            // ONLY deal damage if boss-local cooldown has elapsed (game logic)
+            const now = Date.now();
+            const BOSS_HIT_COOLDOWN_MS = 1000;
+            const lastHit = resBoss.lastHitAt || 0;
+            
+            if (now - lastHit >= BOSS_HIT_COOLDOWN_MS) {
+              console.log('[BossDebug] Resurrected boss hit allowed', { bossIdx, now, lastHit, cooldown: now - lastHit, bossHealth: resBoss.currentHealth });
+              
+              // Update ball timestamp to prevent same-frame re-hits
+              result.ball.lastHitTime = now;
+              
+              soundManager.playBossHitSound();
+              setScreenShake(8);
+              setTimeout(() => setScreenShake(0), 400);
+              
+              setResurrectedBosses(prev => {
+                const newBosses = [...prev];
+                const newHealth = Math.max(0, newBosses[bossIdx].currentHealth - 1);
+                
+                console.log('[BossDebug] Resurrected boss damage applied', { bossIdx, oldHealth: newBosses[bossIdx].currentHealth, newHealth });
+                
+                if (newHealth <= 0) {
+                  // Boss destroyed
+                  const config = BOSS_CONFIG.pyramid;
+                  setScore(s => s + config.resurrectedPoints);
+                  toast.success(`PYRAMID DESTROYED! +${config.resurrectedPoints} points`);
+                  soundManager.playBossDefeatSound();
+                  
+                  setExplosions(e => [...e, {
+                    x: resBoss.x + resBoss.width / 2,
+                    y: resBoss.y + resBoss.height / 2,
+                    frame: 0,
+                    maxFrames: 30,
+                    enemyType: 'pyramid' as EnemyType,
+                    particles: createExplosionParticles(resBoss.x + resBoss.width / 2, resBoss.y + resBoss.height / 2, 'pyramid' as EnemyType)
+                  }]);
+                  soundManager.playExplosion();
+                  
+                  // Remove this boss
+                  newBosses.splice(bossIdx, 1);
+                  
+                  // Check if only one remains - make it super angry
+                  if (newBosses.length === 1) {
+                    toast.error("FINAL PYRAMID ENRAGED!");
+                    newBosses[0] = { ...newBosses[0], isSuperAngry: true, speed: BOSS_CONFIG.pyramid.superAngryMoveSpeed };
+                  }
+                  
+                  // Check if all defeated
+                  if (newBosses.length === 0) {
+                    toast.success("ALL PYRAMIDS DEFEATED!");
+                    setBossActive(false);
+                    setTimeout(() => nextLevel(), 3000);
+                  }
+                } else {
+                  toast.info(`PYRAMID: ${newHealth} HP`);
+                  // Update boss with new health AND new lastHitAt timestamp
+                  newBosses[bossIdx] = { ...newBosses[bossIdx], currentHealth: newHealth, lastHitAt: now };
+                }
+                
+                return newBosses;
+              });
+            } else {
+              console.log('[BossDebug] Resurrected boss hit blocked by cooldown', { bossIdx, now, lastHit, cooldownRemaining: BOSS_HIT_COOLDOWN_MS - (now - lastHit) });
+            }
+          }
+        });
+      });
       ballResults.forEach((result) => {
         if (!result.ball || !paddle) return;
         
@@ -2635,187 +2661,8 @@ export const Game = ({
     // Clean up expired laser warnings
     setLaserWarnings(prev => prev.filter(warning => Date.now() - warning.startTime < 800));
     
-    // Boss collision with balls
-    if (boss && paddle) {
-      balls.forEach(ball => {
-        // Add cooldown check to prevent multiple hits - 1000ms cooldown
-        const now = Date.now();
-        if (ball.lastHitTime && now - ball.lastHitTime < 1000) {
-          return; // Skip this collision check
-        }
-        
-        if (!ball.waitingToLaunch && ball.x + ball.radius > boss.x && ball.x - ball.radius < boss.x + boss.width && ball.y + ball.radius > boss.y && ball.y - ball.radius < boss.y + boss.height) {
-          soundManager.playBossHitSound();
-          setScreenShake(10);
-          setBackgroundFlash(0.3);
-          setTimeout(() => {
-            setScreenShake(0);
-            setBackgroundFlash(0);
-          }, 500);
-          
-          // Create hit particles
-          const hitParticles: Particle[] = [];
-          for (let i = 0; i < 15; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = 2 + Math.random() * 4;
-            hitParticles.push({
-              x: ball.x,
-              y: ball.y,
-              vx: Math.cos(angle) * speed,
-              vy: Math.sin(angle) * speed,
-              size: 3 + Math.random() * 3,
-              color: boss.type === 'cube' ? 'hsl(200, 100%, 60%)' : boss.type === 'sphere' ? 'hsl(330, 100%, 60%)' : 'hsl(280, 100%, 60%)',
-              life: 20,
-              maxLife: 20
-            });
-          }
-          setExplosions(prev => [...prev, {
-            x: ball.x,
-            y: ball.y,
-            frame: 0,
-            maxFrames: 20,
-            enemyType: boss.type as EnemyType,
-            particles: hitParticles
-          }]);
-          
-          const angle = Math.atan2(ball.y - (boss.y + boss.height/2), ball.x - (boss.x + boss.width/2));
-          setBalls(prev => prev.map(b => b.id === ball.id ? { ...b, dx: Math.cos(angle) * b.speed, dy: Math.sin(angle) * b.speed, lastHitTime: now } : b));
-          
-          setBoss(prev => {
-            if (!prev) return null;
-            const newHealth = prev.currentHealth - 1;
-            if (prev.type === 'cube' && newHealth <= 0) { handleBossDefeat(prev); return null; }
-            if (prev.type === 'sphere') {
-              if (newHealth === 0 && !prev.isAngry) { 
-                toast.warning("SPHERE BOSS ENRAGED!"); 
-                soundManager.playBossPhaseTransitionSound();
-                setScreenShake(15);
-                setTimeout(() => setScreenShake(0), 600);
-                return { ...prev, currentHealth: BOSS_CONFIG.sphere.healthPhase2, maxHealth: BOSS_CONFIG.sphere.healthPhase2, isAngry: true, speed: BOSS_CONFIG.sphere.angryMoveSpeed }; 
-              }
-              if (newHealth <= 0 && prev.isAngry) { handleBossDefeat(prev); return null; }
-            }
-            if (prev.type === 'pyramid' && !prev.isResurrected) {
-              if (newHealth === 0 && !prev.isAngry) { 
-                toast.warning("PYRAMID BOSS ENRAGED!"); 
-                soundManager.playBossPhaseTransitionSound();
-                setScreenShake(15);
-                setTimeout(() => setScreenShake(0), 600);
-                return { ...prev, currentHealth: BOSS_CONFIG.pyramid.healthPhase2, maxHealth: BOSS_CONFIG.pyramid.healthPhase2, isAngry: true }; 
-              }
-              if (newHealth <= 0 && prev.isAngry) {
-                toast.error("PYRAMID RESURRECTS!");
-                soundManager.playExplosion();
-                soundManager.playExplosion();
-                setScreenShake(20);
-                setTimeout(() => setScreenShake(0), 800);
-                const resurrected = [0,1,2].map(i => createResurrectedPyramid(prev, i, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT));
-                setResurrectedBosses(resurrected);
-                return null;
-              }
-            }
-            toast.info(`${prev.type.toUpperCase()}: ${newHealth} HP`);
-            return { ...prev, currentHealth: newHealth };
-          });
-        }
-      });
-    }
-    
-    // Resurrected boss collisions with balls
-    resurrectedBosses.forEach((resBoss, bossIdx) => {
-      balls.forEach(ball => {
-        // Add cooldown check to prevent multiple hits - 1000ms cooldown
-        const now = Date.now();
-        if (ball.lastHitTime && now - ball.lastHitTime < 1000) {
-          return; // Skip this collision check
-        }
-        
-        if (!ball.waitingToLaunch && ball.x + ball.radius > resBoss.x && ball.x - ball.radius < resBoss.x + resBoss.width && ball.y + ball.radius > resBoss.y && ball.y - ball.radius < resBoss.y + resBoss.height) {
-          soundManager.playBossHitSound();
-          setScreenShake(8);
-          setBackgroundFlash(0.2);
-          setTimeout(() => {
-            setScreenShake(0);
-            setBackgroundFlash(0);
-          }, 400);
-          
-          // Create hit particles
-          const hitParticles: Particle[] = [];
-          for (let i = 0; i < 10; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = 2 + Math.random() * 3;
-            hitParticles.push({
-              x: ball.x,
-              y: ball.y,
-              vx: Math.cos(angle) * speed,
-              vy: Math.sin(angle) * speed,
-              size: 2 + Math.random() * 3,
-              color: 'hsl(280, 100%, 60%)',
-              life: 15,
-              maxLife: 15
-            });
-          }
-          setExplosions(prev => [...prev, {
-            x: ball.x,
-            y: ball.y,
-            frame: 0,
-            maxFrames: 15,
-            enemyType: 'pyramid' as EnemyType,
-            particles: hitParticles
-          }]);
-          
-          const angle = Math.atan2(ball.y - (resBoss.y + resBoss.height/2), ball.x - (resBoss.x + resBoss.width/2));
-          setBalls(prev => prev.map(b => b.id === ball.id ? { ...b, dx: Math.cos(angle) * b.speed, dy: Math.sin(angle) * b.speed, lastHitTime: now } : b));
-          
-          setResurrectedBosses(prev => {
-            const updated = [...prev];
-            const newHealth = updated[bossIdx].currentHealth - 1;
-            
-            if (newHealth <= 0) {
-              // Boss destroyed
-              const config = BOSS_CONFIG.pyramid;
-              setScore(s => s + config.resurrectedPoints);
-              toast.success(`PYRAMID DESTROYED! +${config.resurrectedPoints} points`);
-              soundManager.playBossDefeatSound();
-              
-              setExplosions(e => [...e, {
-                x: resBoss.x + resBoss.width / 2,
-                y: resBoss.y + resBoss.height / 2,
-                frame: 0,
-                maxFrames: 30,
-                enemyType: 'pyramid' as EnemyType,
-                particles: createExplosionParticles(resBoss.x + resBoss.width / 2, resBoss.y + resBoss.height / 2, 'pyramid' as EnemyType)
-              }]);
-              soundManager.playExplosion();
-              
-              // Remove this boss
-              const remaining = updated.filter((_, i) => i !== bossIdx);
-              
-              // Check if only one remains - make it super angry
-              if (remaining.length === 1) {
-                toast.error("FINAL PYRAMID ENRAGED!");
-                remaining[0] = { ...remaining[0], isSuperAngry: true, speed: BOSS_CONFIG.pyramid.superAngryMoveSpeed };
-              }
-              
-              // Check if all defeated
-              if (remaining.length === 0) {
-                toast.success("ALL PYRAMIDS DEFEATED!");
-                setBossActive(false);
-                setTimeout(() => nextLevel(), 3000);
-              }
-              
-              return remaining;
-            } else {
-              toast.info(`PYRAMID: ${newHealth} HP`);
-              updated[bossIdx] = { ...updated[bossIdx], currentHealth: newHealth };
-              return updated;
-            }
-          });
-        }
-      });
-    });
-
-    // Check collisions
+    // Boss collisions are now handled via CCD and shape-specific checks in Phase 3.5
+    // Old collision code removed to prevent conflicts with unified boss-local cooldown system
     checkCollision();
 
     // Check power-up collision
