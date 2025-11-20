@@ -5,6 +5,7 @@ import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { EndScreen } from "./EndScreen";
+import { BossDefeatAnimation } from "./BossDefeatAnimation";
 import { GameLoopDebugOverlay } from "./GameLoopDebugOverlay";
 import { SubstepDebugOverlay } from "./SubstepDebugOverlay";
 import { QualityIndicator } from "./QualityIndicator";
@@ -114,6 +115,7 @@ export const Game = ({
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const [showSubstepDebug, setShowSubstepDebug] = useState(false);
   const [currentFps, setCurrentFps] = useState(60);
+  const [showBossDefeatAnimation, setShowBossDefeatAnimation] = useState(false);
   
   // Game statistics tracking
   const [totalBricksDestroyed, setTotalBricksDestroyed] = useState(0);
@@ -1793,6 +1795,9 @@ export const Game = ({
                   });
                   setBossesKilled(k => k + 1);
                   setBossActive(false);
+                  // Trigger boss defeat animation
+                  setShowBossDefeatAnimation(true);
+                  setGameState("paused");
                   // Clean up game entities
                   setBalls([]);
                   setEnemies([]);
@@ -1802,8 +1807,6 @@ export const Game = ({
                   // Stop boss music and resume background music
                   soundManager.stopBossMusic();
                   soundManager.resumeBackgroundMusic();
-                  // Proceed to next level after 3 seconds
-                  setTimeout(() => nextLevel(), 3000);
                   return null;
                 } else if (prev.type === 'sphere') {
                   // Sphere boss - check phase
@@ -1837,6 +1840,9 @@ export const Game = ({
                     });
                     setBossesKilled(k => k + 1);
                     setBossActive(false);
+                    // Trigger boss defeat animation
+                    setShowBossDefeatAnimation(true);
+                    setGameState("paused");
                     // Clean up game entities
                     setBalls([]);
                     setEnemies([]);
@@ -1846,7 +1852,6 @@ export const Game = ({
                     // Stop boss music and resume background music
                     soundManager.stopBossMusic();
                     soundManager.resumeBackgroundMusic();
-                    setTimeout(() => nextLevel(), 3000);
                     return null;
                   }
                 } else if (prev.type === 'pyramid') {
@@ -1956,6 +1961,9 @@ export const Game = ({
                     toast.success("ALL PYRAMIDS DEFEATED!");
                     setBossActive(false);
                     setBossesKilled(k => k + 1);
+                    // Trigger boss defeat animation
+                    setShowBossDefeatAnimation(true);
+                    setGameState("paused");
                     // Clean up game entities
                     setBalls([]);
                     setEnemies([]);
@@ -1965,7 +1973,6 @@ export const Game = ({
                     // Stop boss music and resume background music
                     soundManager.stopBossMusic();
                     soundManager.resumeBackgroundMusic();
-                    setTimeout(() => nextLevel(), 3000);
                   }
                 } else {
                   toast.info(`PYRAMID: ${newHealth} HP`);
@@ -3733,6 +3740,20 @@ export const Game = ({
                       bossSpawnAnimation={bossSpawnAnimation}
                       shieldImpacts={shieldImpacts}
                     />
+                    
+                    {/* Boss Defeat Animation */}
+                    {showBossDefeatAnimation && (
+                      <BossDefeatAnimation 
+                        canvasWidth={SCALED_CANVAS_WIDTH}
+                        canvasHeight={SCALED_CANVAS_HEIGHT}
+                        onComplete={() => {
+                          setShowBossDefeatAnimation(false);
+                          setGameState("playing");
+                          setTimeout(() => nextLevel(), 500);
+                        }}
+                      />
+                    )}
+                    
                     {showDebugOverlay && gameLoopRef.current && (
                       <GameLoopDebugOverlay 
                         getDebugInfo={() => gameLoopRef.current?.getDebugInfo() ?? {
