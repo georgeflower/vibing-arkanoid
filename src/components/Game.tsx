@@ -10,6 +10,7 @@ import { SubstepDebugOverlay } from "./SubstepDebugOverlay";
 import { QualityIndicator } from "./QualityIndicator";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { Maximize2, Minimize2, Home } from "lucide-react";
 import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, GameSettings, EnemyType, Particle, Boss, BossAttack, ShieldImpact } from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
@@ -31,6 +32,9 @@ export const Game = ({
   settings,
   onReturnToMenu
 }: GameProps) => {
+  // Detect updates but don't apply during gameplay - defer until back at menu
+  useServiceWorkerUpdate({ shouldApplyUpdate: false });
+  
   // Detect Mac and apply 10% scale reduction
   const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform) || /Macintosh/.test(navigator.userAgent);
   const scaleFactor = isMac ? 0.9 : 1;

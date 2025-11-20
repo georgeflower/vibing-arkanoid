@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
-export const useServiceWorkerUpdate = () => {
+interface UseServiceWorkerUpdateOptions {
+  shouldApplyUpdate?: boolean;
+}
+
+export const useServiceWorkerUpdate = (options: UseServiceWorkerUpdateOptions = {}) => {
+  const { shouldApplyUpdate = false } = options;
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -22,14 +29,28 @@ export const useServiceWorkerUpdate = () => {
             
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installing') {
+                  setIsDownloading(true);
+                  toast.info('📥 Downloading update...', { duration: 3000 });
+                }
+                
                 if (newWorker.state === 'activated') {
-                  console.log('New version activated, reloading...');
+                  console.log('New version activated');
+                  setIsDownloading(false);
                   setUpdateAvailable(true);
                   
-                  // Wait a moment for caches to clear, then reload
-                  setTimeout(() => {
-                    window.location.reload();
-                  }, 500);
+                  if (shouldApplyUpdate) {
+                    // User is at main menu - safe to reload
+                    toast.success('✅ Update ready! Refreshing...', { duration: 1500 });
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 1500);
+                  } else {
+                    // User is in game - defer reload
+                    toast.info('🎮 Update ready! Will apply when you return to menu', {
+                      duration: 5000,
+                    });
+                  }
                 }
               });
             }
@@ -55,7 +76,7 @@ export const useServiceWorkerUpdate = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [shouldApplyUpdate]);
 
-  return { updateAvailable };
+  return { updateAvailable, isDownloading };
 };

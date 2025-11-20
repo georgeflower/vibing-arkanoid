@@ -30,8 +30,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-  // Force service worker update check when main menu mounts
-  useServiceWorkerUpdate();
+  // Force service worker update check and apply when at main menu
+  useServiceWorkerUpdate({ shouldApplyUpdate: true });
 
   const handleStart = () => {
     const settings: GameSettings = {
