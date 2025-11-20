@@ -1983,9 +1983,9 @@ export const Game = ({
           }
         });
       });
-      // Calculate paddle velocity
+      // Calculate paddle velocity in pixels per second
       const paddleVelocity = {
-        x: paddle ? (paddle.x - prevPaddleX.current) / (dt / 1000) : 0,
+        x: paddle ? (paddle.x - prevPaddleX.current) * 60 : 0, // Convert to px/sec (dt is 1/60)
         y: 0
       };
       
