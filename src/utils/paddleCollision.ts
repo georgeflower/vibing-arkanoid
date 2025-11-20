@@ -96,12 +96,25 @@ export function checkCircleVsRoundedPaddle(
         result.newVelocityX += deflectionFactor * Math.abs(result.newVelocityY);
       }
 
-      // For top-surface hits, ensure the ball is fully above the paddle to avoid sticking
+      // Primary case: for clear top-surface hits, clamp the ball fully above the paddle
       if (result.normal.y <= -0.9) {
         const targetY = paddle.y - ball.radius - SAFETY_MARGIN;
         if (result.newY > targetY) {
           result.newY = targetY;
         }
+      }
+
+      // Emergency fallback: if the ball is horizontally over the paddle and has any penetration,
+      // force it above the paddle to avoid getting stuck, even if the normal points sideways.
+      const withinPaddleX = ball.x >= paddle.x && ball.x <= paddle.x + paddle.width;
+      if (withinPaddleX && ball.y >= paddle.y && result.penetration > 0.5) {
+        const targetY = paddle.y - ball.radius - SAFETY_MARGIN;
+        if (result.newY > targetY) {
+          result.newY = targetY;
+        }
+        // Ensure the ball is moving upwards after correction
+        result.newVelocityY = -Math.abs(result.newVelocityY || ball.dy || 0);
+        result.normal = { x: 0, y: -1 };
       }
     }
   }
