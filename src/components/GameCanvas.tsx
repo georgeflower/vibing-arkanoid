@@ -1273,11 +1273,11 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw boss
       if (boss) {
-        // Debug: Draw shape-specific, rotating boss hitbox (1px wider than visual)
+        // Debug: Draw shape-specific, rotating boss hitbox (1px smaller than visual)
         if (SHOW_BOSS_HITBOX) {
           const centerX = boss.x + boss.width / 2;
           const centerY = boss.y + boss.height / 2;
-          const HITBOX_EXPAND = 1;
+          const HITBOX_EXPAND = -1;
           
           ctx.save();
           ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
