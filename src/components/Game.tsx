@@ -1424,55 +1424,56 @@ export const Game = ({
                 result.ball.dx = incomingVX;
                 result.ball.dy = incomingVY;
 
+                // Don't break - allow processing of next collision events in this frame
+              } else {
+                // Normal brick damage (non-fireball)
+                const currentHitsRemaining = brick.hitsRemaining;
+                const newHitsRemaining = currentHitsRemaining - 1;
+                const brickDestroyed = newHitsRemaining <= 0;
+
+                // Play sound only if not duplicate
+                if (!isDuplicate) {
+                  if (brick.type === 'cracked') {
+                    soundsToPlay.push({ type: 'cracked', param: currentHitsRemaining });
+                  } else {
+                    soundsToPlay.push({ type: 'brick' });
+                  }
+                }
+
+                if (brickDestroyed) {
+                  // Mark brick for destruction
+                  brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
+                  
+                  // Only add score/combo once per brick
+                  if (!isDuplicate) {
+                    scoreIncrease += brick.points;
+                    bricksDestroyedCount += 1;
+                    comboIncrease += 1;
+                  }
+
+                  // Speed increase (cap at 30%)
+                  if (brickHitSpeedAccumulated < 0.3) {
+                    const speedIncrease = 0.005;
+                    setBrickHitSpeedAccumulated(prev => Math.min(0.3, prev + speedIncrease));
+                    result.ball.dx *= (1 + speedIncrease);
+                    result.ball.dy *= (1 + speedIncrease);
+                  }
+
+                  // Power-up drop - only once per brick
+                  if (!isDuplicate && Math.random() < POWERUP_DROP_CHANCE) {
+                    powerUpsToCreate.push(brick);
+                  }
+
+                  // Explosive brick handling - only once per brick
+                  if (!isDuplicate && brick.type === 'explosive') {
+                    explosiveBricksToDetonate.push(brick);
+                  }
+                } else {
+                  // Brick damaged but not destroyed
+                  brickUpdates.set(brick.id, { visible: true, hitsRemaining: newHitsRemaining });
+                }
                 break;
               }
-
-              const currentHitsRemaining = brick.hitsRemaining;
-              const newHitsRemaining = currentHitsRemaining - 1;
-              const brickDestroyed = newHitsRemaining <= 0;
-
-              // Play sound only if not duplicate
-              if (!isDuplicate) {
-                if (brick.type === 'cracked') {
-                  soundsToPlay.push({ type: 'cracked', param: currentHitsRemaining });
-                } else {
-                  soundsToPlay.push({ type: 'brick' });
-                }
-              }
-
-              if (brickDestroyed) {
-                // Mark brick for destruction
-                brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
-                
-                // Only add score/combo once per brick
-                if (!isDuplicate) {
-                  scoreIncrease += brick.points;
-                  bricksDestroyedCount += 1;
-                  comboIncrease += 1;
-                }
-
-                // Speed increase (cap at 30%)
-                if (brickHitSpeedAccumulated < 0.3) {
-                  const speedIncrease = 0.005;
-                  setBrickHitSpeedAccumulated(prev => Math.min(0.3, prev + speedIncrease));
-                  result.ball.dx *= (1 + speedIncrease);
-                  result.ball.dy *= (1 + speedIncrease);
-                }
-
-                // Power-up drop - only once per brick
-                if (!isDuplicate && Math.random() < POWERUP_DROP_CHANCE) {
-                  powerUpsToCreate.push(brick);
-                }
-
-                // Explosive brick handling - only once per brick
-                if (!isDuplicate && brick.type === 'explosive') {
-                  explosiveBricksToDetonate.push(brick);
-                }
-              } else {
-                // Brick damaged but not destroyed
-                brickUpdates.set(brick.id, { visible: true, hitsRemaining: newHitsRemaining });
-              }
-              break;
           }
         });
       });
