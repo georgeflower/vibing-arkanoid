@@ -24,6 +24,7 @@ import { FixedStepGameLoop } from "@/utils/gameLoop";
 import { createBoss, createResurrectedPyramid } from "@/utils/bossUtils";
 import { performBossAttack } from "@/utils/bossAttacks";
 import { BOSS_LEVELS, BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
+import { processBallWithCCD } from "@/utils/gameCCD";
 interface GameProps {
   settings: GameSettings;
   onReturnToMenu: () => void;
@@ -1081,428 +1082,235 @@ export const Game = ({
   
   const checkCollision = useCallback(() => {
     if (!paddle || balls.length === 0) return;
+    
+    const dt = 1 / 60; // Fixed timestep (60 FPS)
+    const minBrickDimension = Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT);
+    
     setBalls(prevBalls => {
-      let updatedBalls = prevBalls.map(ball => {
-        // Multi-substep collision detection to prevent tunneling at high speeds
-        const ballSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-        const minBrickDimension = Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT);
-        
-        // Calculate required substeps based on ball speed (adaptive)
-        // Minimum 2 substeps to prevent tunneling even at normal speeds
-        const PHYSICS_SUBSTEPS = Math.max(2, Math.ceil(ballSpeed * speedMultiplier / (minBrickDimension * 0.15)));
-        
-        let newBall = { ...ball };
-        const substepDx = ball.dx / PHYSICS_SUBSTEPS;
-        const substepDy = ball.dy / PHYSICS_SUBSTEPS;
-        
-        // Process each substep
-        for (let substep = 0; substep < PHYSICS_SUBSTEPS; substep++) {
-          // Move ball by substep amount
-          newBall.x += substepDx * speedMultiplier;
-          newBall.y += substepDy * speedMultiplier;
+      // Phase 1: Run CCD for all balls
+      const ballResults = prevBalls.map(ball => 
+        processBallWithCCD(ball, dt, {
+          bricks,
+          paddle,
+          canvasSize: { w: SCALED_CANVAS_WIDTH, h: SCALED_CANVAS_HEIGHT },
+          speedMultiplier,
+          minBrickDimension
+        })
+      );
 
-          // Wall collision with cooldown to prevent corner traps
+      // Phase 2: Process collision events and update game state
+      ballResults.forEach((result, ballIndex) => {
+        if (!result.ball) return;
+
+        result.events.forEach(event => {
           const now = Date.now();
-          const wallCooldown = 50; // 50ms cooldown between wall hits (increased from 10ms)
           
-          const canHitWall = !newBall.lastWallHitTime || (now - newBall.lastWallHitTime >= wallCooldown);
-          
-          if (canHitWall) {
-            // Check for corner collision (both walls hit simultaneously)
-            const hitLeftWall = newBall.x < newBall.radius;
-            const hitRightWall = newBall.x > SCALED_CANVAS_WIDTH - newBall.radius;
-            const hitTopWall = newBall.y < newBall.radius;
-            
-            const isCornerCollision = (hitLeftWall || hitRightWall) && hitTopWall;
-            
-            if (isCornerCollision) {
-              // Special corner handling - reverse both velocities with random perturbation
-              newBall.dx = -newBall.dx * (0.95 + Math.random() * 0.1); // ±5% perturbation
-              newBall.dy = -newBall.dy * (0.95 + Math.random() * 0.1); // ±5% perturbation
-              
-              // Push ball away from BOTH walls with larger buffer
-              if (hitLeftWall) newBall.x = newBall.radius + 3;
-              if (hitRightWall) newBall.x = SCALED_CANVAS_WIDTH - newBall.radius - 3;
-              if (hitTopWall) newBall.y = newBall.radius + 3;
-              
-              newBall.lastWallHitTime = now;
+          switch (event.objectType) {
+            case 'wall':
               soundManager.playBounce();
-            } else {
-              // Normal wall collision handling
-              if (newBall.x > SCALED_CANVAS_WIDTH - newBall.radius || newBall.x < newBall.radius) {
-                newBall.dx = -newBall.dx;
-                newBall.lastWallHitTime = now;
-                soundManager.playBounce();
-                
-                // Correct position with buffer
-                if (newBall.x > SCALED_CANVAS_WIDTH - newBall.radius) {
-                  newBall.x = SCALED_CANVAS_WIDTH - newBall.radius - 3;
-                } else {
-                  newBall.x = newBall.radius + 3;
-                }
-              }
-              
-              if (newBall.y < newBall.radius) {
-                newBall.dy = -newBall.dy;
-                newBall.lastWallHitTime = now;
-                newBall.y = newBall.radius + 3;
-                soundManager.playBounce();
-              }
-            }
-          }
+              break;
 
-          // Paddle collision - ball should always bounce normally
-          if (newBall.y > paddle.y - newBall.radius && newBall.x > paddle.x && newBall.x < paddle.x + paddle.width && newBall.dy > 0) {
-            // Calculate where on paddle the ball hit (0 = top, 1 = bottom)
-            const verticalHitPosition = (newBall.y - paddle.y) / paddle.height;
-
-            if (verticalHitPosition <= 0.5) {
-              // Only bounce if hitting top 50% of paddle
-              soundManager.playBounce();
-
-              setLastPaddleHitTime(Date.now());
-              const hitPos = (newBall.x - paddle.x) / paddle.width;
+            case 'paddle':
+              // Adjust angle based on hit position
+              const hitPos = (event.point.x - paddle.x) / paddle.width;
               const angle = (hitPos - 0.5) * Math.PI * 0.6;
-              const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-              newBall.dx = speed * Math.sin(angle);
-              newBall.dy = -speed * Math.cos(angle);
-              newBall.y = paddle.y - newBall.radius;
-            } else {
-              // Ball hit bottom half - lose life
-              soundManager.playLoseLife();
-              toast.error("Hit paddle from the side!");
-              return null;
-            }
-          }
+              const speed = Math.sqrt(result.ball.dx * result.ball.dx + result.ball.dy * result.ball.dy);
+              result.ball.dx = speed * Math.sin(angle);
+              result.ball.dy = -Math.abs(speed * Math.cos(angle));
+              soundManager.playBounce();
+              setLastPaddleHitTime(now);
+              break;
 
-          // Bottom collision (lose life)
-          if (newBall.y > SCALED_CANVAS_HEIGHT - newBall.radius) {
-            // Remove this ball
-            return null;
-          }
-
-          // Brick collision (substep-safe)
-          setBricks(prevBricks => {
-            let brickHit = false;
-
-            // Check cooldown - prevent hitting same brick in consecutive substeps
-            const now = Date.now();
-            if (newBall.lastHitTime && now - newBall.lastHitTime < 8) {
-              return prevBricks;
-            }
-
-          // First check for padding collisions between indestructible bricks
-          const indestructibleBricks = prevBricks.filter(b => b.isIndestructible && b.visible);
-          for (const brick of indestructibleBricks) {
-            // Check for adjacent indestructible bricks and create invisible walls in padding
-            const rightNeighbor = indestructibleBricks.find(b => b.x === brick.x + brick.width + SCALED_BRICK_PADDING && Math.abs(b.y - brick.y) < 1);
-            const bottomNeighbor = indestructibleBricks.find(b => b.y === brick.y + brick.height + SCALED_BRICK_PADDING && Math.abs(b.x - brick.x) < 1);
-
-            // Check horizontal padding (between brick and right neighbor)
-            if (rightNeighbor) {
-              const paddingLeft = brick.x + brick.width;
-              const paddingRight = rightNeighbor.x;
-              const paddingTop = brick.y;
-              const paddingBottom = brick.y + brick.height;
-              if (newBall.x + newBall.radius > paddingLeft && newBall.x - newBall.radius < paddingRight && newBall.y + newBall.radius > paddingTop && newBall.y - newBall.radius < paddingBottom) {
-                // Ball is in horizontal padding - bounce horizontally
-                newBall.dx = -newBall.dx;
-                if (newBall.x < paddingLeft + SCALED_BRICK_PADDING / 2) {
-                  newBall.x = paddingLeft - newBall.radius - 2;
-                } else {
-                  newBall.x = paddingRight + newBall.radius + 2;
-                }
-                newBall.lastHitTime = now;
-                newBall.skipRemainingSubsteps = true;
-                soundManager.playBounce();
-                return prevBricks;
-              }
-            }
-
-            // Check vertical padding (between brick and bottom neighbor)
-            if (bottomNeighbor) {
-              const paddingTop = brick.y + brick.height;
-              const paddingBottom = bottomNeighbor.y;
-              const paddingLeft = brick.x;
-              const paddingRight = brick.x + brick.width;
-              if (newBall.x + newBall.radius > paddingLeft && newBall.x - newBall.radius < paddingRight && newBall.y + newBall.radius > paddingTop && newBall.y - newBall.radius < paddingBottom) {
-                // Ball is in vertical padding - bounce vertically
-                newBall.dy = -newBall.dy;
-                if (newBall.y < paddingTop + SCALED_BRICK_PADDING / 2) {
-                  newBall.y = paddingTop - newBall.radius - 2;
-                } else {
-                  newBall.y = paddingBottom + newBall.radius + 2;
-                }
-                newBall.lastHitTime = now;
-                newBall.skipRemainingSubsteps = true;
-                soundManager.playBounce();
-                return prevBricks;
-              }
-            }
-          }
-          const newBricks = prevBricks.map(brick => {
-            if (!brickHit && brick.visible && newBall.x + newBall.radius > brick.x && newBall.x - newBall.radius < brick.x + brick.width && newBall.y + newBall.radius > brick.y && newBall.y - newBall.radius < brick.y + brick.height) {
-              brickHit = true;
-
-              // Set hit cooldown and exit remaining substeps
-              newBall.lastHitTime = now;
-              newBall.skipRemainingSubsteps = true;
-
-              // Calculate which side was hit by checking penetration depth
-              const leftPenetration = newBall.x + newBall.radius - brick.x;
-              const rightPenetration = brick.x + brick.width - (newBall.x - newBall.radius);
-              const topPenetration = newBall.y + newBall.radius - brick.y;
-              const bottomPenetration = brick.y + brick.height - (newBall.y - newBall.radius);
-              const minHorizontal = Math.min(leftPenetration, rightPenetration);
-              const minVertical = Math.min(topPenetration, bottomPenetration);
-
-              // Determine collision side and move ball out
-              const hitFromSide = minHorizontal < minVertical;
-
-              // Indestructible bricks - just bounce off
-              if (brick.isIndestructible) {
-                if (hitFromSide) {
-                  newBall.dx = -newBall.dx;
-                  // Move ball out horizontally with 2px buffer
-                  if (leftPenetration < rightPenetration) {
-                    newBall.x = brick.x - newBall.radius - 2;
-                  } else {
-                    newBall.x = brick.x + brick.width + newBall.radius + 2;
-                  }
-                } else {
-                  newBall.dy = -newBall.dy;
-                  // Move ball out vertically with 2px buffer
-                  if (topPenetration < bottomPenetration) {
-                    newBall.y = brick.y - newBall.radius - 2;
-                  } else {
-                    newBall.y = brick.y + brick.height + newBall.radius + 2;
-                  }
-                }
-                // Add slight random angle variation (±1 degree) to horizontal direction
-                const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180);
-                const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-                newBall.dx += speed * Math.sin(angleVariation) * 0.1;
-                soundManager.playBounce();
-                return brick;
-              }
-
-              // Only bounce if not fireball
-              if (!newBall.isFireball) {
-                if (hitFromSide) {
-                  newBall.dx = -newBall.dx;
-                  // Move ball out horizontally with 2px buffer
-                  if (leftPenetration < rightPenetration) {
-                    newBall.x = brick.x - newBall.radius - 2;
-                  } else {
-                    newBall.x = brick.x + brick.width + newBall.radius + 2;
-                  }
-                } else {
-                  newBall.dy = -newBall.dy;
-                  // Move ball out vertically with 2px buffer
-                  if (topPenetration < bottomPenetration) {
-                    newBall.y = brick.y - newBall.radius - 2;
-                  } else {
-                    newBall.y = brick.y + brick.height + newBall.radius + 2;
-                  }
-                }
-                // Add slight random angle variation (±1 degree) to horizontal direction
-                const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180);
-                const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
-                newBall.dx += speed * Math.sin(angleVariation) * 0.1;
-              }
-              soundManager.playBrickHit(brick.type, brick.hitsRemaining);
-              const updatedBrick = {
-                ...brick,
-                hitsRemaining: brick.hitsRemaining - 1
-              };
-
-              // Update brick color based on hits remaining
-              if (updatedBrick.hitsRemaining > 0) {
-                updatedBrick.color = getHitColor(brick.color, updatedBrick.hitsRemaining, brick.maxHits);
-              } else {
-                updatedBrick.visible = false;
-
-                // Award points and create power-up only when brick is destroyed
-                setScore(prev => prev + brick.points);
-                if (brick.hasPowerUp) {
-                  const powerUp = createPowerUp(brick);
-                  if (powerUp) {
-                    setPowerUps(prev => [...prev, powerUp]);
-                  }
-                }
+            case 'brick':
+            case 'corner':
+              // Find the brick by index (objectId is the brick index)
+              const brickIndex = typeof event.objectId === 'number' ? event.objectId : -1;
+              if (brickIndex >= 0 && brickIndex < bricks.length) {
+                const brick = bricks[brickIndex];
                 
-                // Handle explosive brick destruction
-                if (brick.type === "explosive") {
-                  const explosionRadius = 55;
-                  const brickCenterX = brick.x + brick.width / 2;
-                  const brickCenterY = brick.y + brick.height / 2;
+                if (!brick || !brick.visible) break;
+
+                // Handle indestructible (metal) bricks
+                if (brick.isIndestructible) {
+                  soundManager.playBounce();
+                  setCurrentCombo(0);
+                  break;
+                }
+
+                // Update brick via setState
+                setBricks(prevBricks => {
+                  const newBricks = [...prevBricks];
+                  const targetBrick = newBricks[brickIndex];
                   
-                  // Create visual explosion
-                  const explosionParticles: Particle[] = [];
-                  const particleCount = Math.round(30 * (qualitySettings.explosionParticles / 50));
-                  for (let i = 0; i < particleCount; i++) {
-                    const angle = (Math.PI * 2 * i) / particleCount;
-                    const speed = 3 + Math.random() * 4;
-                    explosionParticles.push({
-                      x: brickCenterX,
-                      y: brickCenterY,
-                      vx: Math.cos(angle) * speed,
-                      vy: Math.sin(angle) * speed,
-                      size: 3 + Math.random() * 5,
-                      color: 'hsl(25, 100%, 50%)',
-                      life: 30,
-                      maxLife: 30
-                    });
+                  if (!targetBrick.visible) return prevBricks;
+
+                  const newHitsRemaining = targetBrick.hitsRemaining - 1;
+                  const brickDestroyed = newHitsRemaining <= 0;
+
+                  // Cracked brick sound
+                  if (targetBrick.type === 'cracked') {
+                    soundManager.playBrickHit('cracked', newHitsRemaining);
+                  } else {
+                    soundManager.playBrickHit();
                   }
-                  
-                  setExplosions(prev => [...prev, {
-                    x: brickCenterX,
-                    y: brickCenterY,
-                    frame: 0,
-                    maxFrames: 15,
-                    particles: explosionParticles
-                  }]);
-                  
-                  soundManager.playExplosiveBrickSound();
-                  setBackgroundFlash(10);
-                  setTimeout(() => setBackgroundFlash(0), 100);
-                  
-                  // Destroy nearby bricks including metal within explosion radius
-                  setTimeout(() => {
-                    setBricks(prev => prev.map(b => {
-                      if (b.visible) {
-                        const bDist = Math.sqrt(
+
+                  if (brickDestroyed) {
+                    // Brick destroyed
+                    newBricks[brickIndex] = {
+                      ...targetBrick,
+                      visible: false,
+                      hitsRemaining: 0
+                    };
+
+                    setScore(s => s + targetBrick.points);
+                    setTotalBricksDestroyed(t => t + 1);
+                    setBricksHit(b => b + 1);
+                    setCurrentCombo(c => c + 1);
+
+                    // Speed increase (cap at 30%)
+                    if (brickHitSpeedAccumulated < 0.3) {
+                      const speedIncrease = 0.005;
+                      setBrickHitSpeedAccumulated(prev => Math.min(0.3, prev + speedIncrease));
+                      result.ball.dx *= (1 + speedIncrease);
+                      result.ball.dy *= (1 + speedIncrease);
+                    }
+
+                    // Power-up drop
+                    if (Math.random() < POWERUP_DROP_CHANCE) {
+                      createPowerUp(targetBrick);
+                    }
+
+                    // Explosive brick handling
+                    if (targetBrick.type === 'explosive') {
+                      const explosionRadius = 55;
+                      const brickCenterX = targetBrick.x + targetBrick.width / 2;
+                      const brickCenterY = targetBrick.y + targetBrick.height / 2;
+
+                      // Create explosion visual
+                      setExplosions(prev => [...prev, {
+                        x: brickCenterX,
+                        y: brickCenterY,
+                        frame: 0,
+                        maxFrames: 30,
+                        particles: createExplosionParticles(brickCenterX, brickCenterY, 'cube')
+                      }]);
+
+                      // Destroy nearby bricks
+                      for (let i = 0; i < newBricks.length; i++) {
+                        const b = newBricks[i];
+                        if (!b.visible) continue;
+                        
+                        const dist = Math.sqrt(
                           Math.pow((b.x + b.width / 2) - brickCenterX, 2) +
                           Math.pow((b.y + b.height / 2) - brickCenterY, 2)
                         );
-                        if (bDist <= explosionRadius) {
+                        
+                        if (dist <= explosionRadius && i !== brickIndex) {
+                          newBricks[i] = { ...b, visible: false, hitsRemaining: 0 };
                           setScore(s => s + b.points);
                           setTotalBricksDestroyed(t => t + 1);
-                          setBricksHit(bh => bh + 1);
-                          return { ...b, visible: false, hitsRemaining: 0 };
+                          setBricksHit(b => b + 1);
                         }
                       }
-                      return b;
-                    }));
-                  }, 0);
-                }
-              }
 
-              // Increase ball speed slightly with each brick hit (but not for indestructible bricks)
-              if (!brick.isIndestructible && updatedBrick.hitsRemaining === 0) {
-                // Track brick destroyed
-                setTotalBricksDestroyed(prev => prev + 1);
-                setBricksHit(prev => prev + 1);
-                setCurrentCombo(prev => prev + 1);
-                
-                // Only add speed when brick is fully destroyed
-                // Cap accumulated speed at 30%
-                if (brickHitSpeedAccumulated < 0.3) {
-                  const speedIncrease = 0.005;
-                  setBrickHitSpeedAccumulated(prev => Math.min(0.3, prev + speedIncrease));
-                  newBall.dx *= 1 + speedIncrease;
-                  newBall.dy *= 1 + speedIncrease;
-                }
-              } else if (brick.isIndestructible) {
-                // Reset combo on indestructible hit
-                setCurrentCombo(0);
-              }
-              return updatedBrick;
-            }
-            return brick;
-          });
+                      soundManager.playExplosiveBrickSound();
+                      setBackgroundFlash(10);
+                      setTimeout(() => setBackgroundFlash(0), 100);
+                    }
+                  } else {
+                    // Brick damaged but not destroyed
+                    newBricks[brickIndex] = {
+                      ...targetBrick,
+                      hitsRemaining: newHitsRemaining
+                    };
+                  }
 
-          // Check win condition (don't count indestructible bricks)
-          if (newBricks.every(brick => !brick.visible || brick.isIndestructible)) {
-            // Check if there are any destructible bricks left
-            const hasDestructibleBricks = newBricks.some(brick => !brick.isIndestructible);
-            if (hasDestructibleBricks) {
-              soundManager.playWin();
+                  // Check win condition
+                  if (newBricks.every(b => !b.visible || b.isIndestructible)) {
+                    const hasDestructibleBricks = newBricks.some(b => !b.isIndestructible);
+                    if (hasDestructibleBricks) {
+                      soundManager.playWin();
 
-              // Check if player beat level 50
-              if (level >= 50) {
-                setScore(prev => prev + 1000000);
-                setBeatLevel50Completed(true);
-                setGameState("won");
-                setShowEndScreen(true);
-                soundManager.stopBackgroundMusic();
-                toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
-              } else {
-                setGameState("ready"); // Wait for click to start next level
-                toast.success(`Level ${level} Complete! Click to continue.`);
-              }
+                      if (level >= 50) {
+                        setScore(prev => prev + 1000000);
+                        setBeatLevel50Completed(true);
+                        setGameState("won");
+                        setShowEndScreen(true);
+                        soundManager.stopBackgroundMusic();
+                        toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
+                      } else {
+                        setGameState("ready");
+                        toast.success(`Level ${level} Complete! Click to continue.`);
+                      }
 
-              // Clear all indestructible bricks when all normal bricks are cleared
-              return newBricks.map(brick => ({
-                ...brick,
-                visible: false
-              }));
-            } else {
-              // No destructible bricks
-              // On boss levels, never auto-advance based on bricks (there are none by design)
-              if (BOSS_LEVELS.includes(level)) {
-                // Boss defeat handler will handle progression
-                return newBricks;
-              }
+                      return newBricks.map(b => ({ ...b, visible: false }));
+                    } else if (!BOSS_LEVELS.includes(level)) {
+                      soundManager.playWin();
+                      if (level >= 50) {
+                        setScore(prev => prev + 1000000);
+                        setBeatLevel50Completed(true);
+                        setGameState("won");
+                        setShowEndScreen(true);
+                        soundManager.stopBackgroundMusic();
+                        toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
+                      } else {
+                        setGameState("ready");
+                        toast.success(`Level ${level} Complete! Click to continue.`);
+                      }
+                      return newBricks.map(b => ({ ...b, visible: false }));
+                    }
+                  }
 
-              // Non-boss levels: auto-advance as before
-              soundManager.playWin();
-              if (level >= 50) {
-                setScore(prev => prev + 1000000);
-                setBeatLevel50Completed(true);
-                setGameState("won");
-                setShowEndScreen(true);
-                soundManager.stopBackgroundMusic();
-                toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
-              } else {
-                nextLevel(); // Automatically advance since no bricks to destroy
+                  return newBricks;
+                });
               }
-            }
+              break;
           }
-          return newBricks;
         });
-        
-        } // End substep loop
-        
-        return newBall;
-      }).filter(Boolean) as Ball[];
+      });
+
+      // Phase 3: Update ball positions and check for lost balls
+      const updatedBalls = ballResults
+        .map(r => r.ball)
+        .filter((ball): ball is NonNullable<typeof ball> => {
+          if (!ball) return false;
+          // Check if ball fell off bottom
+          return ball.y <= SCALED_CANVAS_HEIGHT + ball.radius;
+        });
 
       // Check if all balls are lost
       if (updatedBalls.length === 0) {
-        // Reset combo on ball loss
         setCurrentCombo(0);
         
         setLives(prev => {
           const newLives = prev - 1;
           soundManager.playLoseLife();
+          
           if (newLives <= 0) {
             setGameState("gameOver");
             soundManager.stopBossMusic();
             soundManager.stopBackgroundMusic();
-            
-            // Clear boss attacks on death
             setBossAttacks([]);
-            setLaserWarnings([]);
-            
-            // Create game over particle explosion
+
+            // Create game over particles
             const particles: Particle[] = [];
-            for (let i = 0; i < 50; i++) {
-              const angle = (Math.PI * 2 * i) / 50;
-              const speed = 3 + Math.random() * 5;
+            for (let i = 0; i < 100; i++) {
+              const angle = Math.random() * Math.PI * 2;
+              const speed = 2 + Math.random() * 4;
               particles.push({
                 x: SCALED_CANVAS_WIDTH / 2,
                 y: SCALED_CANVAS_HEIGHT / 2,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
-                size: 4 + Math.random() * 6,
-                color: `hsl(${Math.random() * 360}, 100%, 60%)`,
+                size: 2 + Math.random() * 4,
+                color: `hsl(${Math.random() * 360}, 70%, 60%)`,
                 life: 60,
                 maxLife: 60
               });
             }
             setGameOverParticles(particles);
 
-            // Check for high score immediately
+            // Check for high score
             isHighScore(score).then(result => {
               if (!levelSkipped && result) {
                 setShowHighScoreEntry(true);
@@ -1515,14 +1323,14 @@ export const Game = ({
               }
             });
           } else {
-            // Reset ball and clear power-ups, but wait for click to continue
-            const baseSpeed = 5.175; // 50% faster base speed
-            const initialAngle = -20 * Math.PI / 180; // Start from left side
+            // Reset ball and continue
+            const baseSpeed = 5.175;
+            const initialAngle = -20 * Math.PI / 180;
             const resetBall: Ball = {
               x: SCALED_CANVAS_WIDTH / 2,
               y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
-              dx: baseSpeed * Math.sin(initialAngle),  // Calculate from angle
-              dy: -baseSpeed * Math.cos(initialAngle), // Calculate from angle
+              dx: baseSpeed * Math.sin(initialAngle),
+              dy: -baseSpeed * Math.cos(initialAngle),
               radius: SCALED_BALL_RADIUS,
               speed: baseSpeed,
               id: nextBallId.current++,
@@ -1530,9 +1338,9 @@ export const Game = ({
               waitingToLaunch: true
             };
             setBalls([resetBall]);
-            setLaunchAngle(-20); // Start from left side
-            launchAngleDirectionRef.current = 1; // Move right initially
-            setShowInstructions(true); // Show instructions when resetting ball
+            setLaunchAngle(-20);
+            launchAngleDirectionRef.current = 1;
+            setShowInstructions(true);
             setPowerUps([]);
             setPaddle(prev => prev ? {
               ...prev,
@@ -1540,12 +1348,10 @@ export const Game = ({
               hasShield: false,
               width: SCALED_PADDLE_WIDTH
             } : null);
-            setBullets([]); // Clear all bullets
-            // Only reset speed if it's slower than base speed
+            setBullets([]);
             if (speedMultiplier < 1) {
               setSpeedMultiplier(1);
             }
-            // Reset accumulated brick hit speed on death
             setBrickHitSpeedAccumulated(0);
             setTimer(0);
             setEnemies([]);
@@ -1561,9 +1367,10 @@ export const Game = ({
           return newLives;
         });
       }
+
       return updatedBalls;
     });
-  }, [paddle, balls, createPowerUp, setPowerUps, nextLevel, speedMultiplier]);
+  }, [paddle, balls, bricks, createPowerUp, setPowerUps, nextLevel, speedMultiplier, brickHitSpeedAccumulated, level, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT, SCALED_PADDLE_WIDTH, SCALED_BALL_RADIUS, scaleFactor, levelSkipped, score, isHighScore, createHighScoreParticles, setHighScoreParticles, bombIntervalsRef, createExplosionParticles]);
   
   // Boss defeat handler
   const handleBossDefeat = useCallback((defeatedBoss: Boss) => {
