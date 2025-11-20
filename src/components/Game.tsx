@@ -427,7 +427,7 @@ export const Game = ({
         if (cellValue === true || cellValue === 2 || cellValue === 3 || cellValue === 4) {
           const isIndestructible = cellValue === 2;
           
-          // Determine brick type based on cell value or level
+          // Determine brick type based on cell value
           let brickType: "normal" | "metal" | "cracked" | "explosive" = "normal";
           if (cellValue === 2) {
             brickType = "metal";
@@ -435,16 +435,6 @@ export const Game = ({
             brickType = "explosive";
           } else if (cellValue === 4) {
             brickType = "cracked";
-          } else {
-            // For true values, randomly assign special types after level 3
-            const typeRoll = Math.random();
-            if (currentLevel >= 3) {
-              if (typeRoll < 0.08) {
-                brickType = "explosive"; // 8% chance
-              } else if (typeRoll < 0.20) {
-                brickType = "cracked"; // 12% chance (requires 2 hits)
-              }
-            }
           }
           
           const hasPowerUp = isIndestructible ? false : Math.random() < POWERUP_DROP_CHANCE;
