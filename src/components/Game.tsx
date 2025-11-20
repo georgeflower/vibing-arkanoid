@@ -1198,6 +1198,9 @@ export const Game = ({
       ballResults.forEach((result, ballIndex) => {
         if (!result.ball) return;
 
+        // Store original velocity to restore for fireball pass-through
+        const originalVelocity = { dx: result.ball.dx, dy: result.ball.dy };
+
         // Sort events chronologically by time-of-impact (CCD already provides this, but explicit for safety)
         const sortedEvents = result.events.sort((a, b) => a.t - b.t);
 
@@ -1367,11 +1370,6 @@ export const Game = ({
               
               // CRITICAL: Check if brick already processed this frame (prevents diagonal grazing multi-hits)
               if (brickUpdates.has(brick.id)) {
-                console.log('[CCD-Revalidation] Brick already damaged this frame, skipping', {
-                  brickId: brick.id,
-                  eventTime: event.t,
-                  ballIndex
-                });
                 break;
               }
 
@@ -1415,7 +1413,9 @@ export const Game = ({
                   explosiveBricksToDetonate.push(brick);
                 }
                 
-                // Fireball continues through (no velocity change)
+                // Fireball continues through (restore pre-collision velocity to undo CCD bounce)
+                result.ball.dx = originalVelocity.dx;
+                result.ball.dy = originalVelocity.dy;
                 break;
               }
 
