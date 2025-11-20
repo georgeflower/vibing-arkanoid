@@ -63,7 +63,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     };
     
     // Debug flag for boss hitbox
-    const SHOW_BOSS_HITBOX = true;
+    const SHOW_BOSS_HITBOX = false;
     
     // Helper function to detect adjacent metal bricks for seamless rendering
     const getAdjacentMetalBricks = (brick: Brick, allBricks: Brick[]) => {
