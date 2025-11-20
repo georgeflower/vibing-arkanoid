@@ -409,7 +409,12 @@ export const Game = ({
     // Check if this is a boss level
     if (BOSS_LEVELS.includes(currentLevel)) {
       const newBoss = createBoss(currentLevel, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT);
-      setBoss(newBoss);
+      // Initialize boss with lastHitAt timestamp for cooldown tracking
+      if (newBoss) {
+        setBoss({ ...newBoss, lastHitAt: 0 });
+      } else {
+        setBoss(newBoss);
+      }
       setBossActive(true);
       setResurrectedBosses([]);
       setBossAttacks([]);
@@ -1588,9 +1593,9 @@ export const Game = ({
           }
         }
         
-        // Calculate penetration and push out in unrotated space
+        // Calculate penetration and push out in unrotated space with safety margin
         const dist = Math.sqrt(distSq);
-        const penetration = ball.radius - dist;
+        const penetration = ball.radius - dist + 1; // +1 pixel safety margin
         const pushX = ux + (distX / dist) * penetration;
         const pushY = uy + (distY / dist) * penetration;
         
@@ -1615,6 +1620,7 @@ export const Game = ({
         const centerX = boss.x + boss.width / 2;
         const centerY = boss.y + boss.height / 2;
         const HITBOX_EXPAND = 1;
+        const SAFETY_MARGIN = 1; // Prevent micro-penetration
         
         const dx = ball.x - centerX;
         const dy = ball.y - centerY;
@@ -1628,8 +1634,8 @@ export const Game = ({
         const normalX = dx / dist;
         const normalY = dy / dist;
         
-        // Push ball out to correct position
-        const overlap = totalRadius - dist;
+        // Push ball out to correct position with safety margin
+        const overlap = totalRadius - dist + SAFETY_MARGIN;
         const newX = ball.x + normalX * overlap;
         const newY = ball.y + normalY * overlap;
         
@@ -1710,8 +1716,8 @@ export const Game = ({
         
         if (closestDist >= ball.radius) return null;
         
-        // Push ball out to correct position
-        const penetration = ball.radius - closestDist;
+        // Push ball out to correct position with +1 pixel safety margin
+        const penetration = ball.radius - closestDist + 1;
         const newX = ball.x + closestNormal.x * penetration;
         const newY = ball.y + closestNormal.y * penetration;
         
@@ -1769,14 +1775,87 @@ export const Game = ({
               
               console.log('[BossDebug] Boss damage applied', { oldHealth: prev.currentHealth, newHealth });
               
+              // Handle boss defeat based on type
               if (newHealth <= 0) {
-                soundManager.playExplosion();
-                toast.success(`Boss defeated! +${BOSS_CONFIG[prev.type].points} points`);
-                explosionsToCreate.push({
-                  x: prev.x + prev.width / 2,
-                  y: prev.y + prev.height / 2,
-                  type: prev.type as EnemyType
-                });
+                if (prev.type === 'cube') {
+                  // Cube boss - simple defeat
+                  soundManager.playExplosion();
+                  soundManager.playBossDefeatSound();
+                  setScore(s => s + BOSS_CONFIG.cube.points);
+                  toast.success(`CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points`);
+                  explosionsToCreate.push({
+                    x: prev.x + prev.width / 2,
+                    y: prev.y + prev.height / 2,
+                    type: 'cube' as EnemyType
+                  });
+                  setBossesKilled(k => k + 1);
+                  setBossActive(false);
+                  // Stop boss music and resume background music
+                  soundManager.stopBossMusic();
+                  soundManager.resumeBackgroundMusic();
+                  // Proceed to next level after 3 seconds
+                  setTimeout(() => nextLevel(), 3000);
+                  return null;
+                } else if (prev.type === 'sphere') {
+                  // Sphere boss - check phase
+                  if (prev.currentStage === 1) {
+                    // Phase 1 complete -> Phase 2
+                    soundManager.playExplosion();
+                    toast.error("SPHERE PHASE 2: DESTROYER MODE!");
+                    explosionsToCreate.push({
+                      x: prev.x + prev.width / 2,
+                      y: prev.y + prev.height / 2,
+                      type: 'sphere' as EnemyType
+                    });
+                    return { 
+                      ...prev, 
+                      currentHealth: BOSS_CONFIG.sphere.healthPhase2,
+                      currentStage: 2,
+                      isAngry: true,
+                      speed: BOSS_CONFIG.sphere.angryMoveSpeed,
+                      lastHitAt: now
+                    };
+                  } else {
+                    // Phase 2 complete -> Defeated
+                    soundManager.playExplosion();
+                    soundManager.playBossDefeatSound();
+                    setScore(s => s + BOSS_CONFIG.sphere.points);
+                    toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points`);
+                    explosionsToCreate.push({
+                      x: prev.x + prev.width / 2,
+                      y: prev.y + prev.height / 2,
+                      type: 'sphere' as EnemyType
+                    });
+                    setBossesKilled(k => k + 1);
+                    setBossActive(false);
+                    // Stop boss music and resume background music
+                    soundManager.stopBossMusic();
+                    soundManager.resumeBackgroundMusic();
+                    setTimeout(() => nextLevel(), 3000);
+                    return null;
+                  }
+                } else if (prev.type === 'pyramid') {
+                  // Pyramid boss - check phase
+                  if (prev.currentStage === 1) {
+                    // Phase 1 complete -> Spawn 3 resurrected pyramids
+                    soundManager.playExplosion();
+                    toast.error("PYRAMID LORD SPLITS INTO 3!");
+                    explosionsToCreate.push({
+                      x: prev.x + prev.width / 2,
+                      y: prev.y + prev.height / 2,
+                      type: 'pyramid' as EnemyType
+                    });
+                    
+                    // Create 3 smaller resurrected pyramids
+                    const resurrected: Boss[] = [];
+                    for (let i = 0; i < 3; i++) {
+                      resurrected.push(createResurrectedPyramid(prev, i, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT));
+                    }
+                    setResurrectedBosses(resurrected);
+                    
+                    return null; // Remove main boss
+                  }
+                }
               } else {
                 toast.info(`BOSS: ${newHealth} HP`, { 
                   duration: 1000,
@@ -1858,6 +1937,10 @@ export const Game = ({
                   if (newBosses.length === 0) {
                     toast.success("ALL PYRAMIDS DEFEATED!");
                     setBossActive(false);
+                    setBossesKilled(k => k + 1);
+                    // Stop boss music and resume background music
+                    soundManager.stopBossMusic();
+                    soundManager.resumeBackgroundMusic();
                     setTimeout(() => nextLevel(), 3000);
                   }
                 } else {
@@ -2024,48 +2107,6 @@ export const Game = ({
       return updatedBalls;
     });
   }, [paddle, balls, bricks, boss, resurrectedBosses, enemies, createPowerUp, setPowerUps, nextLevel, speedMultiplier, brickHitSpeedAccumulated, level, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT, SCALED_PADDLE_WIDTH, SCALED_BALL_RADIUS, scaleFactor, levelSkipped, score, isHighScore, createHighScoreParticles, setHighScoreParticles, bombIntervalsRef, createExplosionParticles]);
-  
-  // Boss defeat handler
-  const handleBossDefeat = useCallback((defeatedBoss: Boss) => {
-    const config = BOSS_CONFIG[defeatedBoss.type];
-    
-    setScore(s => s + config.points);
-    setBossesKilled(prev => prev + 1);
-    toast.success(`${defeatedBoss.type.toUpperCase()} BOSS DEFEATED! +${config.points} points`, { duration: 4000 });
-    
-    // Big explosion
-    setExplosions(prev => [...prev, {
-      x: defeatedBoss.x + defeatedBoss.width / 2,
-      y: defeatedBoss.y + defeatedBoss.height / 2,
-      frame: 0,
-      maxFrames: 40,
-      enemyType: defeatedBoss.type as EnemyType,
-      particles: createExplosionParticles(
-        defeatedBoss.x + defeatedBoss.width / 2,
-        defeatedBoss.y + defeatedBoss.height / 2,
-        defeatedBoss.type as EnemyType
-      )
-    }]);
-    
-    soundManager.playExplosion();
-    setScreenShake(15);
-    setBackgroundFlash(1);
-    setTimeout(() => {
-      setScreenShake(0);
-      setBackgroundFlash(0);
-    }, 1000);
-    
-    // Clear all balls immediately
-    setBalls([]);
-    
-    // Progress to next level after delay
-    setTimeout(() => {
-      soundManager.stopBossMusic();
-      soundManager.resumeBackgroundMusic();
-      setBossActive(false);
-      nextLevel();
-    }, 3000);
-  }, [createExplosionParticles, nextLevel]);
   
   // FPS tracking for adaptive quality
   const fpsTrackerRef = useRef({ lastTime: performance.now(), frameCount: 0, fps: 60 });
