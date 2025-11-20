@@ -1806,15 +1806,16 @@ export const Game = ({
         }
         
         if (collision) {
+          // ALWAYS apply position and velocity corrections (physics)
+          result.ball.x = collision.newX;
+          result.ball.y = collision.newY;
+          result.ball.dx = collision.newVelocityX;
+          result.ball.dy = collision.newVelocityY;
+          
+          // ONLY deal damage if cooldown has elapsed (game logic)
           const now = Date.now();
-          if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 700) {
+          if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 1000) {
             result.ball.lastHitTime = now;
-            
-            // Apply both position and velocity corrections
-            result.ball.x = collision.newX;
-            result.ball.y = collision.newY;
-            result.ball.dx = collision.newVelocityX;
-            result.ball.dy = collision.newVelocityY;
             
             soundManager.playBossHitSound();
             setScreenShake(8);
