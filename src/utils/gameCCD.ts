@@ -1,5 +1,5 @@
 import { processBallCCD, Ball as CCDBall, Brick as CCDBrick, Paddle as CCDPaddle, CollisionEvent } from './processBallCCD';
-import { Brick, Ball, Paddle } from '@/types/game';
+import { Brick, Ball, Paddle, Boss, Enemy } from '@/types/game';
 
 export interface CCDResult {
   ball: Ball | null;
@@ -7,6 +7,8 @@ export interface CCDResult {
   debug?: any;
   substepsUsed: number;
   maxIterations: number;
+  collisionCount: number;
+  toiIterationsUsed: number;
 }
 
 export function processBallWithCCD(
@@ -18,6 +20,9 @@ export function processBallWithCCD(
     canvasSize: { w: number; h: number };
     speedMultiplier: number;
     minBrickDimension: number;
+    boss?: Boss | null;
+    resurrectedBosses?: Boss[];
+    enemies?: Enemy[];
   }
 ): CCDResult {
   // Calculate adaptive substeps based on ball speed
@@ -35,6 +40,7 @@ export function processBallWithCCD(
     lastHitTick: ball.lastHitTime
   };
 
+  // Convert bricks to CCD format, including visible bricks
   const ccdBricks: CCDBrick[] = gameState.bricks
     .map((b, index) => ({
       id: index,
@@ -45,6 +51,46 @@ export function processBallWithCCD(
       visible: b.visible
     }))
     .filter(b => b.visible);
+
+  // Add boss as a large brick if present (use negative ID to distinguish from bricks)
+  if (gameState.boss) {
+    ccdBricks.push({
+      id: -1, // Boss ID
+      x: gameState.boss.x,
+      y: gameState.boss.y,
+      width: gameState.boss.width,
+      height: gameState.boss.height,
+      visible: true
+    });
+  }
+
+  // Add resurrected bosses as bricks (use negative IDs)
+  if (gameState.resurrectedBosses) {
+    gameState.resurrectedBosses.forEach((resBoss, idx) => {
+      ccdBricks.push({
+        id: -(idx + 2), // Resurrected boss IDs: -2, -3, -4
+        x: resBoss.x,
+        y: resBoss.y,
+        width: resBoss.width,
+        height: resBoss.height,
+        visible: true
+      });
+    });
+  }
+
+  // Add enemies as small bricks (use large positive IDs to avoid collision with brick indices)
+  if (gameState.enemies) {
+    gameState.enemies.forEach((enemy, idx) => {
+      ccdBricks.push({
+        id: 100000 + idx, // Enemy IDs: 100000+
+        x: enemy.x,
+        y: enemy.y,
+        width: enemy.width,
+        height: enemy.height,
+        visible: true
+      });
+    });
+  }
 
   const ccdPaddle: CCDPaddle = {
     x: gameState.paddle.x,
@@ -67,6 +113,12 @@ export function processBallWithCCD(
     maxSubstepTravelFactor: 0.9
   });
 
+  // Calculate collision count and max TOI iterations from debug data
+  const collisionCount = result.events.length;
+  const toiIterationsUsed = result.debug && Array.isArray(result.debug) 
+    ? Math.max(...result.debug.map((d: any) => d.iter || 0), 0)
+    : 0;
+
   // Convert result back to game types
   if (!result.ball) {
     return {
@@ -74,7 +126,9 @@ export function processBallWithCCD(
       events: result.events,
       debug: result.debug,
       substepsUsed: PHYSICS_SUBSTEPS,
-      maxIterations: 3
+      maxIterations: 3,
+      collisionCount,
+      toiIterationsUsed
     };
   }
 
@@ -92,6 +146,8 @@ export function processBallWithCCD(
     events: result.events,
     debug: result.debug,
     substepsUsed: PHYSICS_SUBSTEPS,
-    maxIterations: 3
+    maxIterations: 3,
+    collisionCount,
+    toiIterationsUsed
   };
 }
