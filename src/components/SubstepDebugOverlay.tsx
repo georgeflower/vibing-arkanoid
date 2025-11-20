@@ -5,8 +5,6 @@ interface SubstepDebugInfo {
   ballSpeed: number;
   ballCount: number;
   maxSpeed: number;
-  collisionsPerFrame: number;
-  toiIterations: number;
 }
 
 interface SubstepDebugOverlayProps {
@@ -19,9 +17,7 @@ export const SubstepDebugOverlay = ({ getDebugInfo, visible = true }: SubstepDeb
     substeps: 0,
     ballSpeed: 0,
     ballCount: 0,
-    maxSpeed: 0,
-    collisionsPerFrame: 0,
-    toiIterations: 0
+    maxSpeed: 0
   });
 
   useEffect(() => {
@@ -39,7 +35,7 @@ export const SubstepDebugOverlay = ({ getDebugInfo, visible = true }: SubstepDeb
   return (
     <div className="fixed top-20 left-2 bg-black/80 text-white p-3 rounded-lg font-mono text-xs z-50 pointer-events-none select-none">
       <div className="space-y-1">
-        <div className="font-bold text-primary mb-2">CCD Physics Debug</div>
+        <div className="font-bold text-primary mb-2">Substep Debug</div>
         
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Substeps:</span>
@@ -64,30 +60,11 @@ export const SubstepDebugOverlay = ({ getDebugInfo, visible = true }: SubstepDeb
           <span className="text-muted-foreground">Ball Count:</span>
           <span>{debugInfo.ballCount}</span>
         </div>
-
-        <div className="pt-1 mt-1 border-t border-border/20">
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Collisions/Frame:</span>
-            <span className={debugInfo.collisionsPerFrame > 2 ? "text-yellow-400" : "text-green-400"}>
-              {debugInfo.collisionsPerFrame}
-            </span>
-          </div>
-          
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">TOI Iterations:</span>
-            <span className={debugInfo.toiIterations > 2 ? "text-yellow-400" : "text-green-400"}>
-              {debugInfo.toiIterations}
-            </span>
-          </div>
-        </div>
       </div>
       
       <div className="mt-2 pt-2 border-t border-border/20 text-[10px] text-muted-foreground">
         {debugInfo.substeps > 1 && (
-          <div className="text-yellow-400">⚡ Multi-substep CCD active</div>
-        )}
-        {debugInfo.collisionsPerFrame > 0 && (
-          <div className="text-cyan-400">🎯 Zero tunneling guaranteed</div>
+          <div className="text-yellow-400">⚡ Multi-substep active</div>
         )}
         Press 'TAB' to toggle this overlay
       </div>

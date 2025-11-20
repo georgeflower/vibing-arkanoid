@@ -12,9 +12,9 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { Maximize2, Minimize2, Home } from "lucide-react";
-import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, GameSettings, EnemyType, Particle, Boss, BossAttack, ShieldImpact, PowerUp, PowerUpType } from "@/types/game";
+import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, GameSettings, EnemyType, Particle, Boss, BossAttack, ShieldImpact } from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
-import { CANVAS_WIDTH, CANVAS_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, BRICK_ROWS, BRICK_COLS, BRICK_WIDTH, BRICK_HEIGHT, BRICK_PADDING, BRICK_OFFSET_TOP, BRICK_OFFSET_LEFT, brickColors, POWERUP_DROP_CHANCE, getHitColor, getBrickColors, POWERUP_SIZE, POWERUP_FALL_SPEED } from "@/constants/game";
+import { CANVAS_WIDTH, CANVAS_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, BRICK_ROWS, BRICK_COLS, BRICK_WIDTH, BRICK_HEIGHT, BRICK_PADDING, BRICK_OFFSET_TOP, BRICK_OFFSET_LEFT, brickColors, POWERUP_DROP_CHANCE, getHitColor, getBrickColors } from "@/constants/game";
 import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
@@ -24,8 +24,6 @@ import { FixedStepGameLoop } from "@/utils/gameLoop";
 import { createBoss, createResurrectedPyramid } from "@/utils/bossUtils";
 import { performBossAttack } from "@/utils/bossAttacks";
 import { BOSS_LEVELS, BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
-import { processBallWithCCD } from "@/utils/gameCCD";
-import { checkCircleVsRoundedPaddle } from "@/utils/paddleCollision";
 interface GameProps {
   settings: GameSettings;
   onReturnToMenu: () => void;
@@ -61,7 +59,6 @@ export const Game = ({
   const [balls, setBalls] = useState<Ball[]>([]);
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
-  const prevPaddleX = useRef(0);
   const [showHighScoreEntry, setShowHighScoreEntry] = useState(false);
   const [showHighScoreDisplay, setShowHighScoreDisplay] = useState(false);
   const [showEndScreen, setShowEndScreen] = useState(false);
@@ -84,9 +81,7 @@ export const Game = ({
   const [boss, setBoss] = useState<Boss | null>(null);
   const [resurrectedBosses, setResurrectedBosses] = useState<Boss[]>([]);
   const [bossAttacks, setBossAttacks] = useState<BossAttack[]>([]);
-  const [bossDefeatedTransitioning, setBossDefeatedTransitioning] = useState(false);
   const [bossActive, setBossActive] = useState(false);
-  const [bossHitCooldown, setBossHitCooldown] = useState(0);
   const [laserWarnings, setLaserWarnings] = useState<Array<{ x: number; startTime: number }>>([]);
   const bossSpawnedEnemiesRef = useRef<Set<number>>(new Set());
   const [isMobileDevice] = useState(() => {
@@ -143,7 +138,6 @@ export const Game = ({
   const launchAngleIntervalRef = useRef<NodeJS.Timeout>();
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const timerStartedRef = useRef(false);
-  const nextLevelRef = useRef<(() => void) | null>(null);
   
   // Fixed-step game loop
   const gameLoopRef = useRef<FixedStepGameLoop | null>(null);
@@ -199,8 +193,7 @@ export const Game = ({
     boss,
     resurrectedBosses,
     setBoss,
-    setResurrectedBosses,
-    () => nextLevelRef.current?.()
+    setResurrectedBosses
   );
 
   // Adaptive quality system
@@ -414,12 +407,7 @@ export const Game = ({
     // Check if this is a boss level
     if (BOSS_LEVELS.includes(currentLevel)) {
       const newBoss = createBoss(currentLevel, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT);
-      // Initialize boss with lastHitAt timestamp for cooldown tracking
-      if (newBoss) {
-        setBoss({ ...newBoss, lastHitAt: 0 });
-      } else {
-        setBoss(newBoss);
-      }
+      setBoss(newBoss);
       setBossActive(true);
       setResurrectedBosses([]);
       setBossAttacks([]);
@@ -433,7 +421,6 @@ export const Game = ({
     const layout = levelLayouts[layoutIndex];
     const levelColors = getBrickColors(currentLevel);
     const newBricks: Brick[] = [];
-    let nextBrickId = 1; // Monotonic ID counter for stable brick IDs
     for (let row = 0; row < BRICK_ROWS; row++) {
       for (let col = 0; col < BRICK_COLS; col++) {
         const cellValue = layout[row][col];
@@ -478,7 +465,6 @@ export const Game = ({
           const yPos = row * (SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_TOP 
             - (isIndestructible && row > 0 ? SCALED_BRICK_PADDING / 2 : 0);
           newBricks.push({
-            id: nextBrickId++, // Stable, monotonic ID
             x: xPos,
             y: yPos,
             width: brickWidth,
@@ -637,7 +623,6 @@ export const Game = ({
       setBossAttacks([]);
       setBossActive(false);
       setLaserWarnings([]);
-      setBossDefeatedTransitioning(false);
     } else {
       // Boss level - trigger intro sequence
       setBossIntroActive(true);
@@ -664,9 +649,6 @@ export const Game = ({
       toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
     }
   }, [level, initBricksForLevel, setPowerUps]);
-  
-  // Update nextLevel ref whenever nextLevel function changes
-  nextLevelRef.current = nextLevel;
   useEffect(() => {
     initGame();
     
@@ -1050,49 +1032,6 @@ export const Game = ({
         nextLevel();
         toast.warning("Level skipped! You are DISQUALIFIED from high scores!", { duration: 3000 });
       }
-      
-      // ========== DEBUG TESTING FEATURES - START ==========
-      // These features are for testing and debugging only
-      // Remove before production release
-      
-      else if (e.key === "+" || e.key === "=") {
-        // Increase ball speed by 5%
-        setSpeedMultiplier(prev => {
-          const newSpeed = prev * 1.05;
-          toast.success(`Debug: Speed increased to ${Math.round(newSpeed * 100)}%`);
-          return newSpeed;
-        });
-      }
-      else if (["1", "2", "3", "4", "5", "6", "7", "8"].includes(e.key) && paddle) {
-        // Drop power-ups for testing
-        const powerUpMap: Record<string, PowerUpType> = {
-          "1": "shield",
-          "2": "turrets", 
-          "3": "life",
-          "4": "slowdown",
-          "5": "multiball",
-          "6": "paddleShrink",
-          "7": "paddleExtend",
-          "8": "fireball"
-        };
-        
-        const type = powerUpMap[e.key];
-        const newPowerUp: PowerUp = {
-          x: paddle.x + paddle.width / 2 - POWERUP_SIZE / 2,
-          y: paddle.y - 50, // Drop from above paddle
-          width: POWERUP_SIZE,
-          height: POWERUP_SIZE,
-          type: type,
-          speed: POWERUP_FALL_SPEED,
-          active: true
-        };
-        
-        setPowerUps(prev => [...prev, newPowerUp]);
-        toast.success(`Debug: ${type} power-up dropped`);
-      }
-      
-      // ========== DEBUG TESTING FEATURES - END ==========
-      
     };
     const handlePointerLockChange = () => {
       setIsPointerLocked(document.pointerLockElement === canvas);
@@ -1124,14 +1063,7 @@ export const Game = ({
   // Get substep debug info for overlay
   const getSubstepDebugInfo = useCallback(() => {
     if (balls.length === 0) {
-      return { 
-        substeps: 0, 
-        ballSpeed: 0, 
-        ballCount: 0, 
-        maxSpeed: 0,
-        collisionsPerFrame: 0,
-        toiIterations: 0
-      };
+      return { substeps: 0, ballSpeed: 0, ballCount: 0, maxSpeed: 0 };
     }
     
     const speeds = balls.map(ball => Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy));
@@ -1143,409 +1075,351 @@ export const Game = ({
       substeps,
       ballSpeed: maxBallSpeed * speedMultiplier,
       ballCount: balls.length,
-      maxSpeed: maxBallSpeed,
-      collisionsPerFrame: 0, // Will be updated by CCD results
-      toiIterations: 0 // Will be updated by CCD results
+      maxSpeed: maxBallSpeed
     };
   }, [balls, speedMultiplier, SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT]);
   
   const checkCollision = useCallback(() => {
     if (!paddle || balls.length === 0) return;
-    
-    const dtSeconds = 1 / 60; // Fixed timestep in seconds
-    const frameTick = gameLoopRef.current?.getFrameTick() || 0;
-    const minBrickDimension = Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT);
-    
     setBalls(prevBalls => {
-      // CRITICAL: Clear per-ball temp flags at start of collision pass
-      prevBalls.forEach(ball => {
-        delete (ball as any)._hitBossThisFrame;
-      });
-      
-      // Phase 1: Run CCD for all balls
-      const ballResults = prevBalls.map(ball => 
-        processBallWithCCD(ball, dtSeconds, frameTick, {
-          bricks,
-          paddle,
-          canvasSize: { w: SCALED_CANVAS_WIDTH, h: SCALED_CANVAS_HEIGHT },
-          speedMultiplier,
-          minBrickDimension,
-          boss: boss || null,
-          resurrectedBosses,
-          enemies
-        })
-      );
+      let updatedBalls = prevBalls.map(ball => {
+        // Multi-substep collision detection to prevent tunneling at high speeds
+        const ballSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+        const minBrickDimension = Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT);
+        
+        // Calculate required substeps based on ball speed (adaptive)
+        // Minimum 2 substeps to prevent tunneling even at normal speeds
+        const PHYSICS_SUBSTEPS = Math.max(2, Math.ceil(ballSpeed * speedMultiplier / (minBrickDimension * 0.15)));
+        
+        let newBall = { ...ball };
+        const substepDx = ball.dx / PHYSICS_SUBSTEPS;
+        const substepDy = ball.dy / PHYSICS_SUBSTEPS;
+        
+        // Process each substep
+        for (let substep = 0; substep < PHYSICS_SUBSTEPS; substep++) {
+          // Move ball by substep amount
+          newBall.x += substepDx * speedMultiplier;
+          newBall.y += substepDy * speedMultiplier;
 
-      // Phase 2: Deduplicate collision events by object with TOI tolerance
-      const EPS_TOI = 0.01; // Tolerance for considering events "simultaneous"
-      const processedObjects = new Map<string, number>(); // objectKey -> lastTOI
-      const brickUpdates = new Map<number, { hitsRemaining: number; visible: boolean }>();
-      let scoreIncrease = 0;
-      let bricksDestroyedCount = 0;
-      let comboIncrease = 0;
-      const powerUpsToCreate: Brick[] = [];
-      const explosiveBricksToDetonate: Brick[] = [];
-      const soundsToPlay: Array<{ type: string; param?: any }> = [];
-      
-      // Enemy batched updates
-      const enemiesToUpdate = new Map<number, Partial<Enemy>>();
-      const enemiesToDestroy = new Set<number>();
-      const explosionsToCreate: Array<{x: number, y: number, type: EnemyType}> = [];
-      const bonusLetterDrops: Array<{x: number, y: number}> = [];
-      const bombIntervalsToClean: number[] = [];
-      let enemiesKilledIncrease = 0;
-      
-      ballResults.forEach((result, ballIndex) => {
-        if (!result.ball) return;
-
-
-        // Sort events chronologically by time-of-impact (CCD already provides this, but explicit for safety)
-        const sortedEvents = result.events.sort((a, b) => a.t - b.t);
-
-        sortedEvents.forEach(event => {
+          // Wall collision with cooldown to prevent corner traps
           const now = Date.now();
-          const objectKey = `${event.objectType}-${event.objectId}`;
+          const wallCooldown = 50; // 50ms cooldown between wall hits (increased from 10ms)
           
-          // Debug log for boss-related IDs
-          if (typeof event.objectId === 'number' && event.objectId <= 0) {
-            console.log('[CCD] Negative objectId event', {
-              objectType: event.objectType,
-              objectId: event.objectId,
-              point: event.point,
-              bossPresent: !!boss,
-              bossRect: boss ? { x: boss.x, y: boss.y, w: boss.width, h: boss.height } : null,
-            });
-          }
+          const canHitWall = !newBall.lastWallHitTime || (now - newBall.lastWallHitTime >= wallCooldown);
           
-          // Check if this event is a duplicate (same object hit within EPS_TOI)
-          const lastTOI = processedObjects.get(objectKey);
-          const isDuplicate = event.objectType !== 'wall' && event.objectType !== 'paddle' && 
-                              lastTOI !== undefined && Math.abs(event.t - lastTOI) < EPS_TOI;
-          
-          if (!isDuplicate) {
-            processedObjects.set(objectKey, event.t);
-          }
-          
-          switch (event.objectType) {
-            case 'wall':
-              if (!isDuplicate) {
+          if (canHitWall) {
+            // Check for corner collision (both walls hit simultaneously)
+            const hitLeftWall = newBall.x < newBall.radius;
+            const hitRightWall = newBall.x > SCALED_CANVAS_WIDTH - newBall.radius;
+            const hitTopWall = newBall.y < newBall.radius;
+            
+            const isCornerCollision = (hitLeftWall || hitRightWall) && hitTopWall;
+            
+            if (isCornerCollision) {
+              // Special corner handling - reverse both velocities with random perturbation
+              newBall.dx = -newBall.dx * (0.95 + Math.random() * 0.1); // ±5% perturbation
+              newBall.dy = -newBall.dy * (0.95 + Math.random() * 0.1); // ±5% perturbation
+              
+              // Push ball away from BOTH walls with larger buffer
+              if (hitLeftWall) newBall.x = newBall.radius + 3;
+              if (hitRightWall) newBall.x = SCALED_CANVAS_WIDTH - newBall.radius - 3;
+              if (hitTopWall) newBall.y = newBall.radius + 3;
+              
+              newBall.lastWallHitTime = now;
+              soundManager.playBounce();
+            } else {
+              // Normal wall collision handling
+              if (newBall.x > SCALED_CANVAS_WIDTH - newBall.radius || newBall.x < newBall.radius) {
+                newBall.dx = -newBall.dx;
+                newBall.lastWallHitTime = now;
                 soundManager.playBounce();
-              }
-              break;
-
-            case 'paddle':
-              // Adjust angle based on hit position (always apply physics)
-              const hitPos = (event.point.x - paddle.x) / paddle.width;
-              const angle = (hitPos - 0.5) * Math.PI * 0.6;
-              const speed = Math.sqrt(result.ball.dx * result.ball.dx + result.ball.dy * result.ball.dy);
-              result.ball.dx = speed * Math.sin(angle);
-              result.ball.dy = -Math.abs(speed * Math.cos(angle));
-              if (!isDuplicate) {
-                soundManager.playBounce();
-                setLastPaddleHitTime(now);
-              }
-              break;
-
-            case 'brick':
-            case 'corner':
-              // Find the object by ID
-              const objectId = typeof event.objectId === 'number' ? event.objectId : -1;
-              // Boss collisions now handled by shape-specific checks below (Phase 3.5)
-              // This section removed to prevent duplicate/conflicting collision logic
-              // Resurrected boss collisions now handled by shape-specific checks below
-              // This section removed to prevent duplicate/conflicting collision logic
-              
-              // Handle enemy collision (ID >= 100000)
-              if (objectId >= 100000) {
-                const enemyIndex = objectId - 100000;
-                const enemy = enemies[enemyIndex];
                 
-                if (enemy && !isDuplicate) {
-                  // Handle different enemy types with multi-hit logic
-                  if (enemy.type === "pyramid") {
-                    const currentHits = enemy.hits || 0;
-                    
-                    if (currentHits < 2) {
-                      // Pyramid not destroyed yet - damage it
-                      soundManager.playBounce();
-                      enemiesToUpdate.set(enemy.id!, {
-                        hits: currentHits + 1,
-                        isAngry: currentHits === 1,
-                        speed: currentHits === 1 ? enemy.speed * 1.5 : enemy.speed,
-                        dx: currentHits === 1 ? enemy.dx * 1.5 : enemy.dx,
-                        dy: currentHits === 1 ? enemy.dy * 1.5 : enemy.dy
-                      });
-                      if (currentHits === 0) {
-                        toast.warning("Pyramid hit! 2 more hits needed");
-                      } else {
-                        toast.warning("Pyramid is angry! 1 more hit!");
-                      }
-                      setScreenShake(5);
-                      setTimeout(() => setScreenShake(0), 500);
-                    } else {
-                      // Third hit - destroy pyramid
-                      enemiesToDestroy.add(enemyIndex);
-                      explosionsToCreate.push({
-                        x: enemy.x + enemy.width / 2,
-                        y: enemy.y + enemy.height / 2,
-                        type: enemy.type
-                      });
-                      scoreIncrease += 300;
-                      toast.success("Pyramid destroyed! +300 points");
-                      soundManager.playExplosion();
-                      enemiesKilledIncrease++;
-                      bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
-                      
-                      if (enemy.id !== undefined) {
-                        bombIntervalsToClean.push(enemy.id);
-                      }
-                    }
-                  } 
-                  else if (enemy.type === "sphere") {
-                    const currentHits = enemy.hits || 0;
-                    
-                    if (currentHits === 0) {
-                      // First hit - make angry
-                      soundManager.playBounce();
-                      enemiesToUpdate.set(enemy.id!, {
-                        hits: 1,
-                        isAngry: true,
-                        speed: enemy.speed * 1.3,
-                        dx: enemy.dx * 1.3,
-                        dy: enemy.dy * 1.3
-                      });
-                      toast.warning("Sphere enemy is angry!");
-                      setScreenShake(5);
-                      setTimeout(() => setScreenShake(0), 500);
-                    } else {
-                      // Second hit - destroy sphere
-                      enemiesToDestroy.add(enemyIndex);
-                      explosionsToCreate.push({
-                        x: enemy.x + enemy.width / 2,
-                        y: enemy.y + enemy.height / 2,
-                        type: enemy.type
-                      });
-                      scoreIncrease += 200;
-                      toast.success("Sphere enemy destroyed! +200 points");
-                      soundManager.playExplosion();
-                      enemiesKilledIncrease++;
-                      bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
-                      
-                      if (enemy.id !== undefined) {
-                        bombIntervalsToClean.push(enemy.id);
-                      }
-                    }
-                  } 
-                  else {
-                    // Cube enemy - one hit kill
-                    enemiesToDestroy.add(enemyIndex);
-                    explosionsToCreate.push({
-                      x: enemy.x + enemy.width / 2,
-                      y: enemy.y + enemy.height / 2,
-                      type: enemy.type
-                    });
-                    scoreIncrease += 100;
-                    toast.success("Cube enemy destroyed! +100 points");
-                    soundManager.playExplosion();
-                    enemiesKilledIncrease++;
-                    setScreenShake(3);
-                    setTimeout(() => setScreenShake(0), 300);
-                    bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
-                    
-                    if (enemy.id !== undefined) {
-                      bombIntervalsToClean.push(enemy.id);
-                    }
-                  }
-                }
-                break;
-              }
-              
-              // Handle brick collision - Re-validate before processing
-              const brick = bricks.find(b => b.id === objectId);
-              
-              // Re-validation: Skip if brick doesn't exist, already destroyed, or already damaged this frame
-              if (!brick || !brick.visible) break;
-              
-              // CRITICAL: Check if brick already processed this frame (prevents diagonal grazing multi-hits)
-              if (brickUpdates.has(brick.id)) {
-                break;
-              }
-
-              // Handle indestructible (metal) bricks
-              if (brick.isIndestructible) {
-                if (!isDuplicate) {
-                  soundManager.playBounce();
-                  setCurrentCombo(0);
-                }
-                break;
-              }
-
-              // Fireball instantly destroys all non-metal bricks
-              if (result.ball.isFireball) {
-                // Instantly destroy brick
-                brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
-                
-                // Play destruction sound
-                if (!isDuplicate) {
-                  if (brick.type === 'cracked') {
-                    soundsToPlay.push({ type: 'cracked', param: brick.hitsRemaining });
-                  } else {
-                    soundsToPlay.push({ type: 'brick' });
-                  }
-                }
-                
-                // Award points
-                if (!isDuplicate) {
-                  scoreIncrease += brick.points;
-                  bricksDestroyedCount += 1;
-                  comboIncrease += 1;
-                }
-                
-                // Power-up drop
-                if (!isDuplicate && Math.random() < POWERUP_DROP_CHANCE) {
-                  powerUpsToCreate.push(brick);
-                }
-                
-                // Explosive brick handling
-                if (!isDuplicate && brick.type === 'explosive') {
-                  explosiveBricksToDetonate.push(brick);
-                }
-                
-                // Fireball continues through: undo CCD bounce by reconstructing pre-collision velocity
-                const vX = result.ball.dx;
-                const vY = result.ball.dy;
-                const nX = event.normal.x;
-                const nY = event.normal.y;
-                const dot = vX * nX + vY * nY;
-
-                const incomingVX = vX - 2 * dot * nX;
-                const incomingVY = vY - 2 * dot * nY;
-
-                result.ball.dx = incomingVX;
-                result.ball.dy = incomingVY;
-
-                // Don't break - allow processing of next collision events in this frame
-              } else {
-                // Normal brick damage (non-fireball)
-                const currentHitsRemaining = brick.hitsRemaining;
-                const newHitsRemaining = currentHitsRemaining - 1;
-                const brickDestroyed = newHitsRemaining <= 0;
-
-                // Play sound only if not duplicate
-                if (!isDuplicate) {
-                  if (brick.type === 'cracked') {
-                    soundsToPlay.push({ type: 'cracked', param: currentHitsRemaining });
-                  } else {
-                    soundsToPlay.push({ type: 'brick' });
-                  }
-                }
-
-                if (brickDestroyed) {
-                  // Mark brick for destruction
-                  brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
-                  
-                  // Only add score/combo once per brick
-                  if (!isDuplicate) {
-                    scoreIncrease += brick.points;
-                    bricksDestroyedCount += 1;
-                    comboIncrease += 1;
-                  }
-
-                  // Speed increase (cap at 30%)
-                  if (brickHitSpeedAccumulated < 0.3) {
-                    const speedIncrease = 0.005;
-                    setBrickHitSpeedAccumulated(prev => Math.min(0.3, prev + speedIncrease));
-                    result.ball.dx *= (1 + speedIncrease);
-                    result.ball.dy *= (1 + speedIncrease);
-                  }
-
-                  // Power-up drop - only once per brick
-                  if (!isDuplicate && Math.random() < POWERUP_DROP_CHANCE) {
-                    powerUpsToCreate.push(brick);
-                  }
-
-                  // Explosive brick handling - only once per brick
-                  if (!isDuplicate && brick.type === 'explosive') {
-                    explosiveBricksToDetonate.push(brick);
-                  }
+                // Correct position with buffer
+                if (newBall.x > SCALED_CANVAS_WIDTH - newBall.radius) {
+                  newBall.x = SCALED_CANVAS_WIDTH - newBall.radius - 3;
                 } else {
-                  // Brick damaged but not destroyed
-                  brickUpdates.set(brick.id, { visible: true, hitsRemaining: newHitsRemaining });
+                  newBall.x = newBall.radius + 3;
                 }
-                break;
               }
-          }
-        });
-      });
-
-      // Phase 3: Apply all batched updates
-      // Play all sounds
-      soundsToPlay.forEach(sound => {
-        if (sound.type === 'cracked') {
-          soundManager.playBrickHit('cracked', sound.param);
-        } else {
-          soundManager.playBrickHit();
-        }
-      });
-
-      // Create all power-ups
-      powerUpsToCreate.forEach(brick => createPowerUp(brick));
-
-      // Handle explosive bricks
-      explosiveBricksToDetonate.forEach(brick => {
-        const explosionRadius = 55;
-        const brickCenterX = brick.x + brick.width / 2;
-        const brickCenterY = brick.y + brick.height / 2;
-
-        // Create explosion visual
-        setExplosions(prev => [...prev, {
-          x: brickCenterX,
-          y: brickCenterY,
-          frame: 0,
-          maxFrames: 30,
-          size: explosionRadius * 2,
-          particles: createExplosionParticles(brickCenterX, brickCenterY, 'cube')
-        }]);
-
-        // Destroy nearby bricks
-        bricks.forEach(otherBrick => {
-          if (otherBrick.id === brick.id || !otherBrick.visible) return;
-          
-          const otherCenterX = otherBrick.x + otherBrick.width / 2;
-          const otherCenterY = otherBrick.y + otherBrick.height / 2;
-          const distance = Math.sqrt(
-            Math.pow(otherCenterX - brickCenterX, 2) + 
-            Math.pow(otherCenterY - brickCenterY, 2)
-          );
-
-          if (distance <= explosionRadius) {
-            if (!brickUpdates.has(otherBrick.id)) {
-              brickUpdates.set(otherBrick.id, { visible: false, hitsRemaining: 0 });
-              scoreIncrease += otherBrick.points;
-              bricksDestroyedCount += 1;
+              
+              if (newBall.y < newBall.radius) {
+                newBall.dy = -newBall.dy;
+                newBall.lastWallHitTime = now;
+                newBall.y = newBall.radius + 3;
+                soundManager.playBounce();
+              }
             }
           }
-        });
 
-        soundManager.playExplosiveBrickSound();
-        setBackgroundFlash(10);
-        setTimeout(() => setBackgroundFlash(0), 100);
-      });
+          // Paddle collision - ball should always bounce normally
+          if (newBall.y > paddle.y - newBall.radius && newBall.x > paddle.x && newBall.x < paddle.x + paddle.width && newBall.dy > 0) {
+            // Calculate where on paddle the ball hit (0 = top, 1 = bottom)
+            const verticalHitPosition = (newBall.y - paddle.y) / paddle.height;
 
-      // Update brick state
-      if (brickUpdates.size > 0) {
-        setBricks(prevBricks => {
-          const newBricks = prevBricks.map(b => {
-            const update = brickUpdates.get(b.id);
-            return update ? { ...b, ...update } : b;
+            if (verticalHitPosition <= 0.5) {
+              // Only bounce if hitting top 50% of paddle
+              soundManager.playBounce();
+
+              setLastPaddleHitTime(Date.now());
+              const hitPos = (newBall.x - paddle.x) / paddle.width;
+              const angle = (hitPos - 0.5) * Math.PI * 0.6;
+              const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
+              newBall.dx = speed * Math.sin(angle);
+              newBall.dy = -speed * Math.cos(angle);
+              newBall.y = paddle.y - newBall.radius;
+            } else {
+              // Ball hit bottom half - lose life
+              soundManager.playLoseLife();
+              toast.error("Hit paddle from the side!");
+              return null;
+            }
+          }
+
+          // Bottom collision (lose life)
+          if (newBall.y > SCALED_CANVAS_HEIGHT - newBall.radius) {
+            // Remove this ball
+            return null;
+          }
+
+          // Brick collision (substep-safe)
+          setBricks(prevBricks => {
+            let brickHit = false;
+
+            // Check cooldown - prevent hitting same brick in consecutive substeps
+            const now = Date.now();
+            if (newBall.lastHitTime && now - newBall.lastHitTime < 8) {
+              return prevBricks;
+            }
+
+          // First check for padding collisions between indestructible bricks
+          const indestructibleBricks = prevBricks.filter(b => b.isIndestructible && b.visible);
+          for (const brick of indestructibleBricks) {
+            // Check for adjacent indestructible bricks and create invisible walls in padding
+            const rightNeighbor = indestructibleBricks.find(b => b.x === brick.x + brick.width + SCALED_BRICK_PADDING && Math.abs(b.y - brick.y) < 1);
+            const bottomNeighbor = indestructibleBricks.find(b => b.y === brick.y + brick.height + SCALED_BRICK_PADDING && Math.abs(b.x - brick.x) < 1);
+
+            // Check horizontal padding (between brick and right neighbor)
+            if (rightNeighbor) {
+              const paddingLeft = brick.x + brick.width;
+              const paddingRight = rightNeighbor.x;
+              const paddingTop = brick.y;
+              const paddingBottom = brick.y + brick.height;
+              if (newBall.x + newBall.radius > paddingLeft && newBall.x - newBall.radius < paddingRight && newBall.y + newBall.radius > paddingTop && newBall.y - newBall.radius < paddingBottom) {
+                // Ball is in horizontal padding - bounce horizontally
+                newBall.dx = -newBall.dx;
+                if (newBall.x < paddingLeft + SCALED_BRICK_PADDING / 2) {
+                  newBall.x = paddingLeft - newBall.radius - 2;
+                } else {
+                  newBall.x = paddingRight + newBall.radius + 2;
+                }
+                newBall.lastHitTime = now;
+                newBall.skipRemainingSubsteps = true;
+                soundManager.playBounce();
+                return prevBricks;
+              }
+            }
+
+            // Check vertical padding (between brick and bottom neighbor)
+            if (bottomNeighbor) {
+              const paddingTop = brick.y + brick.height;
+              const paddingBottom = bottomNeighbor.y;
+              const paddingLeft = brick.x;
+              const paddingRight = brick.x + brick.width;
+              if (newBall.x + newBall.radius > paddingLeft && newBall.x - newBall.radius < paddingRight && newBall.y + newBall.radius > paddingTop && newBall.y - newBall.radius < paddingBottom) {
+                // Ball is in vertical padding - bounce vertically
+                newBall.dy = -newBall.dy;
+                if (newBall.y < paddingTop + SCALED_BRICK_PADDING / 2) {
+                  newBall.y = paddingTop - newBall.radius - 2;
+                } else {
+                  newBall.y = paddingBottom + newBall.radius + 2;
+                }
+                newBall.lastHitTime = now;
+                newBall.skipRemainingSubsteps = true;
+                soundManager.playBounce();
+                return prevBricks;
+              }
+            }
+          }
+          const newBricks = prevBricks.map(brick => {
+            if (!brickHit && brick.visible && newBall.x + newBall.radius > brick.x && newBall.x - newBall.radius < brick.x + brick.width && newBall.y + newBall.radius > brick.y && newBall.y - newBall.radius < brick.y + brick.height) {
+              brickHit = true;
+
+              // Set hit cooldown and exit remaining substeps
+              newBall.lastHitTime = now;
+              newBall.skipRemainingSubsteps = true;
+
+              // Calculate which side was hit by checking penetration depth
+              const leftPenetration = newBall.x + newBall.radius - brick.x;
+              const rightPenetration = brick.x + brick.width - (newBall.x - newBall.radius);
+              const topPenetration = newBall.y + newBall.radius - brick.y;
+              const bottomPenetration = brick.y + brick.height - (newBall.y - newBall.radius);
+              const minHorizontal = Math.min(leftPenetration, rightPenetration);
+              const minVertical = Math.min(topPenetration, bottomPenetration);
+
+              // Determine collision side and move ball out
+              const hitFromSide = minHorizontal < minVertical;
+
+              // Indestructible bricks - just bounce off
+              if (brick.isIndestructible) {
+                if (hitFromSide) {
+                  newBall.dx = -newBall.dx;
+                  // Move ball out horizontally with 2px buffer
+                  if (leftPenetration < rightPenetration) {
+                    newBall.x = brick.x - newBall.radius - 2;
+                  } else {
+                    newBall.x = brick.x + brick.width + newBall.radius + 2;
+                  }
+                } else {
+                  newBall.dy = -newBall.dy;
+                  // Move ball out vertically with 2px buffer
+                  if (topPenetration < bottomPenetration) {
+                    newBall.y = brick.y - newBall.radius - 2;
+                  } else {
+                    newBall.y = brick.y + brick.height + newBall.radius + 2;
+                  }
+                }
+                // Add slight random angle variation (±1 degree) to horizontal direction
+                const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180);
+                const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
+                newBall.dx += speed * Math.sin(angleVariation) * 0.1;
+                soundManager.playBounce();
+                return brick;
+              }
+
+              // Only bounce if not fireball
+              if (!newBall.isFireball) {
+                if (hitFromSide) {
+                  newBall.dx = -newBall.dx;
+                  // Move ball out horizontally with 2px buffer
+                  if (leftPenetration < rightPenetration) {
+                    newBall.x = brick.x - newBall.radius - 2;
+                  } else {
+                    newBall.x = brick.x + brick.width + newBall.radius + 2;
+                  }
+                } else {
+                  newBall.dy = -newBall.dy;
+                  // Move ball out vertically with 2px buffer
+                  if (topPenetration < bottomPenetration) {
+                    newBall.y = brick.y - newBall.radius - 2;
+                  } else {
+                    newBall.y = brick.y + brick.height + newBall.radius + 2;
+                  }
+                }
+                // Add slight random angle variation (±1 degree) to horizontal direction
+                const angleVariation = (Math.random() * 2 - 1) * (Math.PI / 180);
+                const speed = Math.sqrt(newBall.dx * newBall.dx + newBall.dy * newBall.dy);
+                newBall.dx += speed * Math.sin(angleVariation) * 0.1;
+              }
+              soundManager.playBrickHit(brick.type, brick.hitsRemaining);
+              const updatedBrick = {
+                ...brick,
+                hitsRemaining: brick.hitsRemaining - 1
+              };
+
+              // Update brick color based on hits remaining
+              if (updatedBrick.hitsRemaining > 0) {
+                updatedBrick.color = getHitColor(brick.color, updatedBrick.hitsRemaining, brick.maxHits);
+              } else {
+                updatedBrick.visible = false;
+
+                // Award points and create power-up only when brick is destroyed
+                setScore(prev => prev + brick.points);
+                if (brick.hasPowerUp) {
+                  const powerUp = createPowerUp(brick);
+                  if (powerUp) {
+                    setPowerUps(prev => [...prev, powerUp]);
+                  }
+                }
+                
+                // Handle explosive brick destruction
+                if (brick.type === "explosive") {
+                  const explosionRadius = 55;
+                  const brickCenterX = brick.x + brick.width / 2;
+                  const brickCenterY = brick.y + brick.height / 2;
+                  
+                  // Create visual explosion
+                  const explosionParticles: Particle[] = [];
+                  const particleCount = Math.round(30 * (qualitySettings.explosionParticles / 50));
+                  for (let i = 0; i < particleCount; i++) {
+                    const angle = (Math.PI * 2 * i) / particleCount;
+                    const speed = 3 + Math.random() * 4;
+                    explosionParticles.push({
+                      x: brickCenterX,
+                      y: brickCenterY,
+                      vx: Math.cos(angle) * speed,
+                      vy: Math.sin(angle) * speed,
+                      size: 3 + Math.random() * 5,
+                      color: 'hsl(25, 100%, 50%)',
+                      life: 30,
+                      maxLife: 30
+                    });
+                  }
+                  
+                  setExplosions(prev => [...prev, {
+                    x: brickCenterX,
+                    y: brickCenterY,
+                    frame: 0,
+                    maxFrames: 15,
+                    particles: explosionParticles
+                  }]);
+                  
+                  soundManager.playExplosiveBrickSound();
+                  setBackgroundFlash(10);
+                  setTimeout(() => setBackgroundFlash(0), 100);
+                  
+                  // Destroy nearby bricks including metal within explosion radius
+                  setTimeout(() => {
+                    setBricks(prev => prev.map(b => {
+                      if (b.visible) {
+                        const bDist = Math.sqrt(
+                          Math.pow((b.x + b.width / 2) - brickCenterX, 2) +
+                          Math.pow((b.y + b.height / 2) - brickCenterY, 2)
+                        );
+                        if (bDist <= explosionRadius) {
+                          setScore(s => s + b.points);
+                          setTotalBricksDestroyed(t => t + 1);
+                          setBricksHit(bh => bh + 1);
+                          return { ...b, visible: false, hitsRemaining: 0 };
+                        }
+                      }
+                      return b;
+                    }));
+                  }, 0);
+                }
+              }
+
+              // Increase ball speed slightly with each brick hit (but not for indestructible bricks)
+              if (!brick.isIndestructible && updatedBrick.hitsRemaining === 0) {
+                // Track brick destroyed
+                setTotalBricksDestroyed(prev => prev + 1);
+                setBricksHit(prev => prev + 1);
+                setCurrentCombo(prev => prev + 1);
+                
+                // Only add speed when brick is fully destroyed
+                // Cap accumulated speed at 30%
+                if (brickHitSpeedAccumulated < 0.3) {
+                  const speedIncrease = 0.005;
+                  setBrickHitSpeedAccumulated(prev => Math.min(0.3, prev + speedIncrease));
+                  newBall.dx *= 1 + speedIncrease;
+                  newBall.dy *= 1 + speedIncrease;
+                }
+              } else if (brick.isIndestructible) {
+                // Reset combo on indestructible hit
+                setCurrentCombo(0);
+              }
+              return updatedBrick;
+            }
+            return brick;
           });
 
-          // Check win condition
-          if (newBricks.every(b => !b.visible || b.isIndestructible)) {
-            const hasDestructibleBricks = newBricks.some(b => !b.isIndestructible);
+          // Check win condition (don't count indestructible bricks)
+          if (newBricks.every(brick => !brick.visible || brick.isIndestructible)) {
+            // Check if there are any destructible bricks left
+            const hasDestructibleBricks = newBricks.some(brick => !brick.isIndestructible);
             if (hasDestructibleBricks) {
               soundManager.playWin();
 
+              // Check if player beat level 50
               if (level >= 50) {
                 setScore(prev => prev + 1000000);
                 setBeatLevel50Completed(true);
@@ -1554,12 +1428,24 @@ export const Game = ({
                 soundManager.stopBackgroundMusic();
                 toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
               } else {
-                setGameState("ready");
+                setGameState("ready"); // Wait for click to start next level
                 toast.success(`Level ${level} Complete! Click to continue.`);
               }
 
-              return newBricks.map(b => ({ ...b, visible: false }));
-            } else if (!BOSS_LEVELS.includes(level)) {
+              // Clear all indestructible bricks when all normal bricks are cleared
+              return newBricks.map(brick => ({
+                ...brick,
+                visible: false
+              }));
+            } else {
+              // No destructible bricks
+              // On boss levels, never auto-advance based on bricks (there are none by design)
+              if (BOSS_LEVELS.includes(level)) {
+                // Boss defeat handler will handle progression
+                return newBricks;
+              }
+
+              // Non-boss levels: auto-advance as before
               soundManager.playWin();
               if (level >= 50) {
                 setScore(prev => prev + 1000000);
@@ -1569,704 +1455,54 @@ export const Game = ({
                 soundManager.stopBackgroundMusic();
                 toast.success(`🎉 YOU WIN! Level ${level} Complete! Bonus: +1,000,000 points!`);
               } else {
-                setGameState("ready");
-                toast.success(`Level ${level} Complete! Click to continue.`);
+                nextLevel(); // Automatically advance since no bricks to destroy
               }
-              return newBricks.map(b => ({ ...b, visible: false }));
             }
           }
-
           return newBricks;
         });
-      }
-
-      // Update score and stats
-      if (scoreIncrease > 0) setScore(s => s + scoreIncrease);
-      if (bricksDestroyedCount > 0) {
-        setTotalBricksDestroyed(t => t + bricksDestroyedCount);
-        setBricksHit(b => b + bricksDestroyedCount);
-      }
-      if (comboIncrease > 0) setCurrentCombo(c => c + comboIncrease);
-
-      // Apply enemy updates
-      setEnemies(prev => {
-        const updated = prev.map((e, idx) => {
-          if (enemiesToDestroy.has(idx)) return null;
-          if (e.id !== undefined && enemiesToUpdate.has(e.id)) {
-            return { ...e, ...enemiesToUpdate.get(e.id)! };
-          }
-          return e;
-        }).filter((e): e is Enemy => e !== null);
-        return updated;
-      });
-
-      // Create explosions with particles
-      explosionsToCreate.forEach(exp => {
-        setExplosions(prev => [...prev, {
-          x: exp.x,
-          y: exp.y,
-          frame: 0,
-          maxFrames: 20,
-          enemyType: exp.type,
-          particles: createExplosionParticles(exp.x, exp.y, exp.type)
-        }]);
-      });
-
-      // Handle bonus letter drops
-      bonusLetterDrops.forEach(drop => {
-        dropBonusLetter(drop.x, drop.y);
-      });
-
-      // Clean up bomb intervals
-      bombIntervalsToClean.forEach(enemyId => {
-        const interval = bombIntervalsRef.current.get(enemyId);
-        if (interval) {
-          clearInterval(interval);
-          bombIntervalsRef.current.delete(enemyId);
-        }
-      });
-
-      // Update enemies killed counter and handle power-up drops
-      if (enemiesKilledIncrease > 0) {
-        setEnemiesKilled(prev => {
-          const newCount = prev + enemiesKilledIncrease;
-          
-          // Check for power-up drops based on enemy kill count
-          enemiesToDestroy.forEach(idx => {
-            const enemy = enemies[idx];
-            if (!enemy) return;
-            
-            const isBossSpawned = bossSpawnedEnemiesRef.current.has(enemy.id || -1);
-            const shouldDrop = isBossSpawned ? Math.random() < 0.5 : (newCount % 3 === 0);
-            
-            if (shouldDrop) {
-              const fakeBrick: Brick = {
-                id: -1,
-                x: enemy.x,
-                y: enemy.y,
-                width: enemy.width,
-                height: enemy.height,
-                visible: true,
-                color: "",
-                points: 0,
-                hasPowerUp: true,
-                hitsRemaining: 0,
-                maxHits: 1,
-                isIndestructible: false,
-                type: "normal"
-              };
-              let powerUp = createPowerUp(fakeBrick);
-              let attempts = 0;
-              while (!powerUp && attempts < 10) {
-                powerUp = createPowerUp(fakeBrick);
-                attempts++;
-              }
-              if (powerUp) {
-                setPowerUps(prev => [...prev, powerUp]);
-                if (isBossSpawned) {
-                  toast.success("Boss minion bonus! Power-up dropped!");
-                } else {
-                  toast.success("Enemy kill bonus! Power-up dropped!");
-                }
-              }
-            }
-          });
-          
-          return newCount;
-        });
-      }
-
-      // Phase 3.5: Shape-Specific Boss Collision Check (rotating hitboxes)
-      // Hitbox is 1 pixel WIDER than the visual shape and rotates with the boss
-      
-      // Helper: Circle vs Rotated Rectangle (for cube boss)
-      const checkCircleVsRotatedRect = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
-        const centerX = boss.x + boss.width / 2;
-        const centerY = boss.y + boss.height / 2;
-        const HITBOX_EXPAND = 1;
         
-        const dx = ball.x - centerX;
-        const dy = ball.y - centerY;
+        } // End substep loop
         
-        const cos = Math.cos(-boss.rotationY);
-        const sin = Math.sin(-boss.rotationY);
-        const ux = dx * cos - dy * sin;
-        const uy = dx * sin + dy * cos;
-        
-        const halfW = (boss.width + 2 * HITBOX_EXPAND) / 2;
-        const halfH = (boss.height + 2 * HITBOX_EXPAND) / 2;
-        
-        const closestX = Math.max(-halfW, Math.min(ux, halfW));
-        const closestY = Math.max(-halfH, Math.min(uy, halfH));
-        
-        const distX = ux - closestX;
-        const distY = uy - closestY;
-        const distSq = distX * distX + distY * distY;
-        
-        if (distSq > ball.radius * ball.radius) return null;
-        
-        const dist = Math.sqrt(distSq);
-        const penetration = ball.radius - dist;
-        
-        console.log('[BossCollision-Cube] Ball inside boss', {
-          ballPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
-          bossCenter: { x: centerX.toFixed(1), y: centerY.toFixed(1) },
-          penetration: penetration.toFixed(2),
-          dist: dist.toFixed(2),
-          ballRadius: ball.radius.toFixed(2)
-        });
-        
-        let normalX = 0, normalY = 0;
-        if (Math.abs(ux) > halfW) {
-          normalX = ux > 0 ? 1 : -1;
-        } else if (Math.abs(uy) > halfH) {
-          normalY = uy > 0 ? 1 : -1;
-        } else {
-          const overlapX = halfW - Math.abs(ux);
-          const overlapY = halfH - Math.abs(uy);
-          if (overlapX < overlapY) {
-            normalX = ux > 0 ? 1 : -1;
-          } else {
-            normalY = uy > 0 ? 1 : -1;
-          }
-        }
-        
-        // Calculate penetration and push out in unrotated space with safety margin
-        const correctionDist = penetration + 2; // +2 pixel safety margin (increased for better separation)
-        const pushX = ux + (distX / dist) * correctionDist;
-        const pushY = uy + (distY / dist) * correctionDist;
-        
-        // Rotate corrected position back to world space
-        const worldPushX = pushX * Math.cos(boss.rotationY) - pushY * Math.sin(boss.rotationY);
-        const worldPushY = pushX * Math.sin(boss.rotationY) + pushY * Math.cos(boss.rotationY);
-        const newX = centerX + worldPushX;
-        const newY = centerY + worldPushY;
-        
-        const worldNormalX = normalX * cos + normalY * sin;
-        const worldNormalY = -normalX * sin + normalY * cos;
-        
-        const dot = ball.dx * worldNormalX + ball.dy * worldNormalY;
-        const newVx = ball.dx - 2 * dot * worldNormalX;
-        const newVy = ball.dy - 2 * dot * worldNormalY;
-        
-        console.log('[BossCollision-Cube] Applying correction', {
-          oldPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
-          newPos: { x: newX.toFixed(1), y: newY.toFixed(1) },
-          normal: { x: worldNormalX.toFixed(2), y: worldNormalY.toFixed(2) },
-          oldVel: { dx: ball.dx.toFixed(2), dy: ball.dy.toFixed(2) },
-          newVel: { dx: newVx.toFixed(2), dy: newVy.toFixed(2) }
-        });
-        
-        return { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
-      };
-      
-      // Helper: Circle vs Circle (for sphere boss)
-      const checkCircleVsCircle = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
-        const centerX = boss.x + boss.width / 2;
-        const centerY = boss.y + boss.height / 2;
-        const HITBOX_EXPAND = 1;
-        const SAFETY_MARGIN = 2; // Prevent micro-penetration (increased for better separation)
-        
-        const dx = ball.x - centerX;
-        const dy = ball.y - centerY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        
-        const bossRadius = boss.width / 2 + HITBOX_EXPAND;
-        const totalRadius = ball.radius + bossRadius;
-        
-        if (dist >= totalRadius) return null;
-        
-        const penetration = totalRadius - dist;
-        
-        console.log('[BossCollision-Sphere] Ball inside boss', {
-          ballPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
-          bossCenter: { x: centerX.toFixed(1), y: centerY.toFixed(1) },
-          penetration: penetration.toFixed(2),
-          dist: dist.toFixed(2),
-          totalRadius: totalRadius.toFixed(2)
-        });
-        
-        const normalX = dx / dist;
-        const normalY = dy / dist;
-        
-        // Push ball out to correct position with safety margin
-        const overlap = penetration + SAFETY_MARGIN;
-        const newX = ball.x + normalX * overlap;
-        const newY = ball.y + normalY * overlap;
-        
-        const dot = ball.dx * normalX + ball.dy * normalY;
-        const newVx = ball.dx - 2 * dot * normalX;
-        const newVy = ball.dy - 2 * dot * normalY;
-        
-        console.log('[BossCollision-Sphere] Applying correction', {
-          oldPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
-          newPos: { x: newX.toFixed(1), y: newY.toFixed(1) },
-          normal: { x: normalX.toFixed(2), y: normalY.toFixed(2) },
-          oldVel: { dx: ball.dx.toFixed(2), dy: ball.dy.toFixed(2) },
-          newVel: { dx: newVx.toFixed(2), dy: newVy.toFixed(2) }
-        });
-        
-        return { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
-      };
-      
-      // Helper: Circle vs Rotated Triangle (for pyramid boss)
-      const checkCircleVsRotatedTriangle = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
-        const centerX = boss.x + boss.width / 2;
-        const centerY = boss.y + boss.height / 2;
-        const HITBOX_EXPAND = 1;
-        const size = boss.width / 2 + HITBOX_EXPAND;
-        
-        const v0 = { x: 0, y: -size };
-        const v1 = { x: size, y: size };
-        const v2 = { x: -size, y: size };
-        
-        const cos = Math.cos(boss.rotationY);
-        const sin = Math.sin(boss.rotationY);
-        
-        const rotatePoint = (p: { x: number; y: number }) => ({
-          x: p.x * cos - p.y * sin,
-          y: p.x * sin + p.y * cos
-        });
-        
-        const rv0 = rotatePoint(v0);
-        const rv1 = rotatePoint(v1);
-        const rv2 = rotatePoint(v2);
-        
-        const wv0 = { x: centerX + rv0.x, y: centerY + rv0.y };
-        const wv1 = { x: centerX + rv1.x, y: centerY + rv1.y };
-        const wv2 = { x: centerX + rv2.x, y: centerY + rv2.y };
-        
-        const edges = [
-          { a: wv0, b: wv1 },
-          { a: wv1, b: wv2 },
-          { a: wv2, b: wv0 }
-        ];
-        
-        let closestDist = Infinity;
-        let closestNormal = { x: 0, y: 0 };
-        
-        for (const edge of edges) {
-          const ex = edge.b.x - edge.a.x;
-          const ey = edge.b.y - edge.a.y;
-          const len = Math.sqrt(ex * ex + ey * ey);
-          const edgeNormX = ex / len;
-          const edgeNormY = ey / len;
-          
-          const normalX = -edgeNormY;
-          const normalY = edgeNormX;
-          
-          const toBallX = ball.x - edge.a.x;
-          const toBallY = ball.y - edge.a.y;
-          const t = Math.max(0, Math.min(len, toBallX * edgeNormX + toBallY * edgeNormY));
-          
-          const closestX = edge.a.x + t * edgeNormX;
-          const closestY = edge.a.y + t * edgeNormY;
-          
-          const distX = ball.x - closestX;
-          const distY = ball.y - closestY;
-          const dist = Math.sqrt(distX * distX + distY * distY);
-          
-          if (dist < closestDist) {
-            closestDist = dist;
-            const toCenterX = ball.x - centerX;
-            const toCenterY = ball.y - centerY;
-            const dotProduct = normalX * toCenterX + normalY * toCenterY;
-            closestNormal = dotProduct > 0 
-              ? { x: normalX, y: normalY }
-              : { x: -normalX, y: -normalY };
-          }
-        }
-        
-        if (closestDist >= ball.radius) return null;
-        
-        const penetration = ball.radius - closestDist;
-        
-        console.log('[BossCollision-Pyramid] Ball inside boss', {
-          ballPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
-          bossCenter: { x: centerX.toFixed(1), y: centerY.toFixed(1) },
-          penetration: penetration.toFixed(2),
-          closestDist: closestDist.toFixed(2)
-        });
-        
-        // Push ball out to correct position with +2 pixel safety margin
-        const correctionDist = penetration + 2;
-        const newX = ball.x + closestNormal.x * correctionDist;
-        const newY = ball.y + closestNormal.y * correctionDist;
-        
-        const dot = ball.dx * closestNormal.x + ball.dy * closestNormal.y;
-        const newVx = ball.dx - 2 * dot * closestNormal.x;
-        const newVy = ball.dy - 2 * dot * closestNormal.y;
-        
-        console.log('[BossCollision-Pyramid] Applying correction', {
-          oldPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
-          newPos: { x: newX.toFixed(1), y: newY.toFixed(1) },
-          normal: { x: closestNormal.x.toFixed(2), y: closestNormal.y.toFixed(2) },
-          oldVel: { dx: ball.dx.toFixed(2), dy: ball.dy.toFixed(2) },
-          newVel: { dx: newVx.toFixed(2), dy: newVy.toFixed(2) }
-        });
-        
-        return { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
-      };
-      
-      // Dispatch to shape-specific collision check
-      ballResults.forEach((result) => {
-        if (!result.ball || !boss) return;
-        
-        let collision = null;
-        
-        switch (boss.type) {
-          case 'cube':
-            collision = checkCircleVsRotatedRect(result.ball, boss);
-            break;
-          case 'sphere':
-            collision = checkCircleVsCircle(result.ball, boss);
-            break;
-          case 'pyramid':
-            collision = checkCircleVsRotatedTriangle(result.ball, boss);
-            break;
-        }
-        
-        if (collision) {
-          const now = Date.now();
-          const BOSS_HIT_COOLDOWN_MS = 1000;
-          const lastHit = boss.lastHitAt || 0;
-          const canDamage = now - lastHit >= BOSS_HIT_COOLDOWN_MS;
-          
-          console.log('[BossCollision] Collision detected', {
-            bossType: boss.type,
-            canDamage,
-            cooldownRemaining: canDamage ? 0 : (BOSS_HIT_COOLDOWN_MS - (now - lastHit)),
-            correctionApplied: true
-          });
-          
-          // ALWAYS apply position and velocity corrections (physics)
-          result.ball.x = collision.newX;
-          result.ball.y = collision.newY;
-          result.ball.dx = collision.newVelocityX;
-          result.ball.dy = collision.newVelocityY;
-          
-          // Mark ball as having hit boss this frame to prevent paddle resolver conflict
-          (result.ball as any)._hitBossThisFrame = true;
-          
-          // ONLY deal damage if boss-local cooldown has elapsed (game logic)
-          
-          if (now - lastHit >= BOSS_HIT_COOLDOWN_MS) {
-            console.log('[BossDebug] Boss hit allowed', { now, lastHit, cooldown: now - lastHit, bossHealth: boss.currentHealth });
-            
-            // Update ball timestamp to prevent same-frame re-hits
-            result.ball.lastHitTime = now;
-            setBossHitCooldown(1000); // Visual cooldown indicator
-            
-            soundManager.playBossHitSound();
-            setScreenShake(8);
-            setTimeout(() => setScreenShake(0), 400);
-            
-            setBoss(prev => {
-              if (!prev) return prev;
-              const newHealth = Math.max(0, prev.currentHealth - 1);
-              
-              console.log('[BossDebug] Boss damage applied', { oldHealth: prev.currentHealth, newHealth });
-              
-              // Handle boss defeat based on type
-              if (newHealth <= 0) {
-                if (prev.type === 'cube') {
-                  // Cube boss - simple defeat
-                  soundManager.playExplosion();
-                  soundManager.playBossDefeatSound();
-                  setScore(s => s + BOSS_CONFIG.cube.points);
-                  toast.success(`CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points`);
-                  explosionsToCreate.push({
-                    x: prev.x + prev.width / 2,
-                    y: prev.y + prev.height / 2,
-                    type: 'cube' as EnemyType
-                  });
-                  setBossesKilled(k => k + 1);
-                  setBossActive(false);
-                  setBossDefeatedTransitioning(true);
-                  // Clean up game entities
-                  setBalls([]);
-                  setEnemies([]);
-                  setBossAttacks([]);
-                  setBombs([]);
-                  setBullets([]);
-                  // Stop boss music and resume background music
-                  soundManager.stopBossMusic();
-                  soundManager.resumeBackgroundMusic();
-                  // Proceed to next level after 3 seconds
-                  setTimeout(() => nextLevel(), 3000);
-                  return null;
-                } else if (prev.type === 'sphere') {
-                  // Sphere boss - check phase
-                  if (prev.currentStage === 1) {
-                    // Phase 1 complete -> Phase 2
-                    soundManager.playExplosion();
-                    toast.error("SPHERE PHASE 2: DESTROYER MODE!");
-                    explosionsToCreate.push({
-                      x: prev.x + prev.width / 2,
-                      y: prev.y + prev.height / 2,
-                      type: 'sphere' as EnemyType
-                    });
-                    return { 
-                      ...prev, 
-                      currentHealth: BOSS_CONFIG.sphere.healthPhase2,
-                      currentStage: 2,
-                      isAngry: true,
-                      speed: BOSS_CONFIG.sphere.angryMoveSpeed,
-                      lastHitAt: now
-                    };
-                  } else {
-                    // Phase 2 complete -> Defeated
-                    soundManager.playExplosion();
-                    soundManager.playBossDefeatSound();
-                    setScore(s => s + BOSS_CONFIG.sphere.points);
-                    toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points`);
-                    explosionsToCreate.push({
-                      x: prev.x + prev.width / 2,
-                      y: prev.y + prev.height / 2,
-                      type: 'sphere' as EnemyType
-                    });
-                    setBossesKilled(k => k + 1);
-                    setBossActive(false);
-                    setBossDefeatedTransitioning(true);
-                    // Clean up game entities
-                    setBalls([]);
-                    setEnemies([]);
-                    setBossAttacks([]);
-                    setBombs([]);
-                    setBullets([]);
-                    // Stop boss music and resume background music
-                    soundManager.stopBossMusic();
-                    soundManager.resumeBackgroundMusic();
-                    setTimeout(() => nextLevel(), 3000);
-                    return null;
-                  }
-                } else if (prev.type === 'pyramid') {
-                  // Pyramid boss - check phase
-                  if (prev.currentStage === 1) {
-                    // Phase 1 complete -> Spawn 3 resurrected pyramids
-                    soundManager.playExplosion();
-                    toast.error("PYRAMID LORD SPLITS INTO 3!");
-                    explosionsToCreate.push({
-                      x: prev.x + prev.width / 2,
-                      y: prev.y + prev.height / 2,
-                      type: 'pyramid' as EnemyType
-                    });
-                    
-                    // Create 3 smaller resurrected pyramids
-                    const resurrected: Boss[] = [];
-                    for (let i = 0; i < 3; i++) {
-                      resurrected.push(createResurrectedPyramid(prev, i, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT));
-                    }
-                    setResurrectedBosses(resurrected);
-                    
-                    return null; // Remove main boss
-                  }
-                }
-              } else {
-                toast.info(`BOSS: ${newHealth} HP`, { 
-                  duration: 1000,
-                  style: { background: '#ff0000', color: '#fff' }
-                });
-              }
-              // Update boss with new health AND new lastHitAt timestamp
-              return { ...prev, currentHealth: newHealth, lastHitAt: now };
-            });
-          } else {
-            console.log('[BossDebug] Boss hit blocked by cooldown', { now, lastHit, cooldownRemaining: BOSS_HIT_COOLDOWN_MS - (now - lastHit) });
-          }
-        }
-      });
-
-      // Phase 3.6: Shape-Specific Resurrected Boss Collision Check
-      resurrectedBosses.forEach((resBoss, bossIdx) => {
-        ballResults.forEach((result) => {
-          if (!result.ball) return;
-          
-          // Resurrected pyramids are always pyramids, so use triangle collision
-          const collision = checkCircleVsRotatedTriangle(result.ball, resBoss);
-          
-          if (collision) {
-            // ALWAYS apply position and velocity corrections (physics)
-            result.ball.x = collision.newX;
-            result.ball.y = collision.newY;
-            result.ball.dx = collision.newVelocityX;
-            result.ball.dy = collision.newVelocityY;
-            
-            // Mark ball as having hit boss this frame to prevent paddle resolver conflict
-            (result.ball as any)._hitBossThisFrame = true;
-            
-            // ONLY deal damage if boss-local cooldown has elapsed (game logic)
-            const now = Date.now();
-            const BOSS_HIT_COOLDOWN_MS = 1000;
-            const lastHit = resBoss.lastHitAt || 0;
-            
-            if (now - lastHit >= BOSS_HIT_COOLDOWN_MS) {
-              console.log('[BossDebug] Resurrected boss hit allowed', { bossIdx, now, lastHit, cooldown: now - lastHit, bossHealth: resBoss.currentHealth });
-              
-              // Update ball timestamp to prevent same-frame re-hits
-              result.ball.lastHitTime = now;
-              
-              soundManager.playBossHitSound();
-              setScreenShake(8);
-              setTimeout(() => setScreenShake(0), 400);
-              
-              setResurrectedBosses(prev => {
-                const newBosses = [...prev];
-                const newHealth = Math.max(0, newBosses[bossIdx].currentHealth - 1);
-                
-                console.log('[BossDebug] Resurrected boss damage applied', { bossIdx, oldHealth: newBosses[bossIdx].currentHealth, newHealth });
-                
-                if (newHealth <= 0) {
-                  // Boss destroyed
-                  const config = BOSS_CONFIG.pyramid;
-                  setScore(s => s + config.resurrectedPoints);
-                  toast.success(`PYRAMID DESTROYED! +${config.resurrectedPoints} points`);
-                  soundManager.playBossDefeatSound();
-                  
-                  setExplosions(e => [...e, {
-                    x: resBoss.x + resBoss.width / 2,
-                    y: resBoss.y + resBoss.height / 2,
-                    frame: 0,
-                    maxFrames: 30,
-                    enemyType: 'pyramid' as EnemyType,
-                    particles: createExplosionParticles(resBoss.x + resBoss.width / 2, resBoss.y + resBoss.height / 2, 'pyramid' as EnemyType)
-                  }]);
-                  soundManager.playExplosion();
-                  
-                  // Remove this boss
-                  newBosses.splice(bossIdx, 1);
-                  
-                  // Check if only one remains - make it super angry
-                  if (newBosses.length === 1) {
-                    toast.error("FINAL PYRAMID ENRAGED!");
-                    newBosses[0] = { ...newBosses[0], isSuperAngry: true, speed: BOSS_CONFIG.pyramid.superAngryMoveSpeed };
-                  }
-                  
-                  // Check if all defeated
-                  if (newBosses.length === 0) {
-                    toast.success("ALL PYRAMIDS DEFEATED!");
-                    setBossActive(false);
-                    setBossesKilled(k => k + 1);
-                    setBossDefeatedTransitioning(true);
-                    // Clean up game entities
-                    setBalls([]);
-                    setEnemies([]);
-                    setBossAttacks([]);
-                    setBombs([]);
-                    setBullets([]);
-                    // Stop boss music and resume background music
-                    soundManager.stopBossMusic();
-                    soundManager.resumeBackgroundMusic();
-                    setTimeout(() => nextLevel(), 3000);
-                  }
-                } else {
-                  toast.info(`PYRAMID: ${newHealth} HP`);
-                  // Update boss with new health AND new lastHitAt timestamp
-                  newBosses[bossIdx] = { ...newBosses[bossIdx], currentHealth: newHealth, lastHitAt: now };
-                }
-                
-                return newBosses;
-              });
-            } else {
-              console.log('[BossDebug] Resurrected boss hit blocked by cooldown', { bossIdx, now, lastHit, cooldownRemaining: BOSS_HIT_COOLDOWN_MS - (now - lastHit) });
-            }
-          }
-        });
-      });
-      // Calculate paddle velocity in pixels per second
-      const paddleVelocity = {
-        x: paddle ? (paddle.x - prevPaddleX.current) * 60 : 0, // Convert to px/sec (dt is 1/60)
-        y: 0
-      };
-      
-      // Update previous paddle position for next frame
-      if (paddle) {
-        prevPaddleX.current = paddle.x;
-      }
-
-      ballResults.forEach((result) => {
-        if (!result.ball || !paddle) return;
-        
-        // Skip paddle resolution if ball hit boss this frame (prevents conflicting corrections)
-        if ((result.ball as any)._hitBossThisFrame) {
-          console.log('[PaddleResolver] Skipping paddle resolution - ball hit boss this frame');
-          return;
-        }
-        
-        // Use geometry-based collision with rounded corners
-        const collision = checkCircleVsRoundedPaddle(
-          result.ball,
-          paddle,
-          paddleVelocity
-        );
-        
-        if (collision.collided) {
-          // Apply position correction
-          result.ball.x = collision.newX;
-          result.ball.y = collision.newY;
-          
-          // Apply velocity correction
-          result.ball.dx = collision.newVelocityX;
-          result.ball.dy = collision.newVelocityY;
-          
-          console.log('[PaddleResolver] Geometry collision resolved', {
-            penetration: collision.penetration.toFixed(2),
-            normalY: collision.normal.y.toFixed(2),
-            paddleVx: paddleVelocity.x.toFixed(2)
-          });
-        }
-      });
-
-      // Clear per-ball flags after all collision processing
-      ballResults.forEach(result => {
-        if (result.ball) {
-          delete (result.ball as any)._hitBossThisFrame;
-        }
-      });
-
-      // Phase 4: Update ball positions and check for lost balls
-      // CRITICAL: Use the ball instances from ballResults to preserve lastHitTime
-      const updatedBalls = ballResults
-        .map(r => r.ball)
-        .filter((ball): ball is NonNullable<typeof ball> => {
-          if (!ball) return false;
-          // Check if ball fell off bottom
-          return ball.y <= SCALED_CANVAS_HEIGHT + ball.radius;
-        });
+        return newBall;
+      }).filter(Boolean) as Ball[];
 
       // Check if all balls are lost
       if (updatedBalls.length === 0) {
+        // Reset combo on ball loss
         setCurrentCombo(0);
         
         setLives(prev => {
           const newLives = prev - 1;
           soundManager.playLoseLife();
-          
           if (newLives <= 0) {
             setGameState("gameOver");
             soundManager.stopBossMusic();
             soundManager.stopBackgroundMusic();
+            
+            // Clear boss attacks on death
             setBossAttacks([]);
-
-            // Create game over particles
+            setLaserWarnings([]);
+            
+            // Create game over particle explosion
             const particles: Particle[] = [];
-            for (let i = 0; i < 100; i++) {
-              const angle = Math.random() * Math.PI * 2;
-              const speed = 2 + Math.random() * 4;
+            for (let i = 0; i < 50; i++) {
+              const angle = (Math.PI * 2 * i) / 50;
+              const speed = 3 + Math.random() * 5;
               particles.push({
                 x: SCALED_CANVAS_WIDTH / 2,
                 y: SCALED_CANVAS_HEIGHT / 2,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
-                size: 2 + Math.random() * 4,
-                color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+                size: 4 + Math.random() * 6,
+                color: `hsl(${Math.random() * 360}, 100%, 60%)`,
                 life: 60,
                 maxLife: 60
               });
             }
             setGameOverParticles(particles);
 
-            // Check for high score
+            // Check for high score immediately
             isHighScore(score).then(result => {
               if (!levelSkipped && result) {
                 setShowHighScoreEntry(true);
@@ -2279,14 +1515,14 @@ export const Game = ({
               }
             });
           } else {
-            // Reset ball and continue
-            const baseSpeed = 5.175;
-            const initialAngle = -20 * Math.PI / 180;
+            // Reset ball and clear power-ups, but wait for click to continue
+            const baseSpeed = 5.175; // 50% faster base speed
+            const initialAngle = -20 * Math.PI / 180; // Start from left side
             const resetBall: Ball = {
               x: SCALED_CANVAS_WIDTH / 2,
               y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
-              dx: baseSpeed * Math.sin(initialAngle),
-              dy: -baseSpeed * Math.cos(initialAngle),
+              dx: baseSpeed * Math.sin(initialAngle),  // Calculate from angle
+              dy: -baseSpeed * Math.cos(initialAngle), // Calculate from angle
               radius: SCALED_BALL_RADIUS,
               speed: baseSpeed,
               id: nextBallId.current++,
@@ -2294,9 +1530,9 @@ export const Game = ({
               waitingToLaunch: true
             };
             setBalls([resetBall]);
-            setLaunchAngle(-20);
-            launchAngleDirectionRef.current = 1;
-            setShowInstructions(true);
+            setLaunchAngle(-20); // Start from left side
+            launchAngleDirectionRef.current = 1; // Move right initially
+            setShowInstructions(true); // Show instructions when resetting ball
             setPowerUps([]);
             setPaddle(prev => prev ? {
               ...prev,
@@ -2304,10 +1540,12 @@ export const Game = ({
               hasShield: false,
               width: SCALED_PADDLE_WIDTH
             } : null);
-            setBullets([]);
+            setBullets([]); // Clear all bullets
+            // Only reset speed if it's slower than base speed
             if (speedMultiplier < 1) {
               setSpeedMultiplier(1);
             }
+            // Reset accumulated brick hit speed on death
             setBrickHitSpeedAccumulated(0);
             setTimer(0);
             setEnemies([]);
@@ -2323,10 +1561,51 @@ export const Game = ({
           return newLives;
         });
       }
-
       return updatedBalls;
     });
-  }, [paddle, balls, bricks, boss, resurrectedBosses, enemies, createPowerUp, setPowerUps, nextLevel, speedMultiplier, brickHitSpeedAccumulated, level, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT, SCALED_PADDLE_WIDTH, SCALED_BALL_RADIUS, scaleFactor, levelSkipped, score, isHighScore, createHighScoreParticles, setHighScoreParticles, bombIntervalsRef, createExplosionParticles]);
+  }, [paddle, balls, createPowerUp, setPowerUps, nextLevel, speedMultiplier]);
+  
+  // Boss defeat handler
+  const handleBossDefeat = useCallback((defeatedBoss: Boss) => {
+    const config = BOSS_CONFIG[defeatedBoss.type];
+    
+    setScore(s => s + config.points);
+    setBossesKilled(prev => prev + 1);
+    toast.success(`${defeatedBoss.type.toUpperCase()} BOSS DEFEATED! +${config.points} points`, { duration: 4000 });
+    
+    // Big explosion
+    setExplosions(prev => [...prev, {
+      x: defeatedBoss.x + defeatedBoss.width / 2,
+      y: defeatedBoss.y + defeatedBoss.height / 2,
+      frame: 0,
+      maxFrames: 40,
+      enemyType: defeatedBoss.type as EnemyType,
+      particles: createExplosionParticles(
+        defeatedBoss.x + defeatedBoss.width / 2,
+        defeatedBoss.y + defeatedBoss.height / 2,
+        defeatedBoss.type as EnemyType
+      )
+    }]);
+    
+    soundManager.playExplosion();
+    setScreenShake(15);
+    setBackgroundFlash(1);
+    setTimeout(() => {
+      setScreenShake(0);
+      setBackgroundFlash(0);
+    }, 1000);
+    
+    // Clear all balls immediately
+    setBalls([]);
+    
+    // Progress to next level after delay
+    setTimeout(() => {
+      soundManager.stopBossMusic();
+      soundManager.resumeBackgroundMusic();
+      setBossActive(false);
+      nextLevel();
+    }, 3000);
+  }, [createExplosionParticles, nextLevel]);
   
   // FPS tracking for adaptive quality
   const fpsTrackerRef = useRef({ lastTime: performance.now(), frameCount: 0, fps: 60 });
@@ -2447,6 +1726,305 @@ export const Game = ({
       };
     }));
 
+    // Check ball-enemy collisions and destroy enemies immediately
+    const hitEnemiesThisFrame = new Set<number>(); // Track which enemies were hit this frame
+    setBalls(prevBalls => {
+      let ballsUpdated = false;
+      const newBalls = prevBalls.map(ball => {
+        if (ball.waitingToLaunch) return ball;
+        for (const enemy of enemies) {
+          // Skip if this enemy was already hit this frame
+          if (hitEnemiesThisFrame.has(enemy.id || -1)) {
+            continue;
+          }
+          if (ball.x + ball.radius > enemy.x && ball.x - ball.radius < enemy.x + enemy.width && ball.y + ball.radius > enemy.y && ball.y - ball.radius < enemy.y + enemy.height) {
+            // Mark this enemy as hit in this frame
+            if (enemy.id !== undefined) {
+              hitEnemiesThisFrame.add(enemy.id);
+            }
+
+            // Change ball trajectory immediately
+            const ballCenterX = ball.x;
+            const ballCenterY = ball.y;
+            const enemyCenterX = enemy.x + enemy.width / 2;
+            const enemyCenterY = enemy.y + enemy.height / 2;
+            const dx = ballCenterX - enemyCenterX;
+            const dy = ballCenterY - enemyCenterY;
+            ballsUpdated = true;
+            let updatedBall = ball;
+
+            // Reverse ball direction based on collision side
+            if (Math.abs(dx) > Math.abs(dy)) {
+              updatedBall = {
+                ...ball,
+                dx: -ball.dx
+              };
+            } else {
+              updatedBall = {
+                ...ball,
+                dy: -ball.dy
+              };
+            }
+
+            // Handle enemy destruction/damage
+            if (enemy.type === "pyramid") {
+              const currentHits = enemy.hits || 0;
+              if (currentHits === 0) {
+                // First hit - change color to yellow
+                soundManager.playBounce();
+                toast.warning("Pyramid hit! 2 more hits needed");
+                // Screen shake on enemy hit
+                setScreenShake(5);
+                setTimeout(() => setScreenShake(0), 500);
+                setEnemies(prev => prev.map(e => e.id === enemy.id ? {
+                  ...e,
+                  hits: 1
+                } : e));
+              } else if (currentHits === 1) {
+                // Second hit - change color to red, make it angry and faster
+                soundManager.playBounce();
+                toast.warning("Pyramid is angry! 1 more hit!");
+                // Screen shake on enemy hit
+                setScreenShake(5);
+                setTimeout(() => setScreenShake(0), 500);
+                setEnemies(prev => prev.map(e => e.id === enemy.id ? {
+                  ...e,
+                  hits: 2,
+                  isAngry: true,
+                  speed: e.speed * 1.5,
+                  dx: e.dx * 1.5,
+                  dy: e.dy * 1.5
+                } : e));
+              } else {
+                // Third hit - destroy it
+                setExplosions(prev => [...prev, {
+                  x: enemy.x + enemy.width / 2,
+                  y: enemy.y + enemy.height / 2,
+                  frame: 0,
+                  maxFrames: 20,
+                  enemyType: enemy.type,
+                  particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type)
+                }]);
+                soundManager.playExplosion();
+                setScore(s => s + 300);
+                toast.success("Pyramid destroyed! +300 points");
+
+                // Check for bonus letter drop
+                dropBonusLetter(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+
+                // Remove enemy
+                setEnemies(prev => prev.filter(e => e.id !== enemy.id));
+
+                // Track enemy kill and drop powerup
+                setEnemiesKilled(prev => {
+                  const newCount = prev + 1;
+                  
+                  // Check if this is a boss-spawned enemy
+                  const isBossSpawned = bossSpawnedEnemiesRef.current.has(enemy.id || -1);
+                  
+                  // Boss-spawned enemies: 50% chance to drop power-up
+                  // Regular enemies: drop every 3 kills
+                  const shouldDrop = isBossSpawned ? Math.random() < 0.5 : newCount % 3 === 0;
+                  
+                  if (shouldDrop) {
+                    // Create a powerup at enemy location
+                    const fakeBrick: Brick = {
+                      x: enemy.x,
+                      y: enemy.y,
+                      width: enemy.width,
+                      height: enemy.height,
+                      visible: true,
+                      color: "",
+                      points: 0,
+                      hasPowerUp: true,
+                      hitsRemaining: 0,
+                      maxHits: 1,
+                      isIndestructible: false,
+                      type: "normal"
+                    };
+                    // Keep trying until we get a powerup
+                    let powerUp = createPowerUp(fakeBrick);
+                    let attempts = 0;
+                    while (!powerUp && attempts < 10) {
+                      powerUp = createPowerUp(fakeBrick);
+                      attempts++;
+                    }
+                    if (powerUp) {
+                      setPowerUps(prev => [...prev, powerUp]);
+                      toast.success(isBossSpawned ? "Boss minion bonus! Power-up dropped!" : "Enemy kill bonus! Power-up dropped!");
+                    }
+                  }
+                  
+                  // Clean up boss-spawned enemy tracking
+                  if (enemy.id !== undefined) {
+                    bossSpawnedEnemiesRef.current.delete(enemy.id);
+                  }
+                  
+                  return newCount;
+                });
+
+                // Clear bomb interval
+                if (enemy.id !== undefined) {
+                  const interval = bombIntervalsRef.current.get(enemy.id);
+                  if (interval) {
+                    clearInterval(interval);
+                    bombIntervalsRef.current.delete(enemy.id);
+                  }
+                }
+              }
+            } else if (enemy.type === "sphere") {
+              const currentHits = enemy.hits || 0;
+              if (currentHits === 0) {
+                // First hit - make it angry and faster
+                soundManager.playBounce();
+                toast.warning("Sphere enemy is angry!");
+                // Screen shake on enemy hit
+                setScreenShake(5);
+                setTimeout(() => setScreenShake(0), 500);
+                setEnemies(prev => prev.map(e => e.id === enemy.id ? {
+                  ...e,
+                  hits: 1,
+                  isAngry: true,
+                  speed: e.speed * 1.3,
+                  dx: e.dx * 1.3,
+                  dy: e.dy * 1.3
+                } : e));
+              } else {
+                // Second hit - destroy it
+                setExplosions(prev => [...prev, {
+                  x: enemy.x + enemy.width / 2,
+                  y: enemy.y + enemy.height / 2,
+                  frame: 0,
+                  maxFrames: 20,
+                  enemyType: enemy.type,
+                  particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type)
+                }]);
+                soundManager.playExplosion();
+                setScore(s => s + 200);
+                toast.success("Sphere enemy destroyed! +200 points");
+
+                // Check for bonus letter drop
+                dropBonusLetter(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+
+                // Remove enemy
+                setEnemies(prev => prev.filter(e => e.id !== enemy.id));
+
+                // Track enemy kill and drop powerup every 3 kills
+                setEnemiesKilled(prev => {
+                  const newCount = prev + 1;
+                  if (newCount % 3 === 0) {
+                    // Create a powerup at enemy location - always drop (retry until success)
+                    const fakeBrick: Brick = {
+                      x: enemy.x,
+                      y: enemy.y,
+                      width: enemy.width,
+                      height: enemy.height,
+                      visible: true,
+                      color: "",
+                      points: 0,
+                      hasPowerUp: true,
+                      hitsRemaining: 0,
+                      maxHits: 1,
+                      isIndestructible: false,
+                      type: "normal"
+                    };
+                    // Keep trying until we get a powerup (guaranteed drop)
+                    let powerUp = createPowerUp(fakeBrick);
+                    let attempts = 0;
+                    while (!powerUp && attempts < 10) {
+                      powerUp = createPowerUp(fakeBrick);
+                      attempts++;
+                    }
+                    if (powerUp) {
+                      setPowerUps(prev => [...prev, powerUp]);
+                      toast.success("Enemy kill bonus! Power-up dropped!");
+                    }
+                  }
+                  return newCount;
+                });
+
+                // Clear bomb interval
+                if (enemy.id !== undefined) {
+                  const interval = bombIntervalsRef.current.get(enemy.id);
+                  if (interval) {
+                    clearInterval(interval);
+                    bombIntervalsRef.current.delete(enemy.id);
+                  }
+                }
+              }
+            } else {
+              // Cube enemy - destroy on first hit
+              // Screen shake on enemy hit
+              setScreenShake(5);
+              setTimeout(() => setScreenShake(0), 500);
+              setExplosions(prev => [...prev, {
+                x: enemy.x + enemy.width / 2,
+                y: enemy.y + enemy.height / 2,
+                frame: 0,
+                maxFrames: 20,
+                enemyType: enemy.type,
+                particles: createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type)
+              }]);
+              soundManager.playExplosion();
+              setScore(s => s + 100);
+              toast.success("Enemy destroyed! +100 points");
+
+              // Check for bonus letter drop
+              dropBonusLetter(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+
+              // Remove enemy
+              setEnemies(prev => prev.filter(e => e.id !== enemy.id));
+
+              // Track enemy kill and drop powerup every 3 kills
+              setEnemiesKilled(prev => {
+                const newCount = prev + 1;
+                if (newCount % 3 === 0) {
+                  // Create a powerup at enemy location - always drop (retry until success)
+                  const fakeBrick: Brick = {
+                    x: enemy.x,
+                    y: enemy.y,
+                    width: enemy.width,
+                    height: enemy.height,
+                    visible: true,
+                    color: "",
+                    points: 0,
+                    hasPowerUp: true,
+                    hitsRemaining: 0,
+                    maxHits: 1,
+                    isIndestructible: false,
+                    type: "normal"
+                  };
+                  // Keep trying until we get a powerup (guaranteed drop)
+                  let powerUp = createPowerUp(fakeBrick);
+                  let attempts = 0;
+                  while (!powerUp && attempts < 10) {
+                    powerUp = createPowerUp(fakeBrick);
+                    attempts++;
+                  }
+                  if (powerUp) {
+                    setPowerUps(prev => [...prev, powerUp]);
+                    toast.success("Enemy kill bonus! Power-up dropped!");
+                  }
+                }
+                return newCount;
+              });
+
+              // Clear bomb interval
+              if (enemy.id !== undefined) {
+                const interval = bombIntervalsRef.current.get(enemy.id);
+                if (interval) {
+                  clearInterval(interval);
+                  bombIntervalsRef.current.delete(enemy.id);
+                }
+              }
+            }
+            return updatedBall;
+          }
+        }
+        return ball;
+      });
+      return ballsUpdated ? newBalls : prevBalls;
+    });
 
     // Update explosions and their particles
     setExplosions(prev => prev.map(exp => ({
@@ -2922,8 +2500,187 @@ export const Game = ({
     // Clean up expired laser warnings
     setLaserWarnings(prev => prev.filter(warning => Date.now() - warning.startTime < 800));
     
-    // Boss collisions are now handled via CCD and shape-specific checks in Phase 3.5
-    // Old collision code removed to prevent conflicts with unified boss-local cooldown system
+    // Boss collision with balls
+    if (boss && paddle) {
+      balls.forEach(ball => {
+        // Add cooldown check to prevent multiple hits - 1000ms cooldown
+        const now = Date.now();
+        if (ball.lastHitTime && now - ball.lastHitTime < 1000) {
+          return; // Skip this collision check
+        }
+        
+        if (!ball.waitingToLaunch && ball.x + ball.radius > boss.x && ball.x - ball.radius < boss.x + boss.width && ball.y + ball.radius > boss.y && ball.y - ball.radius < boss.y + boss.height) {
+          soundManager.playBossHitSound();
+          setScreenShake(10);
+          setBackgroundFlash(0.3);
+          setTimeout(() => {
+            setScreenShake(0);
+            setBackgroundFlash(0);
+          }, 500);
+          
+          // Create hit particles
+          const hitParticles: Particle[] = [];
+          for (let i = 0; i < 15; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 4;
+            hitParticles.push({
+              x: ball.x,
+              y: ball.y,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              size: 3 + Math.random() * 3,
+              color: boss.type === 'cube' ? 'hsl(200, 100%, 60%)' : boss.type === 'sphere' ? 'hsl(330, 100%, 60%)' : 'hsl(280, 100%, 60%)',
+              life: 20,
+              maxLife: 20
+            });
+          }
+          setExplosions(prev => [...prev, {
+            x: ball.x,
+            y: ball.y,
+            frame: 0,
+            maxFrames: 20,
+            enemyType: boss.type as EnemyType,
+            particles: hitParticles
+          }]);
+          
+          const angle = Math.atan2(ball.y - (boss.y + boss.height/2), ball.x - (boss.x + boss.width/2));
+          setBalls(prev => prev.map(b => b.id === ball.id ? { ...b, dx: Math.cos(angle) * b.speed, dy: Math.sin(angle) * b.speed, lastHitTime: now } : b));
+          
+          setBoss(prev => {
+            if (!prev) return null;
+            const newHealth = prev.currentHealth - 1;
+            if (prev.type === 'cube' && newHealth <= 0) { handleBossDefeat(prev); return null; }
+            if (prev.type === 'sphere') {
+              if (newHealth === 0 && !prev.isAngry) { 
+                toast.warning("SPHERE BOSS ENRAGED!"); 
+                soundManager.playBossPhaseTransitionSound();
+                setScreenShake(15);
+                setTimeout(() => setScreenShake(0), 600);
+                return { ...prev, currentHealth: BOSS_CONFIG.sphere.healthPhase2, maxHealth: BOSS_CONFIG.sphere.healthPhase2, isAngry: true, speed: BOSS_CONFIG.sphere.angryMoveSpeed }; 
+              }
+              if (newHealth <= 0 && prev.isAngry) { handleBossDefeat(prev); return null; }
+            }
+            if (prev.type === 'pyramid' && !prev.isResurrected) {
+              if (newHealth === 0 && !prev.isAngry) { 
+                toast.warning("PYRAMID BOSS ENRAGED!"); 
+                soundManager.playBossPhaseTransitionSound();
+                setScreenShake(15);
+                setTimeout(() => setScreenShake(0), 600);
+                return { ...prev, currentHealth: BOSS_CONFIG.pyramid.healthPhase2, maxHealth: BOSS_CONFIG.pyramid.healthPhase2, isAngry: true }; 
+              }
+              if (newHealth <= 0 && prev.isAngry) {
+                toast.error("PYRAMID RESURRECTS!");
+                soundManager.playExplosion();
+                soundManager.playExplosion();
+                setScreenShake(20);
+                setTimeout(() => setScreenShake(0), 800);
+                const resurrected = [0,1,2].map(i => createResurrectedPyramid(prev, i, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT));
+                setResurrectedBosses(resurrected);
+                return null;
+              }
+            }
+            toast.info(`${prev.type.toUpperCase()}: ${newHealth} HP`);
+            return { ...prev, currentHealth: newHealth };
+          });
+        }
+      });
+    }
+    
+    // Resurrected boss collisions with balls
+    resurrectedBosses.forEach((resBoss, bossIdx) => {
+      balls.forEach(ball => {
+        // Add cooldown check to prevent multiple hits - 1000ms cooldown
+        const now = Date.now();
+        if (ball.lastHitTime && now - ball.lastHitTime < 1000) {
+          return; // Skip this collision check
+        }
+        
+        if (!ball.waitingToLaunch && ball.x + ball.radius > resBoss.x && ball.x - ball.radius < resBoss.x + resBoss.width && ball.y + ball.radius > resBoss.y && ball.y - ball.radius < resBoss.y + resBoss.height) {
+          soundManager.playBossHitSound();
+          setScreenShake(8);
+          setBackgroundFlash(0.2);
+          setTimeout(() => {
+            setScreenShake(0);
+            setBackgroundFlash(0);
+          }, 400);
+          
+          // Create hit particles
+          const hitParticles: Particle[] = [];
+          for (let i = 0; i < 10; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 3;
+            hitParticles.push({
+              x: ball.x,
+              y: ball.y,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              size: 2 + Math.random() * 3,
+              color: 'hsl(280, 100%, 60%)',
+              life: 15,
+              maxLife: 15
+            });
+          }
+          setExplosions(prev => [...prev, {
+            x: ball.x,
+            y: ball.y,
+            frame: 0,
+            maxFrames: 15,
+            enemyType: 'pyramid' as EnemyType,
+            particles: hitParticles
+          }]);
+          
+          const angle = Math.atan2(ball.y - (resBoss.y + resBoss.height/2), ball.x - (resBoss.x + resBoss.width/2));
+          setBalls(prev => prev.map(b => b.id === ball.id ? { ...b, dx: Math.cos(angle) * b.speed, dy: Math.sin(angle) * b.speed, lastHitTime: now } : b));
+          
+          setResurrectedBosses(prev => {
+            const updated = [...prev];
+            const newHealth = updated[bossIdx].currentHealth - 1;
+            
+            if (newHealth <= 0) {
+              // Boss destroyed
+              const config = BOSS_CONFIG.pyramid;
+              setScore(s => s + config.resurrectedPoints);
+              toast.success(`PYRAMID DESTROYED! +${config.resurrectedPoints} points`);
+              soundManager.playBossDefeatSound();
+              
+              setExplosions(e => [...e, {
+                x: resBoss.x + resBoss.width / 2,
+                y: resBoss.y + resBoss.height / 2,
+                frame: 0,
+                maxFrames: 30,
+                enemyType: 'pyramid' as EnemyType,
+                particles: createExplosionParticles(resBoss.x + resBoss.width / 2, resBoss.y + resBoss.height / 2, 'pyramid' as EnemyType)
+              }]);
+              soundManager.playExplosion();
+              
+              // Remove this boss
+              const remaining = updated.filter((_, i) => i !== bossIdx);
+              
+              // Check if only one remains - make it super angry
+              if (remaining.length === 1) {
+                toast.error("FINAL PYRAMID ENRAGED!");
+                remaining[0] = { ...remaining[0], isSuperAngry: true, speed: BOSS_CONFIG.pyramid.superAngryMoveSpeed };
+              }
+              
+              // Check if all defeated
+              if (remaining.length === 0) {
+                toast.success("ALL PYRAMIDS DEFEATED!");
+                setBossActive(false);
+                setTimeout(() => nextLevel(), 3000);
+              }
+              
+              return remaining;
+            } else {
+              toast.info(`PYRAMID: ${newHealth} HP`);
+              updated[bossIdx] = { ...updated[bossIdx], currentHealth: newHealth };
+              return updated;
+            }
+          });
+        }
+      });
+    });
+
+    // Check collisions
     checkCollision();
 
     // Check power-up collision
@@ -3215,7 +2972,7 @@ export const Game = ({
 
   // Boss enemy spawning system
   useEffect(() => {
-    if (gameState !== "playing" || !boss || bossDefeatedTransitioning) return;
+    if (gameState !== "playing" || !boss) return;
     
     const BOSS_SPAWN_INTERVAL = 15; // 15 seconds
     const MAX_BOSS_ENEMIES = 6; // Maximum enemies on screen
@@ -3348,18 +3105,7 @@ export const Game = ({
       soundManager.playExplosion();
       toast.warning(`${boss.type.toUpperCase()} spawned ${enemiesToSpawn} minion${enemiesToSpawn > 1 ? 's' : ''}!`, { duration: 2000 });
     }
-  }, [timer, gameState, boss, enemies.length, lastBossSpawnTime, SCALED_CANVAS_WIDTH, bossDefeatedTransitioning]);
-
-  // Boss hit cooldown timer
-  useEffect(() => {
-    if (bossHitCooldown <= 0) return;
-    
-    const interval = setInterval(() => {
-      setBossHitCooldown(prev => Math.max(0, prev - 50));
-    }, 50);
-    
-    return () => clearInterval(interval);
-  }, [bossHitCooldown]);
+  }, [timer, gameState, boss, enemies.length, lastBossSpawnTime, SCALED_CANVAS_WIDTH]);
 
   // Keyboard controls for launch angle
   useEffect(() => {
@@ -4027,18 +3773,6 @@ export const Game = ({
                         </div>
                       </div>
                     )}
-
-                    {/* Boss Cooldown - Only show when boss is active and cooldown > 0 */}
-                    {boss && bossHitCooldown > 0 && (
-                      <div className="right-stat-box">
-                        <div className="right-stat-label" style={{ color: "hsl(0, 80%, 60%)" }}>
-                          BOSS CD
-                        </div>
-                        <div className="right-stat-value animate-pulse" style={{ color: "hsl(0, 80%, 65%)" }}>
-                          {(bossHitCooldown / 1000).toFixed(1)}s
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -4069,15 +3803,6 @@ export const Game = ({
                 color: "hsl(0, 0%, 95%)"
               }}>{lives}</span>
                     </div>
-                    {boss && bossHitCooldown > 0 && (
-                      <div className="retro-pixel-text text-xs animate-pulse" style={{
-                color: "hsl(0, 80%, 60%)"
-              }}>
-                        BOSS CD: <span style={{
-                  color: "hsl(0, 80%, 70%)"
-                }}>{(bossHitCooldown / 1000).toFixed(1)}s</span>
-                      </div>
-                    )}
                   </div>
                 </div>}
 

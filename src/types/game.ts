@@ -1,7 +1,6 @@
 export type BrickType = "normal" | "metal" | "cracked" | "explosive";
 
 export interface Brick {
-  id: number;
   x: number;
   y: number;
   width: number;
@@ -176,9 +175,6 @@ export interface Boss {
   // Resurrection (for pyramid)
   parentBossId?: number;
   isResurrected?: boolean;
-  
-  // Boss-local hit cooldown timestamp
-  lastHitAt?: number;
 }
 
 export interface BossAttack {
