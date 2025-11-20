@@ -1273,27 +1273,54 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw boss
       if (boss) {
-        // Debug: Draw boss hitbox overlay (MUST match CCD's hitbox exactly!)
+        // Debug: Draw shape-specific, rotating boss hitbox (1px wider than visual)
         if (SHOW_BOSS_HITBOX) {
+          const centerX = boss.x + boss.width / 2;
+          const centerY = boss.y + boss.height / 2;
+          const HITBOX_EXPAND = 1;
+          
           ctx.save();
           ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
           ctx.lineWidth = 2;
           ctx.setLineDash([6, 4]);
-          
-          // Boss stores TOP-LEFT coordinates - apply same margin as CCD
-          const HITBOX_MARGIN = 2; // Must match gameCCD.ts
-          const hitboxX = boss.x + HITBOX_MARGIN;
-          const hitboxY = boss.y + HITBOX_MARGIN;
-          const hitboxW = boss.width - 2 * HITBOX_MARGIN;
-          const hitboxH = boss.height - 2 * HITBOX_MARGIN;
-          
-          ctx.strokeRect(hitboxX, hitboxY, hitboxW, hitboxH);
           ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
-          ctx.fillRect(hitboxX, hitboxY, hitboxW, hitboxH);
-          ctx.setLineDash([]);
+          
+          ctx.translate(centerX, centerY);
+          
+          if (boss.type === 'cube') {
+            ctx.rotate(boss.rotationY);
+            const halfSize = (boss.width + 2 * HITBOX_EXPAND) / 2;
+            ctx.strokeRect(-halfSize, -halfSize, halfSize * 2, halfSize * 2);
+            ctx.fillRect(-halfSize, -halfSize, halfSize * 2, halfSize * 2);
+          } else if (boss.type === 'sphere') {
+            const radius = boss.width / 2 + HITBOX_EXPAND;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fill();
+          } else if (boss.type === 'pyramid') {
+            ctx.rotate(boss.rotationY);
+            const size = boss.width / 2 + HITBOX_EXPAND;
+            ctx.beginPath();
+            ctx.moveTo(0, -size);
+            ctx.lineTo(size, size);
+            ctx.lineTo(-size, size);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.fill();
+          }
+          
+          ctx.restore();
+          
+          ctx.save();
           ctx.fillStyle = 'rgba(255, 255, 255, 1)';
           ctx.font = 'bold 10px monospace';
-          ctx.fillText(`Hitbox(${hitboxX.toFixed(0)}, ${hitboxY.toFixed(0)})`, hitboxX, hitboxY - 5);
+          const rotDeg = (boss.rotationY * 180 / Math.PI).toFixed(0);
+          ctx.fillText(
+            `${boss.type.toUpperCase()} hitbox (rot: ${rotDeg}°)`, 
+            centerX - 50, 
+            centerY - boss.height / 2 - 10
+          );
           ctx.restore();
         }
         
