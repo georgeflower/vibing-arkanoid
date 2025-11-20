@@ -1064,7 +1064,14 @@ export const Game = ({
   // Get substep debug info for overlay
   const getSubstepDebugInfo = useCallback(() => {
     if (balls.length === 0) {
-      return { substeps: 0, ballSpeed: 0, ballCount: 0, maxSpeed: 0 };
+      return { 
+        substeps: 0, 
+        ballSpeed: 0, 
+        ballCount: 0, 
+        maxSpeed: 0,
+        collisionsPerFrame: 0,
+        toiIterations: 0
+      };
     }
     
     const speeds = balls.map(ball => Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy));
@@ -1076,7 +1083,9 @@ export const Game = ({
       substeps,
       ballSpeed: maxBallSpeed * speedMultiplier,
       ballCount: balls.length,
-      maxSpeed: maxBallSpeed
+      maxSpeed: maxBallSpeed,
+      collisionsPerFrame: 0, // Will be updated by CCD results
+      toiIterations: 0 // Will be updated by CCD results
     };
   }, [balls, speedMultiplier, SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT]);
   
@@ -1094,7 +1103,10 @@ export const Game = ({
           paddle,
           canvasSize: { w: SCALED_CANVAS_WIDTH, h: SCALED_CANVAS_HEIGHT },
           speedMultiplier,
-          minBrickDimension
+          minBrickDimension,
+          boss: boss || null,
+          resurrectedBosses,
+          enemies
         })
       );
 
@@ -1123,8 +1135,83 @@ export const Game = ({
 
             case 'brick':
             case 'corner':
-              // Find the brick by index (objectId is the brick index)
-              const brickIndex = typeof event.objectId === 'number' ? event.objectId : -1;
+              // Find the object by ID
+              const objectId = typeof event.objectId === 'number' ? event.objectId : -1;
+              
+              // Handle boss collision (ID = -1)
+              if (objectId === -1 && boss) {
+                const now = Date.now();
+                if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 1000) {
+                  result.ball.lastHitTime = now;
+                  soundManager.playBossHitSound();
+                  
+                  setBoss(prev => {
+                    if (!prev) return prev;
+                    const newHealth = Math.max(0, prev.currentHealth - 1);
+                    if (newHealth <= 0) {
+                      // Boss defeated
+                      soundManager.playExplosion();
+                      toast.success(`Boss defeated!`);
+                    } else {
+                      toast.info(`BOSS: ${newHealth} HP`);
+                    }
+                    return { ...prev, currentHealth: newHealth };
+                  });
+                }
+                break;
+              }
+              
+              // Handle resurrected boss collision (ID = -2, -3, -4)
+              if (objectId < -1) {
+                const resBossIndex = Math.abs(objectId) - 2;
+                if (resBossIndex >= 0 && resBossIndex < resurrectedBosses.length) {
+                  const now = Date.now();
+                  if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 1000) {
+                    result.ball.lastHitTime = now;
+                    soundManager.playBossHitSound();
+                    
+                    setResurrectedBosses(prev => {
+                      const newBosses = [...prev];
+                      const resBoss = newBosses[resBossIndex];
+                      const newHealth = Math.max(0, resBoss.currentHealth - 1);
+                      if (newHealth <= 0) {
+                        newBosses.splice(resBossIndex, 1);
+                        soundManager.playExplosion();
+                      } else {
+                        newBosses[resBossIndex] = { ...resBoss, currentHealth: newHealth };
+                      }
+                      return newBosses;
+                    });
+                  }
+                }
+                break;
+              }
+              
+              // Handle enemy collision (ID >= 100000)
+              if (objectId >= 100000) {
+                const enemyIndex = objectId - 100000;
+                if (enemyIndex >= 0 && enemyIndex < enemies.length) {
+                  soundManager.playExplosion();
+                  setEnemies(prev => prev.filter((_, idx) => idx !== enemyIndex));
+                  setScore(s => s + 500);
+                  setEnemiesKilled(k => k + 1);
+                  
+                  // 1 in 3 chance for power-up drop
+                  if (Math.random() < 0.33) {
+                    const enemy = enemies[enemyIndex];
+                    createPowerUp({
+                      x: enemy.x,
+                      y: enemy.y,
+                      width: enemy.width,
+                      height: enemy.height
+                    } as any);
+                  }
+                }
+                break;
+              }
+              
+              // Handle brick collision (ID >= 0 and < bricks.length)
+              const brickIndex = objectId;
               if (brickIndex >= 0 && brickIndex < bricks.length) {
                 const brick = bricks[brickIndex];
                 
@@ -1144,12 +1231,13 @@ export const Game = ({
                   
                   if (!targetBrick.visible) return prevBricks;
 
-                  const newHitsRemaining = targetBrick.hitsRemaining - 1;
+                  const currentHitsRemaining = targetBrick.hitsRemaining;
+                  const newHitsRemaining = currentHitsRemaining - 1;
                   const brickDestroyed = newHitsRemaining <= 0;
 
-                  // Cracked brick sound
+                  // Cracked brick sound - play based on CURRENT state before hit
                   if (targetBrick.type === 'cracked') {
-                    soundManager.playBrickHit('cracked', newHitsRemaining);
+                    soundManager.playBrickHit('cracked', currentHitsRemaining);
                   } else {
                     soundManager.playBrickHit();
                   }
@@ -1370,7 +1458,7 @@ export const Game = ({
 
       return updatedBalls;
     });
-  }, [paddle, balls, bricks, createPowerUp, setPowerUps, nextLevel, speedMultiplier, brickHitSpeedAccumulated, level, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT, SCALED_PADDLE_WIDTH, SCALED_BALL_RADIUS, scaleFactor, levelSkipped, score, isHighScore, createHighScoreParticles, setHighScoreParticles, bombIntervalsRef, createExplosionParticles]);
+  }, [paddle, balls, bricks, boss, resurrectedBosses, enemies, createPowerUp, setPowerUps, nextLevel, speedMultiplier, brickHitSpeedAccumulated, level, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT, SCALED_PADDLE_WIDTH, SCALED_BALL_RADIUS, scaleFactor, levelSkipped, score, isHighScore, createHighScoreParticles, setHighScoreParticles, bombIntervalsRef, createExplosionParticles]);
   
   // Boss defeat handler
   const handleBossDefeat = useCallback((defeatedBoss: Boss) => {
