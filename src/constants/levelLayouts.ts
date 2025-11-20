@@ -264,6 +264,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [true, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, true],
     [true, true, true, true, true, true, true, true, true, true, true, true, true],
     [false, false, false, false, false, false, false, false, false, false, false, false, false]
+  ],
 
   // Level 15: Stripes
   [
