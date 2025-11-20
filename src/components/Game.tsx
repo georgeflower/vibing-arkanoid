@@ -12,9 +12,9 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { Maximize2, Minimize2, Home } from "lucide-react";
-import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, GameSettings, EnemyType, Particle, Boss, BossAttack, ShieldImpact } from "@/types/game";
+import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, GameSettings, EnemyType, Particle, Boss, BossAttack, ShieldImpact, PowerUp, PowerUpType } from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
-import { CANVAS_WIDTH, CANVAS_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, BRICK_ROWS, BRICK_COLS, BRICK_WIDTH, BRICK_HEIGHT, BRICK_PADDING, BRICK_OFFSET_TOP, BRICK_OFFSET_LEFT, brickColors, POWERUP_DROP_CHANCE, getHitColor, getBrickColors } from "@/constants/game";
+import { CANVAS_WIDTH, CANVAS_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, BRICK_ROWS, BRICK_COLS, BRICK_WIDTH, BRICK_HEIGHT, BRICK_PADDING, BRICK_OFFSET_TOP, BRICK_OFFSET_LEFT, brickColors, POWERUP_DROP_CHANCE, getHitColor, getBrickColors, POWERUP_SIZE, POWERUP_FALL_SPEED } from "@/constants/game";
 import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
@@ -1042,6 +1042,49 @@ export const Game = ({
         nextLevel();
         toast.warning("Level skipped! You are DISQUALIFIED from high scores!", { duration: 3000 });
       }
+      
+      // ========== DEBUG TESTING FEATURES - START ==========
+      // These features are for testing and debugging only
+      // Remove before production release
+      
+      else if (e.key === "+" || e.key === "=") {
+        // Increase ball speed by 5%
+        setSpeedMultiplier(prev => {
+          const newSpeed = prev * 1.05;
+          toast.success(`Debug: Speed increased to ${Math.round(newSpeed * 100)}%`);
+          return newSpeed;
+        });
+      }
+      else if (["1", "2", "3", "4", "5", "6", "7", "8"].includes(e.key) && paddle) {
+        // Drop power-ups for testing
+        const powerUpMap: Record<string, PowerUpType> = {
+          "1": "shield",
+          "2": "turrets", 
+          "3": "life",
+          "4": "slowdown",
+          "5": "multiball",
+          "6": "paddleShrink",
+          "7": "paddleExtend",
+          "8": "fireball"
+        };
+        
+        const type = powerUpMap[e.key];
+        const newPowerUp: PowerUp = {
+          x: paddle.x + paddle.width / 2 - POWERUP_SIZE / 2,
+          y: paddle.y - 50, // Drop from above paddle
+          width: POWERUP_SIZE,
+          height: POWERUP_SIZE,
+          type: type,
+          speed: POWERUP_FALL_SPEED,
+          active: true
+        };
+        
+        setPowerUps(prev => [...prev, newPowerUp]);
+        toast.success(`Debug: ${type} power-up dropped`);
+      }
+      
+      // ========== DEBUG TESTING FEATURES - END ==========
+      
     };
     const handlePointerLockChange = () => {
       setIsPointerLocked(document.pointerLockElement === canvas);
