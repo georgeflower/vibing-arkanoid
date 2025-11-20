@@ -52,9 +52,18 @@ export function processBallWithCCD(
     }))
     .filter(b => b.visible);
 
-  // Boss collision is now handled by explicit shape-specific collision checks in Game.tsx
-  // (CCD cannot handle rotating shapes like cube and pyramid)
-  // Boss has been removed from CCD system
+  // Add main boss as obstacle to prevent penetration (shape-specific damage logic handled separately)
+  if (gameState.boss) {
+    const BOSS_MARGIN = 2;
+    ccdBricks.push({
+      id: -1, // Main boss ID
+      x: gameState.boss.x + BOSS_MARGIN,
+      y: gameState.boss.y + BOSS_MARGIN,
+      width: gameState.boss.width - 2 * BOSS_MARGIN,
+      height: gameState.boss.height - 2 * BOSS_MARGIN,
+      visible: true
+    });
+  }
 
   // Add resurrected bosses as bricks (use negative IDs)
   // Resurrected bosses also use TOP-LEFT coordinates

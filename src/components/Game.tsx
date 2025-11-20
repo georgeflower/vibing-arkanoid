@@ -1117,6 +1117,47 @@ export const Game = ({
         })
       );
 
+      // Phase 1.5: Safety check - ensure ball never penetrates boss bounding box
+      if (boss) {
+        ballResults.forEach(result => {
+          if (!result.ball) return;
+          
+          const ballInBoss = result.ball.x + result.ball.radius > boss.x &&
+                             result.ball.x - result.ball.radius < boss.x + boss.width &&
+                             result.ball.y + result.ball.radius > boss.y &&
+                             result.ball.y - result.ball.radius < boss.y + boss.height;
+          
+          if (ballInBoss) {
+            // Ball is inside boss - push it out along shortest axis
+            const overlapLeft = (result.ball.x + result.ball.radius) - boss.x;
+            const overlapRight = (boss.x + boss.width) - (result.ball.x - result.ball.radius);
+            const overlapTop = (result.ball.y + result.ball.radius) - boss.y;
+            const overlapBottom = (boss.y + boss.height) - (result.ball.y - result.ball.radius);
+            
+            const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+            
+            if (minOverlap === overlapLeft) {
+              result.ball.x = boss.x - result.ball.radius - 1;
+              if (result.ball.dx > 0) result.ball.dx = -result.ball.dx;
+            } else if (minOverlap === overlapRight) {
+              result.ball.x = boss.x + boss.width + result.ball.radius + 1;
+              if (result.ball.dx < 0) result.ball.dx = -result.ball.dx;
+            } else if (minOverlap === overlapTop) {
+              result.ball.y = boss.y - result.ball.radius - 1;
+              if (result.ball.dy > 0) result.ball.dy = -result.ball.dy;
+            } else {
+              result.ball.y = boss.y + boss.height + result.ball.radius + 1;
+              if (result.ball.dy < 0) result.ball.dy = -result.ball.dy;
+            }
+            
+            console.log('[BossPenetration] Ball pushed out of boss', { 
+              axis: minOverlap === overlapLeft ? 'left' : minOverlap === overlapRight ? 'right' : minOverlap === overlapTop ? 'top' : 'bottom',
+              ballPos: { x: result.ball.x, y: result.ball.y }
+            });
+          }
+        });
+      }
+
       // Phase 2: Deduplicate collision events by object
       const processedObjects = new Set<string>();
       const brickUpdates = new Map<number, { hitsRemaining: number; visible: boolean }>();
@@ -1747,11 +1788,8 @@ export const Game = ({
         }
         
         if (collision) {
-          // ALWAYS apply position and velocity corrections (physics)
-          result.ball.x = collision.newX;
-          result.ball.y = collision.newY;
-          result.ball.dx = collision.newVelocityX;
-          result.ball.dy = collision.newVelocityY;
+          // Physics corrections handled by CCD + safety check above
+          // This section only handles damage application with cooldown
           
           // ONLY deal damage if boss-local cooldown has elapsed (game logic)
           const now = Date.now();
@@ -1880,11 +1918,8 @@ export const Game = ({
           const collision = checkCircleVsRotatedTriangle(result.ball, resBoss);
           
           if (collision) {
-            // ALWAYS apply position and velocity corrections (physics)
-            result.ball.x = collision.newX;
-            result.ball.y = collision.newY;
-            result.ball.dx = collision.newVelocityX;
-            result.ball.dy = collision.newVelocityY;
+            // Physics corrections handled by CCD + safety check above
+            // This section only handles damage application with cooldown
             
             // ONLY deal damage if boss-local cooldown has elapsed (game logic)
             const now = Date.now();
