@@ -1155,26 +1155,30 @@ export const Game = ({
             });
           }
           
-          // Skip if already processed this frame
-          if (event.objectType !== 'wall' && event.objectType !== 'paddle' && processedObjects.has(objectKey)) {
-            return;
+          // Track whether this is a duplicate collision for sound/score purposes
+          const isDuplicate = event.objectType !== 'wall' && event.objectType !== 'paddle' && processedObjects.has(objectKey);
+          if (!isDuplicate) {
+            processedObjects.add(objectKey);
           }
-          processedObjects.add(objectKey);
           
           switch (event.objectType) {
             case 'wall':
-              soundManager.playBounce();
+              if (!isDuplicate) {
+                soundManager.playBounce();
+              }
               break;
 
             case 'paddle':
-              // Adjust angle based on hit position
+              // Adjust angle based on hit position (always apply physics)
               const hitPos = (event.point.x - paddle.x) / paddle.width;
               const angle = (hitPos - 0.5) * Math.PI * 0.6;
               const speed = Math.sqrt(result.ball.dx * result.ball.dx + result.ball.dy * result.ball.dy);
               result.ball.dx = speed * Math.sin(angle);
               result.ball.dy = -Math.abs(speed * Math.cos(angle));
-              soundManager.playBounce();
-              setLastPaddleHitTime(now);
+              if (!isDuplicate) {
+                soundManager.playBounce();
+                setLastPaddleHitTime(now);
+              }
               break;
 
             case 'brick':
@@ -1191,7 +1195,7 @@ export const Game = ({
                 const enemyIndex = objectId - 100000;
                 const enemy = enemies[enemyIndex];
                 
-                if (enemy) {
+                if (enemy && !isDuplicate) {
                   // Handle different enemy types with multi-hit logic
                   if (enemy.type === "pyramid") {
                     const currentHits = enemy.hits || 0;
@@ -1291,7 +1295,7 @@ export const Game = ({
                 break;
               }
               
-              // Handle brick collision - find brick by ID
+              // Handle brick collision - ALWAYS apply damage, deduplicate only sounds/score
               const brick = bricks.find(b => b.id === objectId);
               if (brick) {
                 
@@ -1299,32 +1303,39 @@ export const Game = ({
 
                 // Handle indestructible (metal) bricks
                 if (brick.isIndestructible) {
-                  soundManager.playBounce();
-                  setCurrentCombo(0);
+                  if (!isDuplicate) {
+                    soundManager.playBounce();
+                    setCurrentCombo(0);
+                  }
                   break;
                 }
 
-                // Check if already updated this frame
+                // Check if already updated this frame - prevent double damage
                 if (brickUpdates.has(brick.id)) break;
 
                 const currentHitsRemaining = brick.hitsRemaining;
                 const newHitsRemaining = currentHitsRemaining - 1;
                 const brickDestroyed = newHitsRemaining <= 0;
 
-                // Play sound based on CURRENT state before hit
-                if (brick.type === 'cracked') {
-                  soundsToPlay.push({ type: 'cracked', param: currentHitsRemaining });
-                } else {
-                  soundsToPlay.push({ type: 'brick' });
+                // Play sound only if not duplicate
+                if (!isDuplicate) {
+                  if (brick.type === 'cracked') {
+                    soundsToPlay.push({ type: 'cracked', param: currentHitsRemaining });
+                  } else {
+                    soundsToPlay.push({ type: 'brick' });
+                  }
                 }
 
                 if (brickDestroyed) {
                   // Mark brick for destruction
                   brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
                   
-                  scoreIncrease += brick.points;
-                  bricksDestroyedCount += 1;
-                  comboIncrease += 1;
+                  // Only add score/combo once per brick
+                  if (!isDuplicate) {
+                    scoreIncrease += brick.points;
+                    bricksDestroyedCount += 1;
+                    comboIncrease += 1;
+                  }
 
                   // Speed increase (cap at 30%)
                   if (brickHitSpeedAccumulated < 0.3) {
@@ -1334,13 +1345,13 @@ export const Game = ({
                     result.ball.dy *= (1 + speedIncrease);
                   }
 
-                  // Power-up drop
-                  if (Math.random() < POWERUP_DROP_CHANCE) {
+                  // Power-up drop - only once per brick
+                  if (!isDuplicate && Math.random() < POWERUP_DROP_CHANCE) {
                     powerUpsToCreate.push(brick);
                   }
 
-                  // Explosive brick handling
-                  if (brick.type === 'explosive') {
+                  // Explosive brick handling - only once per brick
+                  if (!isDuplicate && brick.type === 'explosive') {
                     explosiveBricksToDetonate.push(brick);
                   }
                 } else {
