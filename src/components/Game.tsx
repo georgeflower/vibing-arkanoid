@@ -1175,8 +1175,49 @@ export const Game = ({
               const objectId = typeof event.objectId === 'number' ? event.objectId : -1;
               
               // Handle boss collision (ID = -1) or explicit boss event
-              // Boss collision is now handled by shape-specific collision (lines 1760+)
-              // This CCD event handling is obsolete for the main boss
+              if ((objectId === -1 || (event as any).objectType === 'boss' || (boss && objectId === boss.id)) && boss) {
+                console.log('[BossHit] Boss collision detected', { 
+                  currentHealth: boss.currentHealth,
+                  lastHitTime: result.ball.lastHitTime,
+                  now,
+                  cooldownRemaining: result.ball.lastHitTime ? now - result.ball.lastHitTime : 'none',
+                  eventType: (event as any).objectType,
+                  objectId
+                });
+                
+                if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 1000) {
+                  result.ball.lastHitTime = now;
+                  soundManager.playBossHitSound();
+                  
+                  // Visual feedback
+                  setScreenShake(8);
+                  setTimeout(() => setScreenShake(0), 400);
+                  
+                  setBoss(prev => {
+                    if (!prev) return prev;
+                    const newHealth = Math.max(0, prev.currentHealth - 1);
+                    console.log('[BossHit] HP updated', { oldHealth: prev.currentHealth, newHealth });
+                    
+                    if (newHealth <= 0) {
+                      soundManager.playExplosion();
+                      toast.success(`Boss defeated! +${BOSS_CONFIG[prev.type].points} points`);
+                      // Create massive explosion
+                      explosionsToCreate.push({
+                        x: prev.x + prev.width / 2,
+                        y: prev.y + prev.height / 2,
+                        type: prev.type as EnemyType
+                      });
+                    } else {
+                      toast.info(`BOSS: ${newHealth} HP`, { 
+                        duration: 1000,
+                        style: { background: '#ff0000', color: '#fff' }
+                      });
+                    }
+                    return { ...prev, currentHealth: newHealth };
+                  });
+                }
+                break;
+              }
               
               // Handle resurrected boss collision (ID = -2, -3, -4)
               if (objectId < -1) {
@@ -1569,13 +1610,13 @@ export const Game = ({
       }
 
       // Phase 3.5: Shape-Specific Boss Collision Check (rotating hitboxes)
-      // Hitbox is 1 pixel SMALLER than the visual shape and rotates with the boss
+      // Hitbox is 1 pixel WIDER than the visual shape and rotates with the boss
       
       // Helper: Circle vs Rotated Rectangle (for cube boss)
       const checkCircleVsRotatedRect = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
         const centerX = boss.x + boss.width / 2;
         const centerY = boss.y + boss.height / 2;
-        const HITBOX_EXPAND = -1;
+        const HITBOX_EXPAND = 1;
         
         const dx = ball.x - centerX;
         const dy = ball.y - centerY;
@@ -1613,11 +1654,8 @@ export const Game = ({
         }
         
         // Calculate penetration and push out in unrotated space
-        let dist = Math.sqrt(distSq);
-        // Safety check: prevent division by zero
-        if (dist < 0.1) dist = 0.1;
-        
-        const penetration = ball.radius - dist; // +2 pixels safety margin
+        const dist = Math.sqrt(distSq);
+        const penetration = ball.radius - dist;
         const pushX = ux + (distX / dist) * penetration;
         const pushY = uy + (distY / dist) * penetration;
         
@@ -1641,14 +1679,11 @@ export const Game = ({
       const checkCircleVsCircle = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
         const centerX = boss.x + boss.width / 2;
         const centerY = boss.y + boss.height / 2;
-        const HITBOX_EXPAND = -1;
+        const HITBOX_EXPAND = 1;
         
         const dx = ball.x - centerX;
         const dy = ball.y - centerY;
-        let dist = Math.sqrt(dx * dx + dy * dy);
-        
-        // Safety check: prevent division by zero if ball is exactly at boss center
-        if (dist < 0.1) dist = 0.1;
+        const dist = Math.sqrt(dx * dx + dy * dy);
         
         const bossRadius = boss.width / 2 + HITBOX_EXPAND;
         const totalRadius = ball.radius + bossRadius;
@@ -1658,8 +1693,8 @@ export const Game = ({
         const normalX = dx / dist;
         const normalY = dy / dist;
         
-        // Push ball out to correct position with extra safety margin
-        const overlap = totalRadius - dist; // +2 pixels safety margin
+        // Push ball out to correct position
+        const overlap = totalRadius - dist;
         const newX = ball.x + normalX * overlap;
         const newY = ball.y + normalY * overlap;
         
@@ -1674,7 +1709,7 @@ export const Game = ({
       const checkCircleVsRotatedTriangle = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
         const centerX = boss.x + boss.width / 2;
         const centerY = boss.y + boss.height / 2;
-        const HITBOX_EXPAND = -1;
+        const HITBOX_EXPAND = 1;
         const size = boss.width / 2 + HITBOX_EXPAND;
         
         const v0 = { x: 0, y: -size };
@@ -1740,11 +1775,8 @@ export const Game = ({
         
         if (closestDist >= ball.radius) return null;
         
-        // Safety check for zero distance
-        if (closestDist < 0.1) closestDist = 0.1;
-        
-        // Push ball out to correct position with extra safety margin
-        const penetration = ball.radius - closestDist; // +2 pixels safety margin
+        // Push ball out to correct position
+        const penetration = ball.radius - closestDist;
         const newX = ball.x + closestNormal.x * penetration;
         const newY = ball.y + closestNormal.y * penetration;
         
@@ -1773,16 +1805,9 @@ export const Game = ({
             break;
         }
         
-          if (collision) {
-            console.log('[BossCollision]', {
-              bossType: boss.type,
-              ballPos: { x: result.ball.x, y: result.ball.y },
-              correctedPos: { x: collision.newX, y: collision.newY },
-              cooldownReady: !result.ball.lastHitTime || (Date.now() - result.ball.lastHitTime >= 700)
-            });
-            
-            const now = Date.now();
-            if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 700) {
+        if (collision) {
+          const now = Date.now();
+          if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 700) {
             result.ball.lastHitTime = now;
             
             // Apply both position and velocity corrections
@@ -1819,59 +1844,7 @@ export const Game = ({
         }
       });
 
-      // Phase 3.6: Aggressive boss overlap resolution (safety net)
-      ballResults.forEach((result) => {
-        if (!result.ball || !boss) return;
-        
-        const ball = result.ball;
-        const centerX = boss.x + boss.width / 2;
-        const centerY = boss.y + boss.height / 2;
-        const dx = ball.x - centerX;
-        const dy = ball.y - centerY;
-        let dist = Math.sqrt(dx * dx + dy * dy);
-        
-        // Safety check for zero distance
-        if (dist < 0.1) dist = 0.1;
-        
-        // Determine if ball is inside boss
-        let isInside = false;
-        let minSafeDist = 0;
-        
-        if (boss.type === 'sphere') {
-          minSafeDist = boss.width / 2 + ball.radius + 0.5; // +0.5 for safety margin
-          isInside = dist < minSafeDist;
-        } else if (boss.type === 'cube' || boss.type === 'pyramid') {
-          // Conservative check: use bounding circle
-          minSafeDist = (boss.width * 0.707) + ball.radius + 0.5; // diagonal * 0.707 + radius + margin
-          isInside = dist < minSafeDist;
-        }
-        
-        // If ball is inside, push it out forcefully
-        if (isInside) {
-          const pushDist = minSafeDist - dist + 0.5; // +0.5 extra pixels
-          const normalX = dx / dist;
-          const normalY = dy / dist;
-          ball.x += normalX * pushDist;
-          ball.y += normalY * pushDist;
-          
-          // Reflect velocity if moving toward boss
-          const velDot = ball.dx * normalX + ball.dy * normalY;
-          if (velDot < 0) {
-            ball.dx -= 2 * velDot * normalX;
-            ball.dy -= 2 * velDot * normalY;
-          }
-          
-          console.warn('[BossOverlap] Ball pushed out of boss', {
-            dist,
-            minSafeDist,
-            overlap: minSafeDist - dist,
-            bossType: boss.type,
-            ballPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) }
-          });
-        }
-      });
-
-      // Phase 3.7: Explicit Paddle Overlap Resolution
+      // Phase 3.5: Explicit Paddle Overlap Resolution
       ballResults.forEach((result) => {
         if (!result.ball || !paddle) return;
         
@@ -1901,19 +1874,19 @@ export const Game = ({
           
           if (minOverlap === overlapTop) {
             // Push ball up (most common case - ball inside paddle from top)
-            ball.y = paddleTop - ball.radius - 1; // -1 for safety margin
+            ball.y = paddleTop - ball.radius;
             if (ball.dy > 0) ball.dy = -Math.abs(ball.dy);
           } else if (minOverlap === overlapBottom) {
             // Push ball down
-            ball.y = paddleBottom + ball.radius + 1; // +1 for safety margin
+            ball.y = paddleBottom + ball.radius;
             if (ball.dy < 0) ball.dy = Math.abs(ball.dy);
           } else if (minOverlap === overlapLeft) {
             // Push ball left
-            ball.x = paddleLeft - ball.radius - 1; // -1 for safety margin
+            ball.x = paddleLeft - ball.radius;
             if (ball.dx > 0) ball.dx = -Math.abs(ball.dx);
           } else if (minOverlap === overlapRight) {
             // Push ball right
-            ball.x = paddleRight + ball.radius + 1; // +1 for safety margin
+            ball.x = paddleRight + ball.radius;
             if (ball.dx < 0) ball.dx = Math.abs(ball.dx);
           }
         }
