@@ -1,6 +1,19 @@
-export const GAME_VERSION = "0.7.1";
+export const GAME_VERSION = "0.7.2";
 
 export const CHANGELOG = [
+  {
+    version: "0.7.2",
+    changes: [
+      "CCD Physics Engine: Implemented Continuous Collision Detection with Time-of-Impact (TOI) calculations for mathematically precise collision handling",
+      "Zero Tunneling Guarantee: Ball can no longer tunnel through bricks, paddle, or walls regardless of speed using swept-circle vs expanded AABB tests",
+      "Boss/Enemy CCD Integration: Bosses, resurrected bosses, and enemies now use CCD system for accurate ball collisions with proper cooldowns",
+      "Enhanced Debug Overlay: Added CCD-specific metrics including collisions per frame and TOI iterations, renamed to 'CCD Physics Debug'",
+      "Cracked Brick Sound Fix: Sound effects now correctly play based on current damage state (3→2→1 progression) before applying damage",
+      "Velocity Unit Conversion: Fixed ball speed by properly converting between px/frame (game) and px/sec (physics engine)",
+      "Multi-Object Collision: Single physics pass handles bricks, paddle, walls, bosses, and enemies simultaneously with correct priority",
+      "Adaptive Substeps: Automatically scales from 2x to 5x substeps based on ball speed for optimal performance and accuracy",
+    ],
+  },
   {
     version: "0.7.1",
     changes: [
