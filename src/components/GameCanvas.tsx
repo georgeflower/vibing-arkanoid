@@ -1273,17 +1273,27 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw boss
       if (boss) {
-        // Debug: Draw boss hitbox overlay
+        // Debug: Draw boss hitbox overlay (MUST match CCD's hitbox exactly!)
         if (SHOW_BOSS_HITBOX) {
           ctx.save();
-          ctx.strokeStyle = 'rgba(255, 0, 255, 0.8)';
-          ctx.lineWidth = 3;
-          ctx.strokeRect(boss.x, boss.y, boss.width, boss.height);
-          ctx.fillStyle = 'rgba(255, 0, 255, 0.2)';
-          ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+          ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 4]);
+          
+          // Boss stores TOP-LEFT coordinates - apply same margin as CCD
+          const HITBOX_MARGIN = 2; // Must match gameCCD.ts
+          const hitboxX = boss.x + HITBOX_MARGIN;
+          const hitboxY = boss.y + HITBOX_MARGIN;
+          const hitboxW = boss.width - 2 * HITBOX_MARGIN;
+          const hitboxH = boss.height - 2 * HITBOX_MARGIN;
+          
+          ctx.strokeRect(hitboxX, hitboxY, hitboxW, hitboxH);
+          ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
+          ctx.fillRect(hitboxX, hitboxY, hitboxW, hitboxH);
+          ctx.setLineDash([]);
           ctx.fillStyle = 'rgba(255, 255, 255, 1)';
-          ctx.font = 'bold 12px monospace';
-          ctx.fillText(`Boss Hitbox (${boss.x.toFixed(0)}, ${boss.y.toFixed(0)})`, boss.x, boss.y - 5);
+          ctx.font = 'bold 10px monospace';
+          ctx.fillText(`Hitbox(${hitboxX.toFixed(0)}, ${hitboxY.toFixed(0)})`, hitboxX, hitboxY - 5);
           ctx.restore();
         }
         
