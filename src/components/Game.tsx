@@ -1198,8 +1198,6 @@ export const Game = ({
       ballResults.forEach((result, ballIndex) => {
         if (!result.ball) return;
 
-        // Store original velocity to restore for fireball pass-through
-        const originalVelocity = { dx: result.ball.dx, dy: result.ball.dy };
 
         // Sort events chronologically by time-of-impact (CCD already provides this, but explicit for safety)
         const sortedEvents = result.events.sort((a, b) => a.t - b.t);
@@ -1413,9 +1411,19 @@ export const Game = ({
                   explosiveBricksToDetonate.push(brick);
                 }
                 
-                // Fireball continues through (restore pre-collision velocity to undo CCD bounce)
-                result.ball.dx = originalVelocity.dx;
-                result.ball.dy = originalVelocity.dy;
+                // Fireball continues through: undo CCD bounce by reconstructing pre-collision velocity
+                const vX = result.ball.dx;
+                const vY = result.ball.dy;
+                const nX = event.normal.x;
+                const nY = event.normal.y;
+                const dot = vX * nX + vY * nY;
+
+                const incomingVX = vX - 2 * dot * nX;
+                const incomingVY = vY - 2 * dot * nY;
+
+                result.ball.dx = incomingVX;
+                result.ball.dy = incomingVY;
+
                 break;
               }
 
