@@ -1609,6 +1609,90 @@ export const Game = ({
         });
       }
 
+      // Phase 3.5: Explicit Boss Collision Check (post-CCD fallback)
+      // This guarantees boss hits when the ball touches the visual hitbox
+      const BOSS_HITBOX_MARGIN = 2; // Must match gameCCD.ts
+      
+      ballResults.forEach((result) => {
+        if (!result.ball || !boss) return;
+        
+        const ball = result.ball;
+        const r = ball.radius;
+        
+        // Boss hitbox with same margin as CCD
+        const bossLeft   = boss.x + BOSS_HITBOX_MARGIN;
+        const bossTop    = boss.y + BOSS_HITBOX_MARGIN;
+        const bossRight  = boss.x + boss.width  - BOSS_HITBOX_MARGIN;
+        const bossBottom = boss.y + boss.height - BOSS_HITBOX_MARGIN;
+        
+        // Circle-AABB overlap test
+        const cx = ball.x;
+        const cy = ball.y;
+        
+        // Find closest point on AABB to circle center
+        const closestX = Math.max(bossLeft, Math.min(cx, bossRight));
+        const closestY = Math.max(bossTop,  Math.min(cy, bossBottom));
+        const dx = cx - closestX;
+        const dy = cy - closestY;
+        const distSq = dx * dx + dy * dy;
+        
+        // Check collision
+        if (distSq <= r * r) {
+          const now = Date.now();
+          if (!ball.lastHitTime || now - ball.lastHitTime >= 1000) {
+            ball.lastHitTime = now;
+            
+            // Determine collision normal (which side was hit)
+            const bossCenterX = (bossLeft + bossRight) / 2;
+            const bossCenterY = (bossTop + bossBottom) / 2;
+            const offsetX = cx - bossCenterX;
+            const offsetY = cy - bossCenterY;
+            
+            let normalX = 0;
+            let normalY = 0;
+            if (Math.abs(offsetX) > Math.abs(offsetY)) {
+              // Hit left or right side
+              normalX = offsetX > 0 ? 1 : -1;
+            } else {
+              // Hit top or bottom side
+              normalY = offsetY > 0 ? 1 : -1;
+            }
+            
+            // Reflect velocity across normal
+            const dot = ball.dx * normalX + ball.dy * normalY;
+            ball.dx = ball.dx - 2 * dot * normalX;
+            ball.dy = ball.dy - 2 * dot * normalY;
+            
+            // Visual & audio feedback
+            soundManager.playBossHitSound();
+            setScreenShake(8);
+            setTimeout(() => setScreenShake(0), 400);
+            
+            // Update boss HP
+            setBoss(prev => {
+              if (!prev) return prev;
+              const newHealth = Math.max(0, prev.currentHealth - 1);
+              
+              if (newHealth <= 0) {
+                soundManager.playExplosion();
+                toast.success(`Boss defeated! +${BOSS_CONFIG[prev.type].points} points`);
+                explosionsToCreate.push({
+                  x: prev.x + prev.width / 2,
+                  y: prev.y + prev.height / 2,
+                  type: prev.type as EnemyType
+                });
+              } else {
+                toast.info(`BOSS: ${newHealth} HP`, { 
+                  duration: 1000,
+                  style: { background: '#ff0000', color: '#fff' }
+                });
+              }
+              return { ...prev, currentHealth: newHealth };
+            });
+          }
+        }
+      });
+
       // Phase 4: Update ball positions and check for lost balls
       // CRITICAL: Use the ball instances from ballResults to preserve lastHitTime
       const updatedBalls = ballResults
