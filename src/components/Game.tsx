@@ -84,6 +84,7 @@ export const Game = ({
   const [boss, setBoss] = useState<Boss | null>(null);
   const [resurrectedBosses, setResurrectedBosses] = useState<Boss[]>([]);
   const [bossAttacks, setBossAttacks] = useState<BossAttack[]>([]);
+  const [bossDefeatedTransitioning, setBossDefeatedTransitioning] = useState(false);
   const [bossActive, setBossActive] = useState(false);
   const [bossHitCooldown, setBossHitCooldown] = useState(0);
   const [laserWarnings, setLaserWarnings] = useState<Array<{ x: number; startTime: number }>>([]);
@@ -142,6 +143,7 @@ export const Game = ({
   const launchAngleIntervalRef = useRef<NodeJS.Timeout>();
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const timerStartedRef = useRef(false);
+  const nextLevelRef = useRef<(() => void) | null>(null);
   
   // Fixed-step game loop
   const gameLoopRef = useRef<FixedStepGameLoop | null>(null);
@@ -197,7 +199,8 @@ export const Game = ({
     boss,
     resurrectedBosses,
     setBoss,
-    setResurrectedBosses
+    setResurrectedBosses,
+    () => nextLevelRef.current?.()
   );
 
   // Adaptive quality system
@@ -634,6 +637,7 @@ export const Game = ({
       setBossAttacks([]);
       setBossActive(false);
       setLaserWarnings([]);
+      setBossDefeatedTransitioning(false);
     } else {
       // Boss level - trigger intro sequence
       setBossIntroActive(true);
@@ -660,6 +664,9 @@ export const Game = ({
       toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
     }
   }, [level, initBricksForLevel, setPowerUps]);
+  
+  // Update nextLevel ref whenever nextLevel function changes
+  nextLevelRef.current = nextLevel;
   useEffect(() => {
     initGame();
     
@@ -1377,6 +1384,41 @@ export const Game = ({
                 break;
               }
 
+              // Fireball instantly destroys all non-metal bricks
+              if (result.ball.isFireball) {
+                // Instantly destroy brick
+                brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
+                
+                // Play destruction sound
+                if (!isDuplicate) {
+                  if (brick.type === 'cracked') {
+                    soundsToPlay.push({ type: 'cracked', param: brick.hitsRemaining });
+                  } else {
+                    soundsToPlay.push({ type: 'brick' });
+                  }
+                }
+                
+                // Award points
+                if (!isDuplicate) {
+                  scoreIncrease += brick.points;
+                  bricksDestroyedCount += 1;
+                  comboIncrease += 1;
+                }
+                
+                // Power-up drop
+                if (!isDuplicate && Math.random() < POWERUP_DROP_CHANCE) {
+                  powerUpsToCreate.push(brick);
+                }
+                
+                // Explosive brick handling
+                if (!isDuplicate && brick.type === 'explosive') {
+                  explosiveBricksToDetonate.push(brick);
+                }
+                
+                // Fireball continues through (no velocity change)
+                break;
+              }
+
               const currentHitsRemaining = brick.hitsRemaining;
               const newHitsRemaining = currentHitsRemaining - 1;
               const brickDestroyed = newHitsRemaining <= 0;
@@ -1931,6 +1973,7 @@ export const Game = ({
                   });
                   setBossesKilled(k => k + 1);
                   setBossActive(false);
+                  setBossDefeatedTransitioning(true);
                   // Clean up game entities
                   setBalls([]);
                   setEnemies([]);
@@ -1975,6 +2018,7 @@ export const Game = ({
                     });
                     setBossesKilled(k => k + 1);
                     setBossActive(false);
+                    setBossDefeatedTransitioning(true);
                     // Clean up game entities
                     setBalls([]);
                     setEnemies([]);
@@ -2094,6 +2138,7 @@ export const Game = ({
                     toast.success("ALL PYRAMIDS DEFEATED!");
                     setBossActive(false);
                     setBossesKilled(k => k + 1);
+                    setBossDefeatedTransitioning(true);
                     // Clean up game entities
                     setBalls([]);
                     setEnemies([]);
@@ -3161,7 +3206,7 @@ export const Game = ({
 
   // Boss enemy spawning system
   useEffect(() => {
-    if (gameState !== "playing" || !boss) return;
+    if (gameState !== "playing" || !boss || bossDefeatedTransitioning) return;
     
     const BOSS_SPAWN_INTERVAL = 15; // 15 seconds
     const MAX_BOSS_ENEMIES = 6; // Maximum enemies on screen
@@ -3294,7 +3339,7 @@ export const Game = ({
       soundManager.playExplosion();
       toast.warning(`${boss.type.toUpperCase()} spawned ${enemiesToSpawn} minion${enemiesToSpawn > 1 ? 's' : ''}!`, { duration: 2000 });
     }
-  }, [timer, gameState, boss, enemies.length, lastBossSpawnTime, SCALED_CANVAS_WIDTH]);
+  }, [timer, gameState, boss, enemies.length, lastBossSpawnTime, SCALED_CANVAS_WIDTH, bossDefeatedTransitioning]);
 
   // Boss hit cooldown timer
   useEffect(() => {
