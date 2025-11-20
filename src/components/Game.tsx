@@ -83,6 +83,7 @@ export const Game = ({
   const [resurrectedBosses, setResurrectedBosses] = useState<Boss[]>([]);
   const [bossAttacks, setBossAttacks] = useState<BossAttack[]>([]);
   const [bossActive, setBossActive] = useState(false);
+  const [bossHitCooldown, setBossHitCooldown] = useState(0);
   const [laserWarnings, setLaserWarnings] = useState<Array<{ x: number; startTime: number }>>([]);
   const bossSpawnedEnemiesRef = useRef<Set<number>>(new Set());
   const [isMobileDevice] = useState(() => {
@@ -1816,6 +1817,7 @@ export const Game = ({
           const now = Date.now();
           if (!result.ball.lastHitTime || now - result.ball.lastHitTime >= 1000) {
             result.ball.lastHitTime = now;
+            setBossHitCooldown(1000); // Start 1 second cooldown
             
             soundManager.playBossHitSound();
             setScreenShake(8);
