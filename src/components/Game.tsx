@@ -1595,7 +1595,7 @@ export const Game = ({
         
         // Calculate penetration and push out in unrotated space with safety margin
         const dist = Math.sqrt(distSq);
-        const penetration = ball.radius - dist + 1; // +1 pixel safety margin
+        const penetration = ball.radius - dist + 2; // +2 pixel safety margin (increased for better separation)
         const pushX = ux + (distX / dist) * penetration;
         const pushY = uy + (distY / dist) * penetration;
         
@@ -1620,7 +1620,7 @@ export const Game = ({
         const centerX = boss.x + boss.width / 2;
         const centerY = boss.y + boss.height / 2;
         const HITBOX_EXPAND = 1;
-        const SAFETY_MARGIN = 1; // Prevent micro-penetration
+        const SAFETY_MARGIN = 2; // Prevent micro-penetration (increased for better separation)
         
         const dx = ball.x - centerX;
         const dy = ball.y - centerY;
@@ -1716,8 +1716,8 @@ export const Game = ({
         
         if (closestDist >= ball.radius) return null;
         
-        // Push ball out to correct position with +1 pixel safety margin
-        const penetration = ball.radius - closestDist + 1;
+        // Push ball out to correct position with +2 pixel safety margin
+        const penetration = ball.radius - closestDist + 2;
         const newX = ball.x + closestNormal.x * penetration;
         const newY = ball.y + closestNormal.y * penetration;
         
@@ -1752,6 +1752,9 @@ export const Game = ({
           result.ball.y = collision.newY;
           result.ball.dx = collision.newVelocityX;
           result.ball.dy = collision.newVelocityY;
+          
+          // Mark ball as having hit boss this frame to prevent paddle resolver conflict
+          (result.ball as any)._hitBossThisFrame = true;
           
           // ONLY deal damage if boss-local cooldown has elapsed (game logic)
           const now = Date.now();
@@ -1886,6 +1889,9 @@ export const Game = ({
             result.ball.dx = collision.newVelocityX;
             result.ball.dy = collision.newVelocityY;
             
+            // Mark ball as having hit boss this frame to prevent paddle resolver conflict
+            (result.ball as any)._hitBossThisFrame = true;
+            
             // ONLY deal damage if boss-local cooldown has elapsed (game logic)
             const now = Date.now();
             const BOSS_HIT_COOLDOWN_MS = 1000;
@@ -1959,6 +1965,12 @@ export const Game = ({
       });
       ballResults.forEach((result) => {
         if (!result.ball || !paddle) return;
+        
+        // Skip paddle resolution if ball hit boss this frame (prevents conflicting corrections)
+        if ((result.ball as any)._hitBossThisFrame) {
+          console.log('[PaddleResolver] Skipping paddle resolution - ball hit boss this frame');
+          return;
+        }
         
         const ball = result.ball;
         const ballLeft = ball.x - ball.radius;
