@@ -95,6 +95,14 @@ export function checkCircleVsRoundedPaddle(
         
         result.newVelocityX += deflectionFactor * Math.abs(result.newVelocityY);
       }
+
+      // For top-surface hits, ensure the ball is fully above the paddle to avoid sticking
+      if (result.normal.y <= -0.9) {
+        const targetY = paddle.y - ball.radius - SAFETY_MARGIN;
+        if (result.newY > targetY) {
+          result.newY = targetY;
+        }
+      }
     }
   }
 
