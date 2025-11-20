@@ -40,10 +40,10 @@ export function processBallWithCCD(
     lastHitTick: ball.lastHitTime
   };
 
-  // Convert bricks to CCD format, including visible bricks
+  // Convert bricks to CCD format, using actual brick IDs
   const ccdBricks: CCDBrick[] = gameState.bricks
-    .map((b, index) => ({
-      id: index,
+    .map((b) => ({
+      id: b.id, // Use actual brick ID instead of array index
       x: b.x,
       y: b.y,
       width: b.width,
