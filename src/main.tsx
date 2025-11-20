@@ -11,13 +11,28 @@ if ('serviceWorker' in navigator) {
       .then(registration => {
         console.log('SW registered:', registration);
         
-        // Check for updates periodically
+        // Force immediate update check on registration
+        registration.update();
+        
+        // Check for updates more frequently (every 5 minutes)
         setInterval(() => {
           registration.update();
-        }, 60 * 60 * 1000); // Check every hour
+        }, 5 * 60 * 1000);
+        
+        // Handle waiting service worker (if one exists before we checked)
+        if (registration.waiting) {
+          console.log('SW update ready, activating...');
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
       })
       .catch(error => {
         console.log('SW registration failed:', error);
       });
+  });
+  
+  // Listen for controller change (new SW activated)
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    console.log('New SW controller, reloading...');
+    window.location.reload();
   });
 }
