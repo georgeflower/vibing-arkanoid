@@ -62,6 +62,13 @@ export function processBallWithCCD(
       height: gameState.boss.height,
       visible: true
     });
+    console.log('[CCD] Boss brick added', {
+      id: -1,
+      x: gameState.boss.x,
+      y: gameState.boss.y,
+      width: gameState.boss.width,
+      height: gameState.boss.height
+    });
   }
 
   // Add resurrected bosses as bricks (use negative IDs)

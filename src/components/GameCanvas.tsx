@@ -62,6 +62,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       return !!(img && img.complete && img.naturalHeight !== 0);
     };
     
+    // Debug flag for boss hitbox
+    const SHOW_BOSS_HITBOX = true;
+    
     // Helper function to detect adjacent metal bricks for seamless rendering
     const getAdjacentMetalBricks = (brick: Brick, allBricks: Brick[]) => {
       const tolerance = 6; // Increased to detect bricks across padding boundaries
@@ -1270,6 +1273,20 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw boss
       if (boss) {
+        // Debug: Draw boss hitbox overlay
+        if (SHOW_BOSS_HITBOX) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255, 0, 255, 0.8)';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(boss.x, boss.y, boss.width, boss.height);
+          ctx.fillStyle = 'rgba(255, 0, 255, 0.2)';
+          ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+          ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+          ctx.font = 'bold 12px monospace';
+          ctx.fillText(`Boss Hitbox (${boss.x.toFixed(0)}, ${boss.y.toFixed(0)})`, boss.x, boss.y - 5);
+          ctx.restore();
+        }
+        
         const centerX = boss.x + boss.width / 2;
         const centerY = boss.y + boss.height / 2;
         
