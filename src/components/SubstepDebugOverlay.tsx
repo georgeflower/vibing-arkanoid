@@ -25,7 +25,7 @@ export const SubstepDebugOverlay = ({ getDebugInfo, visible = true }: SubstepDeb
 
     const interval = setInterval(() => {
       setDebugInfo(getDebugInfo());
-    }, 100); // Update 10 times per second
+    }, 1000); // Update once per second
 
     return () => clearInterval(interval);
   }, [getDebugInfo, visible]);

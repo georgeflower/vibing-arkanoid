@@ -189,8 +189,8 @@ class SoundManager {
     // Progressive sound effects for cracked bricks
     if (brickType === "cracked" && hitsRemaining !== undefined) {
       if (hitsRemaining === 3) {
-        // Light crack - high pitch, quick
-        oscillator.frequency.value = 1000;
+        // First hit - lower pitch, deep crack
+        oscillator.frequency.value = 500;
         oscillator.type = 'sine';
         gainNode.gain.setValueAtTime(0.08, ctx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.04);
