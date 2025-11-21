@@ -1,6 +1,12 @@
 /**
  * Frame-rate independent fixed-step game loop with accumulator pattern
  * 
+ * IMPORTANT UNITS CONVENTION:
+ * - onFixedUpdate receives: dtMs (milliseconds), dtSeconds (seconds), frameTick (integer)
+ * - Game velocities: px/frame at 60Hz (convert to px/sec for physics: px/sec = px/frame * 60)
+ * - CCD system expects: dtSeconds and px/sec velocities
+ * - Timestamps: Use frameTick for cooldowns (deterministic, integer increments)
+ * 
  * Features:
  * - Configurable fixed timestep (default 60Hz)
  * - Accumulator pattern with spiral-of-death protection
@@ -41,6 +47,7 @@ export class FixedStepGameLoop {
   private config: GameLoopConfig;
   private state: GameLoopState;
   private frameCount: number = 0;
+  private frameTick: number = 0; // Deterministic frame counter
   private fpsLastTime: number = 0;
   private animationFrameId: number | null = null;
   
@@ -161,6 +168,8 @@ export class FixedStepGameLoop {
     let updates = 0;
     while (this.state.accumulator >= this.config.fixedStep && updates < this.config.maxUpdatesPerFrame) {
       if (this.onFixedUpdate) {
+        this.frameTick++;
+        const dtSeconds = this.config.fixedStep / 1000;
         this.onFixedUpdate(this.config.fixedStep);
       }
       
@@ -299,5 +308,12 @@ export class FixedStepGameLoop {
    */
   resetAccumulator() {
     this.state.accumulator = 0;
+  }
+
+  /**
+   * Get current frame tick (deterministic counter)
+   */
+  getFrameTick(): number {
+    return this.frameTick;
   }
 }

@@ -62,6 +62,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       return !!(img && img.complete && img.naturalHeight !== 0);
     };
     
+    // Debug flag for boss hitbox
+    const SHOW_BOSS_HITBOX = false;
+    
     // Helper function to detect adjacent metal bricks for seamless rendering
     const getAdjacentMetalBricks = (brick: Brick, allBricks: Brick[]) => {
       const tolerance = 6; // Increased to detect bricks across padding boundaries
@@ -1270,6 +1273,57 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw boss
       if (boss) {
+        // Debug: Draw shape-specific, rotating boss hitbox (1px wider than visual)
+        if (SHOW_BOSS_HITBOX) {
+          const centerX = boss.x + boss.width / 2;
+          const centerY = boss.y + boss.height / 2;
+          const HITBOX_EXPAND = 1;
+          
+          ctx.save();
+          ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 4]);
+          ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
+          
+          ctx.translate(centerX, centerY);
+          
+          if (boss.type === 'cube') {
+            ctx.rotate(boss.rotationY);
+            const halfSize = (boss.width + 2 * HITBOX_EXPAND) / 2;
+            ctx.strokeRect(-halfSize, -halfSize, halfSize * 2, halfSize * 2);
+            ctx.fillRect(-halfSize, -halfSize, halfSize * 2, halfSize * 2);
+          } else if (boss.type === 'sphere') {
+            const radius = boss.width / 2 + HITBOX_EXPAND;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fill();
+          } else if (boss.type === 'pyramid') {
+            ctx.rotate(boss.rotationY);
+            const size = boss.width / 2 + HITBOX_EXPAND;
+            ctx.beginPath();
+            ctx.moveTo(0, -size);
+            ctx.lineTo(size, size);
+            ctx.lineTo(-size, size);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.fill();
+          }
+          
+          ctx.restore();
+          
+          ctx.save();
+          ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+          ctx.font = 'bold 10px monospace';
+          const rotDeg = (boss.rotationY * 180 / Math.PI).toFixed(0);
+          ctx.fillText(
+            `${boss.type.toUpperCase()} hitbox (rot: ${rotDeg}°)`, 
+            centerX - 50, 
+            centerY - boss.height / 2 - 10
+          );
+          ctx.restore();
+        }
+        
         const centerX = boss.x + boss.width / 2;
         const centerY = boss.y + boss.height / 2;
         

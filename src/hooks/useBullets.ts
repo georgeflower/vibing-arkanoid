@@ -15,7 +15,8 @@ export const useBullets = (
   boss?: Boss | null,
   resurrectedBosses?: Boss[],
   setBoss?: React.Dispatch<React.SetStateAction<Boss | null>>,
-  setResurrectedBosses?: React.Dispatch<React.SetStateAction<Boss[]>>
+  setResurrectedBosses?: React.Dispatch<React.SetStateAction<Boss[]>>,
+  onLevelComplete?: () => void
 ) => {
   const [bullets, setBullets] = useState<Bullet[]>([]);
 
@@ -200,8 +201,8 @@ export const useBullets = (
       
       // Update bricks if any collisions occurred
       if (brickIndicesToDestroy.size > 0) {
-        setBricks(prevBricks => 
-          prevBricks.map((brick, idx) => {
+        setBricks(prevBricks => {
+          const updatedBricks = prevBricks.map((brick, idx) => {
             if (brickIndicesToDestroy.has(idx)) {
               soundManager.playBrickHit(brick.type, brick.hitsRemaining);
               const updatedBrick = { ...brick, hitsRemaining: brick.hitsRemaining - 1 };
@@ -218,8 +219,16 @@ export const useBullets = (
               return updatedBrick;
             }
             return brick;
-          })
-        );
+          });
+          
+          // Check if level complete after turret shot
+          const remainingBricks = updatedBricks.filter(b => b.visible && !b.isIndestructible);
+          if (remainingBricks.length === 0) {
+            onLevelComplete?.();
+          }
+          
+          return updatedBricks;
+        });
       }
       
       // Return bullets: bounce the ones that hit enemies, remove ones that hit bricks
@@ -232,7 +241,7 @@ export const useBullets = (
       return bullet;
         });
     });
-  }, [setBricks, setScore, enemies, boss, resurrectedBosses, setBoss, setResurrectedBosses]);
+  }, [setBricks, setScore, enemies, boss, resurrectedBosses, setBoss, setResurrectedBosses, onLevelComplete]);
 
   return {
     bullets,

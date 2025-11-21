@@ -1,6 +1,9 @@
 import type { Boss, BossType } from "@/types/game";
 import { BOSS_CONFIG, BOSS_POSITIONS } from "@/constants/bossConfig";
 
+// Monotonic ID counter for bosses
+let nextBossId = 1000; // Start at safe range
+
 export function createBoss(level: number, canvasWidth: number, canvasHeight: number): Boss | null {
   let bossType: BossType;
   let config;
@@ -23,6 +26,12 @@ export function createBoss(level: number, canvasWidth: number, canvasHeight: num
     y: pos.y * canvasHeight - config.size / 2
   }));
   
+  // Validate positions length
+  if (positions.length < 2) {
+    console.error('[BossUtils] BOSS_POSITIONS has fewer than 2 entries');
+    return null;
+  }
+  
   const maxHealth = bossType === 'cube' 
     ? config.health 
     : ('healthPhase1' in config ? config.healthPhase1 : 10);
@@ -32,7 +41,7 @@ export function createBoss(level: number, canvasWidth: number, canvasHeight: num
     : ('healthPhase1' in config ? config.healthPhase1 : 10);
   
   return {
-    id: Date.now(),
+    id: nextBossId++, // Monotonic ID
     type: bossType,
     x: positions[0].x,
     y: positions[0].y,
@@ -57,7 +66,8 @@ export function createBoss(level: number, canvasWidth: number, canvasHeight: num
     waitTimeAtPosition: 0,
     attackCooldown: config.attackInterval,
     lastAttackTime: Date.now(),
-    isCharging: false
+    isCharging: false,
+    lastHitAt: 0
   };
 }
 
@@ -71,8 +81,11 @@ export function createResurrectedPyramid(
   const angleOffset = (index * 120) * (Math.PI / 180);
   const spawnRadius = 60;
   
+  // Safe random position index
+  const randomPosIndex = Math.floor(Math.random() * parentBoss.positions.length);
+  
   return {
-    id: Date.now() + index,
+    id: nextBossId++, // Monotonic ID
     type: 'pyramid',
     x: parentBoss.x + Math.cos(angleOffset) * spawnRadius,
     y: parentBoss.y + Math.sin(angleOffset) * spawnRadius,
@@ -91,14 +104,15 @@ export function createResurrectedPyramid(
     currentStage: 2,
     isAngry: true,
     isSuperAngry: false,
-    targetPosition: parentBoss.positions[Math.floor(Math.random() * 9)],
-    currentPositionIndex: Math.floor(Math.random() * 9),
+    targetPosition: parentBoss.positions[randomPosIndex],
+    currentPositionIndex: randomPosIndex,
     positions: parentBoss.positions,
     waitTimeAtPosition: 0,
     attackCooldown: config.attackInterval * 0.7,
     lastAttackTime: Date.now(),
     isCharging: false,
     parentBossId: parentBoss.id,
-    isResurrected: true
+    isResurrected: true,
+    lastHitAt: 0
   };
 }

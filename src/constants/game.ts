@@ -87,3 +87,18 @@ export const getHitColor = (baseColor: string, hitsRemaining: number, maxHits: n
   }
   return baseColor;
 };
+
+// Physics & Collision Constants
+export const PHYSICS_CONFIG = {
+  MAX_SUBSTEPS: 20,
+  MIN_SUBSTEPS: 2,
+  SUBSTEP_FACTOR: 0.15, // Ball speed / (brick dimension * factor)
+  CCD_EPSILON_MIN: 0.5,
+  CCD_EPSILON_FACTOR: 0.1, // * ball.radius
+  PADDLE_CORNER_RADIUS: 5,
+  PADDLE_SAFETY_MARGIN: 2,
+  BOSS_HITBOX_EXPAND: 1,
+  BOSS_SAFETY_MARGIN: 2,
+  BOSS_HIT_COOLDOWN_TICKS: 60, // At 60Hz = 1 second
+  EPS_TOI: 0.01, // Tolerance for duplicate collision events
+} as const;
