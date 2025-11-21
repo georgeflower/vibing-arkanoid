@@ -1156,13 +1156,396 @@ export const Game = ({
     const frameTick = gameLoopRef.current?.getFrameTick() || 0;
     const minBrickDimension = Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT);
     
+    // ---------- Boss-First Swept Collision Helper ----------
+    // Performs continuous TOI check along ball's linear path for this dtSeconds
+    // Returns true if boss collision found and corrections applied
+    const BOSS_HIT_COOLDOWN_FRAMES = 60; // 1 second at 60 FPS
+    
+    const performBossFirstSweep = (ball: Ball, bossTarget: Boss, dtSeconds: number, currentFrameTick: number): boolean => {
+      // Calculate speed-based sampling (scales with velocity and geometry)
+      const SPEED = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+      const samplesRaw = Math.ceil(SPEED / (minBrickDimension * 0.10));
+      const samples = Math.max(3, Math.min(12, samplesRaw)); // Clamp to [3, 12]
+      
+      // Sub-sample along ball's path this frame
+      for (let s = 1; s <= samples; s++) {
+        const alpha = s / samples;
+        const sampleX = ball.x + ball.dx * (dtSeconds * alpha);
+        const sampleY = ball.y + ball.dy * (dtSeconds * alpha);
+        
+        // Create virtual sample ball
+        const sampleBall: Ball = { ...ball, x: sampleX, y: sampleY };
+        
+        let collision: { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null = null;
+        
+        // Shape-specific collision checks (inlined for performance)
+        if (bossTarget.type === 'cube') {
+          // Rotated rectangle collision logic
+          const centerX = bossTarget.x + bossTarget.width / 2;
+          const centerY = bossTarget.y + bossTarget.height / 2;
+          const HITBOX_EXPAND = 1;
+          
+          const dx = sampleBall.x - centerX;
+          const dy = sampleBall.y - centerY;
+          
+          const cos = Math.cos(-bossTarget.rotationY);
+          const sin = Math.sin(-bossTarget.rotationY);
+          const ux = dx * cos - dy * sin;
+          const uy = dx * sin + dy * cos;
+          
+          const halfW = (bossTarget.width + 2 * HITBOX_EXPAND) / 2;
+          const halfH = (bossTarget.height + 2 * HITBOX_EXPAND) / 2;
+          
+          const closestX = Math.max(-halfW, Math.min(ux, halfW));
+          const closestY = Math.max(-halfH, Math.min(uy, halfH));
+          
+          const distX = ux - closestX;
+          const distY = uy - closestY;
+          const distSq = distX * distX + distY * distY;
+          
+          if (distSq <= sampleBall.radius * sampleBall.radius) {
+            const dist = Math.sqrt(distSq) || 1e-6;
+            const penetration = sampleBall.radius - dist;
+            const correctionDist = penetration + 2; // +2 pixel safety margin
+            const pushX = ux + (distX / dist) * correctionDist;
+            const pushY = uy + (distY / dist) * correctionDist;
+            
+            // Rotate corrected position back to world space
+            const worldPushX = pushX * Math.cos(bossTarget.rotationY) - pushY * Math.sin(bossTarget.rotationY);
+            const worldPushY = pushX * Math.sin(bossTarget.rotationY) + pushY * Math.cos(bossTarget.rotationY);
+            const newX = centerX + worldPushX;
+            const newY = centerY + worldPushY;
+            
+            // Normal in world space
+            const worldNormalX = (Math.abs(dist) < 1e-6) ? 0 : (distX / dist) * cos + (distY / dist) * sin;
+            const worldNormalY = (Math.abs(dist) < 1e-6) ? -1 : -(distX / dist) * sin + (distY / dist) * cos;
+            const dot = sampleBall.dx * worldNormalX + sampleBall.dy * worldNormalY;
+            const newVx = sampleBall.dx - 2 * dot * worldNormalX;
+            const newVy = sampleBall.dy - 2 * dot * worldNormalY;
+            collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
+          }
+        } else if (bossTarget.type === 'sphere') {
+          // Circle-circle collision logic
+          const centerX = bossTarget.x + bossTarget.width / 2;
+          const centerY = bossTarget.y + bossTarget.height / 2;
+          const HITBOX_EXPAND = 1;
+          
+          const dx = sampleBall.x - centerX;
+          const dy = sampleBall.y - centerY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const bossRadius = bossTarget.width / 2 + HITBOX_EXPAND;
+          const totalRadius = sampleBall.radius + bossRadius;
+          
+          if (dist < totalRadius) {
+            const penetration = totalRadius - dist;
+            const normalX = dx / (dist || 1e-6);
+            const normalY = dy / (dist || 1e-6);
+            const overlap = penetration + 2; // +2 pixel safety margin
+            const newX = sampleBall.x + normalX * overlap;
+            const newY = sampleBall.y + normalY * overlap;
+            const dot = sampleBall.dx * normalX + sampleBall.dy * normalY;
+            const newVx = sampleBall.dx - 2 * dot * normalX;
+            const newVy = sampleBall.dy - 2 * dot * normalY;
+            collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
+          }
+        } else if (bossTarget.type === 'pyramid') {
+          // Rotated triangle collision logic
+          const centerX = bossTarget.x + bossTarget.width / 2;
+          const centerY = bossTarget.y + bossTarget.height / 2;
+          const HITBOX_EXPAND = 1;
+          const size = bossTarget.width / 2 + HITBOX_EXPAND;
+          const v0 = { x: 0, y: -size };
+          const v1 = { x: size, y: size };
+          const v2 = { x: -size, y: size };
+          const cos = Math.cos(bossTarget.rotationY);
+          const sin = Math.sin(bossTarget.rotationY);
+          const rotatePoint = (p: { x: number; y: number }) => ({ x: p.x * cos - p.y * sin, y: p.x * sin + p.y * cos });
+          const rv0 = rotatePoint(v0);
+          const rv1 = rotatePoint(v1);
+          const rv2 = rotatePoint(v2);
+          const wv0 = { x: centerX + rv0.x, y: centerY + rv0.y };
+          const wv1 = { x: centerX + rv1.x, y: centerY + rv1.y };
+          const wv2 = { x: centerX + rv2.x, y: centerY + rv2.y };
+          const edges = [{ a: wv0, b: wv1 }, { a: wv1, b: wv2 }, { a: wv2, b: wv0 }];
+          let closestDist = Infinity;
+          let closestNormal = { x: 0, y: 0 };
+          for (const edge of edges) {
+            const ex = edge.b.x - edge.a.x;
+            const ey = edge.b.y - edge.a.y;
+            const len = Math.sqrt(ex * ex + ey * ey) || 1e-6;
+            const edgeNormX = ex / len;
+            const edgeNormY = ey / len;
+            const normalX = -edgeNormY;
+            const normalY = edgeNormX;
+            const toBallX = sampleBall.x - edge.a.x;
+            const toBallY = sampleBall.y - edge.a.y;
+            const t = Math.max(0, Math.min(len, toBallX * edgeNormX + toBallY * edgeNormY));
+            const closestX = edge.a.x + t * edgeNormX;
+            const closestY = edge.a.y + t * edgeNormY;
+            const distX = sampleBall.x - closestX;
+            const distY = sampleBall.y - closestY;
+            const dist = Math.sqrt(distX * distX + distY * distY);
+            if (dist < closestDist) {
+              closestDist = dist;
+              const toCenterX = sampleBall.x - centerX;
+              const toCenterY = sampleBall.y - centerY;
+              const dotProduct = normalX * toCenterX + normalY * toCenterY;
+              closestNormal = dotProduct > 0 ? { x: normalX, y: normalY } : { x: -normalX, y: -normalY };
+            }
+          }
+          if (closestDist < sampleBall.radius) {
+            const penetration = sampleBall.radius - closestDist;
+            const correctionDist = penetration + 2; // +2 pixel safety margin
+            const newX = sampleBall.x + closestNormal.x * correctionDist;
+            const newY = sampleBall.y + closestNormal.y * correctionDist;
+            const dot = sampleBall.dx * closestNormal.x + sampleBall.dy * closestNormal.y;
+            const newVx = sampleBall.dx - 2 * dot * closestNormal.x;
+            const newVy = sampleBall.dy - 2 * dot * closestNormal.y;
+            collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
+          }
+        }
+        
+        if (collision) {
+          // FOUND boss collision at this sample point
+          
+          // 1. Apply position & velocity corrections to REAL ball
+          ball.x = collision.newX;
+          ball.y = collision.newY;
+          ball.dx = collision.newVelocityX;
+          ball.dy = collision.newVelocityY;
+          
+          // 2. Mark ball to suppress paddle resolver
+          (ball as any)._hitBossThisFrame = true;
+          
+          // 3. Boss damage logic with FRAME-BASED cooldown
+          const lastHit = bossTarget.lastHitAt || 0;
+          const canDamage = currentFrameTick - lastHit >= BOSS_HIT_COOLDOWN_FRAMES;
+          
+          if (canDamage) {
+            // Apply damage, update boss.lastHitAt with frameTick
+            const isBoss = bossTarget === boss;
+            const isResurrected = !isBoss;
+            
+            if (isBoss) {
+              setBoss(prev => {
+                if (!prev) return prev;
+                const newHealth = Math.max(0, prev.currentHealth - 1);
+                
+                // Handle boss defeat based on type
+                if (newHealth <= 0) {
+                  if (prev.type === 'cube') {
+                    // Cube boss - simple defeat
+                    soundManager.playExplosion();
+                    soundManager.playBossDefeatSound();
+                    setScore(s => s + BOSS_CONFIG.cube.points);
+                    toast.success(`CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points`);
+                    setExplosions(e => [...e, {
+                      x: prev.x + prev.width / 2,
+                      y: prev.y + prev.height / 2,
+                      frame: 0,
+                      maxFrames: 30,
+                      enemyType: 'cube' as EnemyType,
+                      particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, 'cube' as EnemyType)
+                    }]);
+                    setBossesKilled(k => k + 1);
+                    setBossActive(false);
+                    setBossDefeatedTransitioning(true);
+                    // Clean up game entities
+                    setBalls([]);
+                    setEnemies([]);
+                    setBossAttacks([]);
+                    setBombs([]);
+                    setBullets([]);
+                    // Stop boss music and resume background music
+                    soundManager.stopBossMusic();
+                    soundManager.resumeBackgroundMusic();
+                    // Proceed to next level after 3 seconds
+                    setTimeout(() => nextLevel(), 3000);
+                    return null;
+                  } else if (prev.type === 'sphere') {
+                    // Sphere boss - check phase
+                    if (prev.currentStage === 1) {
+                      // Phase 1 complete -> Phase 2
+                      soundManager.playExplosion();
+                      toast.error("SPHERE PHASE 2: DESTROYER MODE!");
+                      setExplosions(e => [...e, {
+                        x: prev.x + prev.width / 2,
+                        y: prev.y + prev.height / 2,
+                        frame: 0,
+                        maxFrames: 30,
+                        enemyType: 'sphere' as EnemyType,
+                        particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, 'sphere' as EnemyType)
+                      }]);
+                      return { 
+                        ...prev, 
+                        currentHealth: BOSS_CONFIG.sphere.healthPhase2,
+                        currentStage: 2,
+                        isAngry: true,
+                        speed: BOSS_CONFIG.sphere.angryMoveSpeed,
+                        lastHitAt: currentFrameTick
+                      };
+                    } else {
+                      // Phase 2 complete -> Defeated
+                      soundManager.playExplosion();
+                      soundManager.playBossDefeatSound();
+                      setScore(s => s + BOSS_CONFIG.sphere.points);
+                      toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points`);
+                      setExplosions(e => [...e, {
+                        x: prev.x + prev.width / 2,
+                        y: prev.y + prev.height / 2,
+                        frame: 0,
+                        maxFrames: 30,
+                        enemyType: 'sphere' as EnemyType,
+                        particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, 'sphere' as EnemyType)
+                      }]);
+                      setBossesKilled(k => k + 1);
+                      setBossActive(false);
+                      setBossDefeatedTransitioning(true);
+                      // Clean up game entities
+                      setBalls([]);
+                      setEnemies([]);
+                      setBossAttacks([]);
+                      setBombs([]);
+                      setBullets([]);
+                      // Stop boss music and resume background music
+                      soundManager.stopBossMusic();
+                      soundManager.resumeBackgroundMusic();
+                      setTimeout(() => nextLevel(), 3000);
+                      return null;
+                    }
+                  } else if (prev.type === 'pyramid') {
+                    // Pyramid boss - check phase
+                    if (prev.currentStage === 1) {
+                      // Phase 1 complete -> Spawn 3 resurrected pyramids
+                      soundManager.playExplosion();
+                      toast.error("PYRAMID LORD SPLITS INTO 3!");
+                      setExplosions(e => [...e, {
+                        x: prev.x + prev.width / 2,
+                        y: prev.y + prev.height / 2,
+                        frame: 0,
+                        maxFrames: 30,
+                        enemyType: 'pyramid' as EnemyType,
+                        particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, 'pyramid' as EnemyType)
+                      }]);
+                      
+                      // Create 3 smaller resurrected pyramids
+                      const resurrected: Boss[] = [];
+                      for (let i = 0; i < 3; i++) {
+                        resurrected.push(createResurrectedPyramid(prev, i, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT));
+                      }
+                      setResurrectedBosses(resurrected);
+                      
+                      return null; // Remove main boss
+                    }
+                  }
+                } else {
+                  toast.info(`BOSS: ${newHealth} HP`, { 
+                    duration: 1000,
+                    style: { background: '#ff0000', color: '#fff' }
+                  });
+                }
+                // Update boss with new health AND new lastHitAt timestamp
+                return { ...prev, currentHealth: newHealth, lastHitAt: currentFrameTick };
+              });
+            } else {
+              // Handle resurrected boss damage
+              const bossIdx = resurrectedBosses.findIndex(b => b === bossTarget);
+              if (bossIdx >= 0) {
+                setResurrectedBosses(prev => {
+                  const newBosses = [...prev];
+                  const newHealth = Math.max(0, newBosses[bossIdx].currentHealth - 1);
+                  
+                  if (newHealth <= 0) {
+                    // Boss destroyed
+                    const config = BOSS_CONFIG.pyramid;
+                    setScore(s => s + config.resurrectedPoints);
+                    toast.success(`PYRAMID DESTROYED! +${config.resurrectedPoints} points`);
+                    soundManager.playBossDefeatSound();
+                    
+                    setExplosions(e => [...e, {
+                      x: bossTarget.x + bossTarget.width / 2,
+                      y: bossTarget.y + bossTarget.height / 2,
+                      frame: 0,
+                      maxFrames: 30,
+                      enemyType: 'pyramid' as EnemyType,
+                      particles: createExplosionParticles(bossTarget.x + bossTarget.width / 2, bossTarget.y + bossTarget.height / 2, 'pyramid' as EnemyType)
+                    }]);
+                    soundManager.playExplosion();
+                    
+                    // Remove this boss
+                    newBosses.splice(bossIdx, 1);
+                    
+                    // Check if only one remains - make it super angry
+                    if (newBosses.length === 1) {
+                      toast.error("FINAL PYRAMID ENRAGED!");
+                      newBosses[0] = { ...newBosses[0], isSuperAngry: true, speed: BOSS_CONFIG.pyramid.superAngryMoveSpeed };
+                    }
+                    
+                    // Check if all defeated
+                    if (newBosses.length === 0) {
+                      toast.success("ALL PYRAMIDS DEFEATED!");
+                      setBossActive(false);
+                      setBossesKilled(k => k + 1);
+                      setBossDefeatedTransitioning(true);
+                      // Clean up game entities
+                      setBalls([]);
+                      setEnemies([]);
+                      setBossAttacks([]);
+                      setBombs([]);
+                      setBullets([]);
+                      // Stop boss music and resume background music
+                      soundManager.stopBossMusic();
+                      soundManager.resumeBackgroundMusic();
+                      setTimeout(() => nextLevel(), 3000);
+                    }
+                  } else {
+                    toast.info(`PYRAMID: ${newHealth} HP`);
+                    // Update boss with new health AND new lastHitAt timestamp
+                    newBosses[bossIdx] = { ...newBosses[bossIdx], currentHealth: newHealth, lastHitAt: currentFrameTick };
+                  }
+                  
+                  return newBosses;
+                });
+              }
+            }
+            
+            // Audio/visual feedback
+            soundManager.playBossHitSound();
+            setScreenShake(8);
+            setTimeout(() => setScreenShake(0), 400);
+            setBossHitCooldown(1000); // Visual cooldown indicator (still uses ms for UI)
+          }
+          
+          // 4. Exit sample loop (collision resolved)
+          return true;
+        }
+      }
+      
+      return false; // No boss collision found
+    };
+    
     setBalls(prevBalls => {
-      // CRITICAL: Clear per-ball temp flags at start of collision pass
+      // ========== Phase 0: Boss-First Swept Collision ==========
+      // CRITICAL: Clear stale per-ball flags at start of collision pass
       prevBalls.forEach(ball => {
         delete (ball as any)._hitBossThisFrame;
       });
       
-      // Phase 1: Run CCD for all balls
+      // Run boss-first sweep for main boss
+      if (boss) {
+        prevBalls.forEach(ball => {
+          performBossFirstSweep(ball, boss, dtSeconds, frameTick);
+        });
+      }
+      
+      // Run boss-first sweep for resurrected bosses
+      resurrectedBosses.forEach(resBoss => {
+        prevBalls.forEach(ball => {
+          performBossFirstSweep(ball, resBoss, dtSeconds, frameTick);
+        });
+      });
+      
+      // ========== Phase 1: CCD for Bricks/Enemies/Walls/Paddle ==========
       const ballResults = prevBalls.map(ball => 
         processBallWithCCD(ball, dtSeconds, frameTick, {
           bricks,
@@ -1170,8 +1553,8 @@ export const Game = ({
           canvasSize: { w: SCALED_CANVAS_WIDTH, h: SCALED_CANVAS_HEIGHT },
           speedMultiplier,
           minBrickDimension,
-          boss: boss || null,
-          resurrectedBosses,
+          boss: null, // Boss handled in Phase 0, not by CCD
+          resurrectedBosses: [], // Resurrected bosses handled in Phase 0
           enemies
         })
       );
@@ -1676,503 +2059,8 @@ export const Game = ({
         });
       }
 
-      // Phase 3.5: Shape-Specific Boss Collision Check (rotating hitboxes)
-      // Hitbox is 1 pixel WIDER than the visual shape and rotates with the boss
+      // Phase 3.5 & 3.6: REMOVED - Boss collisions now handled in Phase 0 boss-first sweep
       
-      // Helper: Circle vs Rotated Rectangle (for cube boss)
-      const checkCircleVsRotatedRect = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
-        const centerX = boss.x + boss.width / 2;
-        const centerY = boss.y + boss.height / 2;
-        const HITBOX_EXPAND = 1;
-        
-        const dx = ball.x - centerX;
-        const dy = ball.y - centerY;
-        
-        const cos = Math.cos(-boss.rotationY);
-        const sin = Math.sin(-boss.rotationY);
-        const ux = dx * cos - dy * sin;
-        const uy = dx * sin + dy * cos;
-        
-        const halfW = (boss.width + 2 * HITBOX_EXPAND) / 2;
-        const halfH = (boss.height + 2 * HITBOX_EXPAND) / 2;
-        
-        const closestX = Math.max(-halfW, Math.min(ux, halfW));
-        const closestY = Math.max(-halfH, Math.min(uy, halfH));
-        
-        const distX = ux - closestX;
-        const distY = uy - closestY;
-        const distSq = distX * distX + distY * distY;
-        
-        if (distSq > ball.radius * ball.radius) return null;
-        
-        const dist = Math.sqrt(distSq);
-        const penetration = ball.radius - dist;
-        
-        console.log('[BossCollision-Cube] Ball inside boss', {
-          ballPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
-          bossCenter: { x: centerX.toFixed(1), y: centerY.toFixed(1) },
-          penetration: penetration.toFixed(2),
-          dist: dist.toFixed(2),
-          ballRadius: ball.radius.toFixed(2)
-        });
-        
-        let normalX = 0, normalY = 0;
-        if (Math.abs(ux) > halfW) {
-          normalX = ux > 0 ? 1 : -1;
-        } else if (Math.abs(uy) > halfH) {
-          normalY = uy > 0 ? 1 : -1;
-        } else {
-          const overlapX = halfW - Math.abs(ux);
-          const overlapY = halfH - Math.abs(uy);
-          if (overlapX < overlapY) {
-            normalX = ux > 0 ? 1 : -1;
-          } else {
-            normalY = uy > 0 ? 1 : -1;
-          }
-        }
-        
-        // Calculate penetration and push out in unrotated space with safety margin
-        const correctionDist = penetration + 2; // +2 pixel safety margin (increased for better separation)
-        const pushX = ux + (distX / dist) * correctionDist;
-        const pushY = uy + (distY / dist) * correctionDist;
-        
-        // Rotate corrected position back to world space
-        const worldPushX = pushX * Math.cos(boss.rotationY) - pushY * Math.sin(boss.rotationY);
-        const worldPushY = pushX * Math.sin(boss.rotationY) + pushY * Math.cos(boss.rotationY);
-        const newX = centerX + worldPushX;
-        const newY = centerY + worldPushY;
-        
-        const worldNormalX = normalX * cos + normalY * sin;
-        const worldNormalY = -normalX * sin + normalY * cos;
-        
-        const dot = ball.dx * worldNormalX + ball.dy * worldNormalY;
-        const newVx = ball.dx - 2 * dot * worldNormalX;
-        const newVy = ball.dy - 2 * dot * worldNormalY;
-        
-        console.log('[BossCollision-Cube] Applying correction', {
-          oldPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
-          newPos: { x: newX.toFixed(1), y: newY.toFixed(1) },
-          normal: { x: worldNormalX.toFixed(2), y: worldNormalY.toFixed(2) },
-          oldVel: { dx: ball.dx.toFixed(2), dy: ball.dy.toFixed(2) },
-          newVel: { dx: newVx.toFixed(2), dy: newVy.toFixed(2) }
-        });
-        
-        return { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
-      };
-      
-      // Helper: Circle vs Circle (for sphere boss)
-      const checkCircleVsCircle = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
-        const centerX = boss.x + boss.width / 2;
-        const centerY = boss.y + boss.height / 2;
-        const HITBOX_EXPAND = 1;
-        const SAFETY_MARGIN = 2; // Prevent micro-penetration (increased for better separation)
-        
-        const dx = ball.x - centerX;
-        const dy = ball.y - centerY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        
-        const bossRadius = boss.width / 2 + HITBOX_EXPAND;
-        const totalRadius = ball.radius + bossRadius;
-        
-        if (dist >= totalRadius) return null;
-        
-        const penetration = totalRadius - dist;
-        
-        console.log('[BossCollision-Sphere] Ball inside boss', {
-          ballPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
-          bossCenter: { x: centerX.toFixed(1), y: centerY.toFixed(1) },
-          penetration: penetration.toFixed(2),
-          dist: dist.toFixed(2),
-          totalRadius: totalRadius.toFixed(2)
-        });
-        
-        const normalX = dx / dist;
-        const normalY = dy / dist;
-        
-        // Push ball out to correct position with safety margin
-        const overlap = penetration + SAFETY_MARGIN;
-        const newX = ball.x + normalX * overlap;
-        const newY = ball.y + normalY * overlap;
-        
-        const dot = ball.dx * normalX + ball.dy * normalY;
-        const newVx = ball.dx - 2 * dot * normalX;
-        const newVy = ball.dy - 2 * dot * normalY;
-        
-        console.log('[BossCollision-Sphere] Applying correction', {
-          oldPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
-          newPos: { x: newX.toFixed(1), y: newY.toFixed(1) },
-          normal: { x: normalX.toFixed(2), y: normalY.toFixed(2) },
-          oldVel: { dx: ball.dx.toFixed(2), dy: ball.dy.toFixed(2) },
-          newVel: { dx: newVx.toFixed(2), dy: newVy.toFixed(2) }
-        });
-        
-        return { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
-      };
-      
-      // Helper: Circle vs Rotated Triangle (for pyramid boss)
-      const checkCircleVsRotatedTriangle = (ball: Ball, boss: Boss): { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null => {
-        const centerX = boss.x + boss.width / 2;
-        const centerY = boss.y + boss.height / 2;
-        const HITBOX_EXPAND = 1;
-        const size = boss.width / 2 + HITBOX_EXPAND;
-        
-        const v0 = { x: 0, y: -size };
-        const v1 = { x: size, y: size };
-        const v2 = { x: -size, y: size };
-        
-        const cos = Math.cos(boss.rotationY);
-        const sin = Math.sin(boss.rotationY);
-        
-        const rotatePoint = (p: { x: number; y: number }) => ({
-          x: p.x * cos - p.y * sin,
-          y: p.x * sin + p.y * cos
-        });
-        
-        const rv0 = rotatePoint(v0);
-        const rv1 = rotatePoint(v1);
-        const rv2 = rotatePoint(v2);
-        
-        const wv0 = { x: centerX + rv0.x, y: centerY + rv0.y };
-        const wv1 = { x: centerX + rv1.x, y: centerY + rv1.y };
-        const wv2 = { x: centerX + rv2.x, y: centerY + rv2.y };
-        
-        const edges = [
-          { a: wv0, b: wv1 },
-          { a: wv1, b: wv2 },
-          { a: wv2, b: wv0 }
-        ];
-        
-        let closestDist = Infinity;
-        let closestNormal = { x: 0, y: 0 };
-        
-        for (const edge of edges) {
-          const ex = edge.b.x - edge.a.x;
-          const ey = edge.b.y - edge.a.y;
-          const len = Math.sqrt(ex * ex + ey * ey);
-          const edgeNormX = ex / len;
-          const edgeNormY = ey / len;
-          
-          const normalX = -edgeNormY;
-          const normalY = edgeNormX;
-          
-          const toBallX = ball.x - edge.a.x;
-          const toBallY = ball.y - edge.a.y;
-          const t = Math.max(0, Math.min(len, toBallX * edgeNormX + toBallY * edgeNormY));
-          
-          const closestX = edge.a.x + t * edgeNormX;
-          const closestY = edge.a.y + t * edgeNormY;
-          
-          const distX = ball.x - closestX;
-          const distY = ball.y - closestY;
-          const dist = Math.sqrt(distX * distX + distY * distY);
-          
-          if (dist < closestDist) {
-            closestDist = dist;
-            const toCenterX = ball.x - centerX;
-            const toCenterY = ball.y - centerY;
-            const dotProduct = normalX * toCenterX + normalY * toCenterY;
-            closestNormal = dotProduct > 0 
-              ? { x: normalX, y: normalY }
-              : { x: -normalX, y: -normalY };
-          }
-        }
-        
-        if (closestDist >= ball.radius) return null;
-        
-        const penetration = ball.radius - closestDist;
-        
-        console.log('[BossCollision-Pyramid] Ball inside boss', {
-          ballPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
-          bossCenter: { x: centerX.toFixed(1), y: centerY.toFixed(1) },
-          penetration: penetration.toFixed(2),
-          closestDist: closestDist.toFixed(2)
-        });
-        
-        // Push ball out to correct position with +2 pixel safety margin
-        const correctionDist = penetration + 2;
-        const newX = ball.x + closestNormal.x * correctionDist;
-        const newY = ball.y + closestNormal.y * correctionDist;
-        
-        const dot = ball.dx * closestNormal.x + ball.dy * closestNormal.y;
-        const newVx = ball.dx - 2 * dot * closestNormal.x;
-        const newVy = ball.dy - 2 * dot * closestNormal.y;
-        
-        console.log('[BossCollision-Pyramid] Applying correction', {
-          oldPos: { x: ball.x.toFixed(1), y: ball.y.toFixed(1) },
-          newPos: { x: newX.toFixed(1), y: newY.toFixed(1) },
-          normal: { x: closestNormal.x.toFixed(2), y: closestNormal.y.toFixed(2) },
-          oldVel: { dx: ball.dx.toFixed(2), dy: ball.dy.toFixed(2) },
-          newVel: { dx: newVx.toFixed(2), dy: newVy.toFixed(2) }
-        });
-        
-        return { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
-      };
-      
-      // Dispatch to shape-specific collision check
-      ballResults.forEach((result) => {
-        if (!result.ball || !boss) return;
-        
-        let collision = null;
-        
-        switch (boss.type) {
-          case 'cube':
-            collision = checkCircleVsRotatedRect(result.ball, boss);
-            break;
-          case 'sphere':
-            collision = checkCircleVsCircle(result.ball, boss);
-            break;
-          case 'pyramid':
-            collision = checkCircleVsRotatedTriangle(result.ball, boss);
-            break;
-        }
-        
-        if (collision) {
-          const now = Date.now();
-          const BOSS_HIT_COOLDOWN_MS = 1000;
-          const lastHit = boss.lastHitAt || 0;
-          const canDamage = now - lastHit >= BOSS_HIT_COOLDOWN_MS;
-          
-          console.log('[BossCollision] Collision detected', {
-            bossType: boss.type,
-            canDamage,
-            cooldownRemaining: canDamage ? 0 : (BOSS_HIT_COOLDOWN_MS - (now - lastHit)),
-            correctionApplied: true
-          });
-          
-          // ALWAYS apply position and velocity corrections (physics)
-          result.ball.x = collision.newX;
-          result.ball.y = collision.newY;
-          result.ball.dx = collision.newVelocityX;
-          result.ball.dy = collision.newVelocityY;
-          
-          // Mark ball as having hit boss this frame to prevent paddle resolver conflict
-          (result.ball as any)._hitBossThisFrame = true;
-          
-          // ONLY deal damage if boss-local cooldown has elapsed (game logic)
-          
-          if (now - lastHit >= BOSS_HIT_COOLDOWN_MS) {
-            console.log('[BossDebug] Boss hit allowed', { now, lastHit, cooldown: now - lastHit, bossHealth: boss.currentHealth });
-            
-            // Update ball timestamp to prevent same-frame re-hits
-            result.ball.lastHitTime = now;
-            setBossHitCooldown(1000); // Visual cooldown indicator
-            
-            soundManager.playBossHitSound();
-            setScreenShake(8);
-            setTimeout(() => setScreenShake(0), 400);
-            
-            setBoss(prev => {
-              if (!prev) return prev;
-              const newHealth = Math.max(0, prev.currentHealth - 1);
-              
-              console.log('[BossDebug] Boss damage applied', { oldHealth: prev.currentHealth, newHealth });
-              
-              // Handle boss defeat based on type
-              if (newHealth <= 0) {
-                if (prev.type === 'cube') {
-                  // Cube boss - simple defeat
-                  soundManager.playExplosion();
-                  soundManager.playBossDefeatSound();
-                  setScore(s => s + BOSS_CONFIG.cube.points);
-                  toast.success(`CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points`);
-                  explosionsToCreate.push({
-                    x: prev.x + prev.width / 2,
-                    y: prev.y + prev.height / 2,
-                    type: 'cube' as EnemyType
-                  });
-                  setBossesKilled(k => k + 1);
-                  setBossActive(false);
-                  setBossDefeatedTransitioning(true);
-                  // Clean up game entities
-                  setBalls([]);
-                  setEnemies([]);
-                  setBossAttacks([]);
-                  setBombs([]);
-                  setBullets([]);
-                  // Stop boss music and resume background music
-                  soundManager.stopBossMusic();
-                  soundManager.resumeBackgroundMusic();
-                  // Proceed to next level after 3 seconds
-                  setTimeout(() => nextLevel(), 3000);
-                  return null;
-                } else if (prev.type === 'sphere') {
-                  // Sphere boss - check phase
-                  if (prev.currentStage === 1) {
-                    // Phase 1 complete -> Phase 2
-                    soundManager.playExplosion();
-                    toast.error("SPHERE PHASE 2: DESTROYER MODE!");
-                    explosionsToCreate.push({
-                      x: prev.x + prev.width / 2,
-                      y: prev.y + prev.height / 2,
-                      type: 'sphere' as EnemyType
-                    });
-                    return { 
-                      ...prev, 
-                      currentHealth: BOSS_CONFIG.sphere.healthPhase2,
-                      currentStage: 2,
-                      isAngry: true,
-                      speed: BOSS_CONFIG.sphere.angryMoveSpeed,
-                      lastHitAt: now
-                    };
-                  } else {
-                    // Phase 2 complete -> Defeated
-                    soundManager.playExplosion();
-                    soundManager.playBossDefeatSound();
-                    setScore(s => s + BOSS_CONFIG.sphere.points);
-                    toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points`);
-                    explosionsToCreate.push({
-                      x: prev.x + prev.width / 2,
-                      y: prev.y + prev.height / 2,
-                      type: 'sphere' as EnemyType
-                    });
-                    setBossesKilled(k => k + 1);
-                    setBossActive(false);
-                    setBossDefeatedTransitioning(true);
-                    // Clean up game entities
-                    setBalls([]);
-                    setEnemies([]);
-                    setBossAttacks([]);
-                    setBombs([]);
-                    setBullets([]);
-                    // Stop boss music and resume background music
-                    soundManager.stopBossMusic();
-                    soundManager.resumeBackgroundMusic();
-                    setTimeout(() => nextLevel(), 3000);
-                    return null;
-                  }
-                } else if (prev.type === 'pyramid') {
-                  // Pyramid boss - check phase
-                  if (prev.currentStage === 1) {
-                    // Phase 1 complete -> Spawn 3 resurrected pyramids
-                    soundManager.playExplosion();
-                    toast.error("PYRAMID LORD SPLITS INTO 3!");
-                    explosionsToCreate.push({
-                      x: prev.x + prev.width / 2,
-                      y: prev.y + prev.height / 2,
-                      type: 'pyramid' as EnemyType
-                    });
-                    
-                    // Create 3 smaller resurrected pyramids
-                    const resurrected: Boss[] = [];
-                    for (let i = 0; i < 3; i++) {
-                      resurrected.push(createResurrectedPyramid(prev, i, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT));
-                    }
-                    setResurrectedBosses(resurrected);
-                    
-                    return null; // Remove main boss
-                  }
-                }
-              } else {
-                toast.info(`BOSS: ${newHealth} HP`, { 
-                  duration: 1000,
-                  style: { background: '#ff0000', color: '#fff' }
-                });
-              }
-              // Update boss with new health AND new lastHitAt timestamp
-              return { ...prev, currentHealth: newHealth, lastHitAt: now };
-            });
-          } else {
-            console.log('[BossDebug] Boss hit blocked by cooldown', { now, lastHit, cooldownRemaining: BOSS_HIT_COOLDOWN_MS - (now - lastHit) });
-          }
-        }
-      });
-
-      // Phase 3.6: Shape-Specific Resurrected Boss Collision Check
-      resurrectedBosses.forEach((resBoss, bossIdx) => {
-        ballResults.forEach((result) => {
-          if (!result.ball) return;
-          
-          // Resurrected pyramids are always pyramids, so use triangle collision
-          const collision = checkCircleVsRotatedTriangle(result.ball, resBoss);
-          
-          if (collision) {
-            // ALWAYS apply position and velocity corrections (physics)
-            result.ball.x = collision.newX;
-            result.ball.y = collision.newY;
-            result.ball.dx = collision.newVelocityX;
-            result.ball.dy = collision.newVelocityY;
-            
-            // Mark ball as having hit boss this frame to prevent paddle resolver conflict
-            (result.ball as any)._hitBossThisFrame = true;
-            
-            // ONLY deal damage if boss-local cooldown has elapsed (game logic)
-            const now = Date.now();
-            const BOSS_HIT_COOLDOWN_MS = 1000;
-            const lastHit = resBoss.lastHitAt || 0;
-            
-            if (now - lastHit >= BOSS_HIT_COOLDOWN_MS) {
-              console.log('[BossDebug] Resurrected boss hit allowed', { bossIdx, now, lastHit, cooldown: now - lastHit, bossHealth: resBoss.currentHealth });
-              
-              // Update ball timestamp to prevent same-frame re-hits
-              result.ball.lastHitTime = now;
-              
-              soundManager.playBossHitSound();
-              setScreenShake(8);
-              setTimeout(() => setScreenShake(0), 400);
-              
-              setResurrectedBosses(prev => {
-                const newBosses = [...prev];
-                const newHealth = Math.max(0, newBosses[bossIdx].currentHealth - 1);
-                
-                console.log('[BossDebug] Resurrected boss damage applied', { bossIdx, oldHealth: newBosses[bossIdx].currentHealth, newHealth });
-                
-                if (newHealth <= 0) {
-                  // Boss destroyed
-                  const config = BOSS_CONFIG.pyramid;
-                  setScore(s => s + config.resurrectedPoints);
-                  toast.success(`PYRAMID DESTROYED! +${config.resurrectedPoints} points`);
-                  soundManager.playBossDefeatSound();
-                  
-                  setExplosions(e => [...e, {
-                    x: resBoss.x + resBoss.width / 2,
-                    y: resBoss.y + resBoss.height / 2,
-                    frame: 0,
-                    maxFrames: 30,
-                    enemyType: 'pyramid' as EnemyType,
-                    particles: createExplosionParticles(resBoss.x + resBoss.width / 2, resBoss.y + resBoss.height / 2, 'pyramid' as EnemyType)
-                  }]);
-                  soundManager.playExplosion();
-                  
-                  // Remove this boss
-                  newBosses.splice(bossIdx, 1);
-                  
-                  // Check if only one remains - make it super angry
-                  if (newBosses.length === 1) {
-                    toast.error("FINAL PYRAMID ENRAGED!");
-                    newBosses[0] = { ...newBosses[0], isSuperAngry: true, speed: BOSS_CONFIG.pyramid.superAngryMoveSpeed };
-                  }
-                  
-                  // Check if all defeated
-                  if (newBosses.length === 0) {
-                    toast.success("ALL PYRAMIDS DEFEATED!");
-                    setBossActive(false);
-                    setBossesKilled(k => k + 1);
-                    setBossDefeatedTransitioning(true);
-                    // Clean up game entities
-                    setBalls([]);
-                    setEnemies([]);
-                    setBossAttacks([]);
-                    setBombs([]);
-                    setBullets([]);
-                    // Stop boss music and resume background music
-                    soundManager.stopBossMusic();
-                    soundManager.resumeBackgroundMusic();
-                    setTimeout(() => nextLevel(), 3000);
-                  }
-                } else {
-                  toast.info(`PYRAMID: ${newHealth} HP`);
-                  // Update boss with new health AND new lastHitAt timestamp
-                  newBosses[bossIdx] = { ...newBosses[bossIdx], currentHealth: newHealth, lastHitAt: now };
-                }
-                
-                return newBosses;
-              });
-            } else {
-              console.log('[BossDebug] Resurrected boss hit blocked by cooldown', { bossIdx, now, lastHit, cooldownRemaining: BOSS_HIT_COOLDOWN_MS - (now - lastHit) });
-            }
-          }
-        });
-      });
       // Calculate paddle velocity in pixels per second
       const paddleVelocity = {
         x: paddle ? (paddle.x - prevPaddleX.current) * 60 : 0, // Convert to px/sec (dt is 1/60)
