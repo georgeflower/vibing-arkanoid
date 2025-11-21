@@ -8,6 +8,7 @@ import { EndScreen } from "./EndScreen";
 import { GameLoopDebugOverlay } from "./GameLoopDebugOverlay";
 import { SubstepDebugOverlay } from "./SubstepDebugOverlay";
 import { QualityIndicator } from "./QualityIndicator";
+import CRTOverlay from "./CRTOverlay";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
@@ -3745,6 +3746,9 @@ export const Game = ({
           ? "h-screen bg-background overflow-hidden"
           : "h-screen overflow-hidden")
   }`}>
+      {/* CRT Overlay - inside fullscreen container */}
+      <CRTOverlay />
+      
       {/* Mobile fullscreen prompt overlay */}
       {showFullscreenPrompt && isMobileDevice && (
         <div 
