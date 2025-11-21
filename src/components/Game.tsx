@@ -1373,6 +1373,18 @@ export const Game = ({
 
               // Handle indestructible (metal) bricks
               if (brick.isIndestructible) {
+                // Metal bricks: fireball must bounce, so manually reflect since CCD skipped it
+                if (result.ball.isFireball) {
+                  const vX = result.ball.dx;
+                  const vY = result.ball.dy;
+                  const nX = event.normal.x;
+                  const nY = event.normal.y;
+                  const dot = vX * nX + vY * nY;
+                  
+                  result.ball.dx = vX - 2 * dot * nX;
+                  result.ball.dy = vY - 2 * dot * nY;
+                }
+                
                 if (!isDuplicate) {
                   soundManager.playBounce();
                   setCurrentCombo(0);
@@ -1411,20 +1423,8 @@ export const Game = ({
                   explosiveBricksToDetonate.push(brick);
                 }
                 
-                // Fireball continues through: undo CCD bounce by reconstructing pre-collision velocity
-                const vX = result.ball.dx;
-                const vY = result.ball.dy;
-                const nX = event.normal.x;
-                const nY = event.normal.y;
-                const dot = vX * nX + vY * nY;
-
-                const incomingVX = vX - 2 * dot * nX;
-                const incomingVY = vY - 2 * dot * nY;
-
-                result.ball.dx = incomingVX;
-                result.ball.dy = incomingVY;
-
-                // Don't break - allow processing of next collision events in this frame
+                // Fireball continues through - CCD already skipped reflection for brick collisions
+                // (velocity unchanged, ball passes through)
               } else {
                 // Normal brick damage (non-fireball)
                 const currentHitsRemaining = brick.hitsRemaining;

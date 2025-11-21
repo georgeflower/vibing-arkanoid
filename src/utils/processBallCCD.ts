@@ -18,6 +18,7 @@ export type Ball = {
   dy: number; // px/sec
   radius: number;
   lastHitTick?: number; // optional integer tick for cooldowns
+  isFireball?: boolean; // if true, passes through bricks without reflection
   // any other fields are preserved and returned
   [k: string]: any;
 };
@@ -336,11 +337,15 @@ export function processBallCCD(
       const tHit = Math.max(0, Math.min(1, earliest.t));
       // move to contact point
       pos0 = vAdd(pos0, vScale(vSub(pos1, pos0), tHit));
-      // reflect velocity across normal
-      const vel = { x: ball.dx, y: ball.dy };
-      const newVel = reflect(vel, earliest.normal);
-      ball.dx = newVel.x;
-      ball.dy = newVel.y;
+      
+      // Apply reflection only for non-fireball collisions OR for walls/paddle
+      // Fireballs pass through bricks but still bounce off walls and paddle
+      if (!ball.isFireball || earliest.objectType === 'wall' || earliest.objectType === 'paddle') {
+        const vel = { x: ball.dx, y: ball.dy };
+        const newVel = reflect(vel, earliest.normal);
+        ball.dx = newVel.x;
+        ball.dy = newVel.y;
+      }
       // Proportional epsilon: scales with ball radius and travel distance
       const proportionalEpsilon = Math.max(0.5, Math.min(ball.radius * 0.1, travelThisSubstep * 0.3));
       pos0 = vAdd(pos0, vScale(earliest.normal, proportionalEpsilon));
