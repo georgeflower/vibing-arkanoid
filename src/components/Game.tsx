@@ -118,6 +118,10 @@ export const Game = ({
   const [showSubstepDebug, setShowSubstepDebug] = useState(false);
   const [currentFps, setCurrentFps] = useState(60);
   
+  // Sound effect cooldowns (ms timestamps)
+  const lastWallBounceSfxMs = useRef(0);
+  const lastTurretDepleteSfxMs = useRef(0);
+  
   // Game statistics tracking
   const [totalBricksDestroyed, setTotalBricksDestroyed] = useState(0);
   const [totalShots, setTotalShots] = useState(0);
@@ -200,7 +204,16 @@ export const Game = ({
     resurrectedBosses,
     setBoss,
     setResurrectedBosses,
-    () => nextLevelRef.current?.()
+    () => nextLevelRef.current?.(),
+    () => {
+      // Turret depleted callback with cooldown
+      const now = Date.now();
+      if (now - lastTurretDepleteSfxMs.current >= 200) {
+        soundManager.playCrackedBrickBreakSound();
+        lastTurretDepleteSfxMs.current = now;
+        toast.info("Turrets depleted!");
+      }
+    }
   );
 
   // Adaptive quality system
@@ -1626,7 +1639,11 @@ export const Game = ({
           switch (event.objectType) {
             case 'wall':
               if (!isDuplicate) {
-                soundManager.playBounce();
+                const now = Date.now();
+                if (now - lastWallBounceSfxMs.current >= 50) {
+                  soundManager.playBounce();
+                  lastWallBounceSfxMs.current = now;
+                }
               }
               break;
 
@@ -1638,7 +1655,11 @@ export const Game = ({
               result.ball.dx = speed * Math.sin(angle);
               result.ball.dy = -Math.abs(speed * Math.cos(angle));
               if (!isDuplicate) {
-                soundManager.playBounce();
+                const now = Date.now();
+                if (now - lastWallBounceSfxMs.current >= 50) {
+                  soundManager.playBounce();
+                  lastWallBounceSfxMs.current = now;
+                }
                 setLastPaddleHitTime(now);
               }
               break;
@@ -1770,18 +1791,8 @@ export const Game = ({
 
               // Handle indestructible (metal) bricks
               if (brick.isIndestructible) {
-                // Metal bricks: fireball must bounce, so manually reflect since CCD skipped it
-                if (result.ball.isFireball) {
-                  const vX = result.ball.dx;
-                  const vY = result.ball.dy;
-                  const nX = event.normal.x;
-                  const nY = event.normal.y;
-                  const dot = vX * nX + vY * nY;
-                  
-                  result.ball.dx = vX - 2 * dot * nX;
-                  result.ball.dy = vY - 2 * dot * nY;
-                }
-                
+                // CCD already applied reflection for all brick collisions (including metal)
+                // Fireballs bounce off metal bricks via CCD logic
                 if (!isDuplicate) {
                   soundManager.playBounce();
                   setCurrentCombo(0);
@@ -1794,13 +1805,9 @@ export const Game = ({
                 // Instantly destroy brick
                 brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
                 
-                // Play destruction sound
+                // Play destruction sound (always normal brick sound on final hit)
                 if (!isDuplicate) {
-                  if (brick.type === 'cracked') {
-                    soundsToPlay.push({ type: 'cracked', param: brick.hitsRemaining });
-                  } else {
-                    soundsToPlay.push({ type: 'brick' });
-                  }
+                  soundsToPlay.push({ type: 'brick' });
                 }
                 
                 // Award points
@@ -1830,9 +1837,17 @@ export const Game = ({
 
                 // Play sound only if not duplicate
                 if (!isDuplicate) {
-                  if (brick.type === 'cracked') {
+                  // Check if this is the final hit (brick will be destroyed)
+                  const isFinalHit = newHitsRemaining <= 0;
+                  
+                  if (isFinalHit) {
+                    // Final hit always plays normal brick destruction sound
+                    soundsToPlay.push({ type: 'brick' });
+                  } else if (brick.type === 'cracked') {
+                    // Non-final hit on cracked brick plays cracked sound
                     soundsToPlay.push({ type: 'cracked', param: currentHitsRemaining });
                   } else {
+                    // Non-final hit on normal brick
                     soundsToPlay.push({ type: 'brick' });
                   }
                 }
