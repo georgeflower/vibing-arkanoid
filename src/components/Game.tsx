@@ -1159,9 +1159,9 @@ export const Game = ({
     // ---------- Boss-First Swept Collision Helper ----------
     // Performs continuous TOI check along ball's linear path for this dtSeconds
     // Returns true if boss collision found and corrections applied
-    const BOSS_HIT_COOLDOWN_FRAMES = 60; // 1 second at 60 FPS
+    const BOSS_HIT_COOLDOWN_MS = 1000; // 1 second in milliseconds
     
-    const performBossFirstSweep = (ball: Ball, bossTarget: Boss, dtSeconds: number, currentFrameTick: number): boolean => {
+    const performBossFirstSweep = (ball: Ball, bossTarget: Boss, dtSeconds: number): boolean => {
       // Calculate speed-based sampling (scales with velocity and geometry)
       const SPEED = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
       const samplesRaw = Math.ceil(SPEED / (minBrickDimension * 0.10));
@@ -1317,9 +1317,21 @@ export const Game = ({
           // 2. Mark ball to suppress paddle resolver
           (ball as any)._hitBossThisFrame = true;
           
-          // 3. Boss damage logic with FRAME-BASED cooldown
-          const lastHit = bossTarget.lastHitAt || 0;
-          const canDamage = currentFrameTick - lastHit >= BOSS_HIT_COOLDOWN_FRAMES;
+          // 3. Boss damage logic with MILLISECOND-BASED cooldown
+          const lastHitMs = bossTarget.lastHitAt || 0;
+          const nowMs = Date.now();
+          const canDamage = (nowMs - lastHitMs) >= BOSS_HIT_COOLDOWN_MS;
+          
+          // Debug logging
+          console.log('[BossSweep] Cooldown check:', {
+            nowMs,
+            lastHitMs,
+            cooldownMs: BOSS_HIT_COOLDOWN_MS,
+            diff: nowMs - lastHitMs,
+            canDamage,
+            bossType: bossTarget.type,
+            bossHealth: bossTarget.currentHealth
+          });
           
           if (canDamage) {
             // Apply damage, update boss.lastHitAt with frameTick
@@ -1382,7 +1394,7 @@ export const Game = ({
                         currentStage: 2,
                         isAngry: true,
                         speed: BOSS_CONFIG.sphere.angryMoveSpeed,
-                        lastHitAt: currentFrameTick
+                        lastHitAt: nowMs
                       };
                     } else {
                       // Phase 2 complete -> Defeated
@@ -1445,7 +1457,8 @@ export const Game = ({
                   });
                 }
                 // Update boss with new health AND new lastHitAt timestamp
-                return { ...prev, currentHealth: newHealth, lastHitAt: currentFrameTick };
+                console.log('[BossSweep] Damage applied! Boss health:', newHealth);
+                return { ...prev, currentHealth: newHealth, lastHitAt: nowMs };
               });
             } else {
               // Handle resurrected boss damage
@@ -1501,7 +1514,8 @@ export const Game = ({
                   } else {
                     toast.info(`PYRAMID: ${newHealth} HP`);
                     // Update boss with new health AND new lastHitAt timestamp
-                    newBosses[bossIdx] = { ...newBosses[bossIdx], currentHealth: newHealth, lastHitAt: currentFrameTick };
+                    console.log('[BossSweep] Resurrected boss damage applied! Boss health:', newHealth);
+                    newBosses[bossIdx] = { ...newBosses[bossIdx], currentHealth: newHealth, lastHitAt: nowMs };
                   }
                   
                   return newBosses;
@@ -1534,14 +1548,14 @@ export const Game = ({
       // Run boss-first sweep for main boss
       if (boss) {
         prevBalls.forEach(ball => {
-          performBossFirstSweep(ball, boss, dtSeconds, frameTick);
+          performBossFirstSweep(ball, boss, dtSeconds);
         });
       }
       
       // Run boss-first sweep for resurrected bosses
       resurrectedBosses.forEach(resBoss => {
         prevBalls.forEach(ball => {
-          performBossFirstSweep(ball, resBoss, dtSeconds, frameTick);
+          performBossFirstSweep(ball, resBoss, dtSeconds);
         });
       });
       
