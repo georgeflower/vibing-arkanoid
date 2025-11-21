@@ -13,9 +13,46 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { Maximize2, Minimize2, Home } from "lucide-react";
-import type { Brick, Ball, Paddle, GameState, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, GameSettings, EnemyType, Particle, Boss, BossAttack, ShieldImpact, PowerUp, PowerUpType } from "@/types/game";
+import type {
+  Brick,
+  Ball,
+  Paddle,
+  GameState,
+  Enemy,
+  Bomb,
+  Explosion,
+  BonusLetter,
+  BonusLetterType,
+  GameSettings,
+  EnemyType,
+  Particle,
+  Boss,
+  BossAttack,
+  ShieldImpact,
+  PowerUp,
+  PowerUpType,
+} from "@/types/game";
 import { useHighScores } from "@/hooks/useHighScores";
-import { CANVAS_WIDTH, CANVAS_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT, BALL_RADIUS, BRICK_ROWS, BRICK_COLS, BRICK_WIDTH, BRICK_HEIGHT, BRICK_PADDING, BRICK_OFFSET_TOP, BRICK_OFFSET_LEFT, brickColors, POWERUP_DROP_CHANCE, getHitColor, getBrickColors, POWERUP_SIZE, POWERUP_FALL_SPEED } from "@/constants/game";
+import {
+  CANVAS_WIDTH,
+  CANVAS_HEIGHT,
+  PADDLE_WIDTH,
+  PADDLE_HEIGHT,
+  BALL_RADIUS,
+  BRICK_ROWS,
+  BRICK_COLS,
+  BRICK_WIDTH,
+  BRICK_HEIGHT,
+  BRICK_PADDING,
+  BRICK_OFFSET_TOP,
+  BRICK_OFFSET_LEFT,
+  brickColors,
+  POWERUP_DROP_CHANCE,
+  getHitColor,
+  getBrickColors,
+  POWERUP_SIZE,
+  POWERUP_FALL_SPEED,
+} from "@/constants/game";
 import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
@@ -31,13 +68,10 @@ interface GameProps {
   settings: GameSettings;
   onReturnToMenu: () => void;
 }
-export const Game = ({
-  settings,
-  onReturnToMenu
-}: GameProps) => {
+export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Detect updates but don't apply during gameplay - defer until back at menu
   useServiceWorkerUpdate({ shouldApplyUpdate: false });
-  
+
   // Detect Mac and apply 10% scale reduction
   const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform) || /Macintosh/.test(navigator.userAgent);
   const scaleFactor = isMac ? 0.9 : 1;
@@ -52,7 +86,8 @@ export const Game = ({
   const SCALED_BRICK_HEIGHT = BRICK_HEIGHT * scaleFactor;
   const SCALED_BRICK_PADDING = BRICK_PADDING * scaleFactor;
   const SCALED_BRICK_OFFSET_TOP = BRICK_OFFSET_TOP * scaleFactor;
-  const SCALED_BRICK_OFFSET_LEFT = (SCALED_CANVAS_WIDTH - (BRICK_COLS * SCALED_BRICK_WIDTH + (BRICK_COLS - 1) * SCALED_BRICK_PADDING)) / 2;
+  const SCALED_BRICK_OFFSET_LEFT =
+    (SCALED_CANVAS_WIDTH - (BRICK_COLS * SCALED_BRICK_WIDTH + (BRICK_COLS - 1) * SCALED_BRICK_PADDING)) / 2;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(settings.startingLives);
@@ -91,12 +126,16 @@ export const Game = ({
   const [laserWarnings, setLaserWarnings] = useState<Array<{ x: number; startTime: number }>>([]);
   const bossSpawnedEnemiesRef = useRef<Set<number>>(new Set());
   const [isMobileDevice] = useState(() => {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-           ('ontouchstart' in window && window.matchMedia('(max-width: 768px)').matches);
+    return (
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+      ("ontouchstart" in window && window.matchMedia("(max-width: 768px)").matches)
+    );
   });
   const [isIOSDevice] = useState(() => {
-    return /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPad Pro detection
+    return (
+      /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+    ); // iPad Pro detection
   });
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [isPointerLocked, setIsPointerLocked] = useState(false);
@@ -111,18 +150,18 @@ export const Game = ({
   const [screenShake, setScreenShake] = useState(0);
   const [backgroundFlash, setBackgroundFlash] = useState(0);
   const [lastBossSpawnTime, setLastBossSpawnTime] = useState(0);
-  const [bossSpawnAnimation, setBossSpawnAnimation] = useState<{active: boolean; startTime: number} | null>(null);
+  const [bossSpawnAnimation, setBossSpawnAnimation] = useState<{ active: boolean; startTime: number } | null>(null);
   const [shieldImpacts, setShieldImpacts] = useState<ShieldImpact[]>([]);
   const [lastScoreMilestone, setLastScoreMilestone] = useState(0);
   const [scoreBlinking, setScoreBlinking] = useState(false);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const [showSubstepDebug, setShowSubstepDebug] = useState(false);
   const [currentFps, setCurrentFps] = useState(60);
-  
+
   // Sound effect cooldowns (ms timestamps)
   const lastWallBounceSfxMs = useRef(0);
   const lastTurretDepleteSfxMs = useRef(0);
-  
+
   // Game statistics tracking
   const [totalBricksDestroyed, setTotalBricksDestroyed] = useState(0);
   const [totalShots, setTotalShots] = useState(0);
@@ -132,11 +171,11 @@ export const Game = ({
   const [bossIntroActive, setBossIntroActive] = useState(false);
   const [gameOverParticles, setGameOverParticles] = useState<Particle[]>([]);
   const [highScoreParticles, setHighScoreParticles] = useState<Particle[]>([]);
-  const [retryLevelData, setRetryLevelData] = useState<{level: number, layout: any} | null>(null);
+  const [retryLevelData, setRetryLevelData] = useState<{ level: number; layout: any } | null>(null);
   const [powerUpsCollectedTypes, setPowerUpsCollectedTypes] = useState<Set<string>>(new Set());
   const [bricksDestroyedByTurrets, setBricksDestroyedByTurrets] = useState(0);
   const [bossesKilled, setBossesKilled] = useState(0);
-  
+
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
@@ -149,10 +188,10 @@ export const Game = ({
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const timerStartedRef = useRef(false);
   const nextLevelRef = useRef<(() => void) | null>(null);
-  
+
   // Fixed-step game loop
   const gameLoopRef = useRef<FixedStepGameLoop | null>(null);
-  
+
   // Initialize fixed-step game loop on mount
   useEffect(() => {
     if (!gameLoopRef.current) {
@@ -161,46 +200,32 @@ export const Game = ({
         maxDeltaMs: 250,
         maxUpdatesPerFrame: 8,
         timeScale: 1.0,
-        mode: "fixedStep"
+        mode: "fixedStep",
       });
     }
-    
+
     return () => {
       if (gameLoopRef.current) {
         gameLoopRef.current.stop();
       }
     };
   }, []);
-  const {
-    isHighScore,
-    addHighScore
-  } = useHighScores();
-  const {
-    powerUps,
-    createPowerUp,
-    updatePowerUps,
-    checkPowerUpCollision,
-    setPowerUps
-  } = usePowerUps(
-    level, 
-    setLives, 
-    timer, 
-    settings.difficulty, 
+  const { isHighScore, addHighScore } = useHighScores();
+  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(
+    level,
+    setLives,
+    timer,
+    settings.difficulty,
     setBrickHitSpeedAccumulated,
-    (type: string) => setPowerUpsCollectedTypes(prev => new Set(prev).add(type))
+    (type: string) => setPowerUpsCollectedTypes((prev) => new Set(prev).add(type)),
   );
-  const {
-    bullets,
-    setBullets,
-    fireBullets,
-    updateBullets
-  } = useBullets(
-    setScore, 
-    setBricks, 
-    bricks, 
-    enemies, 
+  const { bullets, setBullets, fireBullets, updateBullets } = useBullets(
+    setScore,
+    setBricks,
+    bricks,
+    enemies,
     setPaddle,
-    () => setBricksDestroyedByTurrets(prev => prev + 1),
+    () => setBricksDestroyedByTurrets((prev) => prev + 1),
     boss,
     resurrectedBosses,
     setBoss,
@@ -214,87 +239,86 @@ export const Game = ({
         lastTurretDepleteSfxMs.current = now;
         toast.info("Turrets depleted!");
       }
-    }
+    },
   );
 
   // Adaptive quality system
-  const {
-    quality,
-    qualitySettings,
-    updateFps,
-    setQuality,
-    toggleAutoAdjust,
-    autoAdjustEnabled
-  } = useAdaptiveQuality({
-    initialQuality: 'high',
+  const { quality, qualitySettings, updateFps, setQuality, toggleAutoAdjust, autoAdjustEnabled } = useAdaptiveQuality({
+    initialQuality: "high",
     autoAdjust: true,
     lowFpsThreshold: 30,
     mediumFpsThreshold: 45,
     highFpsThreshold: 55,
-    sampleWindow: 3
+    sampleWindow: 3,
   });
 
   // Helper function to create explosion particles based on enemy type
-  const createExplosionParticles = useCallback((x: number, y: number, enemyType: EnemyType): Particle[] => {
-    const particles: Particle[] = [];
-    const particleCount = Math.round(qualitySettings.explosionParticles); // Adjust based on quality
+  const createExplosionParticles = useCallback(
+    (x: number, y: number, enemyType: EnemyType): Particle[] => {
+      const particles: Particle[] = [];
+      const particleCount = Math.round(qualitySettings.explosionParticles); // Adjust based on quality
 
-    // Determine colors based on enemy type
-    let colors: string[] = [];
-    if (enemyType === "cube") {
-      colors = ["hsl(200, 100%, 60%)",
-      // Cyan
-      "hsl(180, 100%, 50%)",
-      // Light cyan
-      "hsl(220, 100%, 70%)" // Light blue
-      ];
-    } else if (enemyType === "sphere") {
-      colors = ["hsl(330, 100%, 60%)",
-      // Pink
-      "hsl(350, 100%, 65%)",
-      // Light pink
-      "hsl(310, 100%, 55%)" // Magenta
-      ];
-    } else if (enemyType === "pyramid") {
-      colors = ["hsl(280, 100%, 60%)",
-      // Purple
-      "hsl(260, 100%, 65%)",
-      // Light purple
-      "hsl(300, 100%, 55%)" // Violet
-      ];
-    }
-    for (let i = 0; i < particleCount; i++) {
-      const angle = Math.PI * 2 * i / particleCount + Math.random() * 0.3;
-      const speed = 2 + Math.random() * 3;
-      const size = 3 + Math.random() * 4;
-      particles.push({
-        x,
-        y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        size,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        life: 30,
-        maxLife: 30
-      });
-    }
-    return particles;
-  }, [qualitySettings.explosionParticles]);
+      // Determine colors based on enemy type
+      let colors: string[] = [];
+      if (enemyType === "cube") {
+        colors = [
+          "hsl(200, 100%, 60%)",
+          // Cyan
+          "hsl(180, 100%, 50%)",
+          // Light cyan
+          "hsl(220, 100%, 70%)", // Light blue
+        ];
+      } else if (enemyType === "sphere") {
+        colors = [
+          "hsl(330, 100%, 60%)",
+          // Pink
+          "hsl(350, 100%, 65%)",
+          // Light pink
+          "hsl(310, 100%, 55%)", // Magenta
+        ];
+      } else if (enemyType === "pyramid") {
+        colors = [
+          "hsl(280, 100%, 60%)",
+          // Purple
+          "hsl(260, 100%, 65%)",
+          // Light purple
+          "hsl(300, 100%, 55%)", // Violet
+        ];
+      }
+      for (let i = 0; i < particleCount; i++) {
+        const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.3;
+        const speed = 2 + Math.random() * 3;
+        const size = 3 + Math.random() * 4;
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          life: 30,
+          maxLife: 30,
+        });
+      }
+      return particles;
+    },
+    [qualitySettings.explosionParticles],
+  );
 
   const createHighScoreParticles = useCallback((): Particle[] => {
     const particles: Particle[] = [];
     const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
     const centerX = SCALED_CANVAS_WIDTH / 2;
     const centerY = SCALED_CANVAS_HEIGHT / 2;
-    
-    const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE'];
-    
+
+    const colors = ["#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F", "#BB8FCE"];
+
     for (let i = 0; i < particleCount; i++) {
-      const angle = (Math.PI * 2 * i / particleCount) + Math.random() * 0.5;
+      const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.5;
       const speed = 3 + Math.random() * 5;
       const vx = Math.cos(angle) * speed;
       const vy = Math.sin(angle) * speed - 2;
-      
+
       particles.push({
         x: centerX + (Math.random() - 0.5) * 200,
         y: centerY + (Math.random() - 0.5) * 100,
@@ -303,10 +327,10 @@ export const Game = ({
         size: 4 + Math.random() * 6,
         color: colors[Math.floor(Math.random() * colors.length)],
         life: 120,
-        maxLife: 120
+        maxLife: 120,
       });
     }
-    
+
     return particles;
   }, [qualitySettings.explosionParticles, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT]);
 
@@ -320,9 +344,9 @@ export const Game = ({
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
       const now = Date.now();
-      setShieldImpacts(prev => prev.filter(impact => now - impact.startTime < impact.duration));
+      setShieldImpacts((prev) => prev.filter((impact) => now - impact.startTime < impact.duration));
     }, 100);
-    
+
     return () => clearInterval(cleanupInterval);
   }, []);
 
@@ -330,73 +354,84 @@ export const Game = ({
   const createRandomLetterAssignments = useCallback(() => {
     const availableLevels = [4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19];
     const allLetters: BonusLetterType[] = ["Q", "U", "M", "R", "A", "N"];
-    
+
     // Shuffle letters
     const shuffledLetters = [...allLetters].sort(() => Math.random() - 0.5);
-    
+
     // Assign first 6 letters to first 6 levels
     const assignments: Record<number, BonusLetterType> = {};
     for (let i = 0; i < 6; i++) {
       assignments[availableLevels[i]] = shuffledLetters[i];
     }
-    
+
     return assignments;
   }, []);
 
   // Bonus letter drop logic - random letters on random levels
-  const dropBonusLetter = useCallback((x: number, y: number) => {
-    // Check if this level has a letter assigned
-    const assignedLetter = letterLevelAssignments[level];
-    
-    if (!assignedLetter) return; // No letter for this level
-    
-    // Only drop if letter hasn't been collected yet
-    if (collectedLetters.has(assignedLetter)) return;
-    
-    // Check if letter was already dropped this level
-    if (droppedLettersThisLevel.has(assignedLetter)) return;
-    
-    // Check if this letter is already falling
-    const alreadyFalling = bonusLetters.some(bl => bl.type === assignedLetter && bl.active);
-    if (alreadyFalling) return;
-    
-    // Mark letter as dropped for this level
-    setDroppedLettersThisLevel(prev => new Set(prev).add(assignedLetter));
-    
-    setBonusLetters(prev => [...prev, {
-      x: x - 15,
-      y: y,
-      width: 30,
-      height: 30,
-      type: assignedLetter,
-      speed: 2,
-      active: true
-    }]);
-    
-    toast(`Bonus letter ${assignedLetter} dropped!`, {
-      icon: "🎯"
-    });
-  }, [level, collectedLetters, bonusLetters, droppedLettersThisLevel, letterLevelAssignments]);
+  const dropBonusLetter = useCallback(
+    (x: number, y: number) => {
+      // Check if this level has a letter assigned
+      const assignedLetter = letterLevelAssignments[level];
+
+      if (!assignedLetter) return; // No letter for this level
+
+      // Only drop if letter hasn't been collected yet
+      if (collectedLetters.has(assignedLetter)) return;
+
+      // Check if letter was already dropped this level
+      if (droppedLettersThisLevel.has(assignedLetter)) return;
+
+      // Check if this letter is already falling
+      const alreadyFalling = bonusLetters.some((bl) => bl.type === assignedLetter && bl.active);
+      if (alreadyFalling) return;
+
+      // Mark letter as dropped for this level
+      setDroppedLettersThisLevel((prev) => new Set(prev).add(assignedLetter));
+
+      setBonusLetters((prev) => [
+        ...prev,
+        {
+          x: x - 15,
+          y: y,
+          width: 30,
+          height: 30,
+          type: assignedLetter,
+          speed: 2,
+          active: true,
+        },
+      ]);
+
+      toast(`Bonus letter ${assignedLetter} dropped!`, {
+        icon: "🎯",
+      });
+    },
+    [level, collectedLetters, bonusLetters, droppedLettersThisLevel, letterLevelAssignments],
+  );
   const checkBonusLetterCollision = useCallback(() => {
     if (!paddle) return;
-    setBonusLetters(prev => {
-      const updated = prev.filter(letter => {
+    setBonusLetters((prev) => {
+      const updated = prev.filter((letter) => {
         if (!letter.active) return false;
 
         // Check collision with paddle
-        if (letter.x + letter.width > paddle.x && letter.x < paddle.x + paddle.width && letter.y + letter.height > paddle.y && letter.y < paddle.y + paddle.height) {
+        if (
+          letter.x + letter.width > paddle.x &&
+          letter.x < paddle.x + paddle.width &&
+          letter.y + letter.height > paddle.y &&
+          letter.y < paddle.y + paddle.height
+        ) {
           // Letter collected
-          setCollectedLetters(prevCollected => {
+          setCollectedLetters((prevCollected) => {
             const newCollected = new Set(prevCollected);
             newCollected.add(letter.type);
 
             // Check if all letters collected
             if (newCollected.size === 6) {
-              setScore(s => s + 500000);
-              setLives(l => l + 5);
+              setScore((s) => s + 500000);
+              setLives((l) => l + 5);
               soundManager.playBonusComplete();
               toast.success("QUMRAN Complete! +5 Lives & +500,000 Points!", {
-                duration: 5000
+                duration: 5000,
               });
               // Long flash and screen shake for all letters
               setBackgroundFlash(1);
@@ -442,7 +477,7 @@ export const Game = ({
       toast.success(`LEVEL ${currentLevel}: ${bossName} BOSS!`, { duration: 3000 });
       return []; // No bricks on boss levels
     }
-    
+
     const layoutIndex = Math.min(currentLevel - 1, levelLayouts.length - 1);
     const layout = levelLayouts[layoutIndex];
     const levelColors = getBrickColors(currentLevel);
@@ -453,7 +488,7 @@ export const Game = ({
         const cellValue = layout[row][col];
         if (cellValue === true || cellValue === 2 || cellValue === 3 || cellValue === 4) {
           const isIndestructible = cellValue === 2;
-          
+
           // Determine brick type based on cell value
           let brickType: "normal" | "metal" | "cracked" | "explosive" = "normal";
           if (cellValue === 2) {
@@ -463,10 +498,10 @@ export const Game = ({
           } else if (cellValue === 4) {
             brickType = "cracked";
           }
-          
+
           const hasPowerUp = isIndestructible ? false : Math.random() < POWERUP_DROP_CHANCE;
-          const maxHits = isIndestructible ? 1 : (brickType === "cracked" ? 3 : getBrickHits(currentLevel, row));
-          
+          const maxHits = isIndestructible ? 1 : brickType === "cracked" ? 3 : getBrickHits(currentLevel, row);
+
           let baseColor: string;
           if (isIndestructible) {
             baseColor = "hsl(0, 0%, 20%)"; // Dark gray for metal
@@ -479,18 +514,18 @@ export const Game = ({
           }
 
           // Metal bricks expand to fill padding space, creating continuous surfaces
-          const brickWidth = isIndestructible 
-            ? SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING 
-            : SCALED_BRICK_WIDTH;
-          const brickHeight = isIndestructible 
-            ? SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING 
-            : SCALED_BRICK_HEIGHT;
+          const brickWidth = isIndestructible ? SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING : SCALED_BRICK_WIDTH;
+          const brickHeight = isIndestructible ? SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING : SCALED_BRICK_HEIGHT;
 
           // Metal bricks are positioned to overlap into the padding space
-          const xPos = col * (SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_LEFT 
-            - (isIndestructible && col > 0 ? SCALED_BRICK_PADDING / 2 : 0);
-          const yPos = row * (SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING) + SCALED_BRICK_OFFSET_TOP 
-            - (isIndestructible && row > 0 ? SCALED_BRICK_PADDING / 2 : 0);
+          const xPos =
+            col * (SCALED_BRICK_WIDTH + SCALED_BRICK_PADDING) +
+            SCALED_BRICK_OFFSET_LEFT -
+            (isIndestructible && col > 0 ? SCALED_BRICK_PADDING / 2 : 0);
+          const yPos =
+            row * (SCALED_BRICK_HEIGHT + SCALED_BRICK_PADDING) +
+            SCALED_BRICK_OFFSET_TOP -
+            (isIndestructible && row > 0 ? SCALED_BRICK_PADDING / 2 : 0);
           newBricks.push({
             id: nextBrickId++, // Stable, monotonic ID
             x: xPos,
@@ -504,7 +539,7 @@ export const Game = ({
             maxHits,
             hitsRemaining: maxHits,
             isIndestructible,
-            type: brickType
+            type: brickType,
           });
         }
       }
@@ -518,23 +553,23 @@ export const Game = ({
       y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
       width: SCALED_PADDLE_WIDTH,
       height: SCALED_PADDLE_HEIGHT,
-      hasTurrets: false
+      hasTurrets: false,
     });
 
     // Initialize ball with speed multiplier - waiting to launch
     const baseSpeed = 5.175; // 50% faster than previous base speed of 3.45
-    const initialAngle = -20 * Math.PI / 180; // Start from left side
+    const initialAngle = (-20 * Math.PI) / 180; // Start from left side
     const initialBall: Ball = {
       x: SCALED_CANVAS_WIDTH / 2,
       y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
-      dx: baseSpeed * Math.sin(initialAngle),  // Calculate from angle
+      dx: baseSpeed * Math.sin(initialAngle), // Calculate from angle
       dy: -baseSpeed * Math.cos(initialAngle), // Calculate from angle
       radius: SCALED_BALL_RADIUS,
       speed: baseSpeed,
       id: nextBallId.current++,
       isFireball: false,
       waitingToLaunch: true,
-      rotation: 0
+      rotation: 0,
     };
     setBalls([initialBall]);
     setLaunchAngle(-20); // Start from left side
@@ -543,7 +578,7 @@ export const Game = ({
 
     // Create random letter assignments
     setLetterLevelAssignments(createRandomLetterAssignments());
-    
+
     // Initialize bricks for level 1
     setBricks(initBricksForLevel(1));
     setScore(0);
@@ -573,7 +608,7 @@ export const Game = ({
     setBossAttacks([]);
     setBossActive(false);
     setLaserWarnings([]);
-    bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+    bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
   }, [setPowerUps, initBricksForLevel, createRandomLetterAssignments]);
   const nextLevel = useCallback(() => {
@@ -587,7 +622,7 @@ export const Game = ({
       clearInterval(timerIntervalRef.current);
     }
     timerStartedRef.current = false;
-    bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+    bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
     setBonusLetters([]);
     setDroppedLettersThisLevel(new Set());
@@ -600,13 +635,13 @@ export const Game = ({
     setSpeedMultiplier(newSpeedMultiplier);
 
     // Reset paddle (preserve shield across levels)
-    setPaddle(prev => ({
+    setPaddle((prev) => ({
       x: SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2,
       y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
       width: SCALED_PADDLE_WIDTH,
       height: SCALED_PADDLE_HEIGHT,
       hasTurrets: false,
-      hasShield: prev?.hasShield || false
+      hasShield: prev?.hasShield || false,
     }));
 
     // Initialize ball with new speed - waiting to launch (capped at 175%)
@@ -620,7 +655,7 @@ export const Game = ({
       speed: baseSpeed,
       id: nextBallId.current++,
       isFireball: false,
-      waitingToLaunch: true
+      waitingToLaunch: true,
     };
     setBalls([initialBall]);
     setLaunchAngle(-20); // Start from left side
@@ -656,20 +691,20 @@ export const Game = ({
       // Boss level - trigger intro sequence
       setBossIntroActive(true);
       soundManager.playBossIntroSound();
-      
+
       // Show boss name and start boss music after 1 second
       setTimeout(() => {
         soundManager.playBossMusic(newLevel);
-        const bossName = newLevel === 5 ? 'CUBE GUARDIAN' : newLevel === 10 ? 'SPHERE DESTROYER' : 'PYRAMID LORD';
+        const bossName = newLevel === 5 ? "CUBE GUARDIAN" : newLevel === 10 ? "SPHERE DESTROYER" : "PYRAMID LORD";
         toast.error(`⚠️ BOSS APPROACHING: ${bossName} ⚠️`, { duration: 3000 });
       }, 1000);
-      
+
       // End intro after 3 seconds
       setTimeout(() => {
         setBossIntroActive(false);
       }, 3000);
     }
-    bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+    bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
     setGameState("playing");
     if (newLevel === 10) {
@@ -678,214 +713,242 @@ export const Game = ({
       toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
     }
   }, [level, initBricksForLevel, setPowerUps]);
-  
+
   // Update nextLevel ref whenever nextLevel function changes
   nextLevelRef.current = nextLevel;
   useEffect(() => {
     initGame();
-    
+
     // Preload power-up sounds
-    soundManager.preloadSounds().catch(err => {
-      console.error('Failed to preload sounds:', err);
+    soundManager.preloadSounds().catch((err) => {
+      console.error("Failed to preload sounds:", err);
     });
   }, [initGame]);
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!canvasRef.current || !paddle) return;
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!canvasRef.current || !paddle) return;
 
-    // Use movementX when pointer is locked, otherwise use absolute position
-    if (isPointerLocked) {
-      const sensitivity = 1.5;
-      const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, paddle.x + e.movementX * sensitivity));
-      setPaddle(prev => prev ? {
-        ...prev,
-        x: newX
-      } : null);
-    } else if (gameState === "playing") {
-      const rect = canvasRef.current.getBoundingClientRect();
-      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
-      const mouseX = (e.clientX - rect.left) * scaleX;
-      const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, mouseX - paddle.width / 2));
-      setPaddle(prev => prev ? {
-        ...prev,
-        x: newX
-      } : null);
-    }
-  }, [gameState, paddle, isPointerLocked, SCALED_CANVAS_WIDTH]);
+      // Use movementX when pointer is locked, otherwise use absolute position
+      if (isPointerLocked) {
+        const sensitivity = 1.5;
+        const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, paddle.x + e.movementX * sensitivity));
+        setPaddle((prev) =>
+          prev
+            ? {
+                ...prev,
+                x: newX,
+              }
+            : null,
+        );
+      } else if (gameState === "playing") {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+        const mouseX = (e.clientX - rect.left) * scaleX;
+        const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, mouseX - paddle.width / 2));
+        setPaddle((prev) =>
+          prev
+            ? {
+                ...prev,
+                x: newX,
+              }
+            : null,
+        );
+      }
+    },
+    [gameState, paddle, isPointerLocked, SCALED_CANVAS_WIDTH],
+  );
   const activeTouchRef = useRef<number | null>(null);
   const secondTouchRef = useRef<number | null>(null);
-  const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (!canvasRef.current || !paddle) return;
-    e.preventDefault();
+  const handleTouchStart = useCallback(
+    (e: TouchEvent) => {
+      if (!canvasRef.current || !paddle) return;
+      e.preventDefault();
 
-    // Single-tap to start game when in "ready" state (mobile start)
-    if (gameState === "ready" && e.touches.length === 1) {
-      console.log('[Ready Tap Debug] readyTapStart: enabled - Single tap detected, starting game');
-      const hasDestructibleBricks = bricks.some(brick => !brick.isIndestructible);
-      const isLevelComplete = hasDestructibleBricks && bricks.every(brick => !brick.visible || brick.isIndestructible);
-      
-      if (isLevelComplete) {
-        nextLevel();
-      } else {
-        // Start game - start music only if not already playing (and not boss music)
-        setGameState("playing");
-        if (!soundManager.isMusicPlaying() && !soundManager.isBossMusicPlaying()) {
-          soundManager.playBackgroundMusic();
+      // Single-tap to start game when in "ready" state (mobile start)
+      if (gameState === "ready" && e.touches.length === 1) {
+        console.log("[Ready Tap Debug] readyTapStart: enabled - Single tap detected, starting game");
+        const hasDestructibleBricks = bricks.some((brick) => !brick.isIndestructible);
+        const isLevelComplete =
+          hasDestructibleBricks && bricks.every((brick) => !brick.visible || brick.isIndestructible);
+
+        if (isLevelComplete) {
+          nextLevel();
+        } else {
+          // Start game - start music only if not already playing (and not boss music)
+          setGameState("playing");
+          if (!soundManager.isMusicPlaying() && !soundManager.isBossMusicPlaying()) {
+            soundManager.playBackgroundMusic();
+          }
+          toast.success("Tap again to launch!");
         }
-        toast.success("Tap again to launch!");
+        return;
       }
-      return;
-    }
-    const waitingBall = balls.find(ball => ball.waitingToLaunch);
+      const waitingBall = balls.find((ball) => ball.waitingToLaunch);
 
-    // If ball is waiting and there are 2 fingers, second finger controls launch angle
-    if (e.touches.length > 1 && waitingBall && gameState === "playing") {
-      // First touch controls paddle, second touch sets launch angle
-      if (activeTouchRef.current !== null && secondTouchRef.current === null) {
-        // Find the second touch (not the first one)
+      // If ball is waiting and there are 2 fingers, second finger controls launch angle
+      if (e.touches.length > 1 && waitingBall && gameState === "playing") {
+        // First touch controls paddle, second touch sets launch angle
+        if (activeTouchRef.current !== null && secondTouchRef.current === null) {
+          // Find the second touch (not the first one)
+          for (let i = 0; i < e.touches.length; i++) {
+            if (e.touches[i].identifier !== activeTouchRef.current) {
+              secondTouchRef.current = e.touches[i].identifier;
+
+              // Calculate launch angle from second finger position relative to paddle
+              const rect = canvasRef.current.getBoundingClientRect();
+              const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+              const touchX = (e.touches[i].clientX - rect.left) * scaleX;
+
+              // Calculate angle: -60 to +60 degrees based on second finger position relative to paddle center
+              const paddleCenter = paddle.x + paddle.width / 2;
+              const relativeX = touchX - paddleCenter;
+              const maxDistance = SCALED_CANVAS_WIDTH / 3; // Max distance for full angle range
+              const normalizedX = Math.max(-1, Math.min(1, relativeX / maxDistance));
+              const angle = normalizedX * 60; // -60 to +60 degrees
+
+              setLaunchAngle(angle);
+              console.log("[Launch Debug] audioAndLaunchMode: applied - Second finger angle:", angle);
+              break;
+            }
+          }
+        }
+
+        // Fire turrets if paddle has turrets
+        if (paddle.hasTurrets) {
+          fireBullets(paddle);
+        }
+        return; // Don't launch ball yet
+      }
+
+      // Fire turrets if there are multiple touches (2+ fingers) and paddle has turrets and ball is NOT waiting
+      if (e.touches.length > 1 && paddle.hasTurrets && gameState === "playing" && !waitingBall) {
+        fireBullets(paddle);
+        return;
+      }
+
+      // Track the first touch for paddle control
+      if (e.touches.length > 0 && activeTouchRef.current === null) {
+        activeTouchRef.current = e.touches[0].identifier;
+
+        // Update paddle position immediately on touch start
+        const rect = canvasRef.current.getBoundingClientRect();
+        const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+        const touchX = (e.touches[0].clientX - rect.left) * scaleX;
+        const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
+        setPaddle((prev) =>
+          prev
+            ? {
+                ...prev,
+                x: newX,
+              }
+            : null,
+        );
+
+        // Single tap on ball when waiting launches it (explicit launch)
+        if (waitingBall && gameState === "playing" && e.touches.length === 1) {
+          setShowInstructions(false);
+
+          // Start timer on first ball launch
+          if (!timerStartedRef.current) {
+            timerStartedRef.current = true;
+            if (timerIntervalRef.current) {
+              clearInterval(timerIntervalRef.current);
+            }
+            timerIntervalRef.current = setInterval(() => {
+              setTimer((prev) => prev + 1);
+            }, 1000);
+          }
+
+          // Start total play time on first ball launch
+          if (!totalPlayTimeStartedRef.current) {
+            totalPlayTimeStartedRef.current = true;
+            if (totalPlayTimeIntervalRef.current) {
+              clearInterval(totalPlayTimeIntervalRef.current);
+            }
+            totalPlayTimeIntervalRef.current = setInterval(() => {
+              setTotalPlayTime((prev) => prev + 1);
+            }, 1000);
+          }
+          console.log("[Launch Debug] audioAndLaunchMode: applied - Ball launched at angle:", launchAngle);
+          setBalls((prev) =>
+            prev.map((ball) => {
+              if (ball.waitingToLaunch) {
+                const speed = ball.speed;
+                const angle = (launchAngle * Math.PI) / 180;
+                // Track shot fired
+                setTotalShots((prev) => prev + 1);
+
+                return {
+                  ...ball,
+                  dx: speed * Math.sin(angle),
+                  dy: -speed * Math.cos(angle),
+                  waitingToLaunch: false,
+                };
+              }
+              return ball;
+            }),
+          );
+        }
+      }
+    },
+    [paddle, balls, gameState, launchAngle, fireBullets, SCALED_CANVAS_WIDTH, bricks, nextLevel],
+  );
+  const handleTouchMove = useCallback(
+    (e: TouchEvent) => {
+      if (!canvasRef.current || !paddle) return;
+      e.preventDefault();
+      const waitingBall = balls.find((ball) => ball.waitingToLaunch);
+
+      // Update launch angle if second finger is moving and ball is waiting
+      if (waitingBall && secondTouchRef.current !== null) {
         for (let i = 0; i < e.touches.length; i++) {
-          if (e.touches[i].identifier !== activeTouchRef.current) {
-            secondTouchRef.current = e.touches[i].identifier;
-
-            // Calculate launch angle from second finger position relative to paddle
+          if (e.touches[i].identifier === secondTouchRef.current) {
             const rect = canvasRef.current.getBoundingClientRect();
             const scaleX = SCALED_CANVAS_WIDTH / rect.width;
             const touchX = (e.touches[i].clientX - rect.left) * scaleX;
 
-            // Calculate angle: -60 to +60 degrees based on second finger position relative to paddle center
+            // Calculate angle from second finger position relative to paddle center
             const paddleCenter = paddle.x + paddle.width / 2;
             const relativeX = touchX - paddleCenter;
-            const maxDistance = SCALED_CANVAS_WIDTH / 3; // Max distance for full angle range
+            const maxDistance = SCALED_CANVAS_WIDTH / 3;
             const normalizedX = Math.max(-1, Math.min(1, relativeX / maxDistance));
-            const angle = normalizedX * 60; // -60 to +60 degrees
-
+            const angle = normalizedX * 60;
             setLaunchAngle(angle);
-            console.log('[Launch Debug] audioAndLaunchMode: applied - Second finger angle:', angle);
             break;
           }
         }
       }
 
-      // Fire turrets if paddle has turrets
-      if (paddle.hasTurrets) {
-        fireBullets(paddle);
-      }
-      return; // Don't launch ball yet
-    }
-
-    // Fire turrets if there are multiple touches (2+ fingers) and paddle has turrets and ball is NOT waiting
-    if (e.touches.length > 1 && paddle.hasTurrets && gameState === "playing" && !waitingBall) {
-      fireBullets(paddle);
-      return;
-    }
-
-    // Track the first touch for paddle control
-    if (e.touches.length > 0 && activeTouchRef.current === null) {
-      activeTouchRef.current = e.touches[0].identifier;
-
-      // Update paddle position immediately on touch start
-      const rect = canvasRef.current.getBoundingClientRect();
-      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
-      const touchX = (e.touches[0].clientX - rect.left) * scaleX;
-      const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
-      setPaddle(prev => prev ? {
-        ...prev,
-        x: newX
-      } : null);
-
-      // Single tap on ball when waiting launches it (explicit launch)
-      if (waitingBall && gameState === "playing" && e.touches.length === 1) {
-        setShowInstructions(false);
-
-        // Start timer on first ball launch
-        if (!timerStartedRef.current) {
-          timerStartedRef.current = true;
-          if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-          }
-          timerIntervalRef.current = setInterval(() => {
-            setTimer(prev => prev + 1);
-          }, 1000);
-        }
-        
-        // Start total play time on first ball launch
-        if (!totalPlayTimeStartedRef.current) {
-          totalPlayTimeStartedRef.current = true;
-          if (totalPlayTimeIntervalRef.current) {
-            clearInterval(totalPlayTimeIntervalRef.current);
-          }
-          totalPlayTimeIntervalRef.current = setInterval(() => {
-            setTotalPlayTime(prev => prev + 1);
-          }, 1000);
-        }
-        console.log('[Launch Debug] audioAndLaunchMode: applied - Ball launched at angle:', launchAngle);
-        setBalls(prev => prev.map(ball => {
-          if (ball.waitingToLaunch) {
-            const speed = ball.speed;
-            const angle = launchAngle * Math.PI / 180;
-            // Track shot fired
-            setTotalShots(prev => prev + 1);
-            
-            return {
-              ...ball,
-              dx: speed * Math.sin(angle),
-              dy: -speed * Math.cos(angle),
-              waitingToLaunch: false
-            };
-          }
-          return ball;
-        }));
-      }
-    }
-  }, [paddle, balls, gameState, launchAngle, fireBullets, SCALED_CANVAS_WIDTH, bricks, nextLevel]);
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!canvasRef.current || !paddle) return;
-    e.preventDefault();
-    const waitingBall = balls.find(ball => ball.waitingToLaunch);
-
-    // Update launch angle if second finger is moving and ball is waiting
-    if (waitingBall && secondTouchRef.current !== null) {
+      // Track the first touch for paddle control
+      let activeTouch = null;
       for (let i = 0; i < e.touches.length; i++) {
-        if (e.touches[i].identifier === secondTouchRef.current) {
-          const rect = canvasRef.current.getBoundingClientRect();
-          const scaleX = SCALED_CANVAS_WIDTH / rect.width;
-          const touchX = (e.touches[i].clientX - rect.left) * scaleX;
-
-          // Calculate angle from second finger position relative to paddle center
-          const paddleCenter = paddle.x + paddle.width / 2;
-          const relativeX = touchX - paddleCenter;
-          const maxDistance = SCALED_CANVAS_WIDTH / 3;
-          const normalizedX = Math.max(-1, Math.min(1, relativeX / maxDistance));
-          const angle = normalizedX * 60;
-          setLaunchAngle(angle);
+        if (e.touches[i].identifier === activeTouchRef.current) {
+          activeTouch = e.touches[i];
           break;
         }
       }
-    }
 
-    // Track the first touch for paddle control
-    let activeTouch = null;
-    for (let i = 0; i < e.touches.length; i++) {
-      if (e.touches[i].identifier === activeTouchRef.current) {
-        activeTouch = e.touches[i];
-        break;
+      // If no active touch found, use the first touch
+      if (!activeTouch && e.touches.length > 0) {
+        activeTouch = e.touches[0];
+        activeTouchRef.current = activeTouch.identifier;
       }
-    }
-
-    // If no active touch found, use the first touch
-    if (!activeTouch && e.touches.length > 0) {
-      activeTouch = e.touches[0];
-      activeTouchRef.current = activeTouch.identifier;
-    }
-    if (!activeTouch) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = SCALED_CANVAS_WIDTH / rect.width;
-    const touchX = (activeTouch.clientX - rect.left) * scaleX;
-    const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
-    setPaddle(prev => prev ? {
-      ...prev,
-      x: newX
-    } : null);
-  }, [paddle, balls, SCALED_CANVAS_WIDTH]);
+      if (!activeTouch) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+      const touchX = (activeTouch.clientX - rect.left) * scaleX;
+      const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
+      setPaddle((prev) =>
+        prev
+          ? {
+              ...prev,
+              x: newX,
+            }
+          : null,
+      );
+    },
+    [paddle, balls, SCALED_CANVAS_WIDTH],
+  );
   const handleTouchEnd = useCallback((e: TouchEvent) => {
     // Clear active touches when they end
     for (let i = 0; i < e.changedTouches.length; i++) {
@@ -894,7 +957,7 @@ export const Game = ({
       }
       if (e.changedTouches[i].identifier === secondTouchRef.current) {
         secondTouchRef.current = null;
-        console.log('[Launch Debug] audioAndLaunchMode: default - Second finger released');
+        console.log("[Launch Debug] audioAndLaunchMode: default - Second finger released");
       }
     }
   }, []);
@@ -907,9 +970,10 @@ export const Game = ({
     // If game is ready, start the game first
     if (gameState === "ready") {
       // Check if there are destructible bricks
-      const hasDestructibleBricks = bricks.some(brick => !brick.isIndestructible);
-      const isLevelComplete = hasDestructibleBricks && bricks.every(brick => !brick.visible || brick.isIndestructible);
-      
+      const hasDestructibleBricks = bricks.some((brick) => !brick.isIndestructible);
+      const isLevelComplete =
+        hasDestructibleBricks && bricks.every((brick) => !brick.visible || brick.isIndestructible);
+
       if (isLevelComplete) {
         nextLevel();
       } else {
@@ -925,7 +989,7 @@ export const Game = ({
     if (!paddle || gameState !== "playing") return;
 
     // Check if ball is waiting to launch
-    const waitingBall = balls.find(ball => ball.waitingToLaunch);
+    const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (waitingBall) {
       // Launch ball in the direction of the current angle
       setShowInstructions(false);
@@ -937,10 +1001,10 @@ export const Game = ({
           clearInterval(timerIntervalRef.current);
         }
         timerIntervalRef.current = setInterval(() => {
-          setTimer(prev => prev + 1);
+          setTimer((prev) => prev + 1);
         }, 1000);
       }
-      
+
       // Start total play time on first ball launch
       if (!totalPlayTimeStartedRef.current) {
         totalPlayTimeStartedRef.current = true;
@@ -948,22 +1012,24 @@ export const Game = ({
           clearInterval(totalPlayTimeIntervalRef.current);
         }
         totalPlayTimeIntervalRef.current = setInterval(() => {
-          setTotalPlayTime(prev => prev + 1);
+          setTotalPlayTime((prev) => prev + 1);
         }, 1000);
       }
-      setBalls(prev => prev.map(ball => {
-        if (ball.waitingToLaunch) {
-          const speed = ball.speed;
-          const angle = launchAngle * Math.PI / 180;
-          return {
-            ...ball,
-            dx: speed * Math.sin(angle),
-            dy: -speed * Math.cos(angle),
-            waitingToLaunch: false
-          };
-        }
-        return ball;
-      }));
+      setBalls((prev) =>
+        prev.map((ball) => {
+          if (ball.waitingToLaunch) {
+            const speed = ball.speed;
+            const angle = (launchAngle * Math.PI) / 180;
+            return {
+              ...ball,
+              dx: speed * Math.sin(angle),
+              dy: -speed * Math.cos(angle),
+              waitingToLaunch: false,
+            };
+          }
+          return ball;
+        }),
+      );
       return;
     }
 
@@ -1008,14 +1074,14 @@ export const Game = ({
       } else if (e.key === "Tab") {
         e.preventDefault(); // Prevent default tab behavior
         // Toggle substep debug overlay
-        setShowSubstepDebug(prev => {
+        setShowSubstepDebug((prev) => {
           const newValue = !prev;
           toast.success(newValue ? "Ball substep debug enabled" : "Ball substep debug disabled");
           return newValue;
         });
       } else if (e.key === "l" || e.key === "L") {
         // Toggle debug overlay
-        setShowDebugOverlay(prev => {
+        setShowDebugOverlay((prev) => {
           const newValue = !prev;
           toast.success(newValue ? "Debug overlay enabled" : "Debug overlay disabled");
           return newValue;
@@ -1047,11 +1113,11 @@ export const Game = ({
           toggleAutoAdjust();
         } else {
           // Q: Cycle quality levels
-          const levels: Array<'low' | 'medium' | 'high'> = ['low', 'medium', 'high'];
+          const levels: Array<"low" | "medium" | "high"> = ["low", "medium", "high"];
           const currentIndex = levels.indexOf(quality);
           const nextIndex = (currentIndex + 1) % levels.length;
           const nextQuality = levels[nextIndex];
-          
+
           // Use the hook's setQuality which handles everything properly
           setQuality(nextQuality);
         }
@@ -1064,32 +1130,30 @@ export const Game = ({
         nextLevel();
         toast.warning("Level skipped! You are DISQUALIFIED from high scores!", { duration: 3000 });
       }
-      
+
       // ========== DEBUG TESTING FEATURES - START ==========
       // These features are for testing and debugging only
       // Remove before production release
-      
       else if (e.key === "+" || e.key === "=") {
         // Increase ball speed by 5%
-        setSpeedMultiplier(prev => {
+        setSpeedMultiplier((prev) => {
           const newSpeed = prev * 1.05;
           toast.success(`Debug: Speed increased to ${Math.round(newSpeed * 100)}%`);
           return newSpeed;
         });
-      }
-      else if (["1", "2", "3", "4", "5", "6", "7", "8"].includes(e.key) && paddle) {
+      } else if (["1", "2", "3", "4", "5", "6", "7", "8"].includes(e.key) && paddle) {
         // Drop power-ups for testing
         const powerUpMap: Record<string, PowerUpType> = {
           "1": "shield",
-          "2": "turrets", 
+          "2": "turrets",
           "3": "life",
           "4": "slowdown",
           "5": "multiball",
           "6": "paddleShrink",
           "7": "paddleExtend",
-          "8": "fireball"
+          "8": "fireball",
         };
-        
+
         const type = powerUpMap[e.key];
         const newPowerUp: PowerUp = {
           x: paddle.x + paddle.width / 2 - POWERUP_SIZE / 2,
@@ -1098,28 +1162,27 @@ export const Game = ({
           height: POWERUP_SIZE,
           type: type,
           speed: POWERUP_FALL_SPEED,
-          active: true
+          active: true,
         };
-        
-        setPowerUps(prev => [...prev, newPowerUp]);
+
+        setPowerUps((prev) => [...prev, newPowerUp]);
         toast.success(`Debug: ${type} power-up dropped`);
       }
-      
+
       // ========== DEBUG TESTING FEATURES - END ==========
-      
     };
     const handlePointerLockChange = () => {
       setIsPointerLocked(document.pointerLockElement === canvas);
     };
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("touchstart", handleTouchStart, {
-      passive: false
+      passive: false,
     });
     canvas.addEventListener("touchmove", handleTouchMove, {
-      passive: false
+      passive: false,
     });
     canvas.addEventListener("touchend", handleTouchEnd, {
-      passive: false
+      passive: false,
     });
     canvas.addEventListener("click", handleClick);
     window.addEventListener("keydown", handleKeyPress);
@@ -1134,122 +1197,122 @@ export const Game = ({
       document.removeEventListener("pointerlockchange", handlePointerLockChange);
     };
   }, [handleMouseMove, handleTouchMove, handleClick, nextLevel, gameState]);
-  
+
   // Get substep debug info for overlay
   const getSubstepDebugInfo = useCallback(() => {
     if (balls.length === 0) {
-      return { 
-        substeps: 0, 
-        ballSpeed: 0, 
-        ballCount: 0, 
+      return {
+        substeps: 0,
+        ballSpeed: 0,
+        ballCount: 0,
         maxSpeed: 0,
         collisionsPerFrame: 0,
-        toiIterations: 0
+        toiIterations: 0,
       };
     }
-    
-    const speeds = balls.map(ball => Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy));
+
+    const speeds = balls.map((ball) => Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy));
     const maxBallSpeed = Math.max(...speeds);
     const minBrickDimension = Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT);
-    const substeps = Math.max(2, Math.ceil(maxBallSpeed * speedMultiplier / (minBrickDimension * 0.15)));
-    
+    const substeps = Math.max(2, Math.ceil((maxBallSpeed * speedMultiplier) / (minBrickDimension * 0.15)));
+
     return {
       substeps,
       ballSpeed: maxBallSpeed * speedMultiplier,
       ballCount: balls.length,
       maxSpeed: maxBallSpeed,
       collisionsPerFrame: 0, // Will be updated by CCD results
-      toiIterations: 0 // Will be updated by CCD results
+      toiIterations: 0, // Will be updated by CCD results
     };
   }, [balls, speedMultiplier, SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT]);
-  
+
   const checkCollision = useCallback(() => {
     if (!paddle || balls.length === 0) return;
-    
+
     const dtSeconds = 1 / 60; // Fixed timestep in seconds
     const frameTick = gameLoopRef.current?.getFrameTick() || 0;
     const minBrickDimension = Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT);
-    
+
     // ---------- Boss-First Swept Collision Helper ----------
     // Performs continuous TOI check along ball's linear path for this dtSeconds
     // Returns true if boss collision found and corrections applied
     const BOSS_HIT_COOLDOWN_MS = 1000; // 1 second in milliseconds
-    
+
     const performBossFirstSweep = (ball: Ball, bossTarget: Boss, dtSeconds: number): boolean => {
       // Calculate speed-based sampling (scales with velocity and geometry)
       const SPEED = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-      const samplesRaw = Math.ceil(SPEED / (minBrickDimension * 0.10));
+      const samplesRaw = Math.ceil(SPEED / (minBrickDimension * 0.1));
       const samples = Math.max(3, Math.min(12, samplesRaw)); // Clamp to [3, 12]
-      
+
       // Sub-sample along ball's path this frame
       for (let s = 1; s <= samples; s++) {
         const alpha = s / samples;
         const sampleX = ball.x + ball.dx * (dtSeconds * alpha);
         const sampleY = ball.y + ball.dy * (dtSeconds * alpha);
-        
+
         // Create virtual sample ball
         const sampleBall: Ball = { ...ball, x: sampleX, y: sampleY };
-        
+
         let collision: { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null = null;
-        
+
         // Shape-specific collision checks (inlined for performance)
-        if (bossTarget.type === 'cube') {
+        if (bossTarget.type === "cube") {
           // Rotated rectangle collision logic
           const centerX = bossTarget.x + bossTarget.width / 2;
           const centerY = bossTarget.y + bossTarget.height / 2;
           const HITBOX_EXPAND = 1;
-          
+
           const dx = sampleBall.x - centerX;
           const dy = sampleBall.y - centerY;
-          
+
           const cos = Math.cos(-bossTarget.rotationY);
           const sin = Math.sin(-bossTarget.rotationY);
           const ux = dx * cos - dy * sin;
           const uy = dx * sin + dy * cos;
-          
+
           const halfW = (bossTarget.width + 2 * HITBOX_EXPAND) / 2;
           const halfH = (bossTarget.height + 2 * HITBOX_EXPAND) / 2;
-          
+
           const closestX = Math.max(-halfW, Math.min(ux, halfW));
           const closestY = Math.max(-halfH, Math.min(uy, halfH));
-          
+
           const distX = ux - closestX;
           const distY = uy - closestY;
           const distSq = distX * distX + distY * distY;
-          
+
           if (distSq <= sampleBall.radius * sampleBall.radius) {
             const dist = Math.sqrt(distSq) || 1e-6;
             const penetration = sampleBall.radius - dist;
             const correctionDist = penetration + 2; // +2 pixel safety margin
             const pushX = ux + (distX / dist) * correctionDist;
             const pushY = uy + (distY / dist) * correctionDist;
-            
+
             // Rotate corrected position back to world space
             const worldPushX = pushX * Math.cos(bossTarget.rotationY) - pushY * Math.sin(bossTarget.rotationY);
             const worldPushY = pushX * Math.sin(bossTarget.rotationY) + pushY * Math.cos(bossTarget.rotationY);
             const newX = centerX + worldPushX;
             const newY = centerY + worldPushY;
-            
+
             // Normal in world space
-            const worldNormalX = (Math.abs(dist) < 1e-6) ? 0 : (distX / dist) * cos + (distY / dist) * sin;
-            const worldNormalY = (Math.abs(dist) < 1e-6) ? -1 : -(distX / dist) * sin + (distY / dist) * cos;
+            const worldNormalX = Math.abs(dist) < 1e-6 ? 0 : (distX / dist) * cos + (distY / dist) * sin;
+            const worldNormalY = Math.abs(dist) < 1e-6 ? -1 : -(distX / dist) * sin + (distY / dist) * cos;
             const dot = sampleBall.dx * worldNormalX + sampleBall.dy * worldNormalY;
             const newVx = sampleBall.dx - 2 * dot * worldNormalX;
             const newVy = sampleBall.dy - 2 * dot * worldNormalY;
             collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
           }
-        } else if (bossTarget.type === 'sphere') {
+        } else if (bossTarget.type === "sphere") {
           // Circle-circle collision logic
           const centerX = bossTarget.x + bossTarget.width / 2;
           const centerY = bossTarget.y + bossTarget.height / 2;
           const HITBOX_EXPAND = 1;
-          
+
           const dx = sampleBall.x - centerX;
           const dy = sampleBall.y - centerY;
           const dist = Math.sqrt(dx * dx + dy * dy);
           const bossRadius = bossTarget.width / 2 + HITBOX_EXPAND;
           const totalRadius = sampleBall.radius + bossRadius;
-          
+
           if (dist < totalRadius) {
             const penetration = totalRadius - dist;
             const normalX = dx / (dist || 1e-6);
@@ -1262,7 +1325,7 @@ export const Game = ({
             const newVy = sampleBall.dy - 2 * dot * normalY;
             collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
           }
-        } else if (bossTarget.type === 'pyramid') {
+        } else if (bossTarget.type === "pyramid") {
           // Rotated triangle collision logic
           const centerX = bossTarget.x + bossTarget.width / 2;
           const centerY = bossTarget.y + bossTarget.height / 2;
@@ -1280,7 +1343,11 @@ export const Game = ({
           const wv0 = { x: centerX + rv0.x, y: centerY + rv0.y };
           const wv1 = { x: centerX + rv1.x, y: centerY + rv1.y };
           const wv2 = { x: centerX + rv2.x, y: centerY + rv2.y };
-          const edges = [{ a: wv0, b: wv1 }, { a: wv1, b: wv2 }, { a: wv2, b: wv0 }];
+          const edges = [
+            { a: wv0, b: wv1 },
+            { a: wv1, b: wv2 },
+            { a: wv2, b: wv0 },
+          ];
           let closestDist = Infinity;
           let closestNormal = { x: 0, y: 0 };
           for (const edge of edges) {
@@ -1318,62 +1385,69 @@ export const Game = ({
             collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
           }
         }
-        
+
         if (collision) {
           // FOUND boss collision at this sample point
-          
+
           // 1. Apply position & velocity corrections to REAL ball
           ball.x = collision.newX;
           ball.y = collision.newY;
           ball.dx = collision.newVelocityX;
           ball.dy = collision.newVelocityY;
-          
+
           // 2. Mark ball to suppress paddle resolver
           (ball as any)._hitBossThisFrame = true;
-          
+
           // 3. Boss damage logic with MILLISECOND-BASED cooldown
           const lastHitMs = bossTarget.lastHitAt || 0;
           const nowMs = Date.now();
-          const canDamage = (nowMs - lastHitMs) >= BOSS_HIT_COOLDOWN_MS;
-          
+          const canDamage = nowMs - lastHitMs >= BOSS_HIT_COOLDOWN_MS;
+
           // Debug logging
-          console.log('[BossSweep] Cooldown check:', {
+          console.log("[BossSweep] Cooldown check:", {
             nowMs,
             lastHitMs,
             cooldownMs: BOSS_HIT_COOLDOWN_MS,
             diff: nowMs - lastHitMs,
             canDamage,
             bossType: bossTarget.type,
-            bossHealth: bossTarget.currentHealth
+            bossHealth: bossTarget.currentHealth,
           });
-          
+
           if (canDamage) {
             // Apply damage, update boss.lastHitAt with frameTick
             const isBoss = bossTarget === boss;
             const isResurrected = !isBoss;
-            
+
             if (isBoss) {
-              setBoss(prev => {
+              setBoss((prev) => {
                 if (!prev) return prev;
                 const newHealth = Math.max(0, prev.currentHealth - 1);
-                
+
                 // Handle boss defeat based on type
                 if (newHealth <= 0) {
-                  if (prev.type === 'cube') {
+                  if (prev.type === "cube") {
                     // Cube boss - simple defeat
                     soundManager.playExplosion();
                     soundManager.playBossDefeatSound();
-                    setScore(s => s + BOSS_CONFIG.cube.points);
+                    setScore((s) => s + BOSS_CONFIG.cube.points);
                     toast.success(`CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points`);
-                    setExplosions(e => [...e, {
-                      x: prev.x + prev.width / 2,
-                      y: prev.y + prev.height / 2,
-                      frame: 0,
-                      maxFrames: 30,
-                      enemyType: 'cube' as EnemyType,
-                      particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, 'cube' as EnemyType)
-                    }]);
-                    setBossesKilled(k => k + 1);
+                    setExplosions((e) => [
+                      ...e,
+                      {
+                        x: prev.x + prev.width / 2,
+                        y: prev.y + prev.height / 2,
+                        frame: 0,
+                        maxFrames: 30,
+                        enemyType: "cube" as EnemyType,
+                        particles: createExplosionParticles(
+                          prev.x + prev.width / 2,
+                          prev.y + prev.height / 2,
+                          "cube" as EnemyType,
+                        ),
+                      },
+                    ]);
+                    setBossesKilled((k) => k + 1);
                     setBossActive(false);
                     setBossDefeatedTransitioning(true);
                     // Clean up game entities
@@ -1388,43 +1462,57 @@ export const Game = ({
                     // Proceed to next level after 3 seconds
                     setTimeout(() => nextLevel(), 3000);
                     return null;
-                  } else if (prev.type === 'sphere') {
+                  } else if (prev.type === "sphere") {
                     // Sphere boss - check phase
                     if (prev.currentStage === 1) {
                       // Phase 1 complete -> Phase 2
                       soundManager.playExplosion();
                       toast.error("SPHERE PHASE 2: DESTROYER MODE!");
-                      setExplosions(e => [...e, {
-                        x: prev.x + prev.width / 2,
-                        y: prev.y + prev.height / 2,
-                        frame: 0,
-                        maxFrames: 30,
-                        enemyType: 'sphere' as EnemyType,
-                        particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, 'sphere' as EnemyType)
-                      }]);
-                      return { 
-                        ...prev, 
+                      setExplosions((e) => [
+                        ...e,
+                        {
+                          x: prev.x + prev.width / 2,
+                          y: prev.y + prev.height / 2,
+                          frame: 0,
+                          maxFrames: 30,
+                          enemyType: "sphere" as EnemyType,
+                          particles: createExplosionParticles(
+                            prev.x + prev.width / 2,
+                            prev.y + prev.height / 2,
+                            "sphere" as EnemyType,
+                          ),
+                        },
+                      ]);
+                      return {
+                        ...prev,
                         currentHealth: BOSS_CONFIG.sphere.healthPhase2,
                         currentStage: 2,
                         isAngry: true,
                         speed: BOSS_CONFIG.sphere.angryMoveSpeed,
-                        lastHitAt: nowMs
+                        lastHitAt: nowMs,
                       };
                     } else {
                       // Phase 2 complete -> Defeated
                       soundManager.playExplosion();
                       soundManager.playBossDefeatSound();
-                      setScore(s => s + BOSS_CONFIG.sphere.points);
+                      setScore((s) => s + BOSS_CONFIG.sphere.points);
                       toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points`);
-                      setExplosions(e => [...e, {
-                        x: prev.x + prev.width / 2,
-                        y: prev.y + prev.height / 2,
-                        frame: 0,
-                        maxFrames: 30,
-                        enemyType: 'sphere' as EnemyType,
-                        particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, 'sphere' as EnemyType)
-                      }]);
-                      setBossesKilled(k => k + 1);
+                      setExplosions((e) => [
+                        ...e,
+                        {
+                          x: prev.x + prev.width / 2,
+                          y: prev.y + prev.height / 2,
+                          frame: 0,
+                          maxFrames: 30,
+                          enemyType: "sphere" as EnemyType,
+                          particles: createExplosionParticles(
+                            prev.x + prev.width / 2,
+                            prev.y + prev.height / 2,
+                            "sphere" as EnemyType,
+                          ),
+                        },
+                      ]);
+                      setBossesKilled((k) => k + 1);
                       setBossActive(false);
                       setBossDefeatedTransitioning(true);
                       // Clean up game entities
@@ -1439,80 +1527,98 @@ export const Game = ({
                       setTimeout(() => nextLevel(), 3000);
                       return null;
                     }
-                  } else if (prev.type === 'pyramid') {
+                  } else if (prev.type === "pyramid") {
                     // Pyramid boss - check phase
                     if (prev.currentStage === 1) {
                       // Phase 1 complete -> Spawn 3 resurrected pyramids
                       soundManager.playExplosion();
                       toast.error("PYRAMID LORD SPLITS INTO 3!");
-                      setExplosions(e => [...e, {
-                        x: prev.x + prev.width / 2,
-                        y: prev.y + prev.height / 2,
-                        frame: 0,
-                        maxFrames: 30,
-                        enemyType: 'pyramid' as EnemyType,
-                        particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, 'pyramid' as EnemyType)
-                      }]);
-                      
+                      setExplosions((e) => [
+                        ...e,
+                        {
+                          x: prev.x + prev.width / 2,
+                          y: prev.y + prev.height / 2,
+                          frame: 0,
+                          maxFrames: 30,
+                          enemyType: "pyramid" as EnemyType,
+                          particles: createExplosionParticles(
+                            prev.x + prev.width / 2,
+                            prev.y + prev.height / 2,
+                            "pyramid" as EnemyType,
+                          ),
+                        },
+                      ]);
+
                       // Create 3 smaller resurrected pyramids
                       const resurrected: Boss[] = [];
                       for (let i = 0; i < 3; i++) {
                         resurrected.push(createResurrectedPyramid(prev, i, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT));
                       }
                       setResurrectedBosses(resurrected);
-                      
+
                       return null; // Remove main boss
                     }
                   }
                 } else {
-                  toast.info(`BOSS: ${newHealth} HP`, { 
+                  toast.info(`BOSS: ${newHealth} HP`, {
                     duration: 1000,
-                    style: { background: '#ff0000', color: '#fff' }
+                    style: { background: "#ff0000", color: "#fff" },
                   });
                 }
                 // Update boss with new health AND new lastHitAt timestamp
-                console.log('[BossSweep] Damage applied! Boss health:', newHealth);
+                console.log("[BossSweep] Damage applied! Boss health:", newHealth);
                 return { ...prev, currentHealth: newHealth, lastHitAt: nowMs };
               });
             } else {
               // Handle resurrected boss damage
-              const bossIdx = resurrectedBosses.findIndex(b => b === bossTarget);
+              const bossIdx = resurrectedBosses.findIndex((b) => b === bossTarget);
               if (bossIdx >= 0) {
-                setResurrectedBosses(prev => {
+                setResurrectedBosses((prev) => {
                   const newBosses = [...prev];
                   const newHealth = Math.max(0, newBosses[bossIdx].currentHealth - 1);
-                  
+
                   if (newHealth <= 0) {
                     // Boss destroyed
                     const config = BOSS_CONFIG.pyramid;
-                    setScore(s => s + config.resurrectedPoints);
+                    setScore((s) => s + config.resurrectedPoints);
                     toast.success(`PYRAMID DESTROYED! +${config.resurrectedPoints} points`);
                     soundManager.playBossDefeatSound();
-                    
-                    setExplosions(e => [...e, {
-                      x: bossTarget.x + bossTarget.width / 2,
-                      y: bossTarget.y + bossTarget.height / 2,
-                      frame: 0,
-                      maxFrames: 30,
-                      enemyType: 'pyramid' as EnemyType,
-                      particles: createExplosionParticles(bossTarget.x + bossTarget.width / 2, bossTarget.y + bossTarget.height / 2, 'pyramid' as EnemyType)
-                    }]);
+
+                    setExplosions((e) => [
+                      ...e,
+                      {
+                        x: bossTarget.x + bossTarget.width / 2,
+                        y: bossTarget.y + bossTarget.height / 2,
+                        frame: 0,
+                        maxFrames: 30,
+                        enemyType: "pyramid" as EnemyType,
+                        particles: createExplosionParticles(
+                          bossTarget.x + bossTarget.width / 2,
+                          bossTarget.y + bossTarget.height / 2,
+                          "pyramid" as EnemyType,
+                        ),
+                      },
+                    ]);
                     soundManager.playExplosion();
-                    
+
                     // Remove this boss
                     newBosses.splice(bossIdx, 1);
-                    
+
                     // Check if only one remains - make it super angry
                     if (newBosses.length === 1) {
                       toast.error("FINAL PYRAMID ENRAGED!");
-                      newBosses[0] = { ...newBosses[0], isSuperAngry: true, speed: BOSS_CONFIG.pyramid.superAngryMoveSpeed };
+                      newBosses[0] = {
+                        ...newBosses[0],
+                        isSuperAngry: true,
+                        speed: BOSS_CONFIG.pyramid.superAngryMoveSpeed,
+                      };
                     }
-                    
+
                     // Check if all defeated
                     if (newBosses.length === 0) {
                       toast.success("ALL PYRAMIDS DEFEATED!");
                       setBossActive(false);
-                      setBossesKilled(k => k + 1);
+                      setBossesKilled((k) => k + 1);
                       setBossDefeatedTransitioning(true);
                       // Clean up game entities
                       setBalls([]);
@@ -1528,53 +1634,53 @@ export const Game = ({
                   } else {
                     toast.info(`PYRAMID: ${newHealth} HP`);
                     // Update boss with new health AND new lastHitAt timestamp
-                    console.log('[BossSweep] Resurrected boss damage applied! Boss health:', newHealth);
+                    console.log("[BossSweep] Resurrected boss damage applied! Boss health:", newHealth);
                     newBosses[bossIdx] = { ...newBosses[bossIdx], currentHealth: newHealth, lastHitAt: nowMs };
                   }
-                  
+
                   return newBosses;
                 });
               }
             }
-            
+
             // Audio/visual feedback
             soundManager.playBossHitSound();
             setScreenShake(8);
             setTimeout(() => setScreenShake(0), 400);
             setBossHitCooldown(1000); // Visual cooldown indicator (still uses ms for UI)
           }
-          
+
           // 4. Exit sample loop (collision resolved)
           return true;
         }
       }
-      
+
       return false; // No boss collision found
     };
-    
-    setBalls(prevBalls => {
+
+    setBalls((prevBalls) => {
       // ========== Phase 0: Boss-First Swept Collision ==========
       // CRITICAL: Clear stale per-ball flags at start of collision pass
-      prevBalls.forEach(ball => {
+      prevBalls.forEach((ball) => {
         delete (ball as any)._hitBossThisFrame;
       });
-      
+
       // Run boss-first sweep for main boss
       if (boss) {
-        prevBalls.forEach(ball => {
+        prevBalls.forEach((ball) => {
           performBossFirstSweep(ball, boss, dtSeconds);
         });
       }
-      
+
       // Run boss-first sweep for resurrected bosses
-      resurrectedBosses.forEach(resBoss => {
-        prevBalls.forEach(ball => {
+      resurrectedBosses.forEach((resBoss) => {
+        prevBalls.forEach((ball) => {
           performBossFirstSweep(ball, resBoss, dtSeconds);
         });
       });
-      
+
       // ========== Phase 1: CCD for Bricks/Enemies/Walls/Paddle ==========
-      const ballResults = prevBalls.map(ball => 
+      const ballResults = prevBalls.map((ball) =>
         processBallWithCCD(ball, dtSeconds, frameTick, {
           bricks,
           paddle,
@@ -1583,8 +1689,8 @@ export const Game = ({
           minBrickDimension,
           boss: null, // Boss handled in Phase 0, not by CCD
           resurrectedBosses: [], // Resurrected bosses handled in Phase 0
-          enemies
-        })
+          enemies,
+        }),
       );
 
       // Phase 2: Deduplicate collision events by object with TOI tolerance
@@ -1597,29 +1703,28 @@ export const Game = ({
       const powerUpsToCreate: Brick[] = [];
       const explosiveBricksToDetonate: Brick[] = [];
       const soundsToPlay: Array<{ type: string; param?: any }> = [];
-      
+
       // Enemy batched updates
       const enemiesToUpdate = new Map<number, Partial<Enemy>>();
       const enemiesToDestroy = new Set<number>();
-      const explosionsToCreate: Array<{x: number, y: number, type: EnemyType}> = [];
-      const bonusLetterDrops: Array<{x: number, y: number}> = [];
+      const explosionsToCreate: Array<{ x: number; y: number; type: EnemyType }> = [];
+      const bonusLetterDrops: Array<{ x: number; y: number }> = [];
       const bombIntervalsToClean: number[] = [];
       let enemiesKilledIncrease = 0;
-      
+
       ballResults.forEach((result, ballIndex) => {
         if (!result.ball) return;
-
 
         // Sort events chronologically by time-of-impact (CCD already provides this, but explicit for safety)
         const sortedEvents = result.events.sort((a, b) => a.t - b.t);
 
-        sortedEvents.forEach(event => {
+        sortedEvents.forEach((event) => {
           const now = Date.now();
           const objectKey = `${event.objectType}-${event.objectId}`;
-          
+
           // Debug log for boss-related IDs
-          if (typeof event.objectId === 'number' && event.objectId <= 0) {
-            console.log('[CCD] Negative objectId event', {
+          if (typeof event.objectId === "number" && event.objectId <= 0) {
+            console.log("[CCD] Negative objectId event", {
               objectType: event.objectType,
               objectId: event.objectId,
               point: event.point,
@@ -1627,18 +1732,21 @@ export const Game = ({
               bossRect: boss ? { x: boss.x, y: boss.y, w: boss.width, h: boss.height } : null,
             });
           }
-          
+
           // Check if this event is a duplicate (same object hit within EPS_TOI)
           const lastTOI = processedObjects.get(objectKey);
-          const isDuplicate = event.objectType !== 'wall' && event.objectType !== 'paddle' && 
-                              lastTOI !== undefined && Math.abs(event.t - lastTOI) < EPS_TOI;
-          
+          const isDuplicate =
+            event.objectType !== "wall" &&
+            event.objectType !== "paddle" &&
+            lastTOI !== undefined &&
+            Math.abs(event.t - lastTOI) < EPS_TOI;
+
           if (!isDuplicate) {
             processedObjects.set(objectKey, event.t);
           }
-          
+
           switch (event.objectType) {
-            case 'wall':
+            case "wall":
               if (!isDuplicate) {
                 const now = Date.now();
                 if (now - lastWallBounceSfxMs.current >= 50) {
@@ -1648,7 +1756,7 @@ export const Game = ({
               }
               break;
 
-            case 'paddle':
+            case "paddle":
               // Adjust angle based on hit position (always apply physics)
               const hitPos = (event.point.x - paddle.x) / paddle.width;
               const angle = (hitPos - 0.5) * Math.PI * 0.6;
@@ -1665,25 +1773,25 @@ export const Game = ({
               }
               break;
 
-            case 'brick':
-            case 'corner':
+            case "brick":
+            case "corner":
               // Find the object by ID
-              const objectId = typeof event.objectId === 'number' ? event.objectId : -1;
+              const objectId = typeof event.objectId === "number" ? event.objectId : -1;
               // Boss collisions now handled by shape-specific checks below (Phase 3.5)
               // This section removed to prevent duplicate/conflicting collision logic
               // Resurrected boss collisions now handled by shape-specific checks below
               // This section removed to prevent duplicate/conflicting collision logic
-              
+
               // Handle enemy collision (ID >= 100000)
               if (objectId >= 100000) {
                 const enemyIndex = objectId - 100000;
                 const enemy = enemies[enemyIndex];
-                
+
                 if (enemy && !isDuplicate) {
                   // Handle different enemy types with multi-hit logic
                   if (enemy.type === "pyramid") {
                     const currentHits = enemy.hits || 0;
-                    
+
                     if (currentHits < 2) {
                       // Pyramid not destroyed yet - damage it
                       soundManager.playBounce();
@@ -1692,7 +1800,7 @@ export const Game = ({
                         isAngry: currentHits === 1,
                         speed: currentHits === 1 ? enemy.speed * 1.5 : enemy.speed,
                         dx: currentHits === 1 ? enemy.dx * 1.5 : enemy.dx,
-                        dy: currentHits === 1 ? enemy.dy * 1.5 : enemy.dy
+                        dy: currentHits === 1 ? enemy.dy * 1.5 : enemy.dy,
                       });
                       if (currentHits === 0) {
                         toast.warning("Pyramid hit! 2 more hits needed");
@@ -1707,22 +1815,21 @@ export const Game = ({
                       explosionsToCreate.push({
                         x: enemy.x + enemy.width / 2,
                         y: enemy.y + enemy.height / 2,
-                        type: enemy.type
+                        type: enemy.type,
                       });
                       scoreIncrease += 300;
                       toast.success("Pyramid destroyed! +300 points");
                       soundManager.playExplosion();
                       enemiesKilledIncrease++;
                       bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
-                      
+
                       if (enemy.id !== undefined) {
                         bombIntervalsToClean.push(enemy.id);
                       }
                     }
-                  } 
-                  else if (enemy.type === "sphere") {
+                  } else if (enemy.type === "sphere") {
                     const currentHits = enemy.hits || 0;
-                    
+
                     if (currentHits === 0) {
                       // First hit - make angry
                       soundManager.playBounce();
@@ -1731,7 +1838,7 @@ export const Game = ({
                         isAngry: true,
                         speed: enemy.speed * 1.3,
                         dx: enemy.dx * 1.3,
-                        dy: enemy.dy * 1.3
+                        dy: enemy.dy * 1.3,
                       });
                       toast.warning("Sphere enemy is angry!");
                       setScreenShake(5);
@@ -1742,26 +1849,25 @@ export const Game = ({
                       explosionsToCreate.push({
                         x: enemy.x + enemy.width / 2,
                         y: enemy.y + enemy.height / 2,
-                        type: enemy.type
+                        type: enemy.type,
                       });
                       scoreIncrease += 200;
                       toast.success("Sphere enemy destroyed! +200 points");
                       soundManager.playExplosion();
                       enemiesKilledIncrease++;
                       bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
-                      
+
                       if (enemy.id !== undefined) {
                         bombIntervalsToClean.push(enemy.id);
                       }
                     }
-                  } 
-                  else {
+                  } else {
                     // Cube enemy - one hit kill
                     enemiesToDestroy.add(enemyIndex);
                     explosionsToCreate.push({
                       x: enemy.x + enemy.width / 2,
                       y: enemy.y + enemy.height / 2,
-                      type: enemy.type
+                      type: enemy.type,
                     });
                     scoreIncrease += 100;
                     toast.success("Cube enemy destroyed! +100 points");
@@ -1770,7 +1876,7 @@ export const Game = ({
                     setScreenShake(3);
                     setTimeout(() => setScreenShake(0), 300);
                     bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
-                    
+
                     if (enemy.id !== undefined) {
                       bombIntervalsToClean.push(enemy.id);
                     }
@@ -1778,13 +1884,13 @@ export const Game = ({
                 }
                 break;
               }
-              
+
               // Handle brick collision - Re-validate before processing
-              const brick = bricks.find(b => b.id === objectId);
-              
+              const brick = bricks.find((b) => b.id === objectId);
+
               // Re-validation: Skip if brick doesn't exist, already destroyed, or already damaged this frame
               if (!brick || !brick.visible) break;
-              
+
               // CRITICAL: Check if brick already processed this frame (prevents diagonal grazing multi-hits)
               if (brickUpdates.has(brick.id)) {
                 break;
@@ -1805,29 +1911,29 @@ export const Game = ({
               if (result.ball.isFireball) {
                 // Instantly destroy brick
                 brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
-                
+
                 // Play destruction sound (always normal brick sound on final hit)
                 if (!isDuplicate) {
-                  soundsToPlay.push({ type: 'brick' });
+                  soundsToPlay.push({ type: "brick" });
                 }
-                
+
                 // Award points
                 if (!isDuplicate) {
                   scoreIncrease += brick.points;
                   bricksDestroyedCount += 1;
                   comboIncrease += 1;
                 }
-                
+
                 // Power-up drop
                 if (!isDuplicate && Math.random() < POWERUP_DROP_CHANCE) {
                   powerUpsToCreate.push(brick);
                 }
-                
+
                 // Explosive brick handling
-                if (!isDuplicate && brick.type === 'explosive') {
+                if (!isDuplicate && brick.type === "explosive") {
                   explosiveBricksToDetonate.push(brick);
                 }
-                
+
                 // Fireball continues through - CCD already skipped reflection for brick collisions
                 // (velocity unchanged, ball passes through)
               } else {
@@ -1840,23 +1946,23 @@ export const Game = ({
                 if (!isDuplicate) {
                   // Check if this is the final hit (brick will be destroyed)
                   const isFinalHit = newHitsRemaining <= 0;
-                  
+
                   if (isFinalHit) {
                     // Final hit always plays normal brick destruction sound
-                    soundsToPlay.push({ type: 'brick' });
-                  } else if (brick.type === 'cracked') {
+                    soundsToPlay.push({ type: "brick" });
+                  } else if (brick.type === "cracked") {
                     // Non-final hit on cracked brick plays cracked sound
-                    soundsToPlay.push({ type: 'cracked', param: currentHitsRemaining });
+                    soundsToPlay.push({ type: "cracked", param: currentHitsRemaining });
                   } else {
                     // Non-final hit on normal brick
-                    soundsToPlay.push({ type: 'brick' });
+                    soundsToPlay.push({ type: "brick" });
                   }
                 }
 
                 if (brickDestroyed) {
                   // Mark brick for destruction
                   brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
-                  
+
                   // Only add score/combo once per brick
                   if (!isDuplicate) {
                     scoreIncrease += brick.points;
@@ -1867,9 +1973,9 @@ export const Game = ({
                   // Speed increase (cap at 30%)
                   if (brickHitSpeedAccumulated < 0.3) {
                     const speedIncrease = 0.005;
-                    setBrickHitSpeedAccumulated(prev => Math.min(0.3, prev + speedIncrease));
-                    result.ball.dx *= (1 + speedIncrease);
-                    result.ball.dy *= (1 + speedIncrease);
+                    setBrickHitSpeedAccumulated((prev) => Math.min(0.3, prev + speedIncrease));
+                    result.ball.dx *= 1 + speedIncrease;
+                    result.ball.dy *= 1 + speedIncrease;
                   }
 
                   // Power-up drop - only once per brick
@@ -1878,7 +1984,7 @@ export const Game = ({
                   }
 
                   // Explosive brick handling - only once per brick
-                  if (!isDuplicate && brick.type === 'explosive') {
+                  if (!isDuplicate && brick.type === "explosive") {
                     explosiveBricksToDetonate.push(brick);
                   }
                 } else {
@@ -1893,42 +1999,44 @@ export const Game = ({
 
       // Phase 3: Apply all batched updates
       // Play all sounds
-      soundsToPlay.forEach(sound => {
-        if (sound.type === 'cracked') {
-          soundManager.playBrickHit('cracked', sound.param);
+      soundsToPlay.forEach((sound) => {
+        if (sound.type === "cracked") {
+          soundManager.playBrickHit("cracked", sound.param);
         } else {
           soundManager.playBrickHit();
         }
       });
 
       // Create all power-ups
-      powerUpsToCreate.forEach(brick => createPowerUp(brick));
+      powerUpsToCreate.forEach((brick) => createPowerUp(brick));
 
       // Handle explosive bricks
-      explosiveBricksToDetonate.forEach(brick => {
-        const explosionRadius = 55;
+      explosiveBricksToDetonate.forEach((brick) => {
+        const explosionRadius = 85;
         const brickCenterX = brick.x + brick.width / 2;
         const brickCenterY = brick.y + brick.height / 2;
 
         // Create explosion visual
-        setExplosions(prev => [...prev, {
-          x: brickCenterX,
-          y: brickCenterY,
-          frame: 0,
-          maxFrames: 30,
-          size: explosionRadius * 2,
-          particles: createExplosionParticles(brickCenterX, brickCenterY, 'cube')
-        }]);
+        setExplosions((prev) => [
+          ...prev,
+          {
+            x: brickCenterX,
+            y: brickCenterY,
+            frame: 0,
+            maxFrames: 30,
+            size: explosionRadius * 2,
+            particles: createExplosionParticles(brickCenterX, brickCenterY, "cube"),
+          },
+        ]);
 
         // Destroy nearby bricks
-        bricks.forEach(otherBrick => {
+        bricks.forEach((otherBrick) => {
           if (otherBrick.id === brick.id || !otherBrick.visible) return;
-          
+
           const otherCenterX = otherBrick.x + otherBrick.width / 2;
           const otherCenterY = otherBrick.y + otherBrick.height / 2;
           const distance = Math.sqrt(
-            Math.pow(otherCenterX - brickCenterX, 2) + 
-            Math.pow(otherCenterY - brickCenterY, 2)
+            Math.pow(otherCenterX - brickCenterX, 2) + Math.pow(otherCenterY - brickCenterY, 2),
           );
 
           if (distance <= explosionRadius) {
@@ -1947,20 +2055,20 @@ export const Game = ({
 
       // Update brick state
       if (brickUpdates.size > 0) {
-        setBricks(prevBricks => {
-          const newBricks = prevBricks.map(b => {
+        setBricks((prevBricks) => {
+          const newBricks = prevBricks.map((b) => {
             const update = brickUpdates.get(b.id);
             return update ? { ...b, ...update } : b;
           });
 
           // Check win condition
-          if (newBricks.every(b => !b.visible || b.isIndestructible)) {
-            const hasDestructibleBricks = newBricks.some(b => !b.isIndestructible);
+          if (newBricks.every((b) => !b.visible || b.isIndestructible)) {
+            const hasDestructibleBricks = newBricks.some((b) => !b.isIndestructible);
             if (hasDestructibleBricks) {
               soundManager.playWin();
 
               if (level >= 50) {
-                setScore(prev => prev + 1000000);
+                setScore((prev) => prev + 1000000);
                 setBeatLevel50Completed(true);
                 setGameState("won");
                 setShowEndScreen(true);
@@ -1971,11 +2079,11 @@ export const Game = ({
                 toast.success(`Level ${level} Complete! Click to continue.`);
               }
 
-              return newBricks.map(b => ({ ...b, visible: false }));
+              return newBricks.map((b) => ({ ...b, visible: false }));
             } else if (!BOSS_LEVELS.includes(level)) {
               soundManager.playWin();
               if (level >= 50) {
-                setScore(prev => prev + 1000000);
+                setScore((prev) => prev + 1000000);
                 setBeatLevel50Completed(true);
                 setGameState("won");
                 setShowEndScreen(true);
@@ -1985,7 +2093,7 @@ export const Game = ({
                 setGameState("ready");
                 toast.success(`Level ${level} Complete! Click to continue.`);
               }
-              return newBricks.map(b => ({ ...b, visible: false }));
+              return newBricks.map((b) => ({ ...b, visible: false }));
             }
           }
 
@@ -1994,44 +2102,49 @@ export const Game = ({
       }
 
       // Update score and stats
-      if (scoreIncrease > 0) setScore(s => s + scoreIncrease);
+      if (scoreIncrease > 0) setScore((s) => s + scoreIncrease);
       if (bricksDestroyedCount > 0) {
-        setTotalBricksDestroyed(t => t + bricksDestroyedCount);
-        setBricksHit(b => b + bricksDestroyedCount);
+        setTotalBricksDestroyed((t) => t + bricksDestroyedCount);
+        setBricksHit((b) => b + bricksDestroyedCount);
       }
-      if (comboIncrease > 0) setCurrentCombo(c => c + comboIncrease);
+      if (comboIncrease > 0) setCurrentCombo((c) => c + comboIncrease);
 
       // Apply enemy updates
-      setEnemies(prev => {
-        const updated = prev.map((e, idx) => {
-          if (enemiesToDestroy.has(idx)) return null;
-          if (e.id !== undefined && enemiesToUpdate.has(e.id)) {
-            return { ...e, ...enemiesToUpdate.get(e.id)! };
-          }
-          return e;
-        }).filter((e): e is Enemy => e !== null);
+      setEnemies((prev) => {
+        const updated = prev
+          .map((e, idx) => {
+            if (enemiesToDestroy.has(idx)) return null;
+            if (e.id !== undefined && enemiesToUpdate.has(e.id)) {
+              return { ...e, ...enemiesToUpdate.get(e.id)! };
+            }
+            return e;
+          })
+          .filter((e): e is Enemy => e !== null);
         return updated;
       });
 
       // Create explosions with particles
-      explosionsToCreate.forEach(exp => {
-        setExplosions(prev => [...prev, {
-          x: exp.x,
-          y: exp.y,
-          frame: 0,
-          maxFrames: 20,
-          enemyType: exp.type,
-          particles: createExplosionParticles(exp.x, exp.y, exp.type)
-        }]);
+      explosionsToCreate.forEach((exp) => {
+        setExplosions((prev) => [
+          ...prev,
+          {
+            x: exp.x,
+            y: exp.y,
+            frame: 0,
+            maxFrames: 20,
+            enemyType: exp.type,
+            particles: createExplosionParticles(exp.x, exp.y, exp.type),
+          },
+        ]);
       });
 
       // Handle bonus letter drops
-      bonusLetterDrops.forEach(drop => {
+      bonusLetterDrops.forEach((drop) => {
         dropBonusLetter(drop.x, drop.y);
       });
 
       // Clean up bomb intervals
-      bombIntervalsToClean.forEach(enemyId => {
+      bombIntervalsToClean.forEach((enemyId) => {
         const interval = bombIntervalsRef.current.get(enemyId);
         if (interval) {
           clearInterval(interval);
@@ -2041,17 +2154,17 @@ export const Game = ({
 
       // Update enemies killed counter and handle power-up drops
       if (enemiesKilledIncrease > 0) {
-        setEnemiesKilled(prev => {
+        setEnemiesKilled((prev) => {
           const newCount = prev + enemiesKilledIncrease;
-          
+
           // Check for power-up drops based on enemy kill count
-          enemiesToDestroy.forEach(idx => {
+          enemiesToDestroy.forEach((idx) => {
             const enemy = enemies[idx];
             if (!enemy) return;
-            
+
             const isBossSpawned = bossSpawnedEnemiesRef.current.has(enemy.id || -1);
-            const shouldDrop = isBossSpawned ? Math.random() < 0.5 : (newCount % 3 === 0);
-            
+            const shouldDrop = isBossSpawned ? Math.random() < 0.5 : newCount % 3 === 0;
+
             if (shouldDrop) {
               const fakeBrick: Brick = {
                 id: -1,
@@ -2066,7 +2179,7 @@ export const Game = ({
                 hitsRemaining: 0,
                 maxHits: 1,
                 isIndestructible: false,
-                type: "normal"
+                type: "normal",
               };
               let powerUp = createPowerUp(fakeBrick);
               let attempts = 0;
@@ -2075,7 +2188,7 @@ export const Game = ({
                 attempts++;
               }
               if (powerUp) {
-                setPowerUps(prev => [...prev, powerUp]);
+                setPowerUps((prev) => [...prev, powerUp]);
                 if (isBossSpawned) {
                   toast.success("Boss minion bonus! Power-up dropped!");
                 } else {
@@ -2084,19 +2197,19 @@ export const Game = ({
               }
             }
           });
-          
+
           return newCount;
         });
       }
 
       // Phase 3.5 & 3.6: REMOVED - Boss collisions now handled in Phase 0 boss-first sweep
-      
+
       // Calculate paddle velocity in pixels per second
       const paddleVelocity = {
         x: paddle ? (paddle.x - prevPaddleX.current) * 60 : 0, // Convert to px/sec (dt is 1/60)
-        y: 0
+        y: 0,
       };
-      
+
       // Update previous paddle position for next frame
       if (paddle) {
         prevPaddleX.current = paddle.x;
@@ -2104,39 +2217,35 @@ export const Game = ({
 
       ballResults.forEach((result) => {
         if (!result.ball || !paddle) return;
-        
+
         // Skip paddle resolution if ball hit boss this frame (prevents conflicting corrections)
         if ((result.ball as any)._hitBossThisFrame) {
-          console.log('[PaddleResolver] Skipping paddle resolution - ball hit boss this frame');
+          console.log("[PaddleResolver] Skipping paddle resolution - ball hit boss this frame");
           return;
         }
-        
+
         // Use geometry-based collision with rounded corners
-        const collision = checkCircleVsRoundedPaddle(
-          result.ball,
-          paddle,
-          paddleVelocity
-        );
-        
+        const collision = checkCircleVsRoundedPaddle(result.ball, paddle, paddleVelocity);
+
         if (collision.collided) {
           // Apply position correction
           result.ball.x = collision.newX;
           result.ball.y = collision.newY;
-          
+
           // Apply velocity correction
           result.ball.dx = collision.newVelocityX;
           result.ball.dy = collision.newVelocityY;
-          
-          console.log('[PaddleResolver] Geometry collision resolved', {
+
+          console.log("[PaddleResolver] Geometry collision resolved", {
             penetration: collision.penetration.toFixed(2),
             normalY: collision.normal.y.toFixed(2),
-            paddleVx: paddleVelocity.x.toFixed(2)
+            paddleVx: paddleVelocity.x.toFixed(2),
           });
         }
       });
 
       // Clear per-ball flags after all collision processing
-      ballResults.forEach(result => {
+      ballResults.forEach((result) => {
         if (result.ball) {
           delete (result.ball as any)._hitBossThisFrame;
         }
@@ -2145,7 +2254,7 @@ export const Game = ({
       // Phase 4: Update ball positions and check for lost balls
       // CRITICAL: Use the ball instances from ballResults to preserve lastHitTime
       const updatedBalls = ballResults
-        .map(r => r.ball)
+        .map((r) => r.ball)
         .filter((ball): ball is NonNullable<typeof ball> => {
           if (!ball) return false;
           // Check if ball fell off bottom
@@ -2155,11 +2264,11 @@ export const Game = ({
       // Check if all balls are lost
       if (updatedBalls.length === 0) {
         setCurrentCombo(0);
-        
-        setLives(prev => {
+
+        setLives((prev) => {
           const newLives = prev - 1;
           soundManager.playLoseLife();
-          
+
           if (newLives <= 0) {
             setGameState("gameOver");
             soundManager.stopBossMusic();
@@ -2179,13 +2288,13 @@ export const Game = ({
                 size: 2 + Math.random() * 4,
                 color: `hsl(${Math.random() * 360}, 70%, 60%)`,
                 life: 60,
-                maxLife: 60
+                maxLife: 60,
               });
             }
             setGameOverParticles(particles);
 
             // Check for high score
-            isHighScore(score).then(result => {
+            isHighScore(score).then((result) => {
               if (!levelSkipped && result) {
                 setShowHighScoreEntry(true);
                 setHighScoreParticles(createHighScoreParticles());
@@ -2199,7 +2308,7 @@ export const Game = ({
           } else {
             // Reset ball and continue
             const baseSpeed = 5.175;
-            const initialAngle = -20 * Math.PI / 180;
+            const initialAngle = (-20 * Math.PI) / 180;
             const resetBall: Ball = {
               x: SCALED_CANVAS_WIDTH / 2,
               y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
@@ -2209,19 +2318,23 @@ export const Game = ({
               speed: baseSpeed,
               id: nextBallId.current++,
               isFireball: false,
-              waitingToLaunch: true
+              waitingToLaunch: true,
             };
             setBalls([resetBall]);
             setLaunchAngle(-20);
             launchAngleDirectionRef.current = 1;
             setShowInstructions(true);
             setPowerUps([]);
-            setPaddle(prev => prev ? {
-              ...prev,
-              hasTurrets: false,
-              hasShield: false,
-              width: SCALED_PADDLE_WIDTH
-            } : null);
+            setPaddle((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    hasTurrets: false,
+                    hasShield: false,
+                    width: SCALED_PADDLE_WIDTH,
+                  }
+                : null,
+            );
             setBullets([]);
             if (speedMultiplier < 1) {
               setSpeedMultiplier(1);
@@ -2233,7 +2346,7 @@ export const Game = ({
             setLaserWarnings([]);
             setBombs([]);
             setExplosions([]);
-            bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+            bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
             bombIntervalsRef.current.clear();
             setGameState("ready");
             toast(`Life lost! ${newLives} lives remaining. Click to continue.`);
@@ -2244,42 +2357,69 @@ export const Game = ({
 
       return updatedBalls;
     });
-  }, [paddle, balls, bricks, boss, resurrectedBosses, enemies, createPowerUp, setPowerUps, nextLevel, speedMultiplier, brickHitSpeedAccumulated, level, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT, SCALED_PADDLE_WIDTH, SCALED_BALL_RADIUS, scaleFactor, levelSkipped, score, isHighScore, createHighScoreParticles, setHighScoreParticles, bombIntervalsRef, createExplosionParticles]);
-  
+  }, [
+    paddle,
+    balls,
+    bricks,
+    boss,
+    resurrectedBosses,
+    enemies,
+    createPowerUp,
+    setPowerUps,
+    nextLevel,
+    speedMultiplier,
+    brickHitSpeedAccumulated,
+    level,
+    SCALED_CANVAS_WIDTH,
+    SCALED_CANVAS_HEIGHT,
+    SCALED_BRICK_WIDTH,
+    SCALED_BRICK_HEIGHT,
+    SCALED_PADDLE_WIDTH,
+    SCALED_BALL_RADIUS,
+    scaleFactor,
+    levelSkipped,
+    score,
+    isHighScore,
+    createHighScoreParticles,
+    setHighScoreParticles,
+    bombIntervalsRef,
+    createExplosionParticles,
+  ]);
+
   // FPS tracking for adaptive quality
   const fpsTrackerRef = useRef({ lastTime: performance.now(), frameCount: 0, fps: 60 });
   const lastFrameTimeRef = useRef(performance.now());
   const targetFrameTime = 1000 / 60; // 60 FPS cap
-  
+
   const gameLoop = useCallback(() => {
     if (gameState !== "playing") return;
 
     // Throttle to 60 FPS
     const now = performance.now();
     const elapsed = now - lastFrameTimeRef.current;
-    
+
     if (elapsed < targetFrameTime) {
       animationFrameRef.current = requestAnimationFrame(gameLoop);
       return;
     }
-    
+
     lastFrameTimeRef.current = now - (elapsed % targetFrameTime);
 
     // Track FPS
     fpsTrackerRef.current.frameCount++;
     const deltaTime = now - fpsTrackerRef.current.lastTime;
-    
+
     if (deltaTime >= 1000) {
-      const fps = Math.min(60, Math.round(fpsTrackerRef.current.frameCount * 1000 / deltaTime));
+      const fps = Math.min(60, Math.round((fpsTrackerRef.current.frameCount * 1000) / deltaTime));
       fpsTrackerRef.current.fps = fps;
       fpsTrackerRef.current.frameCount = 0;
       fpsTrackerRef.current.lastTime = now;
-      
+
       // Update adaptive quality system and display
       updateFps(fps);
       setCurrentFps(fps);
     }
-    
+
     // Also feed real-time FPS from fixed-step game loop if available
     if (gameLoopRef.current) {
       const debugInfo = gameLoopRef.current.getDebugInfo();
@@ -2289,32 +2429,36 @@ export const Game = ({
     }
 
     // Update background animation
-    setBackgroundPhase(prev => (prev + 1) % 360);
+    setBackgroundPhase((prev) => (prev + 1) % 360);
 
     // Update balls rotation only (position is updated in checkCollision with substeps)
-    setBalls(prev => prev.map(ball => {
-      if (ball.waitingToLaunch && paddle) {
-        // Keep ball attached to paddle
+    setBalls((prev) =>
+      prev.map((ball) => {
+        if (ball.waitingToLaunch && paddle) {
+          // Keep ball attached to paddle
+          return {
+            ...ball,
+            x: paddle.x + paddle.width / 2,
+            y: paddle.y - ball.radius - 5,
+          };
+        }
         return {
           ...ball,
-          x: paddle.x + paddle.width / 2,
-          y: paddle.y - ball.radius - 5
+          rotation: ((ball.rotation || 0) + 3) % 360, // Spinning rotation
         };
-      }
-      return {
-        ...ball,
-        rotation: ((ball.rotation || 0) + 3) % 360 // Spinning rotation
-      };
-    }));
+      }),
+    );
 
     // Update power-ups
     updatePowerUps();
 
     // Update bonus letters
-    setBonusLetters(prev => prev.map(letter => ({
-      ...letter,
-      y: letter.y + letter.speed
-    })));
+    setBonusLetters((prev) =>
+      prev.map((letter) => ({
+        ...letter,
+        y: letter.y + letter.speed,
+      })),
+    );
 
     // Check bonus letter collisions
     checkBonusLetterCollision();
@@ -2323,127 +2467,164 @@ export const Game = ({
     updateBullets(bricks);
 
     // Update enemies
-    setEnemies(prev => prev.map(enemy => {
-      let newX = enemy.x + enemy.dx;
-      let newY = enemy.y + enemy.dy;
-      let newDx = enemy.dx;
-      let newDy = enemy.dy;
+    setEnemies((prev) =>
+      prev.map((enemy) => {
+        let newX = enemy.x + enemy.dx;
+        let newY = enemy.y + enemy.dy;
+        let newDx = enemy.dx;
+        let newDy = enemy.dy;
 
-      // Sphere and Pyramid enemies have more random movement
-      if (enemy.type === "sphere" || enemy.type === "pyramid") {
-        // Add some randomness to movement
-        if (Math.random() < (enemy.type === "pyramid" ? 0.08 : 0.05)) {
-          const randomAngle = (Math.random() - 0.5) * Math.PI / 4;
-          const currentAngle = Math.atan2(newDy, newDx);
-          const newAngle = currentAngle + randomAngle;
-          newDx = Math.cos(newAngle) * enemy.speed;
-          newDy = Math.sin(newAngle) * enemy.speed;
+        // Sphere and Pyramid enemies have more random movement
+        if (enemy.type === "sphere" || enemy.type === "pyramid") {
+          // Add some randomness to movement
+          if (Math.random() < (enemy.type === "pyramid" ? 0.08 : 0.05)) {
+            const randomAngle = ((Math.random() - 0.5) * Math.PI) / 4;
+            const currentAngle = Math.atan2(newDy, newDx);
+            const newAngle = currentAngle + randomAngle;
+            newDx = Math.cos(newAngle) * enemy.speed;
+            newDy = Math.sin(newAngle) * enemy.speed;
+          }
         }
-      }
 
-      // Bounce off walls
-      if (newX <= 0 || newX >= SCALED_CANVAS_WIDTH - enemy.width) {
-        newDx = -enemy.dx;
-        newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - enemy.width, newX));
-      }
+        // Bounce off walls
+        if (newX <= 0 || newX >= SCALED_CANVAS_WIDTH - enemy.width) {
+          newDx = -enemy.dx;
+          newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - enemy.width, newX));
+        }
 
-      // Bounce off top and 60% boundary
-      const maxY = SCALED_CANVAS_HEIGHT * 0.6;
-      if (newY <= 0 || newY >= maxY - enemy.height) {
-        newDy = -enemy.dy;
-        newY = Math.max(0, Math.min(maxY - enemy.height, newY));
-      }
-      return {
-        ...enemy,
-        x: newX,
-        y: newY,
-        dx: newDx,
-        dy: newDy,
-        rotationX: enemy.rotationX + (enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" ? 0.08 : 0.05),
-        rotationY: enemy.rotationY + (enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" ? 0.12 : 0.08),
-        rotationZ: enemy.rotationZ + (enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" ? 0.06 : 0.03)
-      };
-    }));
-
+        // Bounce off top and 60% boundary
+        const maxY = SCALED_CANVAS_HEIGHT * 0.6;
+        if (newY <= 0 || newY >= maxY - enemy.height) {
+          newDy = -enemy.dy;
+          newY = Math.max(0, Math.min(maxY - enemy.height, newY));
+        }
+        return {
+          ...enemy,
+          x: newX,
+          y: newY,
+          dx: newDx,
+          dy: newDy,
+          rotationX: enemy.rotationX + (enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" ? 0.08 : 0.05),
+          rotationY: enemy.rotationY + (enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" ? 0.12 : 0.08),
+          rotationZ: enemy.rotationZ + (enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" ? 0.06 : 0.03),
+        };
+      }),
+    );
 
     // Update explosions and their particles
-    setExplosions(prev => prev.map(exp => ({
-      ...exp,
-      frame: exp.frame + 1,
-      particles: exp.particles.map(p => ({
-        ...p,
-        x: p.x + p.vx,
-        y: p.y + p.vy,
-        vy: p.vy + 0.2,
-        // Add gravity
-        life: p.life - 1
-      })).filter(p => p.life > 0)
-    })).filter(exp => exp.frame < exp.maxFrames));
-    
+    setExplosions((prev) =>
+      prev
+        .map((exp) => ({
+          ...exp,
+          frame: exp.frame + 1,
+          particles: exp.particles
+            .map((p) => ({
+              ...p,
+              x: p.x + p.vx,
+              y: p.y + p.vy,
+              vy: p.vy + 0.2,
+              // Add gravity
+              life: p.life - 1,
+            }))
+            .filter((p) => p.life > 0),
+        }))
+        .filter((exp) => exp.frame < exp.maxFrames),
+    );
+
     // Update game over particles
-    setGameOverParticles(prev => prev.map(p => ({
-      ...p,
-      x: p.x + p.vx,
-      y: p.y + p.vy,
-      vy: p.vy + 0.15, // Gravity
-      vx: p.vx * 0.98, // Air resistance
-      life: p.life - 1
-    })).filter(p => p.life > 0));
+    setGameOverParticles((prev) =>
+      prev
+        .map((p) => ({
+          ...p,
+          x: p.x + p.vx,
+          y: p.y + p.vy,
+          vy: p.vy + 0.15, // Gravity
+          vx: p.vx * 0.98, // Air resistance
+          life: p.life - 1,
+        }))
+        .filter((p) => p.life > 0),
+    );
 
     // Update high score celebration particles
-    setHighScoreParticles(prev => prev.map(p => ({
-      ...p,
-      x: p.x + p.vx,
-      y: p.y + p.vy,
-      vy: p.vy + 0.2, // Gravity effect
-      life: p.life - 1
-    })).filter(p => p.life > 0));
+    setHighScoreParticles((prev) =>
+      prev
+        .map((p) => ({
+          ...p,
+          x: p.x + p.vx,
+          y: p.y + p.vy,
+          vy: p.vy + 0.2, // Gravity effect
+          life: p.life - 1,
+        }))
+        .filter((p) => p.life > 0),
+    );
 
     // Update bombs and rockets (pyramid bullets move in straight lines with angle)
-    setBombs(prev => prev.map(bomb => {
-      if (bomb.type === "pyramidBullet" && bomb.dx !== undefined) {
-        // Pyramid bullets move in straight line at angle
-        return {
-          ...bomb,
-          x: bomb.x + (bomb.dx || 0),
-          y: bomb.y + bomb.speed
-        };
-      }
-      return {
-        ...bomb,
-        y: bomb.y + bomb.speed
-      };
-    }).filter(bomb => bomb.y < SCALED_CANVAS_HEIGHT));
+    setBombs((prev) =>
+      prev
+        .map((bomb) => {
+          if (bomb.type === "pyramidBullet" && bomb.dx !== undefined) {
+            // Pyramid bullets move in straight line at angle
+            return {
+              ...bomb,
+              x: bomb.x + (bomb.dx || 0),
+              y: bomb.y + bomb.speed,
+            };
+          }
+          return {
+            ...bomb,
+            y: bomb.y + bomb.speed,
+          };
+        })
+        .filter((bomb) => bomb.y < SCALED_CANVAS_HEIGHT),
+    );
 
     // Check bomb-paddle collision
     if (paddle) {
-      bombs.forEach(bomb => {
+      bombs.forEach((bomb) => {
         // Check for shield first
-        if (paddle.hasShield && bomb.x + bomb.width > paddle.x && bomb.x < paddle.x + paddle.width && bomb.y + bomb.height > paddle.y - 10 && bomb.y < paddle.y) {
+        if (
+          paddle.hasShield &&
+          bomb.x + bomb.width > paddle.x &&
+          bomb.x < paddle.x + paddle.width &&
+          bomb.y + bomb.height > paddle.y - 10 &&
+          bomb.y < paddle.y
+        ) {
           // Bomb hit shield - destroy both
           soundManager.playBounce();
-          
+
           // Add shield impact effect at bomb position
-          setShieldImpacts(prev => [...prev, {
-            x: bomb.x + bomb.width / 2,
-            y: bomb.y + bomb.height / 2,
-            startTime: Date.now(),
-            duration: 600
-          }]);
-          
-          setBombs(prev => prev.filter(b => b.enemyId !== bomb.enemyId));
-          setPaddle(prev => prev ? {
+          setShieldImpacts((prev) => [
             ...prev,
-            hasShield: false
-          } : null);
+            {
+              x: bomb.x + bomb.width / 2,
+              y: bomb.y + bomb.height / 2,
+              startTime: Date.now(),
+              duration: 600,
+            },
+          ]);
+
+          setBombs((prev) => prev.filter((b) => b.enemyId !== bomb.enemyId));
+          setPaddle((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  hasShield: false,
+                }
+              : null,
+          );
           toast.success("Shield absorbed the hit!");
           return;
         }
-        if (bomb.x + bomb.width > paddle.x && bomb.x < paddle.x + paddle.width && bomb.y + bomb.height > paddle.y && bomb.y < paddle.y + paddle.height) {
+        if (
+          bomb.x + bomb.width > paddle.x &&
+          bomb.x < paddle.x + paddle.width &&
+          bomb.y + bomb.height > paddle.y &&
+          bomb.y < paddle.y + paddle.height
+        ) {
           // Bomb hit paddle - lose a life
           soundManager.playLoseLife();
-          setBombs(prev => prev.filter(b => b.enemyId !== bomb.enemyId));
-          setLives(prev => {
+          setBombs((prev) => prev.filter((b) => b.enemyId !== bomb.enemyId));
+          setLives((prev) => {
             const newLives = prev - 1;
             if (newLives <= 0) {
               setGameState("gameOver");
@@ -2452,7 +2633,7 @@ export const Game = ({
               setBossAttacks([]);
               setLaserWarnings([]);
               // Check for high score immediately
-              isHighScore(score).then(result => {
+              isHighScore(score).then((result) => {
                 if (!levelSkipped && result) {
                   setShowHighScoreEntry(true);
                   soundManager.playHighScoreMusic();
@@ -2474,7 +2655,7 @@ export const Game = ({
                 speed: baseSpeed,
                 id: nextBallId.current++,
                 isFireball: false,
-                waitingToLaunch: true
+                waitingToLaunch: true,
               };
               setBalls([resetBall]);
               setLaunchAngle(-20);
@@ -2482,12 +2663,16 @@ export const Game = ({
               setShowInstructions(true); // Show instructions when resetting ball
               setPowerUps([]);
               setBonusLetters([]);
-              setPaddle(prev => prev ? {
-                ...prev,
-                hasTurrets: false,
-                hasShield: false,
-                width: SCALED_PADDLE_WIDTH
-              } : null);
+              setPaddle((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      hasTurrets: false,
+                      hasShield: false,
+                      width: SCALED_PADDLE_WIDTH,
+                    }
+                  : null,
+              );
               setBullets([]); // Clear all bullets
               // Only reset speed if it's slower than base speed
               if (speedMultiplier < 1) {
@@ -2503,7 +2688,7 @@ export const Game = ({
               setBombs([]); // Clear all bombs
               setExplosions([]);
               // Clear all bomb intervals
-              bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+              bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
               bombIntervalsRef.current.clear();
               setGameState("ready");
               toast.error(`Bomb hit! ${newLives} lives remaining. Click to continue.`);
@@ -2516,52 +2701,72 @@ export const Game = ({
 
     // Check bounced bullet-paddle collision
     if (paddle) {
-      bullets.forEach(bullet => {
+      bullets.forEach((bullet) => {
         // Check for shield first
-        if (paddle.hasShield && bullet.isBounced && bullet.x + bullet.width > paddle.x && bullet.x < paddle.x + paddle.width && bullet.y + bullet.height > paddle.y - 10 && bullet.y < paddle.y) {
+        if (
+          paddle.hasShield &&
+          bullet.isBounced &&
+          bullet.x + bullet.width > paddle.x &&
+          bullet.x < paddle.x + paddle.width &&
+          bullet.y + bullet.height > paddle.y - 10 &&
+          bullet.y < paddle.y
+        ) {
           // Bullet hit shield - destroy both
           soundManager.playBounce();
-          
+
           // Add shield impact effect at bullet position
-          setShieldImpacts(prev => [...prev, {
-            x: bullet.x + bullet.width / 2,
-            y: bullet.y + bullet.height / 2,
-            startTime: Date.now(),
-            duration: 600
-          }]);
-          
-          setBullets(prev => prev.filter(b => b !== bullet));
-          setPaddle(prev => prev ? {
+          setShieldImpacts((prev) => [
             ...prev,
-            hasShield: false
-          } : null);
+            {
+              x: bullet.x + bullet.width / 2,
+              y: bullet.y + bullet.height / 2,
+              startTime: Date.now(),
+              duration: 600,
+            },
+          ]);
+
+          setBullets((prev) => prev.filter((b) => b !== bullet));
+          setPaddle((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  hasShield: false,
+                }
+              : null,
+          );
           toast.success("Shield absorbed the hit!");
           return;
         }
-        if (bullet.isBounced && bullet.x + bullet.width > paddle.x && bullet.x < paddle.x + paddle.width && bullet.y + bullet.height > paddle.y && bullet.y < paddle.y + paddle.height) {
+        if (
+          bullet.isBounced &&
+          bullet.x + bullet.width > paddle.x &&
+          bullet.x < paddle.x + paddle.width &&
+          bullet.y + bullet.height > paddle.y &&
+          bullet.y < paddle.y + paddle.height
+        ) {
           // Bounced bullet hit paddle - lose a life
           soundManager.playLoseLife();
-          setBullets(prev => prev.filter(b => b !== bullet));
-          setLives(prev => {
+          setBullets((prev) => prev.filter((b) => b !== bullet));
+          setLives((prev) => {
             const newLives = prev - 1;
-          if (newLives <= 0) {
-            setGameState("gameOver");
-            soundManager.stopBossMusic();
-            soundManager.stopBackgroundMusic();
-            setBossAttacks([]);
-            setLaserWarnings([]);
-            // Check for high score immediately
-            isHighScore(score).then(result => {
-              if (!levelSkipped && result) {
-                setShowHighScoreEntry(true);
-                soundManager.playHighScoreMusic();
-                toast.error("Game Over - New High Score!");
-              } else {
-                setShowEndScreen(true);
-                toast.error("Game Over!");
-              }
-            });
-          } else {
+            if (newLives <= 0) {
+              setGameState("gameOver");
+              soundManager.stopBossMusic();
+              soundManager.stopBackgroundMusic();
+              setBossAttacks([]);
+              setLaserWarnings([]);
+              // Check for high score immediately
+              isHighScore(score).then((result) => {
+                if (!levelSkipped && result) {
+                  setShowHighScoreEntry(true);
+                  soundManager.playHighScoreMusic();
+                  toast.error("Game Over - New High Score!");
+                } else {
+                  setShowEndScreen(true);
+                  toast.error("Game Over!");
+                }
+              });
+            } else {
               // Reset ball and clear power-ups, but wait for click to continue
               const baseSpeed = 5.175; // 50% faster base speed
               const resetBall: Ball = {
@@ -2573,7 +2778,7 @@ export const Game = ({
                 speed: baseSpeed,
                 id: nextBallId.current++,
                 isFireball: false,
-                waitingToLaunch: true
+                waitingToLaunch: true,
               };
               setBalls([resetBall]);
               setLaunchAngle(-20);
@@ -2581,12 +2786,16 @@ export const Game = ({
               setShowInstructions(true); // Show instructions when resetting ball
               setPowerUps([]);
               setBonusLetters([]);
-              setPaddle(prev => prev ? {
-                ...prev,
-                hasTurrets: false,
-                hasShield: false,
-                width: SCALED_PADDLE_WIDTH
-              } : null);
+              setPaddle((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      hasTurrets: false,
+                      hasShield: false,
+                      width: SCALED_PADDLE_WIDTH,
+                    }
+                  : null,
+              );
               setBullets([]); // Clear all bullets
               // Only reset speed if it's slower than base speed
               if (speedMultiplier < 1) {
@@ -2602,7 +2811,7 @@ export const Game = ({
               setBombs([]); // Clear all bombs
               setExplosions([]);
               // Clear all bomb intervals
-              bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+              bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
               bombIntervalsRef.current.clear();
               setGameState("ready");
               toast.error(`Bullet hit! ${newLives} lives remaining. Click to continue.`);
@@ -2614,198 +2823,186 @@ export const Game = ({
     }
 
     // Update boss movement and attacks
-    if (boss && boss.phase === 'moving') {
+    if (boss && boss.phase === "moving") {
       const dx = boss.targetPosition.x - boss.x;
       const dy = boss.targetPosition.y - boss.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
       if (distance < 5) {
-        setBoss(prev => prev ? { ...prev, phase: 'attacking', x: boss.targetPosition.x, y: boss.targetPosition.y, dx: 0, dy: 0, lastAttackTime: Date.now() } : null);
+        setBoss((prev) =>
+          prev
+            ? {
+                ...prev,
+                phase: "attacking",
+                x: boss.targetPosition.x,
+                y: boss.targetPosition.y,
+                dx: 0,
+                dy: 0,
+                lastAttackTime: Date.now(),
+              }
+            : null,
+        );
       } else {
         const config = BOSS_CONFIG[boss.type];
-        const moveSpeed = boss.isSuperAngry && 'superAngryMoveSpeed' in config ? config.superAngryMoveSpeed : (boss.isAngry && 'angryMoveSpeed' in config ? config.angryMoveSpeed : boss.speed);
-        setBoss(prev => prev ? { ...prev, x: prev.x + (dx / distance) * moveSpeed, y: prev.y + (dy / distance) * moveSpeed, rotationX: prev.rotationX + 0.05, rotationY: prev.rotationY + 0.08, rotationZ: prev.rotationZ + 0.03 } : null);
+        const moveSpeed =
+          boss.isSuperAngry && "superAngryMoveSpeed" in config
+            ? config.superAngryMoveSpeed
+            : boss.isAngry && "angryMoveSpeed" in config
+              ? config.angryMoveSpeed
+              : boss.speed;
+        setBoss((prev) =>
+          prev
+            ? {
+                ...prev,
+                x: prev.x + (dx / distance) * moveSpeed,
+                y: prev.y + (dy / distance) * moveSpeed,
+                rotationX: prev.rotationX + 0.05,
+                rotationY: prev.rotationY + 0.08,
+                rotationZ: prev.rotationZ + 0.03,
+              }
+            : null,
+        );
       }
     }
-    
-    if (boss && boss.phase === 'attacking' && Date.now() - boss.lastAttackTime >= boss.attackCooldown && paddle) {
+
+    if (boss && boss.phase === "attacking" && Date.now() - boss.lastAttackTime >= boss.attackCooldown && paddle) {
       performBossAttack(boss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings);
       const nextIndex = (boss.currentPositionIndex + 1) % boss.positions.length;
-      setBoss(prev => prev ? { ...prev, phase: 'moving', targetPosition: prev.positions[nextIndex], currentPositionIndex: nextIndex, lastAttackTime: Date.now() } : null);
+      setBoss((prev) =>
+        prev
+          ? {
+              ...prev,
+              phase: "moving",
+              targetPosition: prev.positions[nextIndex],
+              currentPositionIndex: nextIndex,
+              lastAttackTime: Date.now(),
+            }
+          : null,
+      );
     }
-    
+
     // Update resurrected bosses
     resurrectedBosses.forEach((resBoss, idx) => {
-      if (resBoss.phase === 'moving') {
+      if (resBoss.phase === "moving") {
         const dx = resBoss.targetPosition.x - resBoss.x;
         const dy = resBoss.targetPosition.y - resBoss.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < 5) {
-          setResurrectedBosses(prev => prev.map((b, i) => i === idx ? { ...b, phase: 'attacking', lastAttackTime: Date.now() } : b));
+          setResurrectedBosses((prev) =>
+            prev.map((b, i) => (i === idx ? { ...b, phase: "attacking", lastAttackTime: Date.now() } : b)),
+          );
         } else {
-          setResurrectedBosses(prev => prev.map((b, i) => i === idx ? { ...b, x: b.x + (dx/dist) * b.speed, y: b.y + (dy/dist) * b.speed, rotationX: b.rotationX + 0.08, rotationY: b.rotationY + 0.12 } : b));
+          setResurrectedBosses((prev) =>
+            prev.map((b, i) =>
+              i === idx
+                ? {
+                    ...b,
+                    x: b.x + (dx / dist) * b.speed,
+                    y: b.y + (dy / dist) * b.speed,
+                    rotationX: b.rotationX + 0.08,
+                    rotationY: b.rotationY + 0.12,
+                  }
+                : b,
+            ),
+          );
         }
-      } else if (resBoss.phase === 'attacking' && Date.now() - resBoss.lastAttackTime >= resBoss.attackCooldown && paddle) {
+      } else if (
+        resBoss.phase === "attacking" &&
+        Date.now() - resBoss.lastAttackTime >= resBoss.attackCooldown &&
+        paddle
+      ) {
         performBossAttack(resBoss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings);
         const nextIdx = (resBoss.currentPositionIndex + 1) % resBoss.positions.length;
-        setResurrectedBosses(prev => prev.map((b, i) => i === idx ? { ...b, phase: 'moving', targetPosition: b.positions[nextIdx], currentPositionIndex: nextIdx, lastAttackTime: Date.now() } : b));
+        setResurrectedBosses((prev) =>
+          prev.map((b, i) =>
+            i === idx
+              ? {
+                  ...b,
+                  phase: "moving",
+                  targetPosition: b.positions[nextIdx],
+                  currentPositionIndex: nextIdx,
+                  lastAttackTime: Date.now(),
+                }
+              : b,
+          ),
+        );
       }
     });
-    
+
     // Update boss attacks
-    setBossAttacks(prev => prev.filter(attack => {
-      if (attack.type === 'laser') return true;
-      const newX = attack.x + (attack.dx || 0);
-      const newY = attack.y + (attack.dy || 0);
-      if (newX < 0 || newX > SCALED_CANVAS_WIDTH || newY < 0 || newY > SCALED_CANVAS_HEIGHT) return false;
-      attack.x = newX;
-      attack.y = newY;
-      // Check boss shot collisions with paddle
-      if (paddle && attack.x + attack.width > paddle.x && attack.x < paddle.x + paddle.width && attack.y + attack.height > paddle.y && attack.y < paddle.y + paddle.height) {
-        // Check for shield first
-        if (paddle.hasShield) {
-          soundManager.playBounce();
-          
-          // Add shield impact effect at attack position
-          setShieldImpacts(prev => [...prev, {
-            x: attack.x + attack.width / 2,
-            y: attack.y + attack.height / 2,
-            startTime: Date.now(),
-            duration: 600
-          }]);
-          
-          setPaddle(prev => prev ? { ...prev, hasShield: false } : null);
-          toast.success("Shield absorbed boss attack!");
-          return false; // Remove attack
-        }
-        
-        // No shield - take damage
-        soundManager.playLoseLife();
-        setLives(prev => {
-          const newLives = prev - 1;
-          if (newLives <= 0) {
-            setGameState("gameOver");
-            soundManager.stopBossMusic();
-            soundManager.stopBackgroundMusic();
-            setBossAttacks([]);
-            setLaserWarnings([]);
-            // Check for high score immediately
-            isHighScore(score).then(result => {
-              if (!levelSkipped && result) {
-                setShowHighScoreEntry(true);
-                soundManager.playHighScoreMusic();
-                toast.error("Game Over - New High Score!");
-              } else {
-                setShowEndScreen(true);
-                toast.error("Game Over!");
-              }
-            });
-          } else {
-            // Reset ball and clear power-ups, wait for click to continue
-            const baseSpeed = 5.175;
-            setBalls([{
-              id: nextBallId.current++,
-              x: SCALED_CANVAS_WIDTH / 2,
-              y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
-              dx: baseSpeed,
-              dy: -baseSpeed,
-              radius: SCALED_BALL_RADIUS,
-              speed: baseSpeed,
-              waitingToLaunch: true,
-              isFireball: false
-            }]);
-            setLaunchAngle(-20);
-            launchAngleDirectionRef.current = 1;
-            setShowInstructions(true);
-            setPowerUps([]);
-            setBonusLetters([]);
-            setBullets([]);
-            setEnemies([]);
-            setBossAttacks([]);
-            setLaserWarnings([]);
-            setBombs([]);
-            setExplosions([]);
-            setPaddle(prev => prev ? {
-              ...prev,
-              hasTurrets: false,
-              hasShield: false,
-              width: SCALED_PADDLE_WIDTH
-            } : null);
-            // Clear all bomb intervals
-            bombIntervalsRef.current.forEach(interval => clearInterval(interval));
-            bombIntervalsRef.current.clear();
-            setGameState("ready");
-            toast.error(`Boss attack hit! ${newLives} lives remaining. Click to continue.`);
-          }
-          return newLives;
-        });
-        return false;
-      }
-      return true;
-    }));
-    
-    // Check laser collisions with paddle separately
-    bossAttacks.forEach(attack => {
-      if (attack.type === 'laser' && paddle) {
-        // Check if paddle is within laser X range
-        const laserRight = attack.x + attack.width;
-        const paddleRight = paddle.x + paddle.width;
-        
-        if (paddle.x < laserRight && paddleRight > attack.x) {
+    setBossAttacks((prev) =>
+      prev.filter((attack) => {
+        if (attack.type === "laser") return true;
+        const newX = attack.x + (attack.dx || 0);
+        const newY = attack.y + (attack.dy || 0);
+        if (newX < 0 || newX > SCALED_CANVAS_WIDTH || newY < 0 || newY > SCALED_CANVAS_HEIGHT) return false;
+        attack.x = newX;
+        attack.y = newY;
+        // Check boss shot collisions with paddle
+        if (
+          paddle &&
+          attack.x + attack.width > paddle.x &&
+          attack.x < paddle.x + paddle.width &&
+          attack.y + attack.height > paddle.y &&
+          attack.y < paddle.y + paddle.height
+        ) {
           // Check for shield first
           if (paddle.hasShield) {
             soundManager.playBounce();
-            
-            // Add shield impact effect at paddle center (laser is wide)
-            setShieldImpacts(prev => [...prev, {
-              x: paddle.x + paddle.width / 2,
-              y: paddle.y,
-              startTime: Date.now(),
-              duration: 600
-            }]);
-            
-            setPaddle(prev => prev ? { ...prev, hasShield: false } : null);
-            toast.success("Shield absorbed laser!");
-            // Remove laser attack
-            setBossAttacks(prev => prev.filter(a => a !== attack));
-            return;
+
+            // Add shield impact effect at attack position
+            setShieldImpacts((prev) => [
+              ...prev,
+              {
+                x: attack.x + attack.width / 2,
+                y: attack.y + attack.height / 2,
+                startTime: Date.now(),
+                duration: 600,
+              },
+            ]);
+
+            setPaddle((prev) => (prev ? { ...prev, hasShield: false } : null));
+            toast.success("Shield absorbed boss attack!");
+            return false; // Remove attack
           }
-          
-          // No shield - paddle is hit by laser!
+
+          // No shield - take damage
           soundManager.playLoseLife();
-          setLives(prev => {
+          setLives((prev) => {
             const newLives = prev - 1;
-          if (newLives <= 0) {
-            setGameState("gameOver");
-            soundManager.stopBossMusic();
-            soundManager.stopBackgroundMusic();
-            setBossAttacks([]);
-            setLaserWarnings([]);
-            // Check for high score immediately
-            isHighScore(score).then(result => {
-              if (!levelSkipped && result) {
-                setShowHighScoreEntry(true);
-                soundManager.playHighScoreMusic();
-                toast.error("Game Over - New High Score!");
-              } else {
-                setShowEndScreen(true);
-                toast.error("Game Over!");
-              }
-            });
-          } else {
-              // Reset game to ready state
+            if (newLives <= 0) {
+              setGameState("gameOver");
+              soundManager.stopBossMusic();
+              soundManager.stopBackgroundMusic();
+              setBossAttacks([]);
+              setLaserWarnings([]);
+              // Check for high score immediately
+              isHighScore(score).then((result) => {
+                if (!levelSkipped && result) {
+                  setShowHighScoreEntry(true);
+                  soundManager.playHighScoreMusic();
+                  toast.error("Game Over - New High Score!");
+                } else {
+                  setShowEndScreen(true);
+                  toast.error("Game Over!");
+                }
+              });
+            } else {
+              // Reset ball and clear power-ups, wait for click to continue
               const baseSpeed = 5.175;
-              setBalls([{
-                id: nextBallId.current++,
-                x: SCALED_CANVAS_WIDTH / 2,
-                y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
-                dx: baseSpeed,
-                dy: -baseSpeed,
-                radius: SCALED_BALL_RADIUS,
-                speed: baseSpeed,
-                waitingToLaunch: true,
-                isFireball: false
-              }]);
+              setBalls([
+                {
+                  id: nextBallId.current++,
+                  x: SCALED_CANVAS_WIDTH / 2,
+                  y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+                  dx: baseSpeed,
+                  dy: -baseSpeed,
+                  radius: SCALED_BALL_RADIUS,
+                  speed: baseSpeed,
+                  waitingToLaunch: true,
+                  isFireball: false,
+                },
+              ]);
               setLaunchAngle(-20);
               launchAngleDirectionRef.current = 1;
               setShowInstructions(true);
@@ -2817,29 +3014,135 @@ export const Game = ({
               setLaserWarnings([]);
               setBombs([]);
               setExplosions([]);
-              setPaddle(prev => prev ? {
-                ...prev,
-                hasTurrets: false,
-                hasShield: false,
-                width: SCALED_PADDLE_WIDTH
-              } : null);
-              bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+              setPaddle((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      hasTurrets: false,
+                      hasShield: false,
+                      width: SCALED_PADDLE_WIDTH,
+                    }
+                  : null,
+              );
+              // Clear all bomb intervals
+              bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
+              bombIntervalsRef.current.clear();
+              setGameState("ready");
+              toast.error(`Boss attack hit! ${newLives} lives remaining. Click to continue.`);
+            }
+            return newLives;
+          });
+          return false;
+        }
+        return true;
+      }),
+    );
+
+    // Check laser collisions with paddle separately
+    bossAttacks.forEach((attack) => {
+      if (attack.type === "laser" && paddle) {
+        // Check if paddle is within laser X range
+        const laserRight = attack.x + attack.width;
+        const paddleRight = paddle.x + paddle.width;
+
+        if (paddle.x < laserRight && paddleRight > attack.x) {
+          // Check for shield first
+          if (paddle.hasShield) {
+            soundManager.playBounce();
+
+            // Add shield impact effect at paddle center (laser is wide)
+            setShieldImpacts((prev) => [
+              ...prev,
+              {
+                x: paddle.x + paddle.width / 2,
+                y: paddle.y,
+                startTime: Date.now(),
+                duration: 600,
+              },
+            ]);
+
+            setPaddle((prev) => (prev ? { ...prev, hasShield: false } : null));
+            toast.success("Shield absorbed laser!");
+            // Remove laser attack
+            setBossAttacks((prev) => prev.filter((a) => a !== attack));
+            return;
+          }
+
+          // No shield - paddle is hit by laser!
+          soundManager.playLoseLife();
+          setLives((prev) => {
+            const newLives = prev - 1;
+            if (newLives <= 0) {
+              setGameState("gameOver");
+              soundManager.stopBossMusic();
+              soundManager.stopBackgroundMusic();
+              setBossAttacks([]);
+              setLaserWarnings([]);
+              // Check for high score immediately
+              isHighScore(score).then((result) => {
+                if (!levelSkipped && result) {
+                  setShowHighScoreEntry(true);
+                  soundManager.playHighScoreMusic();
+                  toast.error("Game Over - New High Score!");
+                } else {
+                  setShowEndScreen(true);
+                  toast.error("Game Over!");
+                }
+              });
+            } else {
+              // Reset game to ready state
+              const baseSpeed = 5.175;
+              setBalls([
+                {
+                  id: nextBallId.current++,
+                  x: SCALED_CANVAS_WIDTH / 2,
+                  y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+                  dx: baseSpeed,
+                  dy: -baseSpeed,
+                  radius: SCALED_BALL_RADIUS,
+                  speed: baseSpeed,
+                  waitingToLaunch: true,
+                  isFireball: false,
+                },
+              ]);
+              setLaunchAngle(-20);
+              launchAngleDirectionRef.current = 1;
+              setShowInstructions(true);
+              setPowerUps([]);
+              setBonusLetters([]);
+              setBullets([]);
+              setEnemies([]);
+              setBossAttacks([]);
+              setLaserWarnings([]);
+              setBombs([]);
+              setExplosions([]);
+              setPaddle((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      hasTurrets: false,
+                      hasShield: false,
+                      width: SCALED_PADDLE_WIDTH,
+                    }
+                  : null,
+              );
+              bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
               bombIntervalsRef.current.clear();
               setGameState("ready");
               toast.error(`LASER HIT! ${newLives} lives remaining. Click to continue.`);
             }
             return newLives;
           });
-          
+
           // Remove the laser after hit
-          setBossAttacks(prev => prev.filter(a => a !== attack));
+          setBossAttacks((prev) => prev.filter((a) => a !== attack));
         }
       }
     });
-    
+
     // Clean up expired laser warnings
-    setLaserWarnings(prev => prev.filter(warning => Date.now() - warning.startTime < 800));
-    
+    setLaserWarnings((prev) => prev.filter((warning) => Date.now() - warning.startTime < 800));
+
     // Boss collisions are now handled via CCD and shape-specific checks in Phase 3.5
     // Old collision code removed to prevent conflicts with unified boss-local cooldown system
     checkCollision();
@@ -2854,7 +3157,7 @@ export const Game = ({
       const timeSinceHit = (Date.now() - lastPaddleHitTime) / 1000;
       if (timeSinceHit >= 25 && enemies.length > 0) {
         // 25s - nearest enemy kamikaze
-        const activeBall = balls.find(b => !b.waitingToLaunch);
+        const activeBall = balls.find((b) => !b.waitingToLaunch);
         if (activeBall) {
           // Find closest enemy
           let closestEnemy = enemies[0];
@@ -2870,36 +3173,62 @@ export const Game = ({
           }
 
           // Make closest enemy go kamikaze towards ball
-          setEnemies(prev => prev.map(e => e.id === closestEnemy.id ? {
-            ...e,
-            dx: (activeBall.x - (e.x + e.width / 2)) / minDistance * e.speed * 3,
-            dy: (activeBall.y - (e.y + e.height / 2)) / minDistance * e.speed * 3
-          } : e));
+          setEnemies((prev) =>
+            prev.map((e) =>
+              e.id === closestEnemy.id
+                ? {
+                    ...e,
+                    dx: ((activeBall.x - (e.x + e.width / 2)) / minDistance) * e.speed * 3,
+                    dy: ((activeBall.y - (e.y + e.height / 2)) / minDistance) * e.speed * 3,
+                  }
+                : e,
+            ),
+          );
           toast.warning("Enemy kamikaze attack!");
           setLastPaddleHitTime(Date.now()); // Reset timer
         }
       } else if (timeSinceHit >= 15) {
         // 15s - divert ball by 10 degrees
-        setBalls(prev => prev.map(ball => {
-          if (!ball.waitingToLaunch) {
-            const currentAngle = Math.atan2(ball.dy, ball.dx);
-            const divertAngle = currentAngle + 10 * Math.PI / 180;
-            const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-            return {
-              ...ball,
-              dx: Math.cos(divertAngle) * speed,
-              dy: Math.sin(divertAngle) * speed
-            };
-          }
-          return ball;
-        }));
+        setBalls((prev) =>
+          prev.map((ball) => {
+            if (!ball.waitingToLaunch) {
+              const currentAngle = Math.atan2(ball.dy, ball.dx);
+              const divertAngle = currentAngle + (10 * Math.PI) / 180;
+              const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+              return {
+                ...ball,
+                dx: Math.cos(divertAngle) * speed,
+                dy: Math.sin(divertAngle) * speed,
+              };
+            }
+            return ball;
+          }),
+        );
         setLastPaddleHitTime(Date.now()); // Reset timer
       }
     }
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
-  }, [gameState, checkCollision, updatePowerUps, updateBullets, paddle, balls, checkPowerUpCollision, speedMultiplier, enemies, bombs, bricks, score, isHighScore, explosions, lastPaddleHitTime, lastScoreMilestone, updateFps]);
-  
+  }, [
+    gameState,
+    checkCollision,
+    updatePowerUps,
+    updateBullets,
+    paddle,
+    balls,
+    checkPowerUpCollision,
+    speedMultiplier,
+    enemies,
+    bombs,
+    bricks,
+    score,
+    isHighScore,
+    explosions,
+    lastPaddleHitTime,
+    lastScoreMilestone,
+    updateFps,
+  ]);
+
   useEffect(() => {
     if (gameState === "playing") {
       animationFrameRef.current = requestAnimationFrame(gameLoop);
@@ -2915,14 +3244,13 @@ export const Game = ({
     };
   }, [gameState, gameLoop]);
 
-
   // Separate useEffect for timer management - handle pause/resume
   useEffect(() => {
     if (gameState === "playing" && timerStartedRef.current) {
       // Resume timer if it was started and we're playing
       if (!timerIntervalRef.current) {
         timerIntervalRef.current = setInterval(() => {
-          setTimer(prev => prev + 1);
+          setTimer((prev) => prev + 1);
         }, 1000);
       }
     } else if (gameState === "paused") {
@@ -2938,16 +3266,16 @@ export const Game = ({
         timerIntervalRef.current = undefined;
       }
       timerStartedRef.current = false;
-      bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+      bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
       bombIntervalsRef.current.clear();
     }
-    
+
     // Handle total play time independently
     if (gameState === "playing" && totalPlayTimeStartedRef.current) {
       // Resume total play time if it was started and we're playing
       if (!totalPlayTimeIntervalRef.current) {
         totalPlayTimeIntervalRef.current = setInterval(() => {
-          setTotalPlayTime(prev => prev + 1);
+          setTotalPlayTime((prev) => prev + 1);
         }, 1000);
       }
     } else if (gameState === "paused") {
@@ -2963,7 +3291,7 @@ export const Game = ({
         totalPlayTimeIntervalRef.current = undefined;
       }
     }
-    
+
     return () => {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
@@ -2971,7 +3299,7 @@ export const Game = ({
       if (totalPlayTimeIntervalRef.current) {
         clearInterval(totalPlayTimeIntervalRef.current);
       }
-      bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+      bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
       bombIntervalsRef.current.clear();
     };
   }, [gameState]);
@@ -2980,14 +3308,17 @@ export const Game = ({
   useEffect(() => {
     // Don't spawn normal enemies during boss fights
     if (bossActive) return;
-    
+
     if (gameState === "playing" && timer > 0) {
       // Spawn interval decreases with level
       // Normal: 30s at level 1, 20s at level 2, 15s at level 3+
       // Godlike: 20s at level 1, 12s at level 2, 8s at level 3+
       const baseInterval = settings.difficulty === "godlike" ? 20 : 30;
       const minInterval = settings.difficulty === "godlike" ? 8 : 15;
-      const spawnInterval = Math.max(minInterval, baseInterval - (level - 1) * (settings.difficulty === "godlike" ? 4 : 5));
+      const spawnInterval = Math.max(
+        minInterval,
+        baseInterval - (level - 1) * (settings.difficulty === "godlike" ? 4 : 5),
+      );
       if (timer - lastEnemySpawnTime >= spawnInterval) {
         // Cap speed increase at 5 enemies (30% * 5 = 150%, so cap at 200%)
         const speedIncrease = Math.min(2.0, 1 + Math.min(enemySpawnCount, 5) * 0.3);
@@ -3022,7 +3353,7 @@ export const Game = ({
             dx: Math.cos(angle) * speed,
             dy: Math.sin(angle) * speed,
             hits: 0,
-            isAngry: false
+            isAngry: false,
           };
         } else if (enemyType === "sphere") {
           // Sphere enemy - random movement pattern
@@ -3043,7 +3374,7 @@ export const Game = ({
             dx: Math.cos(angle) * speed,
             dy: Math.sin(angle) * speed,
             hits: 0,
-            isAngry: false
+            isAngry: false,
           };
         } else {
           // Cube enemy - straight line movement
@@ -3062,12 +3393,12 @@ export const Game = ({
             rotationZ: 0,
             speed: speed,
             dx: Math.cos(angle) * speed,
-            dy: Math.abs(Math.sin(angle)) * speed // Always move downward initially
+            dy: Math.abs(Math.sin(angle)) * speed, // Always move downward initially
           };
         }
-        setEnemies(prev => [...prev, newEnemy]);
+        setEnemies((prev) => [...prev, newEnemy]);
         setLastEnemySpawnTime(timer);
-        setEnemySpawnCount(prev => prev + 1);
+        setEnemySpawnCount((prev) => prev + 1);
         const enemyName = enemyType === "sphere" ? "Sphere" : enemyType === "pyramid" ? "Pyramid" : "Cube";
         toast.warning(`${enemyName} enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
 
@@ -3085,8 +3416,8 @@ export const Game = ({
         }
         const randomInterval = minInterval * 1000 + Math.random() * (maxInterval - minInterval) * 1000;
         const projectileInterval = setInterval(() => {
-          setEnemies(currentEnemies => {
-            const currentEnemy = currentEnemies.find(e => e.id === enemyId);
+          setEnemies((currentEnemies) => {
+            const currentEnemy = currentEnemies.find((e) => e.id === enemyId);
             if (!currentEnemy) {
               clearInterval(projectileInterval);
               bombIntervalsRef.current.delete(enemyId);
@@ -3105,10 +3436,10 @@ export const Game = ({
                 speed: bulletSpeed,
                 enemyId: enemyId,
                 type: "pyramidBullet",
-                dx: Math.sin(randomAngle) * bulletSpeed
+                dx: Math.sin(randomAngle) * bulletSpeed,
               };
               soundManager.playPyramidBulletSound();
-              setBombs(prev => [...prev, newBullet]);
+              setBombs((prev) => [...prev, newBullet]);
             } else {
               const newProjectile: Bomb = {
                 x: currentEnemy.x + currentEnemy.width / 2 - 5,
@@ -3118,10 +3449,10 @@ export const Game = ({
                 speed: 3,
                 enemyId: enemyId,
                 type: currentEnemy.type === "sphere" ? "rocket" : "bomb",
-                dx: 0 // Initialize horizontal velocity for rockets
+                dx: 0, // Initialize horizontal velocity for rockets
               };
               soundManager.playBombDropSound();
-              setBombs(prev => [...prev, newProjectile]);
+              setBombs((prev) => [...prev, newProjectile]);
             }
             return currentEnemies;
           });
@@ -3134,32 +3465,32 @@ export const Game = ({
   // Boss enemy spawning system
   useEffect(() => {
     if (gameState !== "playing" || !boss || bossDefeatedTransitioning) return;
-    
+
     const BOSS_SPAWN_INTERVAL = 15; // 15 seconds
     const MAX_BOSS_ENEMIES = 6; // Maximum enemies on screen
     const ENEMIES_PER_SPAWN = 2; // Spawn 2 at a time
-    
+
     // Check if enough time has passed and we haven't reached the cap
     if (timer - lastBossSpawnTime >= BOSS_SPAWN_INTERVAL && enemies.length < MAX_BOSS_ENEMIES) {
       const enemiesToSpawn = Math.min(ENEMIES_PER_SPAWN, MAX_BOSS_ENEMIES - enemies.length);
       const newEnemies: Enemy[] = [];
-      
+
       for (let i = 0; i < enemiesToSpawn; i++) {
         const enemyId = nextEnemyId.current++;
         const enemyType = boss.type;
-        
+
         // Track that this enemy was spawned by the boss
         bossSpawnedEnemiesRef.current.add(enemyId);
-        
+
         // Calculate spawn position (from boss center with slight offset)
         const spawnAngle = (Math.PI / 3) * i - Math.PI / 6;
         const spawnOffsetX = Math.cos(spawnAngle) * 40;
         const spawnOffsetY = Math.sin(spawnAngle) * 40;
-        
+
         // Create enemy based on type with smaller size
         let newEnemy: Enemy;
         const baseSpeed = 2.0;
-        
+
         if (enemyType === "pyramid") {
           const angle = Math.random() * Math.PI * 2;
           newEnemy = {
@@ -3175,7 +3506,7 @@ export const Game = ({
             rotationZ: Math.random() * Math.PI,
             speed: baseSpeed,
             dx: Math.cos(angle) * baseSpeed,
-            dy: Math.sin(angle) * baseSpeed
+            dy: Math.sin(angle) * baseSpeed,
           };
         } else if (enemyType === "sphere") {
           const angle = Math.random() * Math.PI * 2;
@@ -3194,9 +3525,10 @@ export const Game = ({
             dx: Math.cos(angle) * baseSpeed * 1.25,
             dy: Math.sin(angle) * baseSpeed * 1.25,
             hits: 0,
-            isAngry: false
+            isAngry: false,
           };
-        } else { // cube
+        } else {
+          // cube
           const angle = Math.random() * Math.PI * 2;
           newEnemy = {
             id: enemyId,
@@ -3211,92 +3543,97 @@ export const Game = ({
             rotationZ: 0,
             speed: baseSpeed,
             dx: Math.cos(angle) * baseSpeed,
-            dy: Math.abs(Math.sin(angle)) * baseSpeed
+            dy: Math.abs(Math.sin(angle)) * baseSpeed,
           };
         }
-        
+
         newEnemies.push(newEnemy);
-        
+
         // Set up bomb dropping for this enemy
         const minInterval = 5;
         const maxInterval = 10;
         const randomInterval = minInterval * 1000 + Math.random() * (maxInterval - minInterval) * 1000;
-        
+
         const projectileInterval = setInterval(() => {
-          setEnemies(currentEnemies => {
-            const currentEnemy = currentEnemies.find(e => e.id === enemyId);
+          setEnemies((currentEnemies) => {
+            const currentEnemy = currentEnemies.find((e) => e.id === enemyId);
             if (!currentEnemy) {
               clearInterval(projectileInterval);
               bombIntervalsRef.current.delete(enemyId);
               return currentEnemies;
             }
-            
+
             const projectileType = enemyType === "pyramid" ? "pyramidBullet" : "bomb";
-            
-            setBombs(prev => [...prev, {
-              x: currentEnemy.x + currentEnemy.width / 2 - 5,
-              y: currentEnemy.y + currentEnemy.height,
-              width: 10,
-              height: 10,
-              speed: 3,
-              enemyId: enemyId,
-              type: projectileType
-            }]);
-            
+
+            setBombs((prev) => [
+              ...prev,
+              {
+                x: currentEnemy.x + currentEnemy.width / 2 - 5,
+                y: currentEnemy.y + currentEnemy.height,
+                width: 10,
+                height: 10,
+                speed: 3,
+                enemyId: enemyId,
+                type: projectileType,
+              },
+            ]);
+
             if (enemyType === "pyramid") {
               soundManager.playPyramidBulletSound();
             } else {
               soundManager.playBombDropSound();
             }
-            
+
             return currentEnemies;
           });
         }, randomInterval);
-        
+
         bombIntervalsRef.current.set(enemyId, projectileInterval);
       }
-      
-      setEnemies(prev => [...prev, ...newEnemies]);
+
+      setEnemies((prev) => [...prev, ...newEnemies]);
       setLastBossSpawnTime(timer);
-      
+
       // Trigger spawn animation
       setBossSpawnAnimation({ active: true, startTime: Date.now() });
       setTimeout(() => setBossSpawnAnimation(null), 500);
-      
+
       soundManager.playExplosion();
-      toast.warning(`${boss.type.toUpperCase()} spawned ${enemiesToSpawn} minion${enemiesToSpawn > 1 ? 's' : ''}!`, { duration: 2000 });
+      toast.warning(`${boss.type.toUpperCase()} spawned ${enemiesToSpawn} minion${enemiesToSpawn > 1 ? "s" : ""}!`, {
+        duration: 2000,
+      });
     }
   }, [timer, gameState, boss, enemies.length, lastBossSpawnTime, SCALED_CANVAS_WIDTH, bossDefeatedTransitioning]);
 
   // Boss hit cooldown timer
   useEffect(() => {
     if (bossHitCooldown <= 0) return;
-    
+
     const interval = setInterval(() => {
-      setBossHitCooldown(prev => Math.max(0, prev - 50));
+      setBossHitCooldown((prev) => Math.max(0, prev - 50));
     }, 50);
-    
+
     return () => clearInterval(interval);
   }, [bossHitCooldown]);
 
   // Keyboard controls for launch angle
   useEffect(() => {
-    const waitingBall = balls.find(ball => ball.waitingToLaunch);
+    const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (gameState !== "playing" || !waitingBall) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") {
-        setLaunchAngle(prev => Math.max(prev - 3, -80));
+        setLaunchAngle((prev) => Math.max(prev - 3, -80));
       } else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") {
-        setLaunchAngle(prev => Math.min(prev + 3, 80));
+        setLaunchAngle((prev) => Math.min(prev + 3, 80));
       }
     };
     const handleWheel = (e: WheelEvent) => {
       if (e.deltaY < 0) {
         // Scroll up = left
-        setLaunchAngle(prev => Math.max(prev - 3, -80));
+        setLaunchAngle((prev) => Math.max(prev - 3, -80));
       } else if (e.deltaY > 0) {
         // Scroll down = right
-        setLaunchAngle(prev => Math.min(prev + 3, 80));
+        setLaunchAngle((prev) => Math.min(prev + 3, 80));
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -3309,7 +3646,7 @@ export const Game = ({
   const handleStart = () => {
     if (gameState === "ready") {
       // Check if this is level completion (all bricks destroyed)
-      const isLevelComplete = bricks.every(brick => !brick.visible) && bricks.length > 0;
+      const isLevelComplete = bricks.every((brick) => !brick.visible) && bricks.length > 0;
       if (isLevelComplete) {
         // Start next level
         nextLevel();
@@ -3341,24 +3678,24 @@ export const Game = ({
     try {
       // Create a burst of particles on submission
       setHighScoreParticles(createHighScoreParticles());
-      
+
       // Flash the screen
       setBackgroundFlash(1);
       setTimeout(() => setBackgroundFlash(0), 200);
-      
+
       await addHighScore(name, score, level, settings.difficulty, beatLevel50Completed, settings.startingLives);
-      
-      toast.success('🎉 HIGH SCORE SAVED! 🎉', {
+
+      toast.success("🎉 HIGH SCORE SAVED! 🎉", {
         duration: 3000,
       });
-      
+
       // Delay transition to show celebration
       setTimeout(() => {
         setShowHighScoreEntry(false);
         setShowHighScoreDisplay(true);
       }, 1000);
     } catch (err) {
-      console.error('Failed to submit high score:', err);
+      console.error("Failed to submit high score:", err);
       setShowHighScoreEntry(false);
       setShowHighScoreDisplay(true);
     }
@@ -3367,7 +3704,7 @@ export const Game = ({
     setShowEndScreen(false);
     setShowHighScoreDisplay(true);
   };
-  
+
   const handleEndScreenReturnToMenu = () => {
     soundManager.stopHighScoreMusic();
     soundManager.stopBossMusic();
@@ -3377,7 +3714,7 @@ export const Game = ({
     setGameOverParticles([]);
     onReturnToMenu();
   };
-  
+
   const handleCloseHighScoreDisplay = () => {
     setShowHighScoreDisplay(false);
     // If end screen hasn't been shown yet, show it
@@ -3389,13 +3726,13 @@ export const Game = ({
       onReturnToMenu();
     }
   };
-  
+
   const handleRetryLevel = useCallback(() => {
     // Stop all music first
     soundManager.stopHighScoreMusic();
     soundManager.stopBossMusic();
     soundManager.stopBackgroundMusic();
-    
+
     // Stop game loop before restarting level
     if (gameLoopRef.current) {
       gameLoopRef.current.stop();
@@ -3406,7 +3743,7 @@ export const Game = ({
       clearInterval(timerIntervalRef.current);
     }
     timerStartedRef.current = false;
-    bombIntervalsRef.current.forEach(interval => clearInterval(interval));
+    bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
 
     // Keep the current level
@@ -3422,7 +3759,7 @@ export const Game = ({
       y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
       width: SCALED_PADDLE_WIDTH,
       height: SCALED_PADDLE_HEIGHT,
-      hasTurrets: false
+      hasTurrets: false,
     });
 
     // Initialize ball with level speed - waiting to launch
@@ -3436,7 +3773,7 @@ export const Game = ({
       speed: baseSpeed,
       id: nextBallId.current++,
       isFireball: false,
-      waitingToLaunch: true
+      waitingToLaunch: true,
     };
     setBalls([initialBall]);
     setLaunchAngle(-20);
@@ -3445,7 +3782,7 @@ export const Game = ({
 
     // Reset bricks for current level
     setBricks(initBricksForLevel(currentLevel));
-    
+
     // Reset all stats and score
     setScore(0);
     setTotalBricksDestroyed(0);
@@ -3459,7 +3796,7 @@ export const Game = ({
     setHighScoreParticles([]);
     setGameOverParticles([]);
     setLives(settings.startingLives);
-    
+
     // Clear all entities
     setPowerUps([]);
     setBullets([]);
@@ -3478,7 +3815,7 @@ export const Game = ({
     setLastBossSpawnTime(0);
     setBossSpawnAnimation(null);
     setEnemiesKilled(0);
-    
+
     // Clear boss state if not a boss level, or reset and trigger intro if it is
     if (!BOSS_LEVELS.includes(currentLevel)) {
       setBoss(null);
@@ -3495,23 +3832,24 @@ export const Game = ({
       setBossActive(false);
       setLaserWarnings([]);
       soundManager.stopBossMusic();
-      
+
       // Trigger boss intro sequence after a brief delay to ensure clean state
       setTimeout(() => {
         // Reinitialize the boss
         setBricks(initBricksForLevel(currentLevel));
-        
+
         // Start intro sequence
         setBossIntroActive(true);
         soundManager.playBossIntroSound();
-        
+
         // Show boss name and start boss music after 1 second
         setTimeout(() => {
           soundManager.playBossMusic(currentLevel);
-          const bossName = currentLevel === 5 ? 'CUBE GUARDIAN' : currentLevel === 10 ? 'SPHERE DESTROYER' : 'PYRAMID LORD';
+          const bossName =
+            currentLevel === 5 ? "CUBE GUARDIAN" : currentLevel === 10 ? "SPHERE DESTROYER" : "PYRAMID LORD";
           toast.error(`⚠️ BOSS APPROACHING: ${bossName} ⚠️`, { duration: 3000 });
         }, 1000);
-        
+
         // End intro after 3 seconds
         setTimeout(() => {
           setBossIntroActive(false);
@@ -3522,22 +3860,29 @@ export const Game = ({
     // Hide screens
     setShowEndScreen(false);
     setShowHighScoreEntry(false);
-    
+
     // Set to ready state
     setGameState("ready");
-    
+
     toast.info(`Retrying Level ${currentLevel}`);
-  }, [level, settings.startingLives, settings.difficulty, initBricksForLevel, setPowerUps, createRandomLetterAssignments]);
-  
+  }, [
+    level,
+    settings.startingLives,
+    settings.difficulty,
+    initBricksForLevel,
+    setPowerUps,
+    createRandomLetterAssignments,
+  ]);
+
   const toggleFullscreen = async () => {
     if (!fullscreenContainerRef.current) return;
-    
+
     // iOS doesn't support the Fullscreen API
     // Use CSS-based fullscreen instead
     if (isIOSDevice) {
       const entering = !isFullscreen;
       setIsFullscreen(entering);
-      
+
       if (entering) {
         // Scroll to top to minimize Safari UI
         window.scrollTo(0, 0);
@@ -3555,14 +3900,14 @@ export const Game = ({
       }
       return;
     }
-    
+
     // Standard Fullscreen API for other browsers
     try {
       if (!document.fullscreenElement) {
         // Try standard API
         if (fullscreenContainerRef.current.requestFullscreen) {
           await fullscreenContainerRef.current.requestFullscreen();
-        } 
+        }
         // Try webkit prefix (for older Safari on non-iOS)
         else if ((fullscreenContainerRef.current as any).webkitRequestFullscreen) {
           await (fullscreenContainerRef.current as any).webkitRequestFullscreen();
@@ -3587,11 +3932,11 @@ export const Game = ({
   useEffect(() => {
     // iOS doesn't fire fullscreenchange events
     if (isIOSDevice) return;
-    
+
     const handleFullscreenChange = () => {
       const isNowFullscreen = !!document.fullscreenElement || !!(document as any).webkitFullscreenElement;
       setIsFullscreen(isNowFullscreen);
-      
+
       // On mobile: if exiting fullscreen and game is playing, pause and show prompt
       if (isMobileDevice && !isNowFullscreen && gameState === "playing") {
         setGameState("paused");
@@ -3601,10 +3946,10 @@ export const Game = ({
         setShowFullscreenPrompt(true);
       }
     };
-    
+
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
-    
+
     return () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
@@ -3698,7 +4043,8 @@ export const Game = ({
           }
         } else {
           // Normal mobile behavior - hide all frames if constrained
-          const requiredHeight = SCALED_CANVAS_HEIGHT + titleBarHeight + statsBarHeight + bottomBarHeight + sideFrameHeight;
+          const requiredHeight =
+            SCALED_CANVAS_HEIGHT + titleBarHeight + statsBarHeight + bottomBarHeight + sideFrameHeight;
           const shouldShowFrames = containerHeight >= requiredHeight;
           if (shouldShowFrames !== framesVisible) {
             setFramesVisible(shouldShowFrames);
@@ -3739,19 +4085,23 @@ export const Game = ({
     }
   };
 
-  return <div ref={fullscreenContainerRef} className={`flex items-center justify-center ${
-    isIOSDevice
-      ? "ios-fullscreen-container"  // Always use iOS container on iOS devices
-      : (isFullscreen 
-          ? "h-screen bg-background overflow-hidden"
-          : "h-screen overflow-hidden")
-  }`}>
+  return (
+    <div
+      ref={fullscreenContainerRef}
+      className={`flex items-center justify-center ${
+        isIOSDevice
+          ? "ios-fullscreen-container" // Always use iOS container on iOS devices
+          : isFullscreen
+            ? "h-screen bg-background overflow-hidden"
+            : "h-screen overflow-hidden"
+      }`}
+    >
       {/* CRT Overlay - inside fullscreen container */}
       <CRTOverlay />
-      
+
       {/* Mobile fullscreen prompt overlay */}
       {showFullscreenPrompt && isMobileDevice && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-pointer"
           onClick={handleFullscreenPromptClick}
         >
@@ -3762,39 +4112,54 @@ export const Game = ({
           </div>
         </div>
       )}
-      
-      {showEndScreen ? <EndScreen 
-        onContinue={handleEndScreenContinue} 
-        onReturnToMenu={handleEndScreenReturnToMenu}
-        onRetryLevel={handleRetryLevel}
-        stats={{
-          totalBricksDestroyed,
-          totalShots,
-          accuracy: totalShots > 0 ? (bricksHit / totalShots) * 100 : 0,
-          levelSkipped,
-          finalScore: score,
-          finalLevel: level,
-          powerUpsCollected: powerUpsCollectedTypes.size,
-          bricksDestroyedByTurrets,
-          enemiesKilled,
-          bossesKilled,
-          totalPlayTime: totalPlayTime
-        }}
-      /> : showHighScoreDisplay ? <HighScoreDisplay onClose={handleCloseHighScoreDisplay} /> : <>
-          {showHighScoreEntry ? <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} /> : <div className={`metal-frame ${isIOSDevice ? 'mobile-fullscreen-mode' : (isMobileDevice && isFullscreen ? 'mobile-fullscreen-mode' : '')}`}>
+
+      {showEndScreen ? (
+        <EndScreen
+          onContinue={handleEndScreenContinue}
+          onReturnToMenu={handleEndScreenReturnToMenu}
+          onRetryLevel={handleRetryLevel}
+          stats={{
+            totalBricksDestroyed,
+            totalShots,
+            accuracy: totalShots > 0 ? (bricksHit / totalShots) * 100 : 0,
+            levelSkipped,
+            finalScore: score,
+            finalLevel: level,
+            powerUpsCollected: powerUpsCollectedTypes.size,
+            bricksDestroyedByTurrets,
+            enemiesKilled,
+            bossesKilled,
+            totalPlayTime: totalPlayTime,
+          }}
+        />
+      ) : showHighScoreDisplay ? (
+        <HighScoreDisplay onClose={handleCloseHighScoreDisplay} />
+      ) : (
+        <>
+          {showHighScoreEntry ? (
+            <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} />
+          ) : (
+            <div
+              className={`metal-frame ${isIOSDevice ? "mobile-fullscreen-mode" : isMobileDevice && isFullscreen ? "mobile-fullscreen-mode" : ""}`}
+            >
               {/* Title Bar - Adaptive Visibility (Desktop: only title hides, Mobile: all hides) */}
-              <div className={`metal-title-bar transition-all duration-150 ${titleVisible ? 'opacity-100 max-h-[60px]' : 'opacity-0 max-h-0 overflow-hidden'}`} style={{
-          transform: titleVisible ? 'translateY(0)' : 'translateY(-10px)',
-          transition: 'opacity 150ms ease-in-out, max-height 150ms ease-in-out, transform 150ms ease-in-out'
-        }}>
-                <h1 style={{
-            color: "hsl(0, 0%, 95%)",
-            textShadow: "2px 2px 4px rgba(0,0,0,0.8)"
-          }} className="text-2xl sm:text-3xl retro-pixel-text tracking-widest text-center lg:text-lg">
+              <div
+                className={`metal-title-bar transition-all duration-150 ${titleVisible ? "opacity-100 max-h-[60px]" : "opacity-0 max-h-0 overflow-hidden"}`}
+                style={{
+                  transform: titleVisible ? "translateY(0)" : "translateY(-10px)",
+                  transition: "opacity 150ms ease-in-out, max-height 150ms ease-in-out, transform 150ms ease-in-out",
+                }}
+              >
+                <h1
+                  style={{
+                    color: "hsl(0, 0%, 95%)",
+                    textShadow: "2px 2px 4px rgba(0,0,0,0.8)",
+                  }}
+                  className="text-2xl sm:text-3xl retro-pixel-text tracking-widest text-center lg:text-lg"
+                >
                   Vibing Arkanoid
                 </h1>
               </div>
-
 
               {/* Main Content with Side Panels */}
               <div className="metal-main-content">
@@ -3807,30 +4172,33 @@ export const Game = ({
 
                 {/* Game Canvas - Apply scale transform when title is hidden (desktop only) */}
                 <div className="metal-game-area">
-                  <div className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`} style={{
-              transform: `scale(${gameScale})`,
-              transformOrigin: 'top center',
-              transition: 'transform 150ms ease-in-out'
-            }}>
-                    <GameCanvas 
-                      ref={canvasRef} 
-                      width={SCALED_CANVAS_WIDTH} 
-                      height={SCALED_CANVAS_HEIGHT} 
-                      bricks={bricks} 
-                      balls={balls} 
-                      paddle={paddle} 
-                      gameState={gameState} 
-                      powerUps={powerUps} 
-                      bullets={bullets} 
-                      enemy={enemies} 
-                      bombs={bombs} 
-                      level={level} 
-                      backgroundPhase={backgroundPhase} 
-                      explosions={explosions} 
-                      launchAngle={launchAngle} 
-                      bonusLetters={bonusLetters} 
-                      collectedLetters={collectedLetters} 
-                      screenShake={screenShake} 
+                  <div
+                    className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}
+                    style={{
+                      transform: `scale(${gameScale})`,
+                      transformOrigin: "top center",
+                      transition: "transform 150ms ease-in-out",
+                    }}
+                  >
+                    <GameCanvas
+                      ref={canvasRef}
+                      width={SCALED_CANVAS_WIDTH}
+                      height={SCALED_CANVAS_HEIGHT}
+                      bricks={bricks}
+                      balls={balls}
+                      paddle={paddle}
+                      gameState={gameState}
+                      powerUps={powerUps}
+                      bullets={bullets}
+                      enemy={enemies}
+                      bombs={bombs}
+                      level={level}
+                      backgroundPhase={backgroundPhase}
+                      explosions={explosions}
+                      launchAngle={launchAngle}
+                      bonusLetters={bonusLetters}
+                      collectedLetters={collectedLetters}
+                      screenShake={screenShake}
                       backgroundFlash={backgroundFlash}
                       qualitySettings={qualitySettings}
                       boss={boss}
@@ -3845,17 +4213,19 @@ export const Game = ({
                       shieldImpacts={shieldImpacts}
                     />
                     {showDebugOverlay && gameLoopRef.current && (
-                      <GameLoopDebugOverlay 
-                        getDebugInfo={() => gameLoopRef.current?.getDebugInfo() ?? {
-                          mode: "legacy",
-                          fixedHz: 60,
-                          maxDeltaMs: 250,
-                          accumulator: 0,
-                          timeScale: 1,
-                          fps: 0,
-                          updatesThisFrame: 0,
-                          alpha: 0
-                        }}
+                      <GameLoopDebugOverlay
+                        getDebugInfo={() =>
+                          gameLoopRef.current?.getDebugInfo() ?? {
+                            mode: "legacy",
+                            fixedHz: 60,
+                            maxDeltaMs: 250,
+                            accumulator: 0,
+                            timeScale: 1,
+                            fps: 0,
+                            updatesThisFrame: 0,
+                            alpha: 0,
+                          }
+                        }
                         visible={showDebugOverlay}
                       />
                     )}
@@ -3863,27 +4233,26 @@ export const Game = ({
                 </div>
 
                 {/* Quality Indicator */}
-                <QualityIndicator 
-                  quality={quality}
-                  autoAdjustEnabled={autoAdjustEnabled}
-                  fps={currentFps}
-                />
-                
+                <QualityIndicator quality={quality} autoAdjustEnabled={autoAdjustEnabled} fps={currentFps} />
+
                 {/* Substep Debug Overlay */}
-                <SubstepDebugOverlay 
-                  getDebugInfo={getSubstepDebugInfo}
-                  visible={showSubstepDebug}
-                />
+                <SubstepDebugOverlay getDebugInfo={getSubstepDebugInfo} visible={showSubstepDebug} />
 
                 {/* Right Panel - Stats and Controls */}
-                <div className={`metal-side-panel metal-side-panel-right transition-all duration-150 ${framesVisible ? 'opacity-100' : 'opacity-0'}`}>
+                <div
+                  className={`metal-side-panel metal-side-panel-right transition-all duration-150 ${framesVisible ? "opacity-100" : "opacity-0"}`}
+                >
                   {/* Control Buttons */}
                   <div className="flex flex-col gap-2 mb-4">
                     <button onClick={onReturnToMenu} className="right-panel-btn" title="Return to Main Menu">
                       <Home size={20} />
                     </button>
                     {!isIOSDevice && (
-                      <button onClick={toggleFullscreen} className="right-panel-btn" title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}>
+                      <button
+                        onClick={toggleFullscreen}
+                        className="right-panel-btn"
+                        title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                      >
                         {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
                       </button>
                     )}
@@ -3936,14 +4305,20 @@ export const Game = ({
                     {/* Turret Ammo - Only show when turrets are active */}
                     {paddle?.hasTurrets && paddle?.turretShots !== undefined && (
                       <div className="right-stat-box">
-                        <div className="right-stat-label" style={{
-                          color: paddle.turretShots <= 5 ? "hsl(0, 80%, 60%)" : "hsl(280, 60%, 60%)"
-                        }}>
+                        <div
+                          className="right-stat-label"
+                          style={{
+                            color: paddle.turretShots <= 5 ? "hsl(0, 80%, 60%)" : "hsl(280, 60%, 60%)",
+                          }}
+                        >
                           AMMO
                         </div>
-                        <div className={`right-stat-value ${paddle.turretShots <= 5 ? 'animate-pulse' : ''}`} style={{
-                          color: paddle.turretShots <= 5 ? "hsl(0, 80%, 65%)" : "hsl(0, 0%, 85%)"
-                        }}>
+                        <div
+                          className={`right-stat-value ${paddle.turretShots <= 5 ? "animate-pulse" : ""}`}
+                          style={{
+                            color: paddle.turretShots <= 5 ? "hsl(0, 80%, 65%)" : "hsl(0, 0%, 85%)",
+                          }}
+                        >
                           {paddle.turretShots}
                         </div>
                       </div>
@@ -3965,67 +4340,127 @@ export const Game = ({
               </div>
 
               {/* Compact HUD Overlay - Shown when frames are hidden */}
-              {!framesVisible && <div className="fixed top-4 left-4 z-50 flex flex-col gap-2 pointer-events-none" style={{
-          textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
-        }}>
+              {!framesVisible && (
+                <div
+                  className="fixed top-4 left-4 z-50 flex flex-col gap-2 pointer-events-none"
+                  style={{
+                    textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
+                  }}
+                >
                   <div className="flex gap-4 items-center bg-black/30 backdrop-blur-sm px-3 py-2 rounded">
-                    <div className="retro-pixel-text text-xs" style={{
-              color: "hsl(180, 70%, 60%)"
-            }}>
-                      SCORE: <span style={{
-                color: "hsl(0, 0%, 95%)"
-              }}>{score.toString().padStart(6, "0")}</span>
+                    <div
+                      className="retro-pixel-text text-xs"
+                      style={{
+                        color: "hsl(180, 70%, 60%)",
+                      }}
+                    >
+                      SCORE:{" "}
+                      <span
+                        style={{
+                          color: "hsl(0, 0%, 95%)",
+                        }}
+                      >
+                        {score.toString().padStart(6, "0")}
+                      </span>
                     </div>
-                    <div className="retro-pixel-text text-xs" style={{
-              color: "hsl(30, 75%, 55%)"
-            }}>
-                      LV: <span style={{
-                color: "hsl(0, 0%, 95%)"
-              }}>{level.toString().padStart(2, "0")}</span>
+                    <div
+                      className="retro-pixel-text text-xs"
+                      style={{
+                        color: "hsl(30, 75%, 55%)",
+                      }}
+                    >
+                      LV:{" "}
+                      <span
+                        style={{
+                          color: "hsl(0, 0%, 95%)",
+                        }}
+                      >
+                        {level.toString().padStart(2, "0")}
+                      </span>
                     </div>
-                    <div className="retro-pixel-text text-xs" style={{
-              color: "hsl(0, 70%, 55%)"
-            }}>
-                      LIVES: <span style={{
-                color: "hsl(0, 0%, 95%)"
-              }}>{lives}</span>
+                    <div
+                      className="retro-pixel-text text-xs"
+                      style={{
+                        color: "hsl(0, 70%, 55%)",
+                      }}
+                    >
+                      LIVES:{" "}
+                      <span
+                        style={{
+                          color: "hsl(0, 0%, 95%)",
+                        }}
+                      >
+                        {lives}
+                      </span>
                     </div>
                     {boss && bossHitCooldown > 0 && (
-                      <div className="retro-pixel-text text-xs animate-pulse" style={{
-                color: "hsl(0, 80%, 60%)"
-              }}>
-                        BOSS CD: <span style={{
-                  color: "hsl(0, 80%, 70%)"
-                }}>{(bossHitCooldown / 1000).toFixed(1)}s</span>
+                      <div
+                        className="retro-pixel-text text-xs animate-pulse"
+                        style={{
+                          color: "hsl(0, 80%, 60%)",
+                        }}
+                      >
+                        BOSS CD:{" "}
+                        <span
+                          style={{
+                            color: "hsl(0, 80%, 70%)",
+                          }}
+                        >
+                          {(bossHitCooldown / 1000).toFixed(1)}s
+                        </span>
                       </div>
                     )}
                   </div>
-                </div>}
+                </div>
+              )}
 
               {/* Bottom Controls - Adaptive Visibility */}
-              <div className={`metal-bottom-bar transition-all duration-150 ${framesVisible ? 'opacity-100 max-h-[80px]' : 'opacity-0 max-h-0 overflow-hidden'}`} style={{
-          transform: framesVisible ? 'translateY(0)' : 'translateY(10px)'
-        }}>
+              <div
+                className={`metal-bottom-bar transition-all duration-150 ${framesVisible ? "opacity-100 max-h-[80px]" : "opacity-0 max-h-0 overflow-hidden"}`}
+                style={{
+                  transform: framesVisible ? "translateY(0)" : "translateY(10px)",
+                }}
+              >
                 <div className="flex gap-4 justify-center items-center">
-                  {gameState === "ready" && <button onClick={handleStart} className="amiga-box px-8 py-3 retro-pixel-text hover:bg-muted/50 transition-all text-sm" style={{
-              color: "hsl(0, 0%, 85%)"
-            }}>
-                      {bricks.every(brick => !brick.visible) && level > 0 ? "NEXT LEVEL" : "START GAME"}
-                    </button>}
-                  {(gameState === "gameOver" || gameState === "won") && <button onClick={handleRestart} className="amiga-box px-8 py-3 retro-pixel-text hover:bg-muted/50 transition-all text-sm" style={{
-              color: "hsl(0, 0%, 85%)"
-            }}>
+                  {gameState === "ready" && (
+                    <button
+                      onClick={handleStart}
+                      className="amiga-box px-8 py-3 retro-pixel-text hover:bg-muted/50 transition-all text-sm"
+                      style={{
+                        color: "hsl(0, 0%, 85%)",
+                      }}
+                    >
+                      {bricks.every((brick) => !brick.visible) && level > 0 ? "NEXT LEVEL" : "START GAME"}
+                    </button>
+                  )}
+                  {(gameState === "gameOver" || gameState === "won") && (
+                    <button
+                      onClick={handleRestart}
+                      className="amiga-box px-8 py-3 retro-pixel-text hover:bg-muted/50 transition-all text-sm"
+                      style={{
+                        color: "hsl(0, 0%, 85%)",
+                      }}
+                    >
                       PLAY AGAIN
-                    </button>}
-                  {gameState === "playing" && <div className="retro-pixel-text text-xs" style={{
-              color: "hsl(0, 0%, 60%)"
-            }}>
+                    </button>
+                  )}
+                  {gameState === "playing" && (
+                    <div
+                      className="retro-pixel-text text-xs"
+                      style={{
+                        color: "hsl(0, 0%, 60%)",
+                      }}
+                    >
                       Move your mouse or touch to control the paddle • Press ESC to release mouse • Click canvas to
                       recapture
-                    </div>}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>}
-        </>}
-    </div>;
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 };
