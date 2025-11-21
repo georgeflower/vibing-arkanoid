@@ -1331,21 +1331,165 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.translate(centerX, centerY);
         
         if (boss.type === 'cube') {
-          ctx.rotate(boss.rotationY);
+          // 3D retro pixel cube with depth-sorted faces
           const size = boss.width / 2;
+          const baseHue = boss.isAngry ? 0 : 180;
           
-          const baseHue = boss.isAngry ? 0 : 200;
-          ctx.shadowBlur = 20;
-          ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
-          ctx.fillStyle = `hsl(${baseHue}, 80%, 50%)`;
-          ctx.fillRect(-size, -size, size * 2, size * 2);
+          // Define 3D cube vertices
+          const vertices = [
+            [-size, -size, -size], // 0: back-bottom-left
+            [size, -size, -size],  // 1: back-bottom-right
+            [size, size, -size],   // 2: back-top-right
+            [-size, size, -size],  // 3: back-top-left
+            [-size, -size, size],  // 4: front-bottom-left
+            [size, -size, size],   // 5: front-bottom-right
+            [size, size, size],    // 6: front-top-right
+            [-size, size, size]    // 7: front-top-left
+          ];
           
-          ctx.fillStyle = `hsl(${baseHue}, 70%, 60%)`;
-          ctx.fillRect(-size, -size, size * 2, size * 0.5);
+          // Apply 3D rotation
+          const cosX = Math.cos(boss.rotationX);
+          const sinX = Math.sin(boss.rotationX);
+          const cosY = Math.cos(boss.rotationY);
+          const sinY = Math.sin(boss.rotationY);
+          const cosZ = Math.cos(boss.rotationZ);
+          const sinZ = Math.sin(boss.rotationZ);
           
-          ctx.strokeStyle = `hsl(${baseHue}, 90%, 70%)`;
-          ctx.lineWidth = 3;
-          ctx.strokeRect(-size, -size, size * 2, size * 2);
+          // Project vertices to 2D
+          const projected = vertices.map(([x, y, z]) => {
+            // Rotate around X axis
+            let y1 = y * cosX - z * sinX;
+            let z1 = y * sinX + z * cosX;
+            
+            // Rotate around Y axis
+            let x2 = x * cosY + z1 * sinY;
+            let z2 = -x * sinY + z1 * cosY;
+            
+            // Rotate around Z axis
+            let x3 = x2 * cosZ - y1 * sinZ;
+            let y3 = x2 * sinZ + y1 * cosZ;
+            
+            // Project to 2D with perspective
+            const scale = 300 / (300 + z2);
+            return [x3 * scale, y3 * scale, z2];
+          });
+          
+          // Define faces with indices and colors
+          const faces = [
+            { indices: [0, 1, 2, 3], name: 'back', lightness: 40 },
+            { indices: [4, 5, 6, 7], name: 'front', lightness: 60 },
+            { indices: [0, 3, 7, 4], name: 'left', lightness: 48 },
+            { indices: [1, 2, 6, 5], name: 'right', lightness: 52 },
+            { indices: [3, 2, 6, 7], name: 'top', lightness: 55 },
+            { indices: [0, 1, 5, 4], name: 'bottom', lightness: 45 }
+          ];
+          
+          // Sort faces by depth (back to front)
+          const sortedFaces = faces.map(face => {
+            const avgZ = face.indices.reduce((sum, i) => sum + projected[i][2], 0) / 4;
+            return { ...face, avgZ };
+          }).sort((a, b) => a.avgZ - b.avgZ);
+          
+          // Draw each face
+          sortedFaces.forEach(face => {
+            const points = face.indices.map(i => projected[i]);
+            
+            // Only draw if face is visible (front-facing)
+            const [p0, p1, p2] = points;
+            const cross = (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
+            if (cross < 0) return; // Back-facing, skip
+            
+            // Fill base color
+            ctx.fillStyle = `hsl(${baseHue}, 80%, ${face.lightness}%)`;
+            ctx.beginPath();
+            ctx.moveTo(points[0][0], points[0][1]);
+            for (let i = 1; i < points.length; i++) {
+              ctx.lineTo(points[i][0], points[i][1]);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw retro pixel grid (quality-dependent)
+            if (qualitySettings.particleMultiplier > 0.5) {
+              const gridSize = qualitySettings.glowEnabled ? 8 : 6;
+              ctx.strokeStyle = `rgba(255, 255, 255, ${boss.isAngry ? 0.25 : 0.15})`;
+              ctx.lineWidth = 1;
+              
+              // Horizontal grid lines
+              for (let i = 1; i < gridSize; i++) {
+                const t = i / gridSize;
+                const x1 = points[0][0] + (points[3][0] - points[0][0]) * t;
+                const y1 = points[0][1] + (points[3][1] - points[0][1]) * t;
+                const x2 = points[1][0] + (points[2][0] - points[1][0]) * t;
+                const y2 = points[1][1] + (points[2][1] - points[1][1]) * t;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+              }
+              
+              // Vertical grid lines
+              for (let i = 1; i < gridSize; i++) {
+                const t = i / gridSize;
+                const x1 = points[0][0] + (points[1][0] - points[0][0]) * t;
+                const y1 = points[0][1] + (points[1][1] - points[0][1]) * t;
+                const x2 = points[3][0] + (points[2][0] - points[3][0]) * t;
+                const y2 = points[3][1] + (points[2][1] - points[3][1]) * t;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+              }
+            }
+            
+            // Draw edge lines
+            ctx.strokeStyle = `hsl(${baseHue}, 90%, 70%)`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(points[0][0], points[0][1]);
+            for (let i = 1; i < points.length; i++) {
+              ctx.lineTo(points[i][0], points[i][1]);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Add corner highlights (16-bit style)
+            if (qualitySettings.shadowsEnabled) {
+              points.forEach(([x, y, z]) => {
+                if (z > 0) {
+                  ctx.fillStyle = `rgba(255, 255, 255, ${boss.isAngry ? 0.7 : 0.5})`;
+                  ctx.fillRect(x - 2, y - 2, 4, 4);
+                }
+              });
+            }
+          });
+          
+          // Angry state: pulsing edge glow
+          if (boss.isAngry && qualitySettings.glowEnabled) {
+            const pulse = Math.sin(Date.now() / 150) * 0.5 + 0.5;
+            ctx.shadowBlur = 20 * pulse;
+            ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
+            
+            // Redraw outer edges with glow
+            sortedFaces.forEach(face => {
+              const points = face.indices.map(i => projected[i]);
+              const [p0, p1, p2] = points;
+              const cross = (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
+              if (cross < 0) return;
+              
+              ctx.strokeStyle = `hsl(${baseHue}, 100%, 75%)`;
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              ctx.moveTo(points[0][0], points[0][1]);
+              for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i][0], points[i][1]);
+              }
+              ctx.closePath();
+              ctx.stroke();
+            });
+            
+            ctx.shadowBlur = 0;
+          }
         } else if (boss.type === 'sphere') {
           const radius = boss.width / 2;
           const baseHue = boss.isAngry ? 330 : 330;
