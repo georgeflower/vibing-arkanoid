@@ -2012,7 +2012,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Handle explosive bricks
       explosiveBricksToDetonate.forEach((brick) => {
-        const explosionRadius = 85;
+        const explosionRadius = 70;
         const brickCenterX = brick.x + brick.width / 2;
         const brickCenterY = brick.y + brick.height / 2;
 
@@ -2067,7 +2067,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (hasDestructibleBricks) {
               soundManager.playWin();
 
-              if (level >= 50) {
+              if (level >= 20) {
                 setScore((prev) => prev + 1000000);
                 setBeatLevel50Completed(true);
                 setGameState("won");
