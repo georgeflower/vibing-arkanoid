@@ -338,13 +338,34 @@ export function processBallCCD(
       // move to contact point
       pos0 = vAdd(pos0, vScale(vSub(pos1, pos0), tHit));
       
-      // Apply reflection only for non-fireball collisions OR for walls/paddle
-      // Fireballs pass through bricks but still bounce off walls and paddle
-      if (!ball.isFireball || earliest.objectType === 'wall' || earliest.objectType === 'paddle') {
+      // Robust normal validation and fallback
+      let n = earliest.normal;
+      const nLen = Math.hypot(n.x, n.y);
+      if (nLen < 1e-4) {
+        // Fallback: compute normal from collision point to ball center
+        const dirX = pos0.x - earliest.point.x;
+        const dirY = pos0.y - earliest.point.y;
+        const dLen = Math.hypot(dirX, dirY) || 1e-6;
+        n = { x: dirX / dLen, y: dirY / dLen };
+      } else {
+        // Normalize if not already unit length
+        n = { x: n.x / nLen, y: n.y / nLen };
+      }
+      
+      // Determine if reflection should apply
+      // Walls/paddle/corners: always reflect
+      // Bricks: reflect UNLESS fireball AND destructible
+      const shouldReflect = 
+        earliest.objectType === 'wall' || 
+        earliest.objectType === 'paddle' || 
+        earliest.objectType === 'corner' ||
+        (earliest.objectType === 'brick' && !ball.isFireball);
+
+      if (shouldReflect) {
         const vel = { x: ball.dx, y: ball.dy };
-        const newVel = reflect(vel, earliest.normal);
-        ball.dx = newVel.x;
-        ball.dy = newVel.y;
+        const dot = vel.x * n.x + vel.y * n.y;
+        ball.dx = vel.x - 2 * dot * n.x;
+        ball.dy = vel.y - 2 * dot * n.y;
       }
       // Proportional epsilon: scales with ball radius and travel distance
       const proportionalEpsilon = Math.max(0.5, Math.min(ball.radius * 0.1, travelThisSubstep * 0.3));

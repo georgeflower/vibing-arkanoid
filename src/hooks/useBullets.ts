@@ -16,7 +16,8 @@ export const useBullets = (
   resurrectedBosses?: Boss[],
   setBoss?: React.Dispatch<React.SetStateAction<Boss | null>>,
   setResurrectedBosses?: React.Dispatch<React.SetStateAction<Boss[]>>,
-  onLevelComplete?: () => void
+  onLevelComplete?: () => void,
+  onTurretDepleted?: () => void
 ) => {
   const [bullets, setBullets] = useState<Bullet[]>([]);
 
@@ -48,12 +49,13 @@ export const useBullets = (
       if (!prev) return null;
       const newShots = (prev.turretShots || 0) - 1;
       if (newShots <= 0) {
-        toast.info("Turrets depleted!");
+        // Turrets depleted - trigger callback
+        onTurretDepleted?.();
         return { ...prev, hasTurrets: false, turretShots: 0 };
       }
       return { ...prev, turretShots: newShots };
     });
-  }, [setPaddle]);
+  }, [setPaddle, onTurretDepleted]);
 
   const updateBullets = useCallback((currentBricks: Brick[]) => {
     // Move bullets and collect collision information
