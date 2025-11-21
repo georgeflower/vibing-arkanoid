@@ -588,11 +588,11 @@ All colors MUST be HSL.
 
 /* Scanlines - horizontal lines across screen */
 .crt-scanlines {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
   z-index: 9998;
   
@@ -615,11 +615,11 @@ All colors MUST be HSL.
 
 /* Screen curvature and vignette */
 .crt-screen {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
   z-index: 9997;
   
@@ -652,11 +652,11 @@ All colors MUST be HSL.
 
 /* Phosphor glow - subtle color separation */
 .crt-phosphor {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
   z-index: 9996;
   

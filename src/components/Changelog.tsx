@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { CHANGELOG } from "@/constants/version";
+import CRTOverlay from "./CRTOverlay";
 
 interface ChangelogProps {
   onClose: () => void;
@@ -8,6 +9,7 @@ interface ChangelogProps {
 export const Changelog = ({ onClose }: ChangelogProps) => {
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <CRTOverlay />
       <div className="bg-slate-900/95 rounded-lg border-2 border-cyan-500/30 p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-3xl font-bold text-cyan-400 font-mono">CHANGELOG</h2>
