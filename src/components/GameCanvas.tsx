@@ -243,12 +243,13 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             }
             ctx.setLineDash([]);
             
-            // Explosion icon in center
+            // Show bomb emojis representing hits required
             ctx.fillStyle = "rgba(255, 200, 0, 0.8)";
             ctx.font = "bold 14px monospace";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText("💥", brick.x + brick.width / 2, brick.y + brick.height / 2);
+            const bombsText = "💥".repeat(brick.hitsRemaining);
+            ctx.fillText(bombsText, brick.x + brick.width / 2, brick.y + brick.height / 2);
             
             ctx.shadowBlur = 0;
           } else if (brick.type === "cracked") {
@@ -286,18 +287,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
               ctx.fillRect(brick.x + brick.width - 3, brick.y, 3, brick.height);
             }
             
-            // Draw hit counter for multi-hit bricks
-            if (brick.maxHits > 1) {
-              ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-              ctx.font = "bold 12px 'Courier New', monospace";
-              ctx.textAlign = "center";
-              ctx.textBaseline = "middle";
-              ctx.fillText(
-                brick.hitsRemaining.toString(),
-                brick.x + brick.width / 2,
-                brick.y + brick.height / 2
-              );
-            }
+            // No hit counter for cracked bricks - texture shows damage progression
           } else {
             // Normal brick - Base brick color
             ctx.fillStyle = brick.color;

@@ -1142,7 +1142,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           return newSpeed;
         });
       } else if (["1", "2", "3", "4", "5", "6", "7", "8"].includes(e.key) && paddle) {
-        // Drop power-ups for testing
+        // Drop power-ups for testing - disqualifies from high scores
+        setLevelSkipped(true);
         const powerUpMap: Record<string, PowerUpType> = {
           "1": "shield",
           "2": "turrets",
@@ -1166,7 +1167,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         };
 
         setPowerUps((prev) => [...prev, newPowerUp]);
-        toast.success(`Debug: ${type} power-up dropped`);
+        toast.warning(`Debug: ${type} power-up dropped - DISQUALIFIED from high scores!`);
       }
 
       // ========== DEBUG TESTING FEATURES - END ==========
@@ -1748,6 +1749,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           switch (event.objectType) {
             case "wall":
               if (!isDuplicate) {
+                console.log(`[Collision Debug] WALL - Before: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${Math.sqrt(result.ball.dx**2 + result.ball.dy**2).toFixed(2)}, After: (reflected by CCD)`);
                 const now = Date.now();
                 if (now - lastWallBounceSfxMs.current >= 50) {
                   soundManager.playBounce();
@@ -1760,10 +1762,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               // Adjust angle based on hit position (always apply physics)
               const hitPos = (event.point.x - paddle.x) / paddle.width;
               const angle = (hitPos - 0.5) * Math.PI * 0.6;
-              const speed = Math.sqrt(result.ball.dx * result.ball.dx + result.ball.dy * result.ball.dy);
-              result.ball.dx = speed * Math.sin(angle);
-              result.ball.dy = -Math.abs(speed * Math.cos(angle));
+              const speedBefore = Math.sqrt(result.ball.dx * result.ball.dx + result.ball.dy * result.ball.dy);
+              const dxBefore = result.ball.dx;
+              const dyBefore = result.ball.dy;
+              result.ball.dx = speedBefore * Math.sin(angle);
+              result.ball.dy = -Math.abs(speedBefore * Math.cos(angle));
               if (!isDuplicate) {
+                console.log(`[Collision Debug] PADDLE (hitPos=${hitPos.toFixed(2)}) - Before: dx=${dxBefore.toFixed(2)}, dy=${dyBefore.toFixed(2)}, speed=${speedBefore.toFixed(2)}, After: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${Math.sqrt(result.ball.dx**2 + result.ball.dy**2).toFixed(2)}`);
                 const now = Date.now();
                 if (now - lastWallBounceSfxMs.current >= 50) {
                   soundManager.playBounce();
@@ -1788,6 +1793,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 const enemy = enemies[enemyIndex];
 
                 if (enemy && !isDuplicate) {
+                  console.log(`[Collision Debug] ENEMY (${enemy.type}) - Before: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${Math.sqrt(result.ball.dx**2 + result.ball.dy**2).toFixed(2)}, After: (reflected by CCD)`);
                   // Handle different enemy types with multi-hit logic
                   if (enemy.type === "pyramid") {
                     const currentHits = enemy.hits || 0;
@@ -1909,6 +1915,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
               // Fireball instantly destroys all non-metal bricks
               if (result.ball.isFireball) {
+                console.log(`[Collision Debug] BRICK (fireball, ${brick.type}) - Before: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${Math.sqrt(result.ball.dx**2 + result.ball.dy**2).toFixed(2)}, After: (no reflection, passes through)`);
                 // Instantly destroy brick
                 brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
 
@@ -1938,6 +1945,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 // (velocity unchanged, ball passes through)
               } else {
                 // Normal brick damage (non-fireball)
+                console.log(`[Collision Debug] BRICK (normal, ${brick.type}, hits=${brick.hitsRemaining}) - Before: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${Math.sqrt(result.ball.dx**2 + result.ball.dy**2).toFixed(2)}, After: (reflected by CCD)`);
                 const currentHitsRemaining = brick.hitsRemaining;
                 const newHitsRemaining = currentHitsRemaining - 1;
                 const brickDestroyed = newHitsRemaining <= 0;
@@ -4096,8 +4104,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             : "h-screen overflow-hidden"
       }`}
     >
-      {/* CRT Overlay - inside fullscreen container */}
-      <CRTOverlay />
+      {/* CRT Overlay - inside fullscreen container (only if quality allows) */}
+      {qualitySettings.backgroundEffects && <CRTOverlay />}
 
       {/* Mobile fullscreen prompt overlay */}
       {showFullscreenPrompt && isMobileDevice && (

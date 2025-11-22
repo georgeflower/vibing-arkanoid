@@ -50,12 +50,14 @@ const QUALITY_PRESETS: Record<QualityLevel, Omit<QualitySettings, 'level' | 'aut
   }
 };
 
+export { QUALITY_PRESETS };
+
 export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
   const {
     initialQuality = 'high',
     autoAdjust = true,
-    lowFpsThreshold = 25,
-    mediumFpsThreshold = 35,
+    lowFpsThreshold = 45,
+    mediumFpsThreshold = 55,
     highFpsThreshold = 55,
     sampleWindow = 3
   } = options;
