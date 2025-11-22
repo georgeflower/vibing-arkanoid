@@ -13,7 +13,7 @@ export const BRICK_OFFSET_LEFT = (CANVAS_WIDTH - (BRICK_COLS * BRICK_WIDTH + (BR
 
 export const POWERUP_SIZE = 61; // Same as brick width
 export const POWERUP_FALL_SPEED = 2;
-export const POWERUP_DROP_CHANCE = 0.25; // 25%
+export const POWERUP_DROP_CHANCE = 0.20; // 20%
 export const FIREBALL_DURATION = 5000; // 5 seconds
 
 export const BULLET_WIDTH = 4;
