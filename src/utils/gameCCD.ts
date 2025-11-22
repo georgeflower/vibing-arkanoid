@@ -44,7 +44,7 @@ export function processBallWithCCD(
     lastHitTick: ball.lastHitTime
   };
 
-  // Convert bricks to CCD format, using actual brick IDs
+  // Convert bricks to CCD format, using actual brick IDs and metadata
   const ccdBricks: CCDBrick[] = gameState.bricks
     .map((b) => ({
       id: b.id, // Use actual brick ID instead of array index
@@ -52,7 +52,8 @@ export function processBallWithCCD(
       y: b.y,
       width: b.width,
       height: b.height,
-      visible: b.visible
+      visible: b.visible,
+      isIndestructible: b.isIndestructible // Pass indestructible flag for fireball logic
     }))
     .filter(b => b.visible);
 

@@ -23,7 +23,15 @@ export type Ball = {
   [k: string]: any;
 };
 
-export type Brick = { id: number; x: number; y: number; width: number; height: number; visible: boolean };
+export type Brick = { 
+  id: number; 
+  x: number; 
+  y: number; 
+  width: number; 
+  height: number; 
+  visible: boolean;
+  isIndestructible?: boolean; // For metal bricks
+};
 
 export type Paddle = { id?: number; x: number; y: number; width: number; height: number; };
 
@@ -33,6 +41,7 @@ export type CollisionEvent = {
   objectType: 'wall' | 'brick' | 'paddle' | 'corner';
   objectId?: number | string;
   point: Vec2;
+  brickMeta?: Brick; // Store brick metadata for reflection logic
 };
 
 export type CCDConfig = {
@@ -304,13 +313,16 @@ export function processBallCCD(
 
       // 3) Bricks (use candidates)
       for (const b of candidates) {
+        // Store brick metadata for later use in reflection logic
+        const brickMeta = b;
+        
         // expanded AABB
         const exp = expandAABB(b, ball.radius);
         const rayHit = rayAABB(pos0, pos1, exp);
         if (rayHit) {
           const hitPoint = vAdd(pos0, vScale(vSub(pos1, pos0), rayHit.tEntry));
           if (!earliest || rayHit.tEntry < earliest.t) {
-            earliest = { t: rayHit.tEntry, normal: rayHit.normal, objectType: 'brick', objectId: b.id, point: hitPoint };
+            earliest = { t: rayHit.tEntry, normal: rayHit.normal, objectType: 'brick', objectId: b.id, point: hitPoint, brickMeta };
           }
         } else {
           // corner tests: check rectangle corners
@@ -318,7 +330,7 @@ export function processBallCCD(
           for (const c of corners) {
             const sc = segmentCircleTOI(pos0, pos1, c, ball.radius);
             if (sc && (!earliest || sc.t < earliest.t)) {
-              earliest = { t: sc.t, normal: sc.normal, objectType: 'corner', objectId: b.id, point: sc.point };
+              earliest = { t: sc.t, normal: sc.normal, objectType: 'corner', objectId: b.id, point: sc.point, brickMeta: b };
             }
           }
         }
@@ -354,12 +366,19 @@ export function processBallCCD(
       
       // Determine if reflection should apply
       // Walls/paddle/corners: always reflect
-      // Bricks: reflect UNLESS fireball AND destructible
+      // Bricks: 
+      //   - Fireballs pass through destructible bricks (no reflection)
+      //   - Fireballs bounce off metal bricks (reflect)
+      //   - Normal balls always reflect off all bricks
+      const isDestructibleBrick = earliest.objectType === 'brick' && 
+        earliest.brickMeta && 
+        !earliest.brickMeta.isIndestructible;
+      
       const shouldReflect = 
         earliest.objectType === 'wall' || 
         earliest.objectType === 'paddle' || 
         earliest.objectType === 'corner' ||
-        (earliest.objectType === 'brick' && !ball.isFireball);
+        (earliest.objectType === 'brick' && (!ball.isFireball || !isDestructibleBrick));
 
       if (shouldReflect) {
         const vel = { x: ball.dx, y: ball.dy };
