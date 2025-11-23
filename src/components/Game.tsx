@@ -2235,14 +2235,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (collisionDebugEnabled && powerUpsToCreate.length > 0) {
         console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Processing ${powerUpsToCreate.length} queued power-ups`);
       }
+      
+      const createdPowerUps: PowerUp[] = [];
+      
       powerUpsToCreate.forEach((brick) => {
         const powerUp = createPowerUp(brick);
-        if (powerUp && collisionDebugEnabled) {
-          console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Created power-up type=${powerUp.type} at (${powerUp.x}, ${powerUp.y})`);
-        } else if (!powerUp && collisionDebugEnabled) {
+        if (powerUp) {
+          createdPowerUps.push(powerUp);
+          if (collisionDebugEnabled) {
+            console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Created power-up type=${powerUp.type} at (${powerUp.x}, ${powerUp.y})`);
+          }
+        } else if (collisionDebugEnabled) {
           console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] FAILED to create power-up from brick ${brick.id}`);
         }
       });
+
+      if (createdPowerUps.length > 0) {
+        setPowerUps((prev) => [...prev, ...createdPowerUps]);
+      }
 
       // Handle explosive bricks
       explosiveBricksToDetonate.forEach((brick) => {
