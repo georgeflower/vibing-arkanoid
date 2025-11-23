@@ -19,6 +19,8 @@ import { CollisionHistoryViewer } from "./CollisionHistoryViewer";
 import { CCDPerformanceOverlay, CCDPerformanceData } from "./CCDPerformanceOverlay";
 import { QualityIndicator } from "./QualityIndicator";
 import { collisionHistory } from "@/utils/collisionHistory";
+import { DebugDashboard } from "./DebugDashboard";
+import { useDebugSettings } from "@/hooks/useDebugSettings";
 // ═══════════════════════════════════════════════════════════════
 import { Maximize2, Minimize2, Home } from "lucide-react";
 import type {
@@ -72,6 +74,7 @@ import { performBossAttack } from "@/utils/bossAttacks";
 import { BOSS_LEVELS, BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
 import { processBallWithCCD } from "@/utils/gameCCD";
 import { checkCircleVsRoundedPaddle } from "@/utils/paddleCollision";
+import { assignPowerUpsToBricks } from "@/utils/powerUpAssignment";
 interface GameProps {
   settings: GameSettings;
   onReturnToMenu: () => void;
@@ -180,6 +183,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const [showSubstepDebug, setShowSubstepDebug] = useState(false);
   const [currentFps, setCurrentFps] = useState(60);
+  const [showDebugDashboard, setShowDebugDashboard] = useState(false);
+  const { settings: debugSettings, toggleSetting: toggleDebugSetting, resetSettings: resetDebugSettings } = useDebugSettings();
   // ═══════════════════════════════════════════════════════════════
 
   // Sound effect cooldowns (ms timestamps)
@@ -199,6 +204,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [powerUpsCollectedTypes, setPowerUpsCollectedTypes] = useState<Set<string>>(new Set());
   const [bricksDestroyedByTurrets, setBricksDestroyedByTurrets] = useState(0);
   const [bossesKilled, setBossesKilled] = useState(0);
+  const [powerUpAssignments, setPowerUpAssignments] = useState<Map<number, PowerUpType>>(new Map());
 
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
@@ -235,13 +241,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     };
   }, []);
   const { isHighScore, addHighScore } = useHighScores();
-  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps } = usePowerUps(
+  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps, extraLifeUsedLevels } = usePowerUps(
     level,
     setLives,
     timer,
     settings.difficulty,
     setBrickHitSpeedAccumulated,
     (type: string) => setPowerUpsCollectedTypes((prev) => new Set(prev).add(type)),
+    powerUpAssignments,
   );
   const { bullets, setBullets, fireBullets, updateBullets } = useBullets(
     setScore,
@@ -570,6 +577,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
     return newBricks;
   }, []);
+
+  // Initialize power-up assignments for bricks
+  const initPowerUpAssignments = useCallback(
+    (bricks: Brick[]) => {
+      const assignments = assignPowerUpsToBricks(bricks, extraLifeUsedLevels, level, settings.difficulty);
+      setPowerUpAssignments(assignments);
+      console.log(`[Power-Up] Assigned ${assignments.size} power-ups to ${bricks.length} bricks (${Math.round((assignments.size / bricks.length) * 100)}%)`);
+    },
+    [extraLifeUsedLevels, level, settings.difficulty]
+  );
   const initGame = useCallback(() => {
     // Initialize paddle
     setPaddle({
@@ -604,7 +621,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setLetterLevelAssignments(createRandomLetterAssignments());
 
     // Initialize bricks for level 1
-    setBricks(initBricksForLevel(1));
+    const initialBricks = initBricksForLevel(1);
+    setBricks(initialBricks);
+    initPowerUpAssignments(initialBricks);
     setScore(0);
     setLives(3);
     setLevel(1);
@@ -687,7 +706,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setShowInstructions(true); // Show instructions for new level
 
     // Initialize bricks for new level
-    setBricks(initBricksForLevel(newLevel));
+    const newLevelBricks = initBricksForLevel(newLevel);
+    setBricks(newLevelBricks);
+    initPowerUpAssignments(newLevelBricks);
     setPowerUps([]);
     setBullets([]);
     setTimer(0);
@@ -1178,6 +1199,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
           toast.success('Collision history exported to JSON');
+        } else if (e.key === "§") {
+          // Toggle debug dashboard
+          setShowDebugDashboard(prev => !prev);
         } else if (e.key === "v" || e.key === "V") {
           // Toggle CCD performance profiler
           setShowCCDPerformance(prev => {
@@ -4519,8 +4543,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                      ═══════════════════════════════════════════════════════════════ */}
                 {ENABLE_DEBUG_FEATURES && (
                   <>
+                    {/* Debug Dashboard */}
+                    <DebugDashboard
+                      isOpen={showDebugDashboard}
+                      onClose={() => setShowDebugDashboard(false)}
+                      settings={debugSettings}
+                      onToggle={toggleDebugSetting}
+                      onReset={resetDebugSettings}
+                    />
+
                     {/* Quality Indicator */}
-                    <QualityIndicator quality={quality} autoAdjustEnabled={autoAdjustEnabled} fps={currentFps} />
+                    {debugSettings.showQualityIndicator && (
+                      <QualityIndicator quality={quality} autoAdjustEnabled={autoAdjustEnabled} fps={currentFps} />
+                    )}
 
                     {/* Substep Debug Overlay */}
                     <SubstepDebugOverlay getDebugInfo={getSubstepDebugInfo} visible={showSubstepDebug} />

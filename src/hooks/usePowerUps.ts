@@ -12,58 +12,70 @@ export const usePowerUps = (
   timer: number = 0,
   difficulty: Difficulty = "normal",
   setBrickHitSpeedAccumulated?: React.Dispatch<React.SetStateAction<number>>,
-  onPowerUpCollected?: (type: string) => void
+  onPowerUpCollected?: (type: string) => void,
+  powerUpAssignments?: Map<number, PowerUpType> // NEW: Pre-assigned power-ups
 ) => {
   const [powerUps, setPowerUps] = useState<PowerUp[]>([]);
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
   const fireballTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const createPowerUp = useCallback((brick: Brick): PowerUp | null => {
-    // Increase drop chance by 5% every 30 seconds
-    const timeBonus = Math.floor(timer / 30) * 0.05;
-    const adjustedDropChance = Math.min(0.5, POWERUP_DROP_CHANCE + timeBonus); // Cap at 50%
-    
-    // 50% chance to drop turrets at 90+ seconds
-    if (timer >= 90 && Math.random() < 0.5) {
+  const createPowerUp = useCallback((brick: Brick, isBossMinion: boolean = false): PowerUp | null => {
+    // Boss minions have 50% bonus drop rate (random power-up)
+    if (isBossMinion && Math.random() < 0.5) {
+      let availableTypes = [...powerUpTypes];
+      
+      // In godlike mode, never drop extra lives
+      if (difficulty === "godlike") {
+        availableTypes = availableTypes.filter(t => t !== "life");
+      } else {
+        // Extra life only once per 5 levels in normal mode
+        const levelGroup = Math.floor(currentLevel / 5);
+        if (extraLifeUsedLevels.includes(levelGroup)) {
+          availableTypes = availableTypes.filter(t => t !== "life");
+        }
+      }
+
+      const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+      
+      // Mark extra life as used immediately on creation
+      if (type === "life") {
+        const levelGroup = Math.floor(currentLevel / 5);
+        setExtraLifeUsedLevels(prev => [...prev, levelGroup]);
+      }
+
       return {
         x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
         y: brick.y,
         width: POWERUP_SIZE,
         height: POWERUP_SIZE,
-        type: "turrets",
+        type,
         speed: POWERUP_FALL_SPEED,
         active: true,
       };
     }
     
-    if (Math.random() > adjustedDropChance) return null;
-
-    let availableTypes = [...powerUpTypes];
+    // Regular bricks: use pre-assigned power-ups (20% of bricks)
+    if (!powerUpAssignments) return null;
     
-    // In godlike mode, never drop extra lives
-    if (difficulty === "godlike") {
-      availableTypes = availableTypes.filter(t => t !== "life");
-    } else {
-      // Extra life only once per 5 levels in normal mode
-      const levelGroup = Math.floor(currentLevel / 5);
-      if (extraLifeUsedLevels.includes(levelGroup)) {
-        availableTypes = availableTypes.filter(t => t !== "life");
-      }
-    }
+    const assignedType = powerUpAssignments.get(brick.id);
+    if (!assignedType) return null;
 
-    // All power-ups have equal drop chance
-    const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+    // Mark extra life as used immediately on creation
+    if (assignedType === "life") {
+      const levelGroup = Math.floor(currentLevel / 5);
+      setExtraLifeUsedLevels(prev => [...prev, levelGroup]);
+    }
 
     return {
       x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
       y: brick.y,
       width: POWERUP_SIZE,
       height: POWERUP_SIZE,
-      type,
+      type: assignedType,
       speed: POWERUP_FALL_SPEED,
       active: true,
     };
-  }, [currentLevel, extraLifeUsedLevels, timer, difficulty]);
+  }, [currentLevel, extraLifeUsedLevels, timer, difficulty, powerUpAssignments]);
 
   const updatePowerUps = useCallback(() => {
     setPowerUps(prev => 
@@ -130,11 +142,14 @@ export const usePowerUps = (
             
             case "life":
               const levelGroup = Math.floor(currentLevel / 5);
+              // Safeguard: check again (should be marked on creation, but double-check)
               if (!extraLifeUsedLevels.includes(levelGroup)) {
                 soundManager.playExtraLifeSound();
                 setLives(prev => prev + 1);
                 setExtraLifeUsedLevels(prev => [...prev, levelGroup]);
                 toast.success("Extra life!");
+              } else {
+                console.warn("[Power-Up] Extra life collected but already used for this level group");
               }
               break;
             
@@ -195,5 +210,6 @@ export const usePowerUps = (
     createPowerUp,
     updatePowerUps,
     checkPowerUpCollision,
+    extraLifeUsedLevels, // Export for power-up assignment system
   };
 };
