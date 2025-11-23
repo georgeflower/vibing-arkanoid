@@ -175,13 +175,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG STATE - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const [collisionDebugEnabled, setCollisionDebugEnabled] = useState(false);
-  const [showCollisionHistory, setShowCollisionHistory] = useState(false);
-  const [showCCDPerformance, setShowCCDPerformance] = useState(false);
   const ccdPerformanceRef = useRef<CCDPerformanceData | null>(null);
   const frameCountRef = useRef(0);
-  const [showDebugOverlay, setShowDebugOverlay] = useState(false);
-  const [showSubstepDebug, setShowSubstepDebug] = useState(false);
   const [currentFps, setCurrentFps] = useState(60);
   const [showDebugDashboard, setShowDebugDashboard] = useState(false);
   const { settings: debugSettings, toggleSetting: toggleDebugSetting, resetSettings: resetDebugSettings } = useDebugSettings();
@@ -583,7 +578,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     (bricks: Brick[]) => {
       const assignments = assignPowerUpsToBricks(bricks, extraLifeUsedLevels, level, settings.difficulty);
       setPowerUpAssignments(assignments);
-      console.log(`[Power-Up] Assigned ${assignments.size} power-ups to ${bricks.length} bricks (${Math.round((assignments.size / bricks.length) * 100)}%)`);
+      if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
+        console.log(`[Power-Up] Assigned ${assignments.size} power-ups to ${bricks.length} bricks (${Math.round((assignments.size / bricks.length) * 100)}%)`);
+      }
     },
     [extraLifeUsedLevels, level, settings.difficulty]
   );
@@ -1125,18 +1122,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (e.key === "Tab") {
           e.preventDefault(); // Prevent default tab behavior
           // Toggle substep debug overlay
-          setShowSubstepDebug((prev) => {
-            const newValue = !prev;
-            toast.success(newValue ? "Ball substep debug enabled" : "Ball substep debug disabled");
-            return newValue;
-          });
+          toggleDebugSetting('showSubstepDebug');
+          toast.success(debugSettings.showSubstepDebug ? 'Ball substep debug disabled' : 'Ball substep debug enabled');
         } else if (e.key === "l" || e.key === "L") {
           // Toggle debug overlay
-          setShowDebugOverlay((prev) => {
-            const newValue = !prev;
-            toast.success(newValue ? "Debug overlay enabled" : "Debug overlay disabled");
-            return newValue;
-          });
+          toggleDebugSetting('showGameLoopDebug');
+          toast.success(debugSettings.showGameLoopDebug ? 'Debug overlay disabled' : 'Debug overlay enabled');
         } else if (e.key === "[") {
           // Decrease time scale
           if (gameLoopRef.current) {
@@ -1174,18 +1165,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
         } else if (e.key === "c" || e.key === "C") {
           // Toggle collision debug logs
-          setCollisionDebugEnabled(prev => {
-            const newValue = !prev;
-            toast.success(newValue ? 'Collision debug enabled' : 'Collision debug disabled');
-            return newValue;
-          });
+          toggleDebugSetting('enableCollisionLogging');
+          toast.success(debugSettings.enableCollisionLogging ? 'Collision debug disabled' : 'Collision debug enabled');
         } else if (e.key === "h" || e.key === "H") {
           // Toggle collision history viewer
-          setShowCollisionHistory(prev => {
-            const newValue = !prev;
-            toast.success(newValue ? 'Collision history viewer enabled' : 'Collision history viewer disabled');
-            return newValue;
-          });
+          toggleDebugSetting('showCollisionHistory');
+          toast.success(debugSettings.showCollisionHistory ? 'Collision history disabled' : 'Collision history enabled');
         } else if (e.key === "x" || e.key === "X") {
           // Export collision history to JSON
           const historyJSON = collisionHistory.exportToJSON();
@@ -1204,11 +1189,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setShowDebugDashboard(prev => !prev);
         } else if (e.key === "v" || e.key === "V") {
           // Toggle CCD performance profiler
-          setShowCCDPerformance(prev => {
-            const newValue = !prev;
-            toast.success(newValue ? 'CCD performance profiler enabled' : 'CCD performance profiler disabled');
-            return newValue;
-          });
+          toggleDebugSetting('showCCDPerformance');
+          toast.success(debugSettings.showCCDPerformance ? 'CCD performance profiler disabled' : 'CCD performance profiler enabled');
         } else if (e.key === "0") {
           // Clear level and advance - mark as level skipped (disqualified from high scores)
           setLevelSkipped(true);
@@ -1765,7 +1747,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // ========== Phase 1: CCD for Bricks/Enemies/Walls/Paddle ==========
       // Capture ball states BEFORE CCD for accurate debug logs
-      const ballStatesBeforeCCD = collisionDebugEnabled 
+      const ballStatesBeforeCCD = debugSettings.enableCollisionLogging
         ? new Map(prevBalls.map(ball => [ball.id, {
             dx: ball.dx,
             dy: ball.dy,
@@ -1860,7 +1842,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           switch (event.objectType) {
             case "wall":
               if (!isDuplicate) {
-                if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled && ballBefore) {
+                if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
                   const timestamp = performance.now().toFixed(2);
                   const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
                   const velocityChanged = Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || 
@@ -1905,7 +1887,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               result.ball.dx = speedBefore * Math.sin(angle);
               result.ball.dy = -Math.abs(speedBefore * Math.cos(angle));
               if (!isDuplicate) {
-                if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled && ballBefore) {
+                if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
                   const timestamp = performance.now().toFixed(2);
                   const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
                   console.log(
@@ -1953,7 +1935,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 const enemy = enemies[enemyIndex];
 
                 if (enemy && !isDuplicate) {
-                  if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled && ballBefore) {
+                  if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
                     const timestamp = performance.now().toFixed(2);
                     const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
                     const velocityChanged = Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || 
@@ -2101,7 +2083,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
               // Fireball instantly destroys all non-metal bricks
               if (result.ball.isFireball) {
-                if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled && ballBefore) {
+                if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
                   const timestamp = performance.now().toFixed(2);
                   const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
                   const velocityChanged = Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || 
@@ -2158,7 +2140,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                 // Power-up drop
                 if (!isDuplicate) {
-                  if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled) {
+                  if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
                     console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Queued brick ${brick.id} for power-up evaluation at (${brick.x}, ${brick.y})`);
                   }
                   powerUpsToCreate.push(brick);
@@ -2173,7 +2155,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 // (velocity unchanged, ball passes through)
               } else {
                 // Normal brick damage (non-fireball)
-                if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled && ballBefore) {
+                if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
                   const timestamp = performance.now().toFixed(2);
                   const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
                   const velocityChanged = Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || 
@@ -2242,7 +2224,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                   // Power-up drop - only once per brick
                   if (!isDuplicate) {
-                    if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled) {
+                    if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
                       console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Queued brick ${brick.id} for power-up evaluation at (${brick.x}, ${brick.y})`);
                     }
                     powerUpsToCreate.push(brick);
@@ -2273,7 +2255,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       });
 
       // Create all power-ups
-      if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled && powerUpsToCreate.length > 0) {
+      if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging && powerUpsToCreate.length > 0) {
         console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Processing ${powerUpsToCreate.length} queued power-ups`);
       }
       
@@ -2283,10 +2265,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const powerUp = createPowerUp(brick);
         if (powerUp) {
           createdPowerUps.push(powerUp);
-          if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled) {
+          if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
             console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Created power-up type=${powerUp.type} at (${powerUp.x}, ${powerUp.y})`);
           }
-        } else if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled) {
+        } else if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
           console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] FAILED to create power-up from brick ${brick.id}`);
         }
       });
@@ -2294,7 +2276,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (createdPowerUps.length > 0) {
         setPowerUps((prev) => {
           const next = [...prev, ...createdPowerUps];
-          if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled) {
+          if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
             console.log(
               `[${performance.now().toFixed(2)}ms] [PowerUp Debug] State count: prev=${prev.length}, added=${createdPowerUps.length}, next=${next.length}`
             );
@@ -4515,7 +4497,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                          ═══════════════════════════════════════════════════════════════ */}
                     {ENABLE_DEBUG_FEATURES && (
                       <>
-                        {showDebugOverlay && gameLoopRef.current && (
+                        {debugSettings.showGameLoopDebug && gameLoopRef.current && (
                           <GameLoopDebugOverlay
                             getDebugInfo={() =>
                               gameLoopRef.current?.getDebugInfo() ?? {
@@ -4529,7 +4511,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                                 alpha: 0,
                               }
                             }
-                            visible={showDebugOverlay}
+                            visible={debugSettings.showGameLoopDebug}
                           />
                         )}
                       </>
@@ -4558,15 +4540,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     )}
 
                     {/* Substep Debug Overlay */}
-                    <SubstepDebugOverlay getDebugInfo={getSubstepDebugInfo} visible={showSubstepDebug} />
+                    <SubstepDebugOverlay getDebugInfo={getSubstepDebugInfo} visible={debugSettings.showSubstepDebug} />
 
                     {/* Collision History Viewer */}
-                    {showCollisionHistory && <CollisionHistoryViewer onClose={() => setShowCollisionHistory(false)} />}
+                    {debugSettings.showCollisionHistory && <CollisionHistoryViewer onClose={() => toggleDebugSetting('showCollisionHistory')} />}
 
                     {/* CCD Performance Profiler */}
                     <CCDPerformanceOverlay 
                       getPerformanceData={() => ccdPerformanceRef.current} 
-                      visible={showCCDPerformance} 
+                      visible={debugSettings.showCCDPerformance} 
                     />
                   </>
                 )}
