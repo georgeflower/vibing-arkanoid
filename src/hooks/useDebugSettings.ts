@@ -9,6 +9,9 @@ export interface DebugSettings {
   enableCollisionLogging: boolean;
   enablePowerUpLogging: boolean;
   enablePerformanceLogging: boolean;
+  enableFPSLogging: boolean;
+  enablePaddleLogging: boolean;
+  enableBossLogging: boolean;
 }
 
 const DEFAULT_SETTINGS: DebugSettings = {
@@ -19,7 +22,10 @@ const DEFAULT_SETTINGS: DebugSettings = {
   showQualityIndicator: true,
   enableCollisionLogging: false,
   enablePowerUpLogging: false,
-  enablePerformanceLogging: true, // Performance logging enabled by default
+  enablePerformanceLogging: true,
+  enableFPSLogging: true, // FPS logging enabled by default
+  enablePaddleLogging: false,
+  enableBossLogging: false,
 };
 
 export const useDebugSettings = () => {

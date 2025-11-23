@@ -21,6 +21,7 @@ interface AdaptiveQualityOptions {
   mediumFpsThreshold?: number;
   highFpsThreshold?: number;
   sampleWindow?: number; // seconds to average FPS
+  enableLogging?: boolean; // Toggle for FPS performance logs
 }
 
 const QUALITY_PRESETS: Record<QualityLevel, Omit<QualitySettings, 'level' | 'autoAdjust'>> = {
@@ -65,7 +66,8 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
     lowFpsThreshold = 50,
     mediumFpsThreshold = 55,
     highFpsThreshold = 55,
-    sampleWindow = 3
+    sampleWindow = 3,
+    enableLogging = true
   } = options;
 
   const [quality, setQuality] = useState<QualityLevel>(initialQuality);
@@ -119,11 +121,13 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
       }
       
       // Console log current performance
-      const avgFps = stats.samples > 0 ? (stats.sum / stats.samples).toFixed(1) : '0.0';
-      console.log(
-        `[Performance Monitor] FPS: ${fps.toFixed(1)} | Quality: ${quality.toUpperCase()} | ` +
-        `Avg: ${avgFps} | Min: ${stats.min.toFixed(0)} | Max: ${stats.max.toFixed(0)}`
-      );
+      if (enableLogging) {
+        const avgFps = stats.samples > 0 ? (stats.sum / stats.samples).toFixed(1) : '0.0';
+        console.log(
+          `[Performance Monitor] FPS: ${fps.toFixed(1)} | Quality: ${quality.toUpperCase()} | ` +
+          `Avg: ${avgFps} | Min: ${stats.min.toFixed(0)} | Max: ${stats.max.toFixed(0)}`
+        );
+      }
       
       lastPerformanceLogMs.current = now;
     }

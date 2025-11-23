@@ -81,6 +81,24 @@ export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }:
               checked={settings.enablePerformanceLogging}
               onChange={() => onToggle("enablePerformanceLogging")}
             />
+            <DebugToggle
+              label="FPS Monitor Logging"
+              checked={settings.enableFPSLogging}
+              onChange={() => onToggle("enableFPSLogging")}
+              description="Performance Monitor logs every second"
+            />
+            <DebugToggle
+              label="Paddle Collision Logging"
+              checked={settings.enablePaddleLogging}
+              onChange={() => onToggle("enablePaddleLogging")}
+              description="Paddle geometry collision details"
+            />
+            <DebugToggle
+              label="Boss Attack Logging"
+              checked={settings.enableBossLogging}
+              onChange={() => onToggle("enableBossLogging")}
+              description="Boss attack patterns and damage"
+            />
           </div>
         </section>
 
