@@ -8,6 +8,7 @@ import { EndScreen } from "./EndScreen";
 import { GameLoopDebugOverlay } from "./GameLoopDebugOverlay";
 import { SubstepDebugOverlay } from "./SubstepDebugOverlay";
 import { CollisionHistoryViewer } from "./CollisionHistoryViewer";
+import { CCDPerformanceOverlay, CCDPerformanceData } from "./CCDPerformanceOverlay";
 import { QualityIndicator } from "./QualityIndicator";
 import CRTOverlay from "./CRTOverlay";
 import { Button } from "@/components/ui/button";
@@ -141,6 +142,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   });
   const [collisionDebugEnabled, setCollisionDebugEnabled] = useState(false);
   const [showCollisionHistory, setShowCollisionHistory] = useState(false);
+  const [showCCDPerformance, setShowCCDPerformance] = useState(false);
+  const ccdPerformanceRef = useRef<CCDPerformanceData | null>(null);
   const frameCountRef = useRef(0);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [isPointerLocked, setIsPointerLocked] = useState(false);
@@ -1133,6 +1136,33 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           toast.success(newValue ? 'Collision debug enabled' : 'Collision debug disabled');
           return newValue;
         });
+      } else if (e.key === "h" || e.key === "H") {
+        // Toggle collision history viewer
+        setShowCollisionHistory(prev => {
+          const newValue = !prev;
+          toast.success(newValue ? 'Collision history viewer enabled' : 'Collision history viewer disabled');
+          return newValue;
+        });
+      } else if (e.key === "x" || e.key === "X") {
+        // Export collision history to JSON
+        const historyJSON = collisionHistory.exportToJSON();
+        const blob = new Blob([historyJSON], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `collision-history-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('Collision history exported to JSON');
+      } else if (e.key === "v" || e.key === "V") {
+        // Toggle CCD performance profiler
+        setShowCCDPerformance(prev => {
+          const newValue = !prev;
+          toast.success(newValue ? 'CCD performance profiler enabled' : 'CCD performance profiler disabled');
+          return newValue;
+        });
       } else if (e.key === "0") {
         // Clear level and advance - mark as level skipped (disqualified from high scores)
         setLevelSkipped(true);
@@ -1717,6 +1747,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           enemies,
         }),
       );
+      
+      // Store CCD performance data from first ball (representative of frame performance)
+      if (ballResults.length > 0 && ballResults[0].performance) {
+        ccdPerformanceRef.current = {
+          bossFirstSweepMs: ballResults[0].performance.bossFirstSweepMs,
+          ccdCoreMs: ballResults[0].performance.ccdCoreMs,
+          postProcessingMs: ballResults[0].performance.postProcessingMs,
+          totalMs: ballResults[0].performance.totalMs,
+          substepsUsed: ballResults[0].substepsUsed,
+          collisionCount: ballResults[0].collisionCount,
+          toiIterationsUsed: ballResults[0].toiIterationsUsed
+        };
+      }
 
       // Phase 2: Deduplicate collision events by object with TOI tolerance
       const EPS_TOI = 0.01; // Tolerance for considering events "simultaneous"
@@ -4434,6 +4477,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                 {/* Collision History Viewer */}
                 {showCollisionHistory && <CollisionHistoryViewer onClose={() => setShowCollisionHistory(false)} />}
+
+                {/* CCD Performance Profiler */}
+                <CCDPerformanceOverlay 
+                  getPerformanceData={() => ccdPerformanceRef.current} 
+                  visible={showCCDPerformance} 
+                />
 
                 {/* Right Panel - Stats and Controls */}
                 <div
