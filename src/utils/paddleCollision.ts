@@ -17,6 +17,8 @@ interface CollisionResult {
 
 const CORNER_RADIUS = 5;
 const SAFETY_MARGIN = 2;
+const PADDLE_VELOCITY_TRANSFER = 0.35; // Only 35% of paddle velocity transferred to prevent speed explosions
+const MAX_SPEED_AFTER_PADDLE = 12.0; // Maximum ball speed after paddle collision (px/frame)
 
 /**
  * Check collision between a circle (ball) and a rounded rectangle (paddle)
@@ -81,9 +83,9 @@ export function checkCircleVsRoundedPaddle(
       const reflectedVx = relativeVx - 2 * dotProduct * result.normal.x;
       const reflectedVy = relativeVy - 2 * dotProduct * result.normal.y;
 
-      // Add paddle velocity back to get final velocity
-      result.newVelocityX = reflectedVx + paddleVelocity.x;
-      result.newVelocityY = reflectedVy + paddleVelocity.y;
+      // Add DAMPENED paddle velocity to prevent speed explosions
+      result.newVelocityX = reflectedVx + (paddleVelocity.x * PADDLE_VELOCITY_TRANSFER);
+      result.newVelocityY = reflectedVy + (paddleVelocity.y * PADDLE_VELOCITY_TRANSFER);
 
       // Apply spin/deflection for top surface hits
       if (Math.abs(result.normal.y + 1) < 0.1) {
@@ -94,6 +96,26 @@ export function checkCircleVsRoundedPaddle(
         const deflectionFactor = (impactOffsetX / (paddle.width / 2)) * maxDeflection;
         
         result.newVelocityX += deflectionFactor * Math.abs(result.newVelocityY);
+      }
+
+      // Cap maximum speed after paddle collision to prevent explosions
+      const resultSpeed = Math.sqrt(
+        result.newVelocityX * result.newVelocityX + 
+        result.newVelocityY * result.newVelocityY
+      );
+
+      if (resultSpeed > MAX_SPEED_AFTER_PADDLE) {
+        const scale = MAX_SPEED_AFTER_PADDLE / resultSpeed;
+        const originalSpeed = resultSpeed;
+        result.newVelocityX *= scale;
+        result.newVelocityY *= scale;
+        
+        // Debug logging for speed capping
+        if (typeof window !== 'undefined' && (window as any).ENABLE_DEBUG_FEATURES) {
+          console.log(
+            `[PaddleSpeedCap] Clamped: ${originalSpeed.toFixed(2)} → ${MAX_SPEED_AFTER_PADDLE.toFixed(2)} px/frame`
+          );
+        }
       }
 
       // Primary case: for clear top-surface hits, clamp the ball fully above the paddle
