@@ -276,6 +276,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     mediumFpsThreshold: 55,
     highFpsThreshold: 55,
     sampleWindow: 3,
+    enableLogging: debugSettings.enableFPSLogging,
   });
 
   // Helper function to create explosion particles based on enemy type
@@ -1470,15 +1471,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const canDamage = nowMs - lastHitMs >= BOSS_HIT_COOLDOWN_MS;
 
           // Debug logging
-          console.log("[BossSweep] Cooldown check:", {
-            nowMs,
-            lastHitMs,
-            cooldownMs: BOSS_HIT_COOLDOWN_MS,
-            diff: nowMs - lastHitMs,
-            canDamage,
-            bossType: bossTarget.type,
-            bossHealth: bossTarget.currentHealth,
-          });
+          if (debugSettings.enableBossLogging) {
+            console.log("[BossSweep] Cooldown check:", {
+              nowMs,
+              lastHitMs,
+              cooldownMs: BOSS_HIT_COOLDOWN_MS,
+              diff: nowMs - lastHitMs,
+              canDamage,
+              bossType: bossTarget.type,
+              bossHealth: bossTarget.currentHealth,
+            });
+          }
 
           if (canDamage) {
             // Apply damage, update boss.lastHitAt with frameTick
@@ -1632,7 +1635,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   });
                 }
                 // Update boss with new health AND new lastHitAt timestamp
-                console.log("[BossSweep] Damage applied! Boss health:", newHealth);
+                if (debugSettings.enableBossLogging) {
+                  console.log("[BossSweep] Damage applied! Boss health:", newHealth);
+                }
                 return { ...prev, currentHealth: newHealth, lastHitAt: nowMs };
               });
             } else {
@@ -1700,7 +1705,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   } else {
                     toast.info(`PYRAMID: ${newHealth} HP`);
                     // Update boss with new health AND new lastHitAt timestamp
-                    console.log("[BossSweep] Resurrected boss damage applied! Boss health:", newHealth);
+                    if (debugSettings.enableBossLogging) {
+                      console.log("[BossSweep] Resurrected boss damage applied! Boss health:", newHealth);
+                    }
                     newBosses[bossIdx] = { ...newBosses[bossIdx], currentHealth: newHealth, lastHitAt: nowMs };
                   }
 
@@ -2479,9 +2486,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Phase 3.5 & 3.6: REMOVED - Boss collisions now handled in Phase 0 boss-first sweep
 
-      // Calculate paddle velocity in pixels per second
+      // Calculate paddle velocity in pixels per frame
       const paddleVelocity = {
-        x: paddle ? (paddle.x - prevPaddleX.current) * 60 : 0, // Convert to px/sec (dt is 1/60)
+        x: paddle ? (paddle.x - prevPaddleX.current) : 0, // Velocity in px/frame
         y: 0,
       };
 
@@ -2495,7 +2502,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         // Skip paddle resolution if ball hit boss this frame (prevents conflicting corrections)
         if ((result.ball as any)._hitBossThisFrame) {
-          console.log("[PaddleResolver] Skipping paddle resolution - ball hit boss this frame");
+          if (debugSettings.enablePaddleLogging) {
+            console.log("[PaddleResolver] Skipping paddle resolution - ball hit boss this frame");
+          }
           return;
         }
 
@@ -2511,11 +2520,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           result.ball.dx = collision.newVelocityX;
           result.ball.dy = collision.newVelocityY;
 
-          console.log("[PaddleResolver] Geometry collision resolved", {
-            penetration: collision.penetration.toFixed(2),
-            normalY: collision.normal.y.toFixed(2),
-            paddleVx: paddleVelocity.x.toFixed(2),
-          });
+          if (debugSettings.enablePaddleLogging) {
+            console.log("[PaddleResolver] Geometry collision resolved", {
+              penetration: collision.penetration.toFixed(2),
+              normalY: collision.normal.y.toFixed(2),
+              paddleVx: paddleVelocity.x.toFixed(2),
+            });
+          }
         }
       });
 
