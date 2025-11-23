@@ -30,7 +30,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [showChangelog, setShowChangelog] = useState(false);
   
   // Use adaptive quality hook for CRT effects
-  const { qualitySettings } = useAdaptiveQuality({
+  const { quality, qualitySettings } = useAdaptiveQuality({
     initialQuality: 'high',
     autoAdjust: false
   });
@@ -52,7 +52,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   if (showHighScores) {
     return (
       <div className="fixed inset-0 w-full h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)]">
-        {qualitySettings.backgroundEffects && <CRTOverlay />}
+        {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <HighScoreDisplay 
           onClose={() => setShowHighScores(false)} 
         />
@@ -61,13 +61,13 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   }
 
   if (showChangelog) {
-    return <Changelog onClose={() => setShowChangelog(false)} qualitySettings={qualitySettings} />;
+    return <Changelog onClose={() => setShowChangelog(false)} quality={quality} qualitySettings={qualitySettings} />;
   }
 
   if (showAbout) {
     return (
       <div className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
-        {qualitySettings.backgroundEffects && <CRTOverlay />}
+        {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <Card className="w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">
             About Vibing Arkanoid
@@ -154,7 +154,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
         }}
         tabIndex={0}
       >
-        {qualitySettings.backgroundEffects && <CRTOverlay />}
+        {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <picture className="absolute inset-0 w-full h-full pointer-events-none">
           <source srcSet={startScreenWebp} type="image/webp" />
           <img
@@ -174,7 +174,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   if (showInstructions) {
     return (
       <div className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
-        {qualitySettings.backgroundEffects && <CRTOverlay />}
+        {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <Card className="w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">
             Instructions
@@ -334,7 +334,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
       className="min-h-screen w-full flex items-center justify-center p-4 bg-contain bg-center bg-no-repeat bg-[hsl(220,25%,12%)] relative"
       style={{ backgroundImage: `url(${startScreenImg})` }}
     >
-      {qualitySettings.backgroundEffects && <CRTOverlay />}
+      {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
       <Card className="max-w-sm w-full p-6 bg-black/60 backdrop-blur-sm border-[hsl(200,70%,50%)]">
         {/* Settings */}
         <div className="space-y-4">
