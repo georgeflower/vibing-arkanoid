@@ -1,7 +1,7 @@
 import type { PowerUpType, Brick } from "@/types/game";
 
 /**
- * Pre-assigns power-ups to 20% of destructible bricks at level initialization
+ * Pre-assigns power-ups to 5% of destructible bricks at level initialization
  * @param bricks Array of all bricks in the level
  * @param extraLifeUsedLevels Array of level groups that already used extra life
  * @param currentLevel Current level number
@@ -23,8 +23,8 @@ export const assignPowerUpsToBricks = (
 
   if (destructibleBricks.length === 0) return assignments;
 
-  // Calculate 20% of destructible bricks
-  const powerUpCount = Math.max(1, Math.floor(destructibleBricks.length * 0.2));
+  // Calculate 5% of destructible bricks
+  const powerUpCount = Math.max(1, Math.floor(destructibleBricks.length * 0.05));
 
   // Shuffle and select random bricks
   const shuffled = [...destructibleBricks].sort(() => Math.random() - 0.5);

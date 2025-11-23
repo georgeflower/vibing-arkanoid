@@ -17,8 +17,8 @@ interface CollisionResult {
 
 const CORNER_RADIUS = 5;
 const SAFETY_MARGIN = 2;
-const PADDLE_VELOCITY_TRANSFER = 0.35; // Only 35% of paddle velocity transferred to prevent speed explosions
-const MAX_SPEED_AFTER_PADDLE = 12.0; // Maximum ball speed after paddle collision (px/frame)
+const PADDLE_VELOCITY_TRANSFER = 0.20; // Only 20% of paddle velocity transferred to prevent speed explosions
+const MAX_SPEED_AFTER_PADDLE = 8.0; // Maximum ball speed after paddle collision (px/frame)
 
 /**
  * Check collision between a circle (ball) and a rounded rectangle (paddle)
