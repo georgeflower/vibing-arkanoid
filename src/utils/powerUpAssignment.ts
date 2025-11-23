@@ -45,14 +45,27 @@ export const assignPowerUpsToBricks = (
   const levelGroup = Math.floor(currentLevel / 5);
   const includeExtraLife = difficulty !== "godlike" && !extraLifeUsedLevels.includes(levelGroup);
 
-  if (includeExtraLife) {
-    powerUpTypes.push("life");
-  }
+  // Track if extra life has been assigned (max 1 per level group)
+  let extraLifeAssigned = false;
 
   // Assign random power-up types to selected bricks
   selectedBricks.forEach((brick) => {
-    const randomType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+    // Determine available types for this brick
+    let availableTypes = [...powerUpTypes];
+    
+    // Add "life" only if not yet assigned and eligible
+    if (includeExtraLife && !extraLifeAssigned) {
+      availableTypes.push("life");
+    }
+    
+    // Random selection
+    const randomType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
     assignments.set(brick.id, randomType);
+    
+    // Mark extra life as assigned if selected
+    if (randomType === "life") {
+      extraLifeAssigned = true;
+    }
   });
 
   return assignments;
