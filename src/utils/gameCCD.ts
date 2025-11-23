@@ -9,6 +9,12 @@ export interface CCDResult {
   maxIterations: number;
   collisionCount: number;
   toiIterationsUsed: number;
+  performance?: {
+    bossFirstSweepMs: number;
+    ccdCoreMs: number;
+    postProcessingMs: number;
+    totalMs: number;
+  };
 }
 
 export function processBallWithCCD(
@@ -26,12 +32,21 @@ export function processBallWithCCD(
     enemies?: Enemy[];
   }
 ): CCDResult {
+  // Start total performance timer
+  const perfStart = performance.now();
+  
   const MAX_SUBSTEPS = 20; // Adaptive upper bound
   
   // Calculate adaptive substeps based on ball speed
   const ballSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
   const desiredSubsteps = Math.ceil(ballSpeed * gameState.speedMultiplier / (gameState.minBrickDimension * 0.15));
   const PHYSICS_SUBSTEPS = Math.max(2, Math.min(desiredSubsteps, MAX_SUBSTEPS));
+  
+  // Boss-first sweep timing (currently we don't have a separate boss sweep phase)
+  // This is a placeholder for when boss collision is separate from CCD
+  const bossFirstSweepStart = performance.now();
+  // No boss sweep currently - handled in Game.tsx before CCD
+  const bossFirstSweepEnd = performance.now();
 
   // Convert game types to CCD types
   const ccdBall: CCDBall = {
@@ -99,6 +114,9 @@ export function processBallWithCCD(
     height: gameState.paddle.height
   };
 
+  // CCD core timing
+  const ccdCoreStart = performance.now();
+  
   // Run CCD
   const result = processBallCCD(ccdBall, {
     dt: dtSeconds, // Pass seconds, not milliseconds
@@ -112,6 +130,11 @@ export function processBallWithCCD(
     currentTick: frameTick, // Pass deterministic frame tick
     maxSubstepTravelFactor: 0.9
   });
+  
+  const ccdCoreEnd = performance.now();
+  
+  // Post-processing timing
+  const postProcessingStart = performance.now();
 
   // Calculate collision count and max TOI iterations from debug data
   const collisionCount = result.events.length;
@@ -121,6 +144,9 @@ export function processBallWithCCD(
 
   // Convert result back to game types
   if (!result.ball) {
+    const postProcessingEnd = performance.now();
+    const perfEnd = performance.now();
+    
     return {
       ball: null,
       events: result.events,
@@ -128,7 +154,13 @@ export function processBallWithCCD(
       substepsUsed: PHYSICS_SUBSTEPS,
       maxIterations: 3,
       collisionCount,
-      toiIterationsUsed
+      toiIterationsUsed,
+      performance: {
+        bossFirstSweepMs: bossFirstSweepEnd - bossFirstSweepStart,
+        ccdCoreMs: ccdCoreEnd - ccdCoreStart,
+        postProcessingMs: postProcessingEnd - postProcessingStart,
+        totalMs: perfEnd - perfStart
+      }
     };
   }
 
@@ -140,6 +172,9 @@ export function processBallWithCCD(
     dy: result.ball.dy / (60 * gameState.speedMultiplier),
     lastHitTime: result.ball.lastHitTick
   };
+  
+  const postProcessingEnd = performance.now();
+  const perfEnd = performance.now();
 
   return {
     ball: updatedBall,
@@ -148,6 +183,12 @@ export function processBallWithCCD(
     substepsUsed: PHYSICS_SUBSTEPS,
     maxIterations: 3,
     collisionCount,
-    toiIterationsUsed
+    toiIterationsUsed,
+    performance: {
+      bossFirstSweepMs: bossFirstSweepEnd - bossFirstSweepStart,
+      ccdCoreMs: ccdCoreEnd - ccdCoreStart,
+      postProcessingMs: postProcessingEnd - postProcessingStart,
+      totalMs: perfEnd - perfStart
+    }
   };
 }
