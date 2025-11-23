@@ -2116,9 +2116,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 }
 
                 // Power-up drop
-                if (!isDuplicate && Math.random() < POWERUP_DROP_CHANCE) {
+                if (!isDuplicate) {
                   if (collisionDebugEnabled) {
-                    console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Queued power-up from brick ${brick.id} at (${brick.x}, ${brick.y})`);
+                    console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Queued brick ${brick.id} for power-up evaluation at (${brick.x}, ${brick.y})`);
                   }
                   powerUpsToCreate.push(brick);
                 }
@@ -2200,9 +2200,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   }
 
                   // Power-up drop - only once per brick
-                  if (!isDuplicate && Math.random() < POWERUP_DROP_CHANCE) {
+                  if (!isDuplicate) {
                     if (collisionDebugEnabled) {
-                      console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Queued power-up from brick ${brick.id} at (${brick.x}, ${brick.y})`);
+                      console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Queued brick ${brick.id} for power-up evaluation at (${brick.x}, ${brick.y})`);
                     }
                     powerUpsToCreate.push(brick);
                   }
