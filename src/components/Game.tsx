@@ -2022,11 +2022,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
                   const velocityChanged = Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || 
                                          Math.abs(ballBefore.dy - result.ball.dy) > 0.01;
+                  
+                  // Determine descriptive status
+                  let status = 'no reflection (pass through)';
+                  if (velocityChanged) {
+                    if (brick.isIndestructible) {
+                      status = 'reflected (metal brick)';
+                    } else {
+                      status = 'reflected (unexpected)';
+                      console.warn(`⚠️ Unexpected fireball reflection on non-metal ${brick.type} brick!`);
+                    }
+                  }
+                  
                   console.log(
                     `[${timestamp}ms] [Collision Debug] BRICK (fireball, ${brick.type}) - ` +
                     `Before: dx=${ballBefore.dx.toFixed(2)}, dy=${ballBefore.dy.toFixed(2)}, speed=${ballBefore.speed.toFixed(2)} | ` +
                     `After: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${speedAfter.toFixed(2)} | ` +
-                    `Status: ${velocityChanged ? 'reflected (BUG!)' : 'pass through'}`
+                    `Status: ${status}`
                   );
                   
                   // Record in collision history

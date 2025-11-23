@@ -41,7 +41,8 @@ export function processBallWithCCD(
     dx: ball.dx * 60 * gameState.speedMultiplier, // Convert px/frame to px/sec and apply multiplier
     dy: ball.dy * 60 * gameState.speedMultiplier,
     radius: ball.radius,
-    lastHitTick: ball.lastHitTime
+    lastHitTick: ball.lastHitTime,
+    isFireball: !!ball.isFireball // Propagate fireball flag to CCD system
   };
 
   // Convert bricks to CCD format, using actual brick IDs and metadata
