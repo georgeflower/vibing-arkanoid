@@ -39,10 +39,11 @@ interface GameCanvasProps {
   bossIntroActive: boolean;
   bossSpawnAnimation: {active: boolean; startTime: number} | null;
   shieldImpacts: ShieldImpact[];
+  debugEnabled?: boolean; // DEBUG: Remove before production
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, debugEnabled = false }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -504,8 +505,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.globalAlpha = 0.9;
           ctx.drawImage(img, -size / 2, -size / 2, size, size);
           ctx.restore();
-        } else {
-          // Debug fallback: show magenta rectangle if image not loaded
+        } else if (debugEnabled) {
+          // ═══════════════════════════════════════════════════════════════
+          // DEBUG: Show magenta rectangle if image not loaded
+          // ═══════════════════════════════════════════════════════════════
           ctx.fillStyle = "magenta";
           ctx.fillRect(-size / 2, -size / 2, size, size);
         }

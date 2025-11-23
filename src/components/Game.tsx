@@ -5,16 +5,21 @@ import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { EndScreen } from "./EndScreen";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
+import CRTOverlay from "./CRTOverlay";
+
+// ═══════════════════════════════════════════════════════════════
+// ████████╗ DEBUG IMPORTS - REMOVE BEFORE PRODUCTION ████████╗
+// ═══════════════════════════════════════════════════════════════
 import { GameLoopDebugOverlay } from "./GameLoopDebugOverlay";
 import { SubstepDebugOverlay } from "./SubstepDebugOverlay";
 import { CollisionHistoryViewer } from "./CollisionHistoryViewer";
 import { CCDPerformanceOverlay, CCDPerformanceData } from "./CCDPerformanceOverlay";
 import { QualityIndicator } from "./QualityIndicator";
-import CRTOverlay from "./CRTOverlay";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { collisionHistory } from "@/utils/collisionHistory";
+// ═══════════════════════════════════════════════════════════════
 import { Maximize2, Minimize2, Home } from "lucide-react";
 import type {
   Brick,
@@ -72,6 +77,12 @@ interface GameProps {
   onReturnToMenu: () => void;
 }
 export const Game = ({ settings, onReturnToMenu }: GameProps) => {
+  // ═══════════════════════════════════════════════════════════════
+  // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
+  // ═══════════════════════════════════════════════════════════════
+  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
+  // ═══════════════════════════════════════════════════════════════
+
   // Detect updates but don't apply during gameplay - defer until back at menu
   useServiceWorkerUpdate({ shouldApplyUpdate: false });
 
@@ -140,11 +151,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
   ); // iPad Pro detection
   });
-  const [collisionDebugEnabled, setCollisionDebugEnabled] = useState(false);
-  const [showCollisionHistory, setShowCollisionHistory] = useState(false);
-  const [showCCDPerformance, setShowCCDPerformance] = useState(false);
-  const ccdPerformanceRef = useRef<CCDPerformanceData | null>(null);
-  const frameCountRef = useRef(0);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
@@ -162,9 +168,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [shieldImpacts, setShieldImpacts] = useState<ShieldImpact[]>([]);
   const [lastScoreMilestone, setLastScoreMilestone] = useState(0);
   const [scoreBlinking, setScoreBlinking] = useState(false);
+
+  // ═══════════════════════════════════════════════════════════════
+  // ████████╗ DEBUG STATE - REMOVE BEFORE PRODUCTION ████████╗
+  // ═══════════════════════════════════════════════════════════════
+  const [collisionDebugEnabled, setCollisionDebugEnabled] = useState(false);
+  const [showCollisionHistory, setShowCollisionHistory] = useState(false);
+  const [showCCDPerformance, setShowCCDPerformance] = useState(false);
+  const ccdPerformanceRef = useRef<CCDPerformanceData | null>(null);
+  const frameCountRef = useRef(0);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const [showSubstepDebug, setShowSubstepDebug] = useState(false);
   const [currentFps, setCurrentFps] = useState(60);
+  // ═══════════════════════════════════════════════════════════════
 
   // Sound effect cooldowns (ms timestamps)
   const lastWallBounceSfxMs = useRef(0);
@@ -1079,140 +1095,141 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       } else if (e.key === "m" || e.key === "M") {
         const enabled = soundManager.toggleMute();
         toast.success(enabled ? "Music on" : "Music muted");
-      } else if (e.key === "Tab") {
-        e.preventDefault(); // Prevent default tab behavior
-        // Toggle substep debug overlay
-        setShowSubstepDebug((prev) => {
-          const newValue = !prev;
-          toast.success(newValue ? "Ball substep debug enabled" : "Ball substep debug disabled");
-          return newValue;
-        });
-      } else if (e.key === "l" || e.key === "L") {
-        // Toggle debug overlay
-        setShowDebugOverlay((prev) => {
-          const newValue = !prev;
-          toast.success(newValue ? "Debug overlay enabled" : "Debug overlay disabled");
-          return newValue;
-        });
-      } else if (e.key === "[") {
-        // Decrease time scale
-        if (gameLoopRef.current) {
-          const newScale = Math.max(0.1, gameLoopRef.current.getTimeScale() - 0.1);
-          gameLoopRef.current.setTimeScale(newScale);
-          toast.success(`Time scale: ${newScale.toFixed(1)}x`);
-        }
-      } else if (e.key === "]") {
-        // Increase time scale
-        if (gameLoopRef.current) {
-          const newScale = Math.min(3.0, gameLoopRef.current.getTimeScale() + 0.1);
-          gameLoopRef.current.setTimeScale(newScale);
-          toast.success(`Time scale: ${newScale.toFixed(1)}x`);
-        }
-      } else if (e.key === "\\") {
-        // Toggle loop mode
-        if (gameLoopRef.current) {
-          const newMode = gameLoopRef.current.getMode() === "fixedStep" ? "legacy" : "fixedStep";
-          gameLoopRef.current.setMode(newMode);
-          toast.success(`Loop mode: ${newMode}`);
-        }
-      } else if (e.key === "q" || e.key === "Q") {
-        if (e.shiftKey) {
-          // Shift+Q: Toggle auto-adjust
-          toggleAutoAdjust();
-        } else {
-          // Q: Cycle quality levels
-          const levels: Array<"low" | "medium" | "high"> = ["low", "medium", "high"];
-          const currentIndex = levels.indexOf(quality);
-          const nextIndex = (currentIndex + 1) % levels.length;
-          const nextQuality = levels[nextIndex];
-
-          // Use the hook's setQuality which handles everything properly
-          setQuality(nextQuality);
-        }
-      } else if (e.key === "c" || e.key === "C") {
-        // Toggle collision debug logs
-        setCollisionDebugEnabled(prev => {
-          const newValue = !prev;
-          toast.success(newValue ? 'Collision debug enabled' : 'Collision debug disabled');
-          return newValue;
-        });
-      } else if (e.key === "h" || e.key === "H") {
-        // Toggle collision history viewer
-        setShowCollisionHistory(prev => {
-          const newValue = !prev;
-          toast.success(newValue ? 'Collision history viewer enabled' : 'Collision history viewer disabled');
-          return newValue;
-        });
-      } else if (e.key === "x" || e.key === "X") {
-        // Export collision history to JSON
-        const historyJSON = collisionHistory.exportToJSON();
-        const blob = new Blob([historyJSON], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `collision-history-${Date.now()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast.success('Collision history exported to JSON');
-      } else if (e.key === "v" || e.key === "V") {
-        // Toggle CCD performance profiler
-        setShowCCDPerformance(prev => {
-          const newValue = !prev;
-          toast.success(newValue ? 'CCD performance profiler enabled' : 'CCD performance profiler disabled');
-          return newValue;
-        });
-      } else if (e.key === "0") {
-        // Clear level and advance - mark as level skipped (disqualified from high scores)
-        setLevelSkipped(true);
-        if (soundManager.isBossMusicPlaying()) {
-          soundManager.stopBossMusic();
-        }
-        nextLevel();
-        toast.warning("Level skipped! You are DISQUALIFIED from high scores!", { duration: 3000 });
       }
 
-      // ========== DEBUG TESTING FEATURES - START ==========
-      // These features are for testing and debugging only
-      // Remove before production release
-      else if (e.key === "+" || e.key === "=") {
-        // Increase ball speed by 5%
-        setSpeedMultiplier((prev) => {
-          const newSpeed = prev * 1.05;
-          toast.success(`Debug: Speed increased to ${Math.round(newSpeed * 100)}%`);
-          return newSpeed;
-        });
-      } else if (["1", "2", "3", "4", "5", "6", "7", "8"].includes(e.key) && paddle) {
-        // Drop power-ups for testing - disqualifies from high scores
-        setLevelSkipped(true);
-        const powerUpMap: Record<string, PowerUpType> = {
-          "1": "shield",
-          "2": "turrets",
-          "3": "life",
-          "4": "slowdown",
-          "5": "multiball",
-          "6": "paddleShrink",
-          "7": "paddleExtend",
-          "8": "fireball",
-        };
+      // ═══════════════════════════════════════════════════════════════
+      // ████████╗ DEBUG KEYBOARD CONTROLS - REMOVE BEFORE PRODUCTION ████████╗
+      // ═══════════════════════════════════════════════════════════════
+      if (ENABLE_DEBUG_FEATURES) {
+        if (e.key === "Tab") {
+          e.preventDefault(); // Prevent default tab behavior
+          // Toggle substep debug overlay
+          setShowSubstepDebug((prev) => {
+            const newValue = !prev;
+            toast.success(newValue ? "Ball substep debug enabled" : "Ball substep debug disabled");
+            return newValue;
+          });
+        } else if (e.key === "l" || e.key === "L") {
+          // Toggle debug overlay
+          setShowDebugOverlay((prev) => {
+            const newValue = !prev;
+            toast.success(newValue ? "Debug overlay enabled" : "Debug overlay disabled");
+            return newValue;
+          });
+        } else if (e.key === "[") {
+          // Decrease time scale
+          if (gameLoopRef.current) {
+            const newScale = Math.max(0.1, gameLoopRef.current.getTimeScale() - 0.1);
+            gameLoopRef.current.setTimeScale(newScale);
+            toast.success(`Time scale: ${newScale.toFixed(1)}x`);
+          }
+        } else if (e.key === "]") {
+          // Increase time scale
+          if (gameLoopRef.current) {
+            const newScale = Math.min(3.0, gameLoopRef.current.getTimeScale() + 0.1);
+            gameLoopRef.current.setTimeScale(newScale);
+            toast.success(`Time scale: ${newScale.toFixed(1)}x`);
+          }
+        } else if (e.key === "\\") {
+          // Toggle loop mode
+          if (gameLoopRef.current) {
+            const newMode = gameLoopRef.current.getMode() === "fixedStep" ? "legacy" : "fixedStep";
+            gameLoopRef.current.setMode(newMode);
+            toast.success(`Loop mode: ${newMode}`);
+          }
+        } else if (e.key === "q" || e.key === "Q") {
+          if (e.shiftKey) {
+            // Shift+Q: Toggle auto-adjust
+            toggleAutoAdjust();
+          } else {
+            // Q: Cycle quality levels
+            const levels: Array<"low" | "medium" | "high"> = ["low", "medium", "high"];
+            const currentIndex = levels.indexOf(quality);
+            const nextIndex = (currentIndex + 1) % levels.length;
+            const nextQuality = levels[nextIndex];
 
-        const type = powerUpMap[e.key];
-        const newPowerUp: PowerUp = {
-          x: paddle.x + paddle.width / 2 - POWERUP_SIZE / 2,
-          y: paddle.y - 50, // Drop from above paddle
-          width: POWERUP_SIZE,
-          height: POWERUP_SIZE,
-          type: type,
-          speed: POWERUP_FALL_SPEED,
-          active: true,
-        };
+            // Use the hook's setQuality which handles everything properly
+            setQuality(nextQuality);
+          }
+        } else if (e.key === "c" || e.key === "C") {
+          // Toggle collision debug logs
+          setCollisionDebugEnabled(prev => {
+            const newValue = !prev;
+            toast.success(newValue ? 'Collision debug enabled' : 'Collision debug disabled');
+            return newValue;
+          });
+        } else if (e.key === "h" || e.key === "H") {
+          // Toggle collision history viewer
+          setShowCollisionHistory(prev => {
+            const newValue = !prev;
+            toast.success(newValue ? 'Collision history viewer enabled' : 'Collision history viewer disabled');
+            return newValue;
+          });
+        } else if (e.key === "x" || e.key === "X") {
+          // Export collision history to JSON
+          const historyJSON = collisionHistory.exportToJSON();
+          const blob = new Blob([historyJSON], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `collision-history-${Date.now()}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast.success('Collision history exported to JSON');
+        } else if (e.key === "v" || e.key === "V") {
+          // Toggle CCD performance profiler
+          setShowCCDPerformance(prev => {
+            const newValue = !prev;
+            toast.success(newValue ? 'CCD performance profiler enabled' : 'CCD performance profiler disabled');
+            return newValue;
+          });
+        } else if (e.key === "0") {
+          // Clear level and advance - mark as level skipped (disqualified from high scores)
+          setLevelSkipped(true);
+          if (soundManager.isBossMusicPlaying()) {
+            soundManager.stopBossMusic();
+          }
+          nextLevel();
+          toast.warning("Level skipped! You are DISQUALIFIED from high scores!", { duration: 3000 });
+        } else if (e.key === "+" || e.key === "=") {
+          // Increase ball speed by 5%
+          setSpeedMultiplier((prev) => {
+            const newSpeed = prev * 1.05;
+            toast.success(`Debug: Speed increased to ${Math.round(newSpeed * 100)}%`);
+            return newSpeed;
+          });
+        } else if (["1", "2", "3", "4", "5", "6", "7", "8"].includes(e.key) && paddle) {
+          // Drop power-ups for testing - disqualifies from high scores
+          setLevelSkipped(true);
+          const powerUpMap: Record<string, PowerUpType> = {
+            "1": "shield",
+            "2": "turrets",
+            "3": "life",
+            "4": "slowdown",
+            "5": "multiball",
+            "6": "paddleShrink",
+            "7": "paddleExtend",
+            "8": "fireball",
+          };
 
-        setPowerUps((prev) => [...prev, newPowerUp]);
-        toast.warning(`Debug: ${type} power-up dropped - DISQUALIFIED from high scores!`);
+          const type = powerUpMap[e.key];
+          const newPowerUp: PowerUp = {
+            x: paddle.x + paddle.width / 2 - POWERUP_SIZE / 2,
+            y: paddle.y - 50, // Drop from above paddle
+            width: POWERUP_SIZE,
+            height: POWERUP_SIZE,
+            type: type,
+            speed: POWERUP_FALL_SPEED,
+            active: true,
+          };
+
+          setPowerUps((prev) => [...prev, newPowerUp]);
+          toast.warning(`Debug: ${type} power-up dropped - DISQUALIFIED from high scores!`);
+        }
       }
-
-      // ========== DEBUG TESTING FEATURES - END ==========
+      // ═══════════════════════════════════════════════════════════════
     };
     const handlePointerLockChange = () => {
       setIsPointerLocked(document.pointerLockElement === canvas);
@@ -1819,7 +1836,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           switch (event.objectType) {
             case "wall":
               if (!isDuplicate) {
-                if (collisionDebugEnabled && ballBefore) {
+                if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled && ballBefore) {
                   const timestamp = performance.now().toFixed(2);
                   const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
                   const velocityChanged = Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || 
@@ -1864,7 +1881,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               result.ball.dx = speedBefore * Math.sin(angle);
               result.ball.dy = -Math.abs(speedBefore * Math.cos(angle));
               if (!isDuplicate) {
-                if (collisionDebugEnabled && ballBefore) {
+                if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled && ballBefore) {
                   const timestamp = performance.now().toFixed(2);
                   const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
                   console.log(
@@ -1912,7 +1929,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 const enemy = enemies[enemyIndex];
 
                 if (enemy && !isDuplicate) {
-                  if (collisionDebugEnabled && ballBefore) {
+                  if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled && ballBefore) {
                     const timestamp = performance.now().toFixed(2);
                     const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
                     const velocityChanged = Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || 
@@ -2060,7 +2077,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
               // Fireball instantly destroys all non-metal bricks
               if (result.ball.isFireball) {
-                if (collisionDebugEnabled && ballBefore) {
+                if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled && ballBefore) {
                   const timestamp = performance.now().toFixed(2);
                   const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
                   const velocityChanged = Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || 
@@ -2117,7 +2134,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                 // Power-up drop
                 if (!isDuplicate) {
-                  if (collisionDebugEnabled) {
+                  if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled) {
                     console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Queued brick ${brick.id} for power-up evaluation at (${brick.x}, ${brick.y})`);
                   }
                   powerUpsToCreate.push(brick);
@@ -2132,7 +2149,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 // (velocity unchanged, ball passes through)
               } else {
                 // Normal brick damage (non-fireball)
-                if (collisionDebugEnabled && ballBefore) {
+                if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled && ballBefore) {
                   const timestamp = performance.now().toFixed(2);
                   const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
                   const velocityChanged = Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || 
@@ -2201,7 +2218,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                   // Power-up drop - only once per brick
                   if (!isDuplicate) {
-                    if (collisionDebugEnabled) {
+                    if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled) {
                       console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Queued brick ${brick.id} for power-up evaluation at (${brick.x}, ${brick.y})`);
                     }
                     powerUpsToCreate.push(brick);
@@ -2232,7 +2249,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       });
 
       // Create all power-ups
-      if (collisionDebugEnabled && powerUpsToCreate.length > 0) {
+      if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled && powerUpsToCreate.length > 0) {
         console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Processing ${powerUpsToCreate.length} queued power-ups`);
       }
       
@@ -2242,10 +2259,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const powerUp = createPowerUp(brick);
         if (powerUp) {
           createdPowerUps.push(powerUp);
-          if (collisionDebugEnabled) {
+          if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled) {
             console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Created power-up type=${powerUp.type} at (${powerUp.x}, ${powerUp.y})`);
           }
-        } else if (collisionDebugEnabled) {
+        } else if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled) {
           console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] FAILED to create power-up from brick ${brick.id}`);
         }
       });
@@ -2253,7 +2270,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (createdPowerUps.length > 0) {
         setPowerUps((prev) => {
           const next = [...prev, ...createdPowerUps];
-          if (collisionDebugEnabled) {
+          if (ENABLE_DEBUG_FEATURES && collisionDebugEnabled) {
             console.log(
               `[${performance.now().toFixed(2)}ms] [PowerUp Debug] State count: prev=${prev.length}, added=${createdPowerUps.length}, next=${next.length}`
             );
@@ -4466,41 +4483,59 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       bossIntroActive={bossIntroActive}
                       bossSpawnAnimation={bossSpawnAnimation}
                       shieldImpacts={shieldImpacts}
+                      debugEnabled={ENABLE_DEBUG_FEATURES}
                     />
-                    {showDebugOverlay && gameLoopRef.current && (
-                      <GameLoopDebugOverlay
-                        getDebugInfo={() =>
-                          gameLoopRef.current?.getDebugInfo() ?? {
-                            mode: "legacy",
-                            fixedHz: 60,
-                            maxDeltaMs: 250,
-                            accumulator: 0,
-                            timeScale: 1,
-                            fps: 0,
-                            updatesThisFrame: 0,
-                            alpha: 0,
-                          }
-                        }
-                        visible={showDebugOverlay}
-                      />
+
+                    {/* ═══════════════════════════════════════════════════════════════
+                         ████████╗ DEBUG OVERLAYS - REMOVE BEFORE PRODUCTION ████████╗
+                         ═══════════════════════════════════════════════════════════════ */}
+                    {ENABLE_DEBUG_FEATURES && (
+                      <>
+                        {showDebugOverlay && gameLoopRef.current && (
+                          <GameLoopDebugOverlay
+                            getDebugInfo={() =>
+                              gameLoopRef.current?.getDebugInfo() ?? {
+                                mode: "legacy",
+                                fixedHz: 60,
+                                maxDeltaMs: 250,
+                                accumulator: 0,
+                                timeScale: 1,
+                                fps: 0,
+                                updatesThisFrame: 0,
+                                alpha: 0,
+                              }
+                            }
+                            visible={showDebugOverlay}
+                          />
+                        )}
+                      </>
                     )}
+                    {/* ═══════════════════════════════════════════════════════════════ */}
                   </div>
                 </div>
 
-                {/* Quality Indicator */}
-                <QualityIndicator quality={quality} autoAdjustEnabled={autoAdjustEnabled} fps={currentFps} />
+                {/* ═══════════════════════════════════════════════════════════════
+                     ████████╗ DEBUG UI COMPONENTS - REMOVE BEFORE PRODUCTION ████████╗
+                     ═══════════════════════════════════════════════════════════════ */}
+                {ENABLE_DEBUG_FEATURES && (
+                  <>
+                    {/* Quality Indicator */}
+                    <QualityIndicator quality={quality} autoAdjustEnabled={autoAdjustEnabled} fps={currentFps} />
 
-                {/* Substep Debug Overlay */}
-                <SubstepDebugOverlay getDebugInfo={getSubstepDebugInfo} visible={showSubstepDebug} />
+                    {/* Substep Debug Overlay */}
+                    <SubstepDebugOverlay getDebugInfo={getSubstepDebugInfo} visible={showSubstepDebug} />
 
-                {/* Collision History Viewer */}
-                {showCollisionHistory && <CollisionHistoryViewer onClose={() => setShowCollisionHistory(false)} />}
+                    {/* Collision History Viewer */}
+                    {showCollisionHistory && <CollisionHistoryViewer onClose={() => setShowCollisionHistory(false)} />}
 
-                {/* CCD Performance Profiler */}
-                <CCDPerformanceOverlay 
-                  getPerformanceData={() => ccdPerformanceRef.current} 
-                  visible={showCCDPerformance} 
-                />
+                    {/* CCD Performance Profiler */}
+                    <CCDPerformanceOverlay 
+                      getPerformanceData={() => ccdPerformanceRef.current} 
+                      visible={showCCDPerformance} 
+                    />
+                  </>
+                )}
+                {/* ═══════════════════════════════════════════════════════════════ */}
 
                 {/* Right Panel - Stats and Controls */}
                 <div
