@@ -83,7 +83,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -152,7 +152,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     return (
       /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-  ); // iPad Pro detection
+    ); // iPad Pro detection
   });
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [isPointerLocked, setIsPointerLocked] = useState(false);
@@ -179,7 +179,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const frameCountRef = useRef(0);
   const [currentFps, setCurrentFps] = useState(60);
   const [showDebugDashboard, setShowDebugDashboard] = useState(false);
-  const { settings: debugSettings, toggleSetting: toggleDebugSetting, resetSettings: resetDebugSettings } = useDebugSettings();
+  const {
+    settings: debugSettings,
+    toggleSetting: toggleDebugSetting,
+    resetSettings: resetDebugSettings,
+  } = useDebugSettings();
   // ═══════════════════════════════════════════════════════════════
 
   // Sound effect cooldowns (ms timestamps)
@@ -236,15 +240,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     };
   }, []);
   const { isHighScore, addHighScore } = useHighScores();
-  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps, extraLifeUsedLevels } = usePowerUps(
-    level,
-    setLives,
-    timer,
-    settings.difficulty,
-    setBrickHitSpeedAccumulated,
-    (type: string) => setPowerUpsCollectedTypes((prev) => new Set(prev).add(type)),
-    powerUpAssignments,
-  );
+  const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps, extraLifeUsedLevels } =
+    usePowerUps(
+      level,
+      setLives,
+      timer,
+      settings.difficulty,
+      setBrickHitSpeedAccumulated,
+      (type: string) => setPowerUpsCollectedTypes((prev) => new Set(prev).add(type)),
+      powerUpAssignments,
+    );
   const { bullets, setBullets, fireBullets, updateBullets } = useBullets(
     setScore,
     setBricks,
@@ -580,10 +585,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const assignments = assignPowerUpsToBricks(bricks, extraLifeUsedLevels, level, settings.difficulty);
       setPowerUpAssignments(assignments);
       if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
-        console.log(`[Power-Up] Assigned ${assignments.size} power-ups to ${bricks.length} bricks (${Math.round((assignments.size / bricks.length) * 100)}%)`);
+        console.log(
+          `[Power-Up] Assigned ${assignments.size} power-ups to ${bricks.length} bricks (${Math.round((assignments.size / bricks.length) * 100)}%)`,
+        );
       }
     },
-    [extraLifeUsedLevels, level, settings.difficulty]
+    [extraLifeUsedLevels, level, settings.difficulty],
   );
   const initGame = useCallback(() => {
     // Initialize paddle
@@ -1123,12 +1130,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (e.key === "Tab") {
           e.preventDefault(); // Prevent default tab behavior
           // Toggle substep debug overlay
-          toggleDebugSetting('showSubstepDebug');
-          toast.success(debugSettings.showSubstepDebug ? 'Ball substep debug disabled' : 'Ball substep debug enabled');
+          toggleDebugSetting("showSubstepDebug");
+          toast.success(debugSettings.showSubstepDebug ? "Ball substep debug disabled" : "Ball substep debug enabled");
         } else if (e.key === "l" || e.key === "L") {
           // Toggle debug overlay
-          toggleDebugSetting('showGameLoopDebug');
-          toast.success(debugSettings.showGameLoopDebug ? 'Debug overlay disabled' : 'Debug overlay enabled');
+          toggleDebugSetting("showGameLoopDebug");
+          toast.success(debugSettings.showGameLoopDebug ? "Debug overlay disabled" : "Debug overlay enabled");
         } else if (e.key === "[") {
           // Decrease time scale
           if (gameLoopRef.current) {
@@ -1166,32 +1173,36 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
         } else if (e.key === "c" || e.key === "C") {
           // Toggle collision debug logs
-          toggleDebugSetting('enableCollisionLogging');
-          toast.success(debugSettings.enableCollisionLogging ? 'Collision debug disabled' : 'Collision debug enabled');
+          toggleDebugSetting("enableCollisionLogging");
+          toast.success(debugSettings.enableCollisionLogging ? "Collision debug disabled" : "Collision debug enabled");
         } else if (e.key === "h" || e.key === "H") {
           // Toggle collision history viewer
-          toggleDebugSetting('showCollisionHistory');
-          toast.success(debugSettings.showCollisionHistory ? 'Collision history disabled' : 'Collision history enabled');
+          toggleDebugSetting("showCollisionHistory");
+          toast.success(
+            debugSettings.showCollisionHistory ? "Collision history disabled" : "Collision history enabled",
+          );
         } else if (e.key === "x" || e.key === "X") {
           // Export collision history to JSON
           const historyJSON = collisionHistory.exportToJSON();
-          const blob = new Blob([historyJSON], { type: 'application/json' });
+          const blob = new Blob([historyJSON], { type: "application/json" });
           const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
+          const a = document.createElement("a");
           a.href = url;
           a.download = `collision-history-${Date.now()}.json`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
-          toast.success('Collision history exported to JSON');
+          toast.success("Collision history exported to JSON");
         } else if (e.key === "§") {
           // Toggle debug dashboard
-          setShowDebugDashboard(prev => !prev);
+          setShowDebugDashboard((prev) => !prev);
         } else if (e.key === "v" || e.key === "V") {
           // Toggle CCD performance profiler
-          toggleDebugSetting('showCCDPerformance');
-          toast.success(debugSettings.showCCDPerformance ? 'CCD performance profiler disabled' : 'CCD performance profiler enabled');
+          toggleDebugSetting("showCCDPerformance");
+          toast.success(
+            debugSettings.showCCDPerformance ? "CCD performance profiler disabled" : "CCD performance profiler enabled",
+          );
         } else if (e.key === "0") {
           // Clear level and advance - mark as level skipped (disqualified from high scores)
           setLevelSkipped(true);
@@ -1755,7 +1766,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // ========== Phase 0.5: Paddle-first collision (before CCD) ==========
       // Calculate paddle velocity in pixels per frame
       const paddleVelocity = {
-        x: paddle ? (paddle.x - prevPaddleX.current) : 0,
+        x: paddle ? paddle.x - prevPaddleX.current : 0,
         y: 0,
       };
 
@@ -1803,14 +1814,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // ========== Phase 1: CCD for Bricks/Enemies/Walls (Paddle now excluded) ==========
       // Capture ball states BEFORE CCD for accurate debug logs
       const ballStatesBeforeCCD = debugSettings.enableCollisionLogging
-        ? new Map(prevBalls.map(ball => [ball.id, {
-            dx: ball.dx,
-            dy: ball.dy,
-            speed: Math.hypot(ball.dx, ball.dy),
-            x: ball.x,
-            y: ball.y,
-            isFireball: ball.isFireball || false
-          }]))
+        ? new Map(
+            prevBalls.map((ball) => [
+              ball.id,
+              {
+                dx: ball.dx,
+                dy: ball.dy,
+                speed: Math.hypot(ball.dx, ball.dy),
+                x: ball.x,
+                y: ball.y,
+                isFireball: ball.isFireball || false,
+              },
+            ]),
+          )
         : null;
 
       const ballResults = prevBalls.map((ball) =>
@@ -1825,7 +1841,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           enemies,
         }),
       );
-      
+
       // Store CCD performance data from first ball (representative of frame performance)
       if (ballResults.length > 0 && ballResults[0].performance) {
         ccdPerformanceRef.current = {
@@ -1835,7 +1851,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           totalMs: ballResults[0].performance.totalMs,
           substepsUsed: ballResults[0].substepsUsed,
           collisionCount: ballResults[0].collisionCount,
-          toiIterationsUsed: ballResults[0].toiIterationsUsed
+          toiIterationsUsed: ballResults[0].toiIterationsUsed,
         };
       }
 
@@ -1900,28 +1916,34 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
                   const timestamp = performance.now().toFixed(2);
                   const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
-                  const velocityChanged = Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || 
-                                         Math.abs(ballBefore.dy - result.ball.dy) > 0.01;
+                  const velocityChanged =
+                    Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || Math.abs(ballBefore.dy - result.ball.dy) > 0.01;
                   console.log(
                     `[${timestamp}ms] [Collision Debug] WALL - ` +
-                    `Before: dx=${ballBefore.dx.toFixed(2)}, dy=${ballBefore.dy.toFixed(2)}, speed=${ballBefore.speed.toFixed(2)} | ` +
-                    `After: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${speedAfter.toFixed(2)} | ` +
-                    `Status: ${velocityChanged ? 'reflected' : 'no reflection'}`
+                      `Before: dx=${ballBefore.dx.toFixed(2)}, dy=${ballBefore.dy.toFixed(2)}, speed=${ballBefore.speed.toFixed(2)} | ` +
+                      `After: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${speedAfter.toFixed(2)} | ` +
+                      `Status: ${velocityChanged ? "reflected" : "no reflection"}`,
                   );
-                  
+
                   // Record in collision history
                   collisionHistory.addEntry({
                     timestamp: performance.now(),
                     frameNumber: frameCountRef.current,
-                    objectType: 'wall',
-                    objectId: 'wall',
+                    objectType: "wall",
+                    objectId: "wall",
                     ballBefore,
-                    ballAfter: { x: result.ball.x, y: result.ball.y, dx: result.ball.dx, dy: result.ball.dy, speed: speedAfter },
+                    ballAfter: {
+                      x: result.ball.x,
+                      y: result.ball.y,
+                      dx: result.ball.dx,
+                      dy: result.ball.dy,
+                      speed: speedAfter,
+                    },
                     collisionPoint: event.point,
                     collisionNormal: event.normal,
                     reflectionApplied: velocityChanged,
                     isDuplicate: false,
-                    soundPlayed: 'bounce'
+                    soundPlayed: "bounce",
                   });
                 }
                 const now = Date.now();
@@ -1947,23 +1969,29 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
                   console.log(
                     `[${timestamp}ms] [Collision Debug] PADDLE (hitPos=${hitPos.toFixed(2)}) - ` +
-                    `Before: dx=${ballBefore.dx.toFixed(2)}, dy=${ballBefore.dy.toFixed(2)}, speed=${ballBefore.speed.toFixed(2)} | ` +
-                    `After: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${speedAfter.toFixed(2)}`
+                      `Before: dx=${ballBefore.dx.toFixed(2)}, dy=${ballBefore.dy.toFixed(2)}, speed=${ballBefore.speed.toFixed(2)} | ` +
+                      `After: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${speedAfter.toFixed(2)}`,
                   );
-                  
+
                   // Record in collision history
                   collisionHistory.addEntry({
                     timestamp: performance.now(),
                     frameNumber: frameCountRef.current,
-                    objectType: 'paddle',
-                    objectId: 'paddle',
+                    objectType: "paddle",
+                    objectId: "paddle",
                     ballBefore,
-                    ballAfter: { x: result.ball.x, y: result.ball.y, dx: result.ball.dx, dy: result.ball.dy, speed: speedAfter },
+                    ballAfter: {
+                      x: result.ball.x,
+                      y: result.ball.y,
+                      dx: result.ball.dx,
+                      dy: result.ball.dy,
+                      speed: speedAfter,
+                    },
                     collisionPoint: event.point,
                     collisionNormal: event.normal,
                     reflectionApplied: true,
                     isDuplicate: false,
-                    soundPlayed: 'bounce'
+                    soundPlayed: "bounce",
                   });
                 }
                 const now = Date.now();
@@ -1993,28 +2021,35 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
                     const timestamp = performance.now().toFixed(2);
                     const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
-                    const velocityChanged = Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || 
-                                           Math.abs(ballBefore.dy - result.ball.dy) > 0.01;
+                    const velocityChanged =
+                      Math.abs(ballBefore.dx - result.ball.dx) > 0.01 ||
+                      Math.abs(ballBefore.dy - result.ball.dy) > 0.01;
                     console.log(
                       `[${timestamp}ms] [Collision Debug] ENEMY (${enemy.type}) - ` +
-                      `Before: dx=${ballBefore.dx.toFixed(2)}, dy=${ballBefore.dy.toFixed(2)}, speed=${ballBefore.speed.toFixed(2)} | ` +
-                      `After: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${speedAfter.toFixed(2)} | ` +
-                      `Status: ${velocityChanged ? 'reflected' : 'no reflection'}`
+                        `Before: dx=${ballBefore.dx.toFixed(2)}, dy=${ballBefore.dy.toFixed(2)}, speed=${ballBefore.speed.toFixed(2)} | ` +
+                        `After: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${speedAfter.toFixed(2)} | ` +
+                        `Status: ${velocityChanged ? "reflected" : "no reflection"}`,
                     );
-                    
+
                     // Record in collision history
                     collisionHistory.addEntry({
                       timestamp: performance.now(),
                       frameNumber: frameCountRef.current,
-                      objectType: 'enemy',
+                      objectType: "enemy",
                       objectId: enemy.id || -1,
                       objectMeta: { enemyType: enemy.type },
                       ballBefore,
-                      ballAfter: { x: result.ball.x, y: result.ball.y, dx: result.ball.dx, dy: result.ball.dy, speed: speedAfter },
+                      ballAfter: {
+                        x: result.ball.x,
+                        y: result.ball.y,
+                        dx: result.ball.dx,
+                        dy: result.ball.dy,
+                        speed: speedAfter,
+                      },
                       collisionPoint: event.point,
                       collisionNormal: event.normal,
                       reflectionApplied: velocityChanged,
-                      isDuplicate: false
+                      isDuplicate: false,
                     });
                   }
                   // Handle different enemy types with multi-hit logic
@@ -2141,41 +2176,51 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
                   const timestamp = performance.now().toFixed(2);
                   const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
-                  const velocityChanged = Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || 
-                                         Math.abs(ballBefore.dy - result.ball.dy) > 0.01;
-                  
+                  const velocityChanged =
+                    Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || Math.abs(ballBefore.dy - result.ball.dy) > 0.01;
+
                   // Determine descriptive status
-                  let status = 'no reflection (pass through)';
+                  let status = "no reflection (pass through)";
                   if (velocityChanged) {
                     if (brick.isIndestructible) {
-                      status = 'reflected (metal brick)';
+                      status = "reflected (metal brick)";
                     } else {
-                      status = 'reflected (unexpected)';
+                      status = "reflected (unexpected)";
                       console.warn(`⚠️ Unexpected fireball reflection on non-metal ${brick.type} brick!`);
                     }
                   }
-                  
+
                   console.log(
                     `[${timestamp}ms] [Collision Debug] BRICK (fireball, ${brick.type}) - ` +
-                    `Before: dx=${ballBefore.dx.toFixed(2)}, dy=${ballBefore.dy.toFixed(2)}, speed=${ballBefore.speed.toFixed(2)} | ` +
-                    `After: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${speedAfter.toFixed(2)} | ` +
-                    `Status: ${status}`
+                      `Before: dx=${ballBefore.dx.toFixed(2)}, dy=${ballBefore.dy.toFixed(2)}, speed=${ballBefore.speed.toFixed(2)} | ` +
+                      `After: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${speedAfter.toFixed(2)} | ` +
+                      `Status: ${status}`,
                   );
-                  
+
                   // Record in collision history
                   collisionHistory.addEntry({
                     timestamp: performance.now(),
                     frameNumber: frameCountRef.current,
-                    objectType: 'brick',
+                    objectType: "brick",
                     objectId: brick.id,
-                    objectMeta: { type: brick.type, isIndestructible: brick.isIndestructible, hitsRemaining: brick.hitsRemaining },
+                    objectMeta: {
+                      type: brick.type,
+                      isIndestructible: brick.isIndestructible,
+                      hitsRemaining: brick.hitsRemaining,
+                    },
                     ballBefore,
-                    ballAfter: { x: result.ball.x, y: result.ball.y, dx: result.ball.dx, dy: result.ball.dy, speed: speedAfter },
+                    ballAfter: {
+                      x: result.ball.x,
+                      y: result.ball.y,
+                      dx: result.ball.dx,
+                      dy: result.ball.dy,
+                      speed: speedAfter,
+                    },
                     collisionPoint: event.point,
                     collisionNormal: event.normal,
                     reflectionApplied: velocityChanged,
                     isDuplicate: false,
-                    soundPlayed: 'brick'
+                    soundPlayed: "brick",
                   });
                 }
                 // Instantly destroy brick
@@ -2196,7 +2241,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 // Power-up drop
                 if (!isDuplicate) {
                   if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
-                    console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Queued brick ${brick.id} for power-up evaluation at (${brick.x}, ${brick.y})`);
+                    console.log(
+                      `[${performance.now().toFixed(2)}ms] [PowerUp Debug] Queued brick ${brick.id} for power-up evaluation at (${brick.x}, ${brick.y})`,
+                    );
                   }
                   powerUpsToCreate.push(brick);
                 }
@@ -2213,28 +2260,38 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
                   const timestamp = performance.now().toFixed(2);
                   const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
-                  const velocityChanged = Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || 
-                                         Math.abs(ballBefore.dy - result.ball.dy) > 0.01;
+                  const velocityChanged =
+                    Math.abs(ballBefore.dx - result.ball.dx) > 0.01 || Math.abs(ballBefore.dy - result.ball.dy) > 0.01;
                   console.log(
                     `[${timestamp}ms] [Collision Debug] BRICK (normal, ${brick.type}, hits=${brick.hitsRemaining}) - ` +
-                    `Before: dx=${ballBefore.dx.toFixed(2)}, dy=${ballBefore.dy.toFixed(2)}, speed=${ballBefore.speed.toFixed(2)} | ` +
-                    `After: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${speedAfter.toFixed(2)} | ` +
-                    `Status: ${velocityChanged ? 'reflected' : 'no reflection'}`
+                      `Before: dx=${ballBefore.dx.toFixed(2)}, dy=${ballBefore.dy.toFixed(2)}, speed=${ballBefore.speed.toFixed(2)} | ` +
+                      `After: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${speedAfter.toFixed(2)} | ` +
+                      `Status: ${velocityChanged ? "reflected" : "no reflection"}`,
                   );
-                  
+
                   // Record in collision history
                   collisionHistory.addEntry({
                     timestamp: performance.now(),
                     frameNumber: frameCountRef.current,
-                    objectType: 'brick',
+                    objectType: "brick",
                     objectId: brick.id,
-                    objectMeta: { type: brick.type, isIndestructible: brick.isIndestructible, hitsRemaining: brick.hitsRemaining },
+                    objectMeta: {
+                      type: brick.type,
+                      isIndestructible: brick.isIndestructible,
+                      hitsRemaining: brick.hitsRemaining,
+                    },
                     ballBefore,
-                    ballAfter: { x: result.ball.x, y: result.ball.y, dx: result.ball.dx, dy: result.ball.dy, speed: speedAfter },
+                    ballAfter: {
+                      x: result.ball.x,
+                      y: result.ball.y,
+                      dx: result.ball.dx,
+                      dy: result.ball.dy,
+                      speed: speedAfter,
+                    },
                     collisionPoint: event.point,
                     collisionNormal: event.normal,
                     reflectionApplied: velocityChanged,
-                    isDuplicate: false
+                    isDuplicate: false,
                   });
                 }
                 const currentHitsRemaining = brick.hitsRemaining;
@@ -2280,7 +2337,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   // Power-up drop - only once per brick
                   if (!isDuplicate) {
                     if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
-                      console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Queued brick ${brick.id} for power-up evaluation at (${brick.x}, ${brick.y})`);
+                      console.log(
+                        `[${performance.now().toFixed(2)}ms] [PowerUp Debug] Queued brick ${brick.id} for power-up evaluation at (${brick.x}, ${brick.y})`,
+                      );
                     }
                     powerUpsToCreate.push(brick);
                   }
@@ -2311,20 +2370,26 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Create all power-ups
       if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging && powerUpsToCreate.length > 0) {
-        console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Processing ${powerUpsToCreate.length} queued power-ups`);
+        console.log(
+          `[${performance.now().toFixed(2)}ms] [PowerUp Debug] Processing ${powerUpsToCreate.length} queued power-ups`,
+        );
       }
-      
+
       const createdPowerUps: PowerUp[] = [];
-      
+
       powerUpsToCreate.forEach((brick) => {
         const powerUp = createPowerUp(brick);
         if (powerUp) {
           createdPowerUps.push(powerUp);
           if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
-            console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] Created power-up type=${powerUp.type} at (${powerUp.x}, ${powerUp.y})`);
+            console.log(
+              `[${performance.now().toFixed(2)}ms] [PowerUp Debug] Created power-up type=${powerUp.type} at (${powerUp.x}, ${powerUp.y})`,
+            );
           }
         } else if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
-          console.log(`[${performance.now().toFixed(2)}ms] [PowerUp Debug] FAILED to create power-up from brick ${brick.id}`);
+          console.log(
+            `[${performance.now().toFixed(2)}ms] [PowerUp Debug] FAILED to create power-up from brick ${brick.id}`,
+          );
         }
       });
 
@@ -2333,7 +2398,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const next = [...prev, ...createdPowerUps];
           if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
             console.log(
-              `[${performance.now().toFixed(2)}ms] [PowerUp Debug] State count: prev=${prev.length}, added=${createdPowerUps.length}, next=${next.length}`
+              `[${performance.now().toFixed(2)}ms] [PowerUp Debug] State count: prev=${prev.length}, added=${createdPowerUps.length}, next=${next.length}`,
             );
           }
           return next;
@@ -4562,12 +4627,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     <SubstepDebugOverlay getDebugInfo={getSubstepDebugInfo} visible={debugSettings.showSubstepDebug} />
 
                     {/* Collision History Viewer */}
-                    {debugSettings.showCollisionHistory && <CollisionHistoryViewer onClose={() => toggleDebugSetting('showCollisionHistory')} />}
+                    {debugSettings.showCollisionHistory && (
+                      <CollisionHistoryViewer onClose={() => toggleDebugSetting("showCollisionHistory")} />
+                    )}
 
                     {/* CCD Performance Profiler */}
-                    <CCDPerformanceOverlay 
-                      getPerformanceData={() => ccdPerformanceRef.current} 
-                      visible={debugSettings.showCCDPerformance} 
+                    <CCDPerformanceOverlay
+                      getPerformanceData={() => ccdPerformanceRef.current}
+                      visible={debugSettings.showCCDPerformance}
                     />
                   </>
                 )}
