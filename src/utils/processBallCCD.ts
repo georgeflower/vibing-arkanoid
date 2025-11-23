@@ -250,7 +250,7 @@ export function processBallCCD(
 
       const candidates = tilemapQuery ? tilemapQuery(sweptAabb) : defaultTilemapQuery(bricks, sweptAabb);
       // Collect earliest hit among walls, paddle, bricks, corners
-      let earliest: { t: number; normal: Vec2; objectType: CollisionEvent['objectType']; objectId?: number | string; point: Vec2 } | null = null;
+      let earliest: CollisionEvent | null = null;
 
       // 1) Walls (canvas bounds): treat as planes
       if (canvasSize) {
@@ -370,15 +370,14 @@ export function processBallCCD(
       //   - Fireballs pass through destructible bricks (no reflection)
       //   - Fireballs bounce off metal bricks (reflect)
       //   - Normal balls always reflect off all bricks
-      const isDestructibleBrick = earliest.objectType === 'brick' && 
-        earliest.brickMeta && 
-        !earliest.brickMeta.isIndestructible;
+      const isIndestructibleBrick = earliest.objectType === 'brick' && 
+        earliest.brickMeta?.isIndestructible === true;
       
       const shouldReflect = 
         earliest.objectType === 'wall' || 
         earliest.objectType === 'paddle' || 
         earliest.objectType === 'corner' ||
-        (earliest.objectType === 'brick' && (!ball.isFireball || !isDestructibleBrick));
+        (earliest.objectType === 'brick' && (!ball.isFireball || isIndestructibleBrick));
 
       if (shouldReflect) {
         const vel = { x: ball.dx, y: ball.dy };
