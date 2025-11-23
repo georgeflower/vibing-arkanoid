@@ -281,7 +281,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     mediumFpsThreshold: 55,
     highFpsThreshold: 55,
     sampleWindow: 3,
-    enableLogging: debugSettings.enableFPSLogging,
+    enableLogging: ENABLE_DEBUG_FEATURES && debugSettings.enableFPSLogging,
   });
 
   // Helper function to create explosion particles based on enemy type
