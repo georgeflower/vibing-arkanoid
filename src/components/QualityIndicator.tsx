@@ -19,6 +19,12 @@ export const QualityIndicator = ({ quality, autoAdjustEnabled, fps }: QualityInd
     }
   };
 
+  const getFpsColor = (fpsValue: number) => {
+    if (fpsValue >= 55) return 'hsl(120, 60%, 50%)'; // Green
+    if (fpsValue >= 50) return 'hsl(50, 90%, 55%)'; // Yellow
+    return 'hsl(0, 70%, 55%)'; // Red
+  };
+
   return (
     <div className="fixed bottom-4 right-4 z-40 pointer-events-none select-none">
       <div className="flex flex-col gap-1 bg-black/70 backdrop-blur-sm px-3 py-2 rounded-lg border border-border/20">
@@ -44,9 +50,12 @@ export const QualityIndicator = ({ quality, autoAdjustEnabled, fps }: QualityInd
             <span className="text-muted-foreground">FPS:</span>
             <span 
               className="font-bold"
-              style={{ color: fps >= 55 ? 'hsl(120, 60%, 50%)' : fps >= 35 ? 'hsl(50, 90%, 55%)' : 'hsl(0, 70%, 55%)' }}
+              style={{ color: getFpsColor(fps) }}
             >
-              {Math.round(fps)}/60
+              {Math.round(fps)}
+            </span>
+            <span className="text-muted-foreground/50 text-[10px]">
+              (55↑ 50↓)
             </span>
           </div>
         )}

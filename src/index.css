@@ -603,9 +603,16 @@ All colors MUST be HSL.
     transparent 2px,
     rgba(0, 0, 0, 0.15) 3px
   );
-  
-  /* Subtle animation for flickering effect */
+}
+
+/* High quality: Full animation */
+.crt-scanlines.crt-high {
   animation: scanline-flicker 0.1s infinite alternate;
+}
+
+/* Medium quality: Static scanlines, reduced opacity */
+.crt-scanlines.crt-medium {
+  opacity: 0.7;
 }
 
 @keyframes scanline-flicker {
@@ -623,19 +630,29 @@ All colors MUST be HSL.
   pointer-events: none;
   z-index: 9997;
   
-  /* Vignette effect (darker edges) */
+  /* Subtle screen curvature */
+  border-radius: 2% / 3%;
+}
+
+/* High quality: Full vignette and animation */
+.crt-screen.crt-high {
   background: radial-gradient(
     ellipse at center,
     transparent 0%,
     transparent 60%,
     rgba(0, 0, 0, 0.3) 100%
   );
-  
-  /* Subtle screen curvature */
-  border-radius: 2% / 3%;
-  
-  /* Subtle screen flicker */
   animation: screen-flicker 5s infinite;
+}
+
+/* Medium quality: Simplified vignette, no animation */
+.crt-screen.crt-medium {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    transparent 70%,
+    rgba(0, 0, 0, 0.15) 100%
+  );
 }
 
 @keyframes screen-flicker {
@@ -660,11 +677,18 @@ All colors MUST be HSL.
   pointer-events: none;
   z-index: 9996;
   
-  /* Subtle color glow */
-  background: 
-    radial-gradient(ellipse at center, rgba(0, 255, 200, 0.02) 0%, transparent 50%);
-  
   mix-blend-mode: screen;
+}
+
+/* High quality: Full phosphor glow */
+.crt-phosphor.crt-high {
+  background: radial-gradient(ellipse at center, rgba(0, 255, 200, 0.02) 0%, transparent 50%);
+}
+
+/* Medium quality: Reduced phosphor glow */
+.crt-phosphor.crt-medium {
+  background: radial-gradient(ellipse at center, rgba(0, 255, 200, 0.01) 0%, transparent 50%);
+  opacity: 0.5;
 }
 
 /* Reduce intensity on small screens for readability */

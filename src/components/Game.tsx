@@ -270,8 +270,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const { quality, qualitySettings, updateFps, setQuality, toggleAutoAdjust, autoAdjustEnabled } = useAdaptiveQuality({
     initialQuality: "high",
     autoAdjust: true,
-    lowFpsThreshold: 30,
-    mediumFpsThreshold: 45,
+    lowFpsThreshold: 50,
+    mediumFpsThreshold: 55,
     highFpsThreshold: 55,
     sampleWindow: 3,
   });
@@ -4369,7 +4369,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }`}
     >
       {/* CRT Overlay - inside fullscreen container (only if quality allows) */}
-      {qualitySettings.backgroundEffects && <CRTOverlay />}
+      {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
 
       {/* Mobile fullscreen prompt overlay */}
       {showFullscreenPrompt && isMobileDevice && (
