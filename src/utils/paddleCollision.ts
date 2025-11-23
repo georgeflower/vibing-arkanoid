@@ -17,8 +17,6 @@ interface CollisionResult {
 
 const CORNER_RADIUS = 5;
 const SAFETY_MARGIN = 2;
-const PADDLE_VELOCITY_TRANSFER = 0.20; // Only 20% of paddle velocity transferred to prevent speed explosions
-const MAX_SPEED_AFTER_PADDLE = 8.0; // Maximum ball speed after paddle collision (px/frame)
 
 /**
  * Check collision between a circle (ball) and a rounded rectangle (paddle)
@@ -70,76 +68,64 @@ export function checkCircleVsRoundedPaddle(
     result.newX = ball.x + result.normal.x * correctionDistance;
     result.newY = ball.y + result.normal.y * correctionDistance;
 
-    // Calculate relative velocity (ball velocity relative to paddle)
-    const relativeVx = ball.dx - paddleVelocity.x;
-    const relativeVy = ball.dy - paddleVelocity.y;
+    // Capture incoming ball speed to preserve it after reflection
+    const incomingSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
 
-    // Calculate dot product for reflection
-    const dotProduct = relativeVx * result.normal.x + relativeVy * result.normal.y;
+    // Calculate dot product for reflection (using ball velocity, not relative velocity)
+    const dotProduct = ball.dx * result.normal.x + ball.dy * result.normal.y;
 
     // Only reflect if moving into the paddle
     if (dotProduct < 0) {
-      // Reflect relative velocity along normal
-      const reflectedVx = relativeVx - 2 * dotProduct * result.normal.x;
-      const reflectedVy = relativeVy - 2 * dotProduct * result.normal.y;
+      // Basic reflection along collision normal
+      result.newVelocityX = ball.dx - 2 * dotProduct * result.normal.x;
+      result.newVelocityY = ball.dy - 2 * dotProduct * result.normal.y;
 
-      // Add DAMPENED paddle velocity to prevent speed explosions
-      result.newVelocityX = reflectedVx + (paddleVelocity.x * PADDLE_VELOCITY_TRANSFER);
-      result.newVelocityY = reflectedVy + (paddleVelocity.y * PADDLE_VELOCITY_TRANSFER);
-
-      // Apply spin/deflection for top surface hits
+      // Apply angular deflection for top surface hits (changes angle, not speed)
       if (Math.abs(result.normal.y + 1) < 0.1) {
         // This is a top surface hit - apply horizontal deflection based on ball center position
         const paddleCenterX = paddle.x + paddle.width / 2;
-        const impactOffsetX = ball.x - paddleCenterX; // Use ball.x, not closestPoint.x
+        const impactOffsetX = ball.x - paddleCenterX;
         const maxDeflection = 0.5; // Maximum horizontal deflection factor
         const deflectionFactor = (impactOffsetX / (paddle.width / 2)) * maxDeflection;
         
         result.newVelocityX += deflectionFactor * Math.abs(result.newVelocityY);
       }
 
-      // Cap maximum speed after paddle collision to prevent explosions
-      const resultSpeed = Math.sqrt(
+      // CRITICAL: Normalize and rescale to preserve incoming speed
+      // This ensures speed in = speed out (only direction changes)
+      const currentSpeed = Math.sqrt(
         result.newVelocityX * result.newVelocityX + 
         result.newVelocityY * result.newVelocityY
       );
 
-      if (resultSpeed > MAX_SPEED_AFTER_PADDLE) {
-        const scale = MAX_SPEED_AFTER_PADDLE / resultSpeed;
-        const originalSpeed = resultSpeed;
+      if (currentSpeed > 0.001) {
+        const scale = incomingSpeed / currentSpeed;
         result.newVelocityX *= scale;
         result.newVelocityY *= scale;
-        
-        // Debug logging for speed capping
-        if (typeof window !== 'undefined' && (window as any).ENABLE_DEBUG_FEATURES) {
-          console.log(
-            `[PaddleSpeedCap] Clamped: ${originalSpeed.toFixed(2)} → ${MAX_SPEED_AFTER_PADDLE.toFixed(2)} px/frame`
-          );
-        }
       }
+    }
 
-      // Primary case: for clear top-surface hits, clamp the ball fully above the paddle
-      if (result.normal.y <= -0.9) {
-        const targetY = paddle.y - ball.radius - SAFETY_MARGIN;
-        if (result.newY > targetY) {
-          result.newY = targetY;
-        }
+    // Primary case: for clear top-surface hits, clamp the ball fully above the paddle
+    if (result.normal.y <= -0.9) {
+      const targetY = paddle.y - ball.radius - SAFETY_MARGIN;
+      if (result.newY > targetY) {
+        result.newY = targetY;
       }
+    }
 
-      // Emergency fallback: if the ball is horizontally over the paddle and has any penetration,
-      // force it above the paddle to avoid getting stuck, even if the normal points sideways.
-      const withinPaddleX = result.newX >= paddle.x && result.newX <= paddle.x + paddle.width; // Use result.newX
-      if (withinPaddleX && result.newY >= paddle.y && result.penetration > 0.5) {
-        const targetY = paddle.y - ball.radius - SAFETY_MARGIN;
-        if (result.newY > targetY) {
-          result.newY = targetY;
-        }
-        // Enforce minimum upward speed and damp horizontal velocity
-        const minUpwardSpeed = 2.0; // Minimum px/frame upward
-        result.newVelocityY = -Math.max(minUpwardSpeed, Math.abs(result.newVelocityY || ball.dy || minUpwardSpeed));
-        result.newVelocityX *= 0.95; // Slight horizontal damping
-        result.normal = { x: 0, y: -1 };
+    // Emergency fallback: if the ball is horizontally over the paddle and has any penetration,
+    // force it above the paddle to avoid getting stuck, even if the normal points sideways.
+    const withinPaddleX = result.newX >= paddle.x && result.newX <= paddle.x + paddle.width;
+    if (withinPaddleX && result.newY >= paddle.y && result.penetration > 0.5) {
+      const targetY = paddle.y - ball.radius - SAFETY_MARGIN;
+      if (result.newY > targetY) {
+        result.newY = targetY;
       }
+      // Enforce minimum upward speed and damp horizontal velocity
+      const minUpwardSpeed = 2.0; // Minimum px/frame upward
+      result.newVelocityY = -Math.max(minUpwardSpeed, Math.abs(result.newVelocityY || ball.dy || minUpwardSpeed));
+      result.newVelocityX *= 0.95; // Slight horizontal damping
+      result.normal = { x: 0, y: -1 };
     }
   }
 
