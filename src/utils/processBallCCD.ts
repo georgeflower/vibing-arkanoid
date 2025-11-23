@@ -288,32 +288,8 @@ export function processBallCCD(
         }
       }
 
-      // 2) Paddle (prioritize)
-      if (paddle) {
-        const expanded = { x: paddle.x - ball.radius, y: paddle.y - ball.radius, w: paddle.width + 2 * ball.radius, h: paddle.height + 2 * ball.radius };
-        const rayHit = rayAABB(pos0, pos1, expanded);
-        if (rayHit) {
-          const candidatePoint = vAdd(pos0, vScale(vSub(pos1, pos0), rayHit.tEntry));
-          if (!earliest || rayHit.tEntry < earliest.t - 1e-8 || (Math.abs(rayHit.tEntry - earliest.t) < 1e-8 && earliest.objectType !== 'paddle')) {
-            earliest = { t: rayHit.tEntry, normal: rayHit.normal, objectType: 'paddle', objectId: 'paddle', point: candidatePoint };
-          }
-        } else {
-          // corner checks (paddle rounded corners)
-          const cornerRadius = 5;
-          const corners = [
-            { x: paddle.x + cornerRadius, y: paddle.y + cornerRadius }, // top-left
-            { x: paddle.x + paddle.width - cornerRadius, y: paddle.y + cornerRadius }, // top-right
-            { x: paddle.x + cornerRadius, y: paddle.y + paddle.height - cornerRadius }, // bottom-left
-            { x: paddle.x + paddle.width - cornerRadius, y: paddle.y + paddle.height - cornerRadius } // bottom-right
-          ];
-          for (const c of corners) {
-            const sc = segmentCircleTOI(pos0, pos1, c, ball.radius);
-            if (sc && (!earliest || sc.t < earliest.t)) {
-              earliest = { t: sc.t, normal: sc.normal, objectType: 'corner', objectId: 'paddle-corner', point: sc.point };
-            }
-          }
-        }
-      }
+      // 2) Paddle (SKIP - handled before CCD in paddle-first architecture)
+      // Paddle collision is now handled outside CCD for precise geometry-based collision
 
       // 3) Bricks (use candidates)
       for (const b of candidates) {

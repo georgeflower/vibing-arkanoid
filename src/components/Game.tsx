@@ -1752,7 +1752,55 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         });
       });
 
-      // ========== Phase 1: CCD for Bricks/Enemies/Walls/Paddle ==========
+      // ========== Phase 0.5: Paddle-first collision (before CCD) ==========
+      // Calculate paddle velocity in pixels per frame
+      const paddleVelocity = {
+        x: paddle ? (paddle.x - prevPaddleX.current) : 0,
+        y: 0,
+      };
+
+      // Update previous paddle position for next frame
+      if (paddle) {
+        prevPaddleX.current = paddle.x;
+      }
+
+      prevBalls.forEach((ball) => {
+        if (!paddle) return;
+
+        // Skip paddle resolution if ball hit boss this frame (prevents conflicting corrections)
+        if ((ball as any)._hitBossThisFrame) {
+          if (debugSettings.enablePaddleLogging) {
+            console.log("[PaddleFirst] Skipping paddle - ball hit boss this frame");
+          }
+          return;
+        }
+
+        // Use geometry-based collision with rounded corners
+        const collision = checkCircleVsRoundedPaddle(ball, paddle, paddleVelocity);
+
+        if (collision.collided) {
+          // Apply position correction
+          ball.x = collision.newX;
+          ball.y = collision.newY;
+
+          // Apply velocity correction
+          ball.dx = collision.newVelocityX;
+          ball.dy = collision.newVelocityY;
+
+          // Mark ball to skip CCD paddle checks (similar to boss flag)
+          (ball as any)._hitPaddleThisFrame = true;
+
+          if (debugSettings.enablePaddleLogging) {
+            console.log("[PaddleFirst] Geometry collision resolved", {
+              penetration: collision.penetration.toFixed(2),
+              normalY: collision.normal.y.toFixed(2),
+              paddleVx: paddleVelocity.x.toFixed(2),
+            });
+          }
+        }
+      });
+
+      // ========== Phase 1: CCD for Bricks/Enemies/Walls (Paddle now excluded) ==========
       // Capture ball states BEFORE CCD for accurate debug logs
       const ballStatesBeforeCCD = debugSettings.enableCollisionLogging
         ? new Map(prevBalls.map(ball => [ball.id, {
@@ -2486,54 +2534,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Phase 3.5 & 3.6: REMOVED - Boss collisions now handled in Phase 0 boss-first sweep
 
-      // Calculate paddle velocity in pixels per frame
-      const paddleVelocity = {
-        x: paddle ? (paddle.x - prevPaddleX.current) : 0, // Velocity in px/frame
-        y: 0,
-      };
+      // Paddle collision now handled BEFORE CCD (paddle-first architecture)
+      // Removed from this location to prevent double collision detection
 
-      // Update previous paddle position for next frame
-      if (paddle) {
-        prevPaddleX.current = paddle.x;
-      }
-
-      ballResults.forEach((result) => {
-        if (!result.ball || !paddle) return;
-
-        // Skip paddle resolution if ball hit boss this frame (prevents conflicting corrections)
-        if ((result.ball as any)._hitBossThisFrame) {
-          if (debugSettings.enablePaddleLogging) {
-            console.log("[PaddleResolver] Skipping paddle resolution - ball hit boss this frame");
-          }
-          return;
-        }
-
-        // Use geometry-based collision with rounded corners
-        const collision = checkCircleVsRoundedPaddle(result.ball, paddle, paddleVelocity);
-
-        if (collision.collided) {
-          // Apply position correction
-          result.ball.x = collision.newX;
-          result.ball.y = collision.newY;
-
-          // Apply velocity correction
-          result.ball.dx = collision.newVelocityX;
-          result.ball.dy = collision.newVelocityY;
-
-          if (debugSettings.enablePaddleLogging) {
-            console.log("[PaddleResolver] Geometry collision resolved", {
-              penetration: collision.penetration.toFixed(2),
-              normalY: collision.normal.y.toFixed(2),
-              paddleVx: paddleVelocity.x.toFixed(2),
-            });
-          }
-        }
-      });
-
-      // Clear per-ball flags after all collision processing
+      // Clear per-ball collision flags before updating state
       ballResults.forEach((result) => {
         if (result.ball) {
           delete (result.ball as any)._hitBossThisFrame;
+          delete (result.ball as any)._hitPaddleThisFrame;
         }
       });
 
