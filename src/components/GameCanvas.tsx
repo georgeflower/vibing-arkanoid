@@ -504,6 +504,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.globalAlpha = 0.9;
           ctx.drawImage(img, -size / 2, -size / 2, size, size);
           ctx.restore();
+        } else {
+          // Debug fallback: show magenta rectangle if image not loaded
+          ctx.fillStyle = "magenta";
+          ctx.fillRect(-size / 2, -size / 2, size, size);
         }
         
         // Add subtle highlight
