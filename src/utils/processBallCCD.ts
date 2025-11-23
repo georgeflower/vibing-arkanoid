@@ -152,7 +152,11 @@ function segmentCircleTOI(a: Vec2, b: Vec2, center: Vec2, r: number): { t: numbe
   const t = (t1 >= 0 && t1 <= 1) ? t1 : (t2 >= 0 && t2 <= 1 ? t2 : NaN);
   if (isNaN(t)) return null;
   const point = vAdd(a, vScale(d, t));
-  const normal = normalize(vSub(point, center));
+  // Normal should point from corner to collision point (away from brick)
+  const toCollision = vSub(point, center);
+  const normal = vLen(toCollision) > 1e-6 
+    ? normalize(toCollision) 
+    : { x: 0, y: -1 }; // fallback to upward normal
   return { t, point, normal };
 }
 
@@ -382,12 +386,17 @@ export function processBallCCD(
       if (shouldReflect) {
         const vel = { x: ball.dx, y: ball.dy };
         const dot = vel.x * n.x + vel.y * n.y;
-        ball.dx = vel.x - 2 * dot * n.x;
-        ball.dy = vel.y - 2 * dot * n.y;
+        
+        // Only reflect if moving towards surface (dot < 0)
+        if (dot < 0) {
+          ball.dx = vel.x - 2 * dot * n.x;
+          ball.dy = vel.y - 2 * dot * n.y;
+        }
       }
       // Proportional epsilon: scales with ball radius and travel distance
       const proportionalEpsilon = Math.max(0.5, Math.min(ball.radius * 0.1, travelThisSubstep * 0.3));
-      pos0 = vAdd(pos0, vScale(earliest.normal, proportionalEpsilon));
+      // Use validated normal (n) instead of earliest.normal for consistent separation direction
+      pos0 = vAdd(pos0, vScale(n, proportionalEpsilon));
 
       // record event (time is fraction of this substep: (1 - remaining) + remaining * tHit)
       const eventT = (1 - remaining) + remaining * tHit;
