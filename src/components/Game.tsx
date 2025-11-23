@@ -2251,7 +2251,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       });
 
       if (createdPowerUps.length > 0) {
-        setPowerUps((prev) => [...prev, ...createdPowerUps]);
+        setPowerUps((prev) => {
+          const next = [...prev, ...createdPowerUps];
+          if (collisionDebugEnabled) {
+            console.log(
+              `[${performance.now().toFixed(2)}ms] [PowerUp Debug] State count: prev=${prev.length}, added=${createdPowerUps.length}, next=${next.length}`
+            );
+          }
+          return next;
+        });
       }
 
       // Handle explosive bricks
