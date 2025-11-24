@@ -20,6 +20,7 @@ import { CCDPerformanceOverlay, CCDPerformanceData } from "./CCDPerformanceOverl
 import { QualityIndicator } from "./QualityIndicator";
 import { collisionHistory } from "@/utils/collisionHistory";
 import { DebugDashboard } from "./DebugDashboard";
+import { DebugModeIndicator } from "./DebugModeIndicator";
 import { useDebugSettings } from "@/hooks/useDebugSettings";
 // ═══════════════════════════════════════════════════════════════
 import { Maximize2, Minimize2, Home } from "lucide-react";
@@ -184,6 +185,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     toggleSetting: toggleDebugSetting,
     resetSettings: resetDebugSettings,
   } = useDebugSettings();
+
+  // Helper function to count active debug features
+  const calculateActiveDebugFeatures = (settings: typeof debugSettings): number => {
+    let count = 0;
+    if (settings.showGameLoopDebug) count++;
+    if (settings.showSubstepDebug) count++;
+    if (settings.showCCDPerformance) count++;
+    if (settings.showCollisionHistory) count++;
+    if (settings.showQualityIndicator) count++;
+    if (settings.enableCollisionLogging) count++;
+    if (settings.enablePowerUpLogging) count++;
+    if (settings.enablePerformanceLogging) count++;
+    if (settings.enableFPSLogging) count++;
+    if (settings.enablePaddleLogging) count++;
+    if (settings.enableBossLogging) count++;
+    return count;
+  };
   // ═══════════════════════════════════════════════════════════════
 
   // Sound effect cooldowns (ms timestamps)
@@ -4609,6 +4627,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                      ═══════════════════════════════════════════════════════════════ */}
                 {ENABLE_DEBUG_FEATURES && (
                   <>
+                    {/* Debug Mode Indicator */}
+                    {debugSettings.showDebugModeIndicator && (
+                      <DebugModeIndicator
+                        activeFeatureCount={calculateActiveDebugFeatures(debugSettings)}
+                        onToggle={() => toggleDebugSetting("showDebugModeIndicator")}
+                      />
+                    )}
+
                     {/* Debug Dashboard */}
                     <DebugDashboard
                       isOpen={showDebugDashboard}

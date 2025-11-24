@@ -34,6 +34,12 @@ export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }:
           <h3 className="text-lg font-semibold text-foreground mb-3">Visual Overlays</h3>
           <div className="space-y-2">
             <DebugToggle
+              label="Debug Mode Indicator"
+              checked={settings.showDebugModeIndicator}
+              onChange={() => onToggle("showDebugModeIndicator")}
+              description="Shows when ENABLE_DEBUG_FEATURES is true"
+            />
+            <DebugToggle
               label="Game Loop Debug"
               checked={settings.showGameLoopDebug}
               onChange={() => onToggle("showGameLoopDebug")}
