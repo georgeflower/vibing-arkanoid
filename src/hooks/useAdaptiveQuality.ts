@@ -123,10 +123,16 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
       // Console log current performance
       if (enableLogging) {
         const avgFps = stats.samples > 0 ? (stats.sum / stats.samples).toFixed(1) : '0.0';
-        console.log(
-          `[Performance Monitor] FPS: ${fps.toFixed(1)} | Quality: ${quality.toUpperCase()} | ` +
-          `Avg: ${avgFps} | Min: ${stats.min.toFixed(0)} | Max: ${stats.max.toFixed(0)}`
-        );
+        const baseLog = `[Performance Monitor] FPS: ${fps.toFixed(1)} | Quality: ${quality.toUpperCase()} | ` +
+          `Avg: ${avgFps} | Min: ${stats.min.toFixed(0)} | Max: ${stats.max.toFixed(0)}`;
+        
+        // If detailed metrics are available (from performance profiler), include them
+        if ((window as any).performanceProfiler) {
+          const summary = (window as any).performanceProfiler.getFrameSummary();
+          console.log(baseLog + ` | Objects: ${summary.totalObjects}`);
+        } else {
+          console.log(baseLog);
+        }
       }
       
       lastPerformanceLogMs.current = now;

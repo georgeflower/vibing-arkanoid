@@ -22,6 +22,7 @@ import { collisionHistory } from "@/utils/collisionHistory";
 import { DebugDashboard } from "./DebugDashboard";
 import { DebugModeIndicator } from "./DebugModeIndicator";
 import { useDebugSettings } from "@/hooks/useDebugSettings";
+import { performanceProfiler } from "@/utils/performanceProfiler";
 // ═══════════════════════════════════════════════════════════════
 import { Maximize2, Minimize2, Home } from "lucide-react";
 import type {
@@ -2798,6 +2799,54 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Update adaptive quality system and display
       updateFps(fps);
       setCurrentFps(fps);
+      
+      // ========== Performance Profiling (Debug) ==========
+      if (ENABLE_DEBUG_FEATURES && debugSettings.enableDetailedFrameLogging) {
+        // Count total particles
+        const totalParticles = 
+          explosions.reduce((sum, exp) => sum + exp.particles.length, 0) +
+          gameOverParticles.length +
+          highScoreParticles.length;
+        
+        // Record frame metrics
+        performanceProfiler.recordFrame({
+          timestamp: performance.now(),
+          fps: fps,
+          frameNumber: frameCountRef.current,
+          
+          // Object counts
+          ballCount: balls.length,
+          visibleBrickCount: bricks.filter(b => b.visible).length,
+          totalBrickCount: bricks.length,
+          enemyCount: enemies.length,
+          powerUpCount: powerUps.length,
+          bulletCount: bullets.length,
+          explosionCount: explosions.length,
+          totalParticleCount: totalParticles,
+          bossAttackCount: bossAttacks.length,
+          laserWarningCount: laserWarnings.length,
+          bombCount: bombs.length,
+          shieldImpactCount: shieldImpacts.length,
+          bonusLetterCount: bonusLetters.length,
+          
+          // CCD performance
+          ccdTotalMs: ccdPerformanceRef.current?.totalMs || 0,
+          ccdSubsteps: ccdPerformanceRef.current?.substepsUsed || 0,
+          ccdCollisions: ccdPerformanceRef.current?.collisionCount || 0,
+          ccdToiIterations: ccdPerformanceRef.current?.toiIterationsUsed || 0,
+          
+          // Rendering complexity
+          qualityLevel: quality,
+          hasActiveBoss: boss !== null || resurrectedBosses.length > 0,
+          hasScreenShake: screenShake > 0,
+          hasBackgroundFlash: backgroundFlash > 0,
+        });
+        
+        // Check for performance issues and log if detected
+        if (performanceProfiler.detectPerformanceIssue()) {
+          performanceProfiler.logDetailedMetrics();
+        }
+      }
     }
 
     // Also feed real-time FPS from fixed-step game loop if available

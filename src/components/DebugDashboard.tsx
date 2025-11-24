@@ -105,6 +105,12 @@ export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }:
               onChange={() => onToggle("enableBossLogging")}
               description="Boss attack patterns and damage"
             />
+            <DebugToggle
+              label="Detailed Frame Logging"
+              checked={settings.enableDetailedFrameLogging}
+              onChange={() => onToggle("enableDetailedFrameLogging")}
+              description="Log per-frame event counts on FPS drops"
+            />
           </div>
         </section>
 

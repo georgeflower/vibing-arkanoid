@@ -11,6 +11,7 @@ export interface DebugSettings {
   enablePowerUpLogging: boolean;
   enablePerformanceLogging: boolean;
   enableFPSLogging: boolean;
+  enableDetailedFrameLogging: boolean;
   enablePaddleLogging: boolean;
   enableBossLogging: boolean;
 }
@@ -26,6 +27,7 @@ const DEFAULT_SETTINGS: DebugSettings = {
   enablePowerUpLogging: false,
   enablePerformanceLogging: true,
   enableFPSLogging: true, // FPS logging enabled by default
+  enableDetailedFrameLogging: false, // Off by default (verbose)
   enablePaddleLogging: false,
   enableBossLogging: false,
 };
