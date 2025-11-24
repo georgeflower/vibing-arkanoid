@@ -1050,7 +1050,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const rect = canvasRef.current.getBoundingClientRect();
       const scaleX = SCALED_CANVAS_WIDTH / rect.width;
       const touchX = (activeTouch.clientX - rect.left) * scaleX;
-      const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
+      
+      // Implement scaled touch control zone (middle 70% controls full paddle range)
+      const controlZoneLeft = SCALED_CANVAS_WIDTH * 0.15;
+      const controlZoneRight = SCALED_CANVAS_WIDTH * 0.85;
+      const controlZoneWidth = controlZoneRight - controlZoneLeft;
+      
+      // Clamp touch position to control zone
+      const touchInZone = Math.max(controlZoneLeft, Math.min(controlZoneRight, touchX));
+      
+      // Map to normalized position (0 to 1)
+      const normalizedPosition = (touchInZone - controlZoneLeft) / controlZoneWidth;
+      
+      // Map to full paddle range
+      const paddleRange = SCALED_CANVAS_WIDTH - paddle.width;
+      const newX = normalizedPosition * paddleRange;
       
       // Update ref immediately for high-priority collision detection
       paddleXRef.current = newX;
