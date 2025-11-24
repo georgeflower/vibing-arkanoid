@@ -1902,7 +1902,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (!result.ball) return;
 
         // Track wall hits for anti-stall detection
-        if (result.wallHitType === 'left' || result.wallHitType === 'right') {
+        if (result.wallHitType === "left" || result.wallHitType === "right") {
           const ball = result.ball;
           if (!ball.horizontalBounceCount) {
             ball.horizontalBounceCount = 1;
@@ -1910,7 +1910,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           } else {
             ball.horizontalBounceCount++;
           }
-        } else if (result.wallHitType === 'top') {
+        } else if (result.wallHitType === "top") {
           // Top wall hit is progress - reset counter
           const ball = result.ball;
           ball.horizontalBounceCount = 0;
@@ -2670,30 +2670,34 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       ballResults.forEach((result) => {
         if (!result.ball) return;
         const ball = result.ball;
-        
+
         // Check if ball is stuck in horizontal bounce pattern (left-right-left-right)
         if (ball.horizontalBounceCount && ball.horizontalBounceCount >= 4) {
           const timeSinceHorizontalBouncing = Date.now() - (ball.lastHorizontalBounceTime || 0);
-          const STALL_THRESHOLD_MS = 5000; // 5 seconds
-          
+          const STALL_THRESHOLD_MS = 8000; // 5 seconds
+
           if (timeSinceHorizontalBouncing > STALL_THRESHOLD_MS && !ball.isStalled) {
             ball.isStalled = true;
             if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
-              console.log(`[Anti-Stall] Ball ${ball.id} stall pattern detected (${ball.horizontalBounceCount} bounces over ${(timeSinceHorizontalBouncing/1000).toFixed(1)}s), activating gravity`);
+              console.log(
+                `[Anti-Stall] Ball ${ball.id} stall pattern detected (${ball.horizontalBounceCount} bounces over ${(timeSinceHorizontalBouncing / 1000).toFixed(1)}s), activating gravity`,
+              );
             }
           }
-          
+
           if (ball.isStalled) {
-            const STALL_GRAVITY = 0.08; // Gentle downward acceleration (px/frame)
+            const STALL_GRAVITY = 0.05; // Gentle downward acceleration (px/frame)
             ball.dy += STALL_GRAVITY;
-            
+
             if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && Math.random() < 0.02) {
-              console.log(`[Anti-Stall] Applying gravity: dy=${ball.dy.toFixed(2)}, time=${(timeSinceHorizontalBouncing/1000).toFixed(1)}s`);
+              console.log(
+                `[Anti-Stall] Applying gravity: dy=${ball.dy.toFixed(2)}, time=${(timeSinceHorizontalBouncing / 1000).toFixed(1)}s`,
+              );
             }
           }
         }
       });
-      
+
       // CRITICAL: Use the ball instances from ballResults to preserve lastHitTime
       const updatedBalls = ballResults
         .map((r) => r.ball)
