@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { GameSettings, Difficulty } from "@/types/game";
 import startScreenImg from "@/assets/start-screen-new.png";
 import startScreenWebp from "@/assets/start-screen-new.webp";
@@ -83,59 +84,63 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
     return (
       <div className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
-        <Card className="w-full max-w-2xl p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
+        <Card className="w-full max-w-2xl max-h-[85vh] flex flex-col p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">
             What's New in v{GAME_VERSION}
           </h2>
 
-          <div className="space-y-3 sm:space-y-4 text-white">
-            <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(330,100%,65%)]/20 p-3 sm:p-4 rounded-lg border-2 border-[hsl(200,70%,50%)]/50">
-              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">
-                🎮 Latest Updates
-              </h3>
-              <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
-                <li>Paddle deflection angle increased to <span className="text-[hsl(200,70%,50%)] font-bold">80°</span> for more extreme ball control</li>
-                <li>Enhanced ball trajectory control from paddle edges for strategic gameplay</li>
-                <li>Paddle collision fully integrated into CCD physics system</li>
-                <li>Ball launch angle now purely determined by paddle impact position</li>
-              </ul>
-            </div>
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-3 sm:space-y-4 text-white">
+              <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(330,100%,65%)]/20 p-3 sm:p-4 rounded-lg border-2 border-[hsl(200,70%,50%)]/50">
+                <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">
+                  🎮 Latest Updates
+                </h3>
+                <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
+                  <li>Paddle deflection angle increased to <span className="text-[hsl(200,70%,50%)] font-bold">80°</span> for more extreme ball control</li>
+                  <li>Enhanced ball trajectory control from paddle edges for strategic gameplay</li>
+                  <li>Paddle collision fully integrated into CCD physics system</li>
+                  <li>Ball launch angle now purely determined by paddle impact position</li>
+                </ul>
+              </div>
 
-            <div className="bg-black/30 p-3 sm:p-4 rounded-lg border border-[hsl(330,100%,65%)]/30">
-              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(330,100%,65%)]">
-                🚀 Recent Performance Improvements
-              </h3>
-              <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
-                <li>Mobile CRT effects disabled for better performance</li>
-                <li>Zone-based touch paddle control for comfortable mobile gameplay</li>
-                <li>Paddle input prioritized for responsive control during FPS drops</li>
-                <li>Automatic bottleneck detection with performance profiling</li>
-              </ul>
+              <div className="bg-black/30 p-3 sm:p-4 rounded-lg border border-[hsl(330,100%,65%)]/30">
+                <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(330,100%,65%)]">
+                  🚀 Recent Performance Improvements
+                </h3>
+                <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
+                  <li>Mobile CRT effects disabled for better performance</li>
+                  <li>Zone-based touch paddle control for comfortable mobile gameplay</li>
+                  <li>Paddle input prioritized for responsive control during FPS drops</li>
+                  <li>Automatic bottleneck detection with performance profiling</li>
+                </ul>
+              </div>
             </div>
+          </ScrollArea>
+
+          <div className="space-y-2 mt-3 sm:mt-4">
+            <Button
+              onClick={() => {
+                soundManager.playMenuClick();
+                setShowChangelog(true);
+                setShowWhatsNew(false);
+              }}
+              onMouseEnter={() => soundManager.playMenuHover()}
+              className="w-full bg-[hsl(330,100%,65%)] hover:bg-[hsl(330,100%,75%)] text-white text-sm sm:text-base py-3 sm:py-4"
+            >
+              View Full Changelog
+            </Button>
+
+            <Button
+              onClick={() => {
+                soundManager.playMenuClick();
+                setShowWhatsNew(false);
+              }}
+              onMouseEnter={() => soundManager.playMenuHover()}
+              className="w-full bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white text-sm sm:text-base py-3 sm:py-4"
+            >
+              Back to Menu
+            </Button>
           </div>
-
-          <Button
-            onClick={() => {
-              soundManager.playMenuClick();
-              setShowChangelog(true);
-              setShowWhatsNew(false);
-            }}
-            onMouseEnter={() => soundManager.playMenuHover()}
-            className="w-full mt-3 sm:mt-4 bg-[hsl(330,100%,65%)] hover:bg-[hsl(330,100%,75%)] text-white text-sm sm:text-base py-3 sm:py-4"
-          >
-            View Full Changelog
-          </Button>
-
-          <Button
-            onClick={() => {
-              soundManager.playMenuClick();
-              setShowWhatsNew(false);
-            }}
-            onMouseEnter={() => soundManager.playMenuHover()}
-            className="w-full mt-2 bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white text-sm sm:text-base py-3 sm:py-4"
-          >
-            Back to Menu
-          </Button>
         </Card>
       </div>
     );
