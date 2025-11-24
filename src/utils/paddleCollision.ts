@@ -74,17 +74,26 @@ export function checkCircleVsRoundedPaddle(
     if (dotProduct < 0) {
       // For top surface hits, use position-based launcher physics
       if (Math.abs(result.normal.y + 1) < 0.1) {
-        // Calculate impact position on paddle
+        // Calculate impact position using CORRECTED position (after penetration resolution)
         const paddleCenterX = paddle.x + paddle.width / 2;
-        const impactOffsetX = ball.x - paddleCenterX;
+        const impactOffsetX = result.newX - paddleCenterX;
         const halfWidth = paddle.width / 2;
         
         // Normalize to [-1, +1] where -1 = far left, 0 = center, +1 = far right
-        const normalizedOffset = Math.max(-1, Math.min(1, impactOffsetX / halfWidth));
+        let normalizedOffset = Math.max(-1, Math.min(1, impactOffsetX / halfWidth));
+        
+        // Pattern-breaking: Add minimum deflection for near-center hits to prevent vertical loops
+        if (Math.abs(normalizedOffset) < 0.1) {
+          // Use incoming horizontal direction to break pattern, or random if no horizontal velocity
+          const patternBreaker = Math.abs(ball.dx) > 0.1 
+            ? Math.sign(ball.dx) * 0.15 
+            : (Math.random() > 0.5 ? 0.15 : -0.15);
+          normalizedOffset = patternBreaker;
+        }
         
         // Map position to launch angle using power curve
-        // Power of 1.5 makes edges more extreme, center more vertical
-        const angleFactor = Math.sign(normalizedOffset) * Math.pow(Math.abs(normalizedOffset), 1.5);
+        // Power of 1.2 makes angle distribution more linear and responsive
+        const angleFactor = Math.sign(normalizedOffset) * Math.pow(Math.abs(normalizedOffset), 1.2);
         
         // Define angle range: ±75° from vertical (in radians)
         const MAX_ANGLE_DEGREES = 75;
@@ -99,6 +108,21 @@ export function checkCircleVsRoundedPaddle(
         // Set velocity from angle and preserved speed (ignore incoming direction)
         result.newVelocityX = Math.cos(finalAngle) * incomingSpeed;
         result.newVelocityY = Math.sin(finalAngle) * incomingSpeed;
+        
+        // Debug logging for angle calculation
+        console.log("[Paddle Launcher Debug]", {
+          originalBallX: ball.x.toFixed(2),
+          correctedBallX: result.newX.toFixed(2),
+          paddleCenterX: paddleCenterX.toFixed(2),
+          impactOffsetX: impactOffsetX.toFixed(2),
+          normalizedOffset: normalizedOffset.toFixed(3),
+          angleFactor: angleFactor.toFixed(3),
+          launchAngleDeg: (launchAngle * 180 / Math.PI).toFixed(1),
+          finalAngleDeg: (finalAngle * 180 / Math.PI).toFixed(1),
+          incomingSpeed: incomingSpeed.toFixed(2),
+          newVelocityX: result.newVelocityX.toFixed(2),
+          newVelocityY: result.newVelocityY.toFixed(2)
+        });
         
       } else {
         // For side/corner hits, use standard reflection

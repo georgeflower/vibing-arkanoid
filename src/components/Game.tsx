@@ -122,6 +122,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const prevPaddleX = useRef(0);
+  // High-priority paddle position ref for immediate input response during low FPS
+  const paddleXRef = useRef(0);
   const [showHighScoreEntry, setShowHighScoreEntry] = useState(false);
   const [showHighScoreDisplay, setShowHighScoreDisplay] = useState(false);
   const [showEndScreen, setShowEndScreen] = useState(false);
@@ -650,13 +652,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   );
   const initGame = useCallback(() => {
     // Initialize paddle
+    const initialPaddleX = SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2;
     setPaddle({
-      x: SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2,
+      x: initialPaddleX,
       y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
       width: SCALED_PADDLE_WIDTH,
       height: SCALED_PADDLE_HEIGHT,
       hasTurrets: false,
     });
+    // Initialize high-priority paddle position ref
+    paddleXRef.current = initialPaddleX;
+    prevPaddleX.current = initialPaddleX;
 
     // Initialize ball with speed multiplier - waiting to launch
     const baseSpeed = 4.5; // 50% faster than previous base speed of 3.45
@@ -834,32 +840,33 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     (e: MouseEvent) => {
       if (!canvasRef.current || !paddle) return;
 
+      let newX: number;
+
       // Use movementX when pointer is locked, otherwise use absolute position
       if (isPointerLocked) {
         const sensitivity = 1.5;
-        const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, paddle.x + e.movementX * sensitivity));
-        setPaddle((prev) =>
-          prev
-            ? {
-                ...prev,
-                x: newX,
-              }
-            : null,
-        );
+        newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, paddle.x + e.movementX * sensitivity));
       } else if (gameState === "playing") {
         const rect = canvasRef.current.getBoundingClientRect();
         const scaleX = SCALED_CANVAS_WIDTH / rect.width;
         const mouseX = (e.clientX - rect.left) * scaleX;
-        const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, mouseX - paddle.width / 2));
-        setPaddle((prev) =>
-          prev
-            ? {
-                ...prev,
-                x: newX,
-              }
-            : null,
-        );
+        newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, mouseX - paddle.width / 2));
+      } else {
+        return;
       }
+
+      // Update ref immediately for high-priority collision detection
+      paddleXRef.current = newX;
+
+      // Update state for rendering (may be delayed during low FPS)
+      setPaddle((prev) =>
+        prev
+          ? {
+              ...prev,
+              x: newX,
+            }
+          : null,
+      );
     },
     [gameState, paddle, isPointerLocked, SCALED_CANVAS_WIDTH],
   );
@@ -1044,6 +1051,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const scaleX = SCALED_CANVAS_WIDTH / rect.width;
       const touchX = (activeTouch.clientX - rect.left) * scaleX;
       const newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, touchX - paddle.width / 2));
+      
+      // Update ref immediately for high-priority collision detection
+      paddleXRef.current = newX;
+      
+      // Update state for rendering (may be delayed during low FPS)
       setPaddle((prev) =>
         prev
           ? {
@@ -1837,19 +1849,26 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const bossFirstTimeMs = bossFirstEnd - bossFirstStart;
 
       // ========== Phase 0.5: Paddle-first collision (before CCD) ==========
-      // Calculate paddle velocity in pixels per frame
+      // Use high-priority paddle position ref for immediate response
+      // Create paddle object with latest position from ref for collision detection
+      const paddleForCollision = paddle ? {
+        ...paddle,
+        x: paddleXRef.current, // Use ref for most recent position
+      } : null;
+
+      // Calculate paddle velocity in pixels per frame using ref position
       const paddleVelocity = {
-        x: paddle ? paddle.x - prevPaddleX.current : 0,
+        x: paddleForCollision ? paddleXRef.current - prevPaddleX.current : 0,
         y: 0,
       };
 
       // Update previous paddle position for next frame
-      if (paddle) {
-        prevPaddleX.current = paddle.x;
+      if (paddleForCollision) {
+        prevPaddleX.current = paddleXRef.current;
       }
 
       prevBalls.forEach((ball) => {
-        if (!paddle) return;
+        if (!paddleForCollision) return;
 
         // Skip paddle resolution if ball hit boss this frame (prevents conflicting corrections)
         if ((ball as any)._hitBossThisFrame) {
@@ -1868,8 +1887,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           speed: Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy),
         };
 
-        // Use geometry-based collision with rounded corners
-        const collision = checkCircleVsRoundedPaddle(ball, paddle, paddleVelocity);
+        // Use geometry-based collision with rounded corners and ref position
+        const collision = checkCircleVsRoundedPaddle(ball, paddleForCollision, paddleVelocity);
 
         if (collision.collided) {
           // Apply position correction
@@ -4334,13 +4353,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setSpeedMultiplier(levelSpeedMultiplier);
 
     // Reset paddle
+    const initialPaddleX = SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2;
     setPaddle({
-      x: SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2,
+      x: initialPaddleX,
       y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
       width: SCALED_PADDLE_WIDTH,
       height: SCALED_PADDLE_HEIGHT,
       hasTurrets: false,
     });
+    // Initialize high-priority paddle position ref
+    paddleXRef.current = initialPaddleX;
+    prevPaddleX.current = initialPaddleX;
 
     // Initialize ball with level speed - waiting to launch
     const baseSpeed = 5.175 * Math.min(levelSpeedMultiplier, 1.75);
