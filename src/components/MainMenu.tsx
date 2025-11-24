@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -41,6 +41,20 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   // Force service worker update check and apply when at main menu
   useServiceWorkerUpdate({ shouldApplyUpdate: true });
+
+  // Hidden developer feature: Press TAB to open level editor
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Tab' && !showInstructions && !showHighScores && !showAbout && !showChangelog && !showWhatsNew && !showPressToStart) {
+        e.preventDefault();
+        soundManager.playMenuClick();
+        navigate("/level-editor");
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigate, showInstructions, showHighScores, showAbout, showChangelog, showWhatsNew, showPressToStart]);
 
   const handleStart = () => {
     const settings: GameSettings = {
@@ -512,18 +526,6 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             className="w-full border-[hsl(200,70%,50%)] text-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,50%)] hover:text-white"
           >
             About
-          </Button>
-
-          <Button
-            onClick={() => {
-              soundManager.playMenuClick();
-              navigate("/level-editor");
-            }}
-            onMouseEnter={() => soundManager.playMenuHover()}
-            variant="outline"
-            className="w-full border-[hsl(330,100%,65%)] text-[hsl(330,100%,65%)] hover:bg-[hsl(330,100%,65%)] hover:text-white"
-          >
-            Level Editor
           </Button>
         </div>
       </Card>
