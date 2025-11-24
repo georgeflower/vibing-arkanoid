@@ -92,15 +92,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const ENABLE_DEBUG_FEATURES = true; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
-  // Enable frame profiler when debug features are enabled
-  useEffect(() => {
-    if (ENABLE_DEBUG_FEATURES && debugSettings.showFrameProfiler) {
-      frameProfiler.enable();
-    } else {
-      frameProfiler.disable();
-    }
-  }, [debugSettings.showFrameProfiler]);
-
   // Detect updates but don't apply during gameplay - defer until back at menu
   useServiceWorkerUpdate({ shouldApplyUpdate: false });
 
@@ -207,6 +198,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (settings.showSubstepDebug) count++;
     if (settings.showCCDPerformance) count++;
     if (settings.showCollisionHistory) count++;
+    if (settings.showFrameProfiler) count++;
     if (settings.enableCollisionLogging) count++;
     if (settings.enablePowerUpLogging) count++;
     if (settings.enablePerformanceLogging) count++;
@@ -2913,9 +2905,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     checkBonusLetterCollision();
 
     // Update bullets
+    frameProfiler.startTiming('bullets');
     updateBullets(bricks);
+    frameProfiler.endTiming('bullets');
 
     // Update enemies
+    frameProfiler.startTiming('enemies');
     setEnemies((prev) =>
       prev.map((enemy) => {
         let newX = enemy.x + enemy.dx;
@@ -2959,9 +2954,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         };
       }),
     );
+    frameProfiler.endTiming('enemies');
 
     // Update explosions and their particles
-    setExplosions((prev) =>
+    frameProfiler.startTiming('particles');
+    if (debugSettings.enableExplosions && debugSettings.enableParticles) {
+      setExplosions((prev) =>
       prev
         .map((exp) => ({
           ...exp,
@@ -2979,9 +2977,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }))
         .filter((exp) => exp.frame < exp.maxFrames),
     );
+    } else {
+      setExplosions([]);
+    }
 
-    // Update game over particles
-    setGameOverParticles((prev) =>
+    // Update game over particles (Phase 4: Particle Limits)
+    if (debugSettings.enableParticles) {
+      setGameOverParticles((prev) =>
       prev
         .map((p) => ({
           ...p,
@@ -3005,6 +3007,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           life: p.life - 1,
         }))
         .filter((p) => p.life > 0),
+    );
+    } else {
+      setGameOverParticles([]);
+      setHighScoreParticles([]);
+    }
+    frameProfiler.endTiming('particles');
+    
+    // Count particles for profiler
+    frameProfiler.incrementCounter('particles', 
+      explosions.reduce((sum, exp) => sum + exp.particles.length, 0) +
+      gameOverParticles.length + 
+      highScoreParticles.length
     );
 
     // Update bombs and rockets (pyramid bullets move in straight lines with angle)

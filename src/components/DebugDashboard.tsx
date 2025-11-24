@@ -115,6 +115,33 @@ export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }:
           </div>
         </section>
 
+        {/* Effect Toggles Section - Phase 5 */}
+        <section className="mb-6">
+          <h3 className="text-lg font-semibold text-foreground mb-3">Effect Toggles</h3>
+          <div className="space-y-2">
+            <DebugToggle
+              label="Screen Shake"
+              checked={settings.enableScreenShake}
+              onChange={() => onToggle("enableScreenShake")}
+            />
+            <DebugToggle
+              label="Particles"
+              checked={settings.enableParticles}
+              onChange={() => onToggle("enableParticles")}
+            />
+            <DebugToggle
+              label="Explosions"
+              checked={settings.enableExplosions}
+              onChange={() => onToggle("enableExplosions")}
+            />
+            <DebugToggle
+              label="CRT Effects"
+              checked={settings.enableCRTEffects}
+              onChange={() => onToggle("enableCRTEffects")}
+            />
+          </div>
+        </section>
+
         {/* Debug Keys Reference */}
         <section className="mb-6">
           <h3 className="text-lg font-semibold text-foreground mb-3">Debug Controls</h3>
