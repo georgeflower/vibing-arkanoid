@@ -26,6 +26,7 @@ import { frameProfiler } from "@/utils/frameProfiler";
 import { eventQueue } from "@/utils/eventQueue";
 import { getParticleLimits, shouldCreateParticle, calculateParticleCount } from "@/utils/particleLimits";
 import { FrameProfilerOverlay } from "./FrameProfilerOverlay";
+import { CCDPerformanceTracker } from "@/utils/rollingStats";
 // ═══════════════════════════════════════════════════════════════
 import { Maximize2, Minimize2, Home } from "lucide-react";
 import { QualityIndicator } from "./QualityIndicator";
@@ -182,6 +183,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ████████╗ DEBUG STATE - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
   const ccdPerformanceRef = useRef<CCDPerformanceData | null>(null);
+  const ccdPerformanceTrackerRef = useRef<CCDPerformanceTracker>(new CCDPerformanceTracker());
   const frameCountRef = useRef(0);
   const [currentFps, setCurrentFps] = useState(60);
   const [showDebugDashboard, setShowDebugDashboard] = useState(false);
@@ -1814,6 +1816,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         delete (ball as any)._hitBossThisFrame;
       });
 
+      // Time the actual boss-first sweep phase
+      const bossFirstStart = performance.now();
+      
       // Run boss-first sweep for main boss
       if (boss) {
         prevBalls.forEach((ball) => {
@@ -1827,6 +1832,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           performBossFirstSweep(ball, resBoss, dtSeconds);
         });
       });
+      
+      const bossFirstEnd = performance.now();
+      const bossFirstTimeMs = bossFirstEnd - bossFirstStart;
 
       // ========== Phase 0.5: Paddle-first collision (before CCD) ==========
       // Calculate paddle velocity in pixels per frame
@@ -1953,15 +1961,32 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Store CCD performance data from first ball (representative of frame performance)
       if (ballResults.length > 0 && ballResults[0].performance) {
-        ccdPerformanceRef.current = {
-          bossFirstSweepMs: ballResults[0].performance.bossFirstSweepMs,
-          ccdCoreMs: ballResults[0].performance.ccdCoreMs,
-          postProcessingMs: ballResults[0].performance.postProcessingMs,
-          totalMs: ballResults[0].performance.totalMs,
+        const perf = ballResults[0].performance;
+        // Convert milliseconds to microseconds and use actual boss-first timing
+        const perfData: CCDPerformanceData = {
+          bossFirstSweepUs: bossFirstTimeMs * 1000, // ms to μs
+          ccdCoreUs: perf.ccdCoreMs * 1000, // ms to μs
+          postProcessingUs: perf.postProcessingMs * 1000, // ms to μs
+          totalUs: perf.totalMs * 1000, // ms to μs
           substepsUsed: ballResults[0].substepsUsed,
           collisionCount: ballResults[0].collisionCount,
           toiIterationsUsed: ballResults[0].toiIterationsUsed,
         };
+        
+        ccdPerformanceRef.current = perfData;
+        
+        // Track rolling statistics
+        if (ENABLE_DEBUG_FEATURES) {
+          ccdPerformanceTrackerRef.current.addFrame({
+            bossFirstSweepUs: perfData.bossFirstSweepUs,
+            ccdCoreUs: perfData.ccdCoreUs,
+            postProcessingUs: perfData.postProcessingUs,
+            totalUs: perfData.totalUs,
+            substeps: perfData.substepsUsed,
+            collisions: perfData.collisionCount,
+            toiIterations: perfData.toiIterationsUsed,
+          });
+        }
       }
 
       // Phase 2: Deduplicate collision events by object with TOI tolerance
@@ -2923,7 +2948,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           bonusLetterCount: bonusLetters.length,
           
           // CCD performance
-          ccdTotalMs: ccdPerformanceRef.current?.totalMs || 0,
+          ccdTotalMs: (ccdPerformanceRef.current?.totalUs || 0) / 1000, // Convert μs to ms
           ccdSubsteps: ccdPerformanceRef.current?.substepsUsed || 0,
           ccdCollisions: ccdPerformanceRef.current?.collisionCount || 0,
           ccdToiIterations: ccdPerformanceRef.current?.toiIterationsUsed || 0,
@@ -4835,7 +4860,28 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                     {/* CCD Performance Profiler */}
                     <CCDPerformanceOverlay
-                      getPerformanceData={() => ccdPerformanceRef.current}
+                      getPerformanceData={() => {
+                        if (!ccdPerformanceRef.current) return null;
+                        const stats = ccdPerformanceTrackerRef.current.getStats();
+                        return {
+                          ...ccdPerformanceRef.current,
+                          rollingAvg: {
+                            bossFirstUs: stats.bossFirst.avg,
+                            ccdCoreUs: stats.ccdCore.avg,
+                            postProcessingUs: stats.postProcessing.avg,
+                            totalUs: stats.total.avg,
+                            substeps: stats.substeps.avg,
+                            collisions: stats.collisions.avg,
+                            toiIterations: stats.toiIterations.avg,
+                          },
+                          peaks: {
+                            bossFirstUs: stats.bossFirst.max,
+                            ccdCoreUs: stats.ccdCore.max,
+                            postProcessingUs: stats.postProcessing.max,
+                            totalUs: stats.total.max,
+                          },
+                        };
+                      }}
                       visible={debugSettings.showCCDPerformance}
                     />
                   </>
