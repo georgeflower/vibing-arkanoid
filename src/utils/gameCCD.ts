@@ -9,7 +9,6 @@ export interface CCDResult {
   maxIterations: number;
   collisionCount: number;
   toiIterationsUsed: number;
-  wallHitType?: 'left' | 'right' | 'top';
   performance?: {
     bossFirstSweepMs: number;
     ccdCoreMs: number;
@@ -152,7 +151,6 @@ export function processBallWithCCD(
       maxIterations: 3,
       collisionCount,
       toiIterationsUsed,
-      wallHitType: result.wallHitType,
       performance: {
         bossFirstSweepMs: bossFirstSweepEnd - bossFirstSweepStart,
         ccdCoreMs: ccdCoreEnd - ccdCoreStart,
@@ -182,7 +180,6 @@ export function processBallWithCCD(
     maxIterations: 3,
     collisionCount,
     toiIterationsUsed,
-    wallHitType: result.wallHitType,
     performance: {
       bossFirstSweepMs: bossFirstSweepEnd - bossFirstSweepStart,
       ccdCoreMs: ccdCoreEnd - ccdCoreStart,
