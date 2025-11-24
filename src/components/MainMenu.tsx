@@ -85,16 +85,16 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
       <div className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <Card className="w-full h-full max-w-2xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">
+          <h2 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-3 text-center text-[hsl(200,70%,50%)]">
             What's New in v{GAME_VERSION}
           </h2>
 
-          <div className="space-y-3 sm:space-y-4 text-white">
-            <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(330,100%,65%)]/20 p-3 sm:p-4 rounded-lg border-2 border-[hsl(200,70%,50%)]/50">
-              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">
+          <div className="space-y-2 sm:space-y-3 text-white">
+            <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(330,100%,65%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(200,70%,50%)]/50">
+              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(200,70%,50%)]">
                 🎮 Latest Updates
               </h3>
-              <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
+              <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-xs">
                 <li>Paddle deflection angle increased to <span className="text-[hsl(200,70%,50%)] font-bold">80°</span> for more extreme ball control</li>
                 <li>Enhanced ball trajectory control from paddle edges for strategic gameplay</li>
                 <li>Paddle collision fully integrated into CCD physics system</li>
@@ -102,11 +102,11 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
               </ul>
             </div>
 
-            <div className="bg-black/30 p-3 sm:p-4 rounded-lg border border-[hsl(330,100%,65%)]/30">
-              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(330,100%,65%)]">
+            <div className="bg-black/30 p-2 sm:p-3 rounded-lg border border-[hsl(330,100%,65%)]/30">
+              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(330,100%,65%)]">
                 🚀 Recent Performance Improvements
               </h3>
-              <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
+              <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-xs">
                 <li>Mobile CRT effects disabled for better performance</li>
                 <li>Zone-based touch paddle control for comfortable mobile gameplay</li>
                 <li>Paddle input prioritized for responsive control during FPS drops</li>
@@ -122,7 +122,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
               setShowWhatsNew(false);
             }}
             onMouseEnter={() => soundManager.playMenuHover()}
-            className="w-full mt-3 sm:mt-4 bg-[hsl(330,100%,65%)] hover:bg-[hsl(330,100%,65%)]/80 text-white text-sm sm:text-base py-3 sm:py-4"
+            className="w-full mt-2 sm:mt-3 bg-[hsl(330,100%,65%)] hover:bg-[hsl(330,100%,65%)]/80 text-white text-xs sm:text-sm py-2 sm:py-3"
           >
             View Full Changelog
           </Button>
@@ -133,7 +133,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
               setShowWhatsNew(false);
             }}
             onMouseEnter={() => soundManager.playMenuHover()}
-            className="w-full mt-2 bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white text-sm sm:text-base py-3 sm:py-4"
+            className="w-full mt-2 bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white text-xs sm:text-sm py-2 sm:py-3"
           >
             Back to Menu
           </Button>
