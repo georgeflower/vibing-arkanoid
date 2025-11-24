@@ -107,20 +107,26 @@ export function processBallWithCCD(
     });
   }
 
-  // Paddle collision is handled BEFORE CCD (paddle-first architecture)
-  // Pass null to CCD to exclude paddle from collision detection
+  // Convert paddle to CCD format
+  const ccdPaddle = {
+    id: 0,
+    x: gameState.paddle.x,
+    y: gameState.paddle.y,
+    width: gameState.paddle.width,
+    height: gameState.paddle.height
+  };
   
   // CCD core timing
   const ccdCoreStart = performance.now();
   
-  // Run CCD
+  // Run CCD with paddle included
   const result = processBallCCD(ccdBall, {
     dt: dtSeconds, // Pass seconds, not milliseconds
     substeps: PHYSICS_SUBSTEPS,
     maxToiIterations: 3,
     epsilon: 0.5, // Small separation after collision
     minBrickDimension: gameState.minBrickDimension,
-    paddle: null, // Excluded from CCD - handled before
+    paddle: ccdPaddle, // Re-included in CCD
     bricks: ccdBricks,
     canvasSize: gameState.canvasSize,
     currentTick: frameTick, // Pass deterministic frame tick
