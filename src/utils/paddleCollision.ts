@@ -80,15 +80,22 @@ export function checkCircleVsRoundedPaddle(
       result.newVelocityX = ball.dx - 2 * dotProduct * result.normal.x;
       result.newVelocityY = ball.dy - 2 * dotProduct * result.normal.y;
 
-      // Apply angular deflection for top surface hits (changes angle, not speed)
+      // Apply dramatic angular deflection for top surface hits using power curve
       if (Math.abs(result.normal.y + 1) < 0.1) {
-        // This is a top surface hit - apply horizontal deflection based on ball center position
+        // This is a top surface hit - apply extreme deflection at edges, minimal at center
         const paddleCenterX = paddle.x + paddle.width / 2;
         const impactOffsetX = ball.x - paddleCenterX;
-        const maxDeflection = 0.5; // Maximum horizontal deflection factor
-        const deflectionFactor = (impactOffsetX / (paddle.width / 2)) * maxDeflection;
+        const halfWidth = paddle.width / 2;
         
-        result.newVelocityX += deflectionFactor * Math.abs(result.newVelocityY);
+        // Normalize offset to range [-1, +1] where -1 = far left, 0 = center, +1 = far right
+        const normalizedOffset = impactOffsetX / halfWidth;
+        
+        // Apply power curve for dramatic edge behavior: Math.pow(abs, 1.5) makes edges more extreme
+        const deflectionCurve = Math.sign(normalizedOffset) * Math.pow(Math.abs(normalizedOffset), 1.5);
+        
+        // Apply deflection with high strength factor (2.5x stronger than before)
+        const MAX_DEFLECTION_STRENGTH = 2.5;
+        result.newVelocityX += deflectionCurve * MAX_DEFLECTION_STRENGTH * Math.abs(result.newVelocityY);
       }
 
       // CRITICAL: Normalize and rescale to preserve incoming speed

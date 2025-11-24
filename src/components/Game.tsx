@@ -1816,6 +1816,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           ball.dx = collision.newVelocityX;
           ball.dy = collision.newVelocityY;
 
+          // Reset anti-stall tracking on paddle hit
+          ball.lastPaddleHitTime = Date.now();
+          ball.horizontalBounceCount = 0;
+          ball.lastHorizontalBounceTime = undefined;
+          ball.isStalled = false;
+
           // Mark ball to skip CCD paddle checks (similar to boss flag)
           (ball as any)._hitPaddleThisFrame = true;
 
@@ -1894,6 +1900,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       ballResults.forEach((result, ballIndex) => {
         if (!result.ball) return;
+
+        // Track wall hits for anti-stall detection
+        if (result.wallHitType === 'left' || result.wallHitType === 'right') {
+          const ball = result.ball;
+          if (!ball.horizontalBounceCount) {
+            ball.horizontalBounceCount = 1;
+            ball.lastHorizontalBounceTime = Date.now();
+          } else {
+            ball.horizontalBounceCount++;
+          }
+        } else if (result.wallHitType === 'top') {
+          // Top wall hit is progress - reset counter
+          const ball = result.ball;
+          ball.horizontalBounceCount = 0;
+          ball.lastHorizontalBounceTime = undefined;
+          ball.isStalled = false;
+        }
 
         // Get ball state before CCD for debug logs
         const ballBefore = ballStatesBeforeCCD?.get(result.ball.id);
@@ -2266,6 +2289,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   powerUpsToCreate.push(brick);
                 }
 
+                // Reset anti-stall tracking when brick is destroyed
+                if (result.ball) {
+                  result.ball.horizontalBounceCount = 0;
+                  result.ball.lastHorizontalBounceTime = undefined;
+                  result.ball.isStalled = false;
+                }
+
                 // Explosive brick handling
                 if (!isDuplicate && brick.type === "explosive") {
                   explosiveBricksToDetonate.push(brick);
@@ -2342,6 +2372,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     scoreIncrease += brick.points;
                     bricksDestroyedCount += 1;
                     comboIncrease += 1;
+                  }
+
+                  // Reset anti-stall tracking when brick is destroyed
+                  if (result.ball) {
+                    result.ball.horizontalBounceCount = 0;
+                    result.ball.lastHorizontalBounceTime = undefined;
+                    result.ball.isStalled = false;
                   }
 
                   // Speed increase (cap at 30%)
@@ -2629,6 +2666,34 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       });
 
       // Phase 4: Update ball positions and check for lost balls
+      // Apply anti-stall gravity system before filtering balls
+      ballResults.forEach((result) => {
+        if (!result.ball) return;
+        const ball = result.ball;
+        
+        // Check if ball is stuck in horizontal bounce pattern (left-right-left-right)
+        if (ball.horizontalBounceCount && ball.horizontalBounceCount >= 4) {
+          const timeSinceHorizontalBouncing = Date.now() - (ball.lastHorizontalBounceTime || 0);
+          const STALL_THRESHOLD_MS = 5000; // 5 seconds
+          
+          if (timeSinceHorizontalBouncing > STALL_THRESHOLD_MS && !ball.isStalled) {
+            ball.isStalled = true;
+            if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+              console.log(`[Anti-Stall] Ball ${ball.id} stall pattern detected (${ball.horizontalBounceCount} bounces over ${(timeSinceHorizontalBouncing/1000).toFixed(1)}s), activating gravity`);
+            }
+          }
+          
+          if (ball.isStalled) {
+            const STALL_GRAVITY = 0.08; // Gentle downward acceleration (px/frame)
+            ball.dy += STALL_GRAVITY;
+            
+            if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && Math.random() < 0.02) {
+              console.log(`[Anti-Stall] Applying gravity: dy=${ball.dy.toFixed(2)}, time=${(timeSinceHorizontalBouncing/1000).toFixed(1)}s`);
+            }
+          }
+        }
+      });
+      
       // CRITICAL: Use the ball instances from ballResults to preserve lastHitTime
       const updatedBalls = ballResults
         .map((r) => r.ball)

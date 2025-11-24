@@ -30,6 +30,10 @@ export interface Ball {
   lastHitTime?: number; // Timestamp of last brick hit
   lastWallHitTime?: number; // Timestamp of last wall hit (for cooldown)
   skipRemainingSubsteps?: boolean; // Exit substep loop after brick hit to prevent tunneling
+  lastPaddleHitTime?: number; // Timestamp of last paddle collision (for anti-stall reset)
+  horizontalBounceCount?: number; // Count of consecutive left/right wall bounces (anti-stall tracking)
+  lastHorizontalBounceTime?: number; // Timestamp when horizontal bouncing pattern started
+  isStalled?: boolean; // Flag indicating stall gravity is active
 }
 
 export interface Paddle {
