@@ -396,7 +396,7 @@ export function processBallCCD(
         const normalizedOffset = Math.max(-1, Math.min(1, (impactX - paddleCenterX) / halfWidth));
         
         // Linear angle calculation (no power curve)
-        const MAX_ANGLE_RADIANS = (75 * Math.PI) / 180; // 75 degrees max
+        const MAX_ANGLE_RADIANS = (80 * Math.PI) / 180; // 80 degrees max
         const launchAngle = normalizedOffset * MAX_ANGLE_RADIANS;
         
         // Final angle: -90° (straight up) + launch offset
