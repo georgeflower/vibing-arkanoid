@@ -22,6 +22,10 @@ import { DebugDashboard } from "./DebugDashboard";
 import { DebugModeIndicator } from "./DebugModeIndicator";
 import { useDebugSettings } from "@/hooks/useDebugSettings";
 import { performanceProfiler } from "@/utils/performanceProfiler";
+import { frameProfiler } from "@/utils/frameProfiler";
+import { eventQueue } from "@/utils/eventQueue";
+import { getParticleLimits, shouldCreateParticle, calculateParticleCount } from "@/utils/particleLimits";
+import { FrameProfilerOverlay } from "./FrameProfilerOverlay";
 // ═══════════════════════════════════════════════════════════════
 import { Maximize2, Minimize2, Home } from "lucide-react";
 import { QualityIndicator } from "./QualityIndicator";
@@ -87,6 +91,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   const ENABLE_DEBUG_FEATURES = true; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
+
+  // Enable frame profiler when debug features are enabled
+  useEffect(() => {
+    if (ENABLE_DEBUG_FEATURES && debugSettings.showFrameProfiler) {
+      frameProfiler.enable();
+    } else {
+      frameProfiler.disable();
+    }
+  }, [debugSettings.showFrameProfiler]);
 
   // Detect updates but don't apply during gameplay - defer until back at menu
   useServiceWorkerUpdate({ shouldApplyUpdate: false });
@@ -2774,6 +2787,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const gameLoop = useCallback(() => {
     if (gameState !== "playing") return;
 
+    // ═══ PHASE 1: Frame Profiler Start ═══
+    frameProfiler.startFrame();
+
     // Throttle to 60 FPS
     const now = performance.now();
     const elapsed = now - lastFrameTimeRef.current;
@@ -2856,8 +2872,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     }
 
+    // ═══ PHASE 1: Time Rendering ═══
+    frameProfiler.startTiming('rendering');
+    
     // Update background animation
     setBackgroundPhase((prev) => (prev + 1) % 360);
+    
+    frameProfiler.endTiming('rendering');
 
     // Update balls rotation only (position is updated in checkCollision with substeps)
     setBalls((prev) =>
@@ -3634,6 +3655,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         );
         setLastPaddleHitTime(Date.now()); // Reset timer
       }
+    }
+
+    // ═══ PHASE 1: End Frame Profiling ═══
+    frameProfiler.endFrame();
+    if (debugSettings.enableFrameProfilerLogging && frameProfiler.isEnabled()) {
+      frameProfiler.logStats();
     }
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
@@ -4524,8 +4551,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             : "h-screen overflow-hidden"
       }`}
     >
-      {/* CRT Overlay - inside fullscreen container (only if quality allows) */}
-      {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
+      {/* CRT Overlay - inside fullscreen container (Phase 5: Toggle by debug setting) */}
+      {qualitySettings.backgroundEffects && debugSettings.enableCRTEffects && <CRTOverlay quality={quality} />}
 
       {/* Mobile fullscreen prompt overlay */}
       {showFullscreenPrompt && isMobileDevice && (
@@ -4697,6 +4724,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                     {/* Substep Debug Overlay */}
                     <SubstepDebugOverlay getDebugInfo={getSubstepDebugInfo} visible={debugSettings.showSubstepDebug} />
+                    
+                    {/* Frame Profiler Overlay - Phase 1 */}
+                    <FrameProfilerOverlay visible={debugSettings.showFrameProfiler} />
 
                     {/* Collision History Viewer */}
                     {debugSettings.showCollisionHistory && (

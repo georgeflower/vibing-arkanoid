@@ -6,6 +6,7 @@ export interface DebugSettings {
   showSubstepDebug: boolean;
   showCCDPerformance: boolean;
   showCollisionHistory: boolean;
+  showFrameProfiler: boolean;
   enableCollisionLogging: boolean;
   enablePowerUpLogging: boolean;
   enablePerformanceLogging: boolean;
@@ -13,6 +14,11 @@ export interface DebugSettings {
   enableDetailedFrameLogging: boolean;
   enablePaddleLogging: boolean;
   enableBossLogging: boolean;
+  enableFrameProfilerLogging: boolean;
+  enableScreenShake: boolean;
+  enableParticles: boolean;
+  enableExplosions: boolean;
+  enableCRTEffects: boolean;
 }
 
 const DEFAULT_SETTINGS: DebugSettings = {
@@ -21,6 +27,7 @@ const DEFAULT_SETTINGS: DebugSettings = {
   showSubstepDebug: false,
   showCCDPerformance: false,
   showCollisionHistory: false,
+  showFrameProfiler: false,
   enableCollisionLogging: false,
   enablePowerUpLogging: false,
   enablePerformanceLogging: true,
@@ -28,6 +35,11 @@ const DEFAULT_SETTINGS: DebugSettings = {
   enableDetailedFrameLogging: false, // Off by default (verbose)
   enablePaddleLogging: false,
   enableBossLogging: false,
+  enableFrameProfilerLogging: false,
+  enableScreenShake: true, // Screen shake enabled by default
+  enableParticles: true, // Particles enabled by default
+  enableExplosions: true, // Explosions enabled by default
+  enableCRTEffects: true, // CRT effects enabled by default
 };
 
 export const useDebugSettings = () => {
