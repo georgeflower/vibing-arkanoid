@@ -59,6 +59,12 @@ export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }:
               checked={settings.showCollisionHistory}
               onChange={() => onToggle("showCollisionHistory")}
             />
+            <DebugToggle
+              label="Frame Profiler"
+              checked={settings.showFrameProfiler}
+              onChange={() => onToggle("showFrameProfiler")}
+              description="Shows per-subsystem timing breakdown"
+            />
           </div>
         </section>
 
