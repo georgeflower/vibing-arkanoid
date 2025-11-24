@@ -18,12 +18,16 @@ export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }:
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-background/95 border-2 border-primary rounded-lg shadow-2xl p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-primary/30">
-          <h2 className="text-2xl font-bold text-primary">Debug Dashboard</h2>
+          <div>
+            <h2 className="text-2xl font-bold text-primary">Debug Dashboard</h2>
+            <p className="text-sm text-yellow-500 mt-1">⏸️ Game paused while dashboard is open</p>
+          </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground"
+            title="Close and resume game"
           >
             <X className="h-5 w-5" />
           </Button>
@@ -145,8 +149,10 @@ export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }:
         {/* Debug Keys Reference */}
         <section className="mb-6">
           <h3 className="text-lg font-semibold text-foreground mb-3">Debug Controls</h3>
+          <p className="text-xs text-muted-foreground mb-3">Press § or ESC to close and resume game</p>
           <div className="bg-muted/50 rounded-lg p-4 font-mono text-sm space-y-1">
-            <KeyReference keyName="§" description="Toggle Debug Dashboard" />
+            <KeyReference keyName="§ / ESC" description="Toggle Debug Dashboard (Auto-pauses)" />
+            <KeyReference keyName="§" description="Toggle Debug Dashboard (Auto-pauses game)" />
             <KeyReference keyName="Q" description="Cycle Quality (High → Medium → Low)" />
             <KeyReference keyName="Shift+Q" description="Toggle Auto Quality Adjust" />
             <KeyReference keyName="C" description="Toggle Collision Debug Logging" />
