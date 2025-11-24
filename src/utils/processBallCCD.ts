@@ -190,7 +190,7 @@ processBallCCD(ball, dt, state, config) -> { ball: Ball | null, events: Collisio
 export function processBallCCD(
   ballIn: Ball,
   cfg: CCDConfig
-): { ball: Ball | null; events: CollisionEvent[]; debug?: any; wallHitType?: 'left' | 'right' | 'top' } {
+): { ball: Ball | null; events: CollisionEvent[]; debug?: any } {
   const {
     dt,
     substeps,
@@ -211,7 +211,6 @@ export function processBallCCD(
   const ball: Ball = { ...ballIn };
   const events: CollisionEvent[] = [];
   const debug: any[] = [];
-  let wallHitType: 'left' | 'right' | 'top' | undefined = undefined;
 
   // velocities are px/sec; per-substep movement fraction
   const subDt = dt / Math.max(1, substeps);
@@ -269,7 +268,6 @@ export function processBallCCD(
             const tAbs = txLeft;
             if (!earliest || tAbs < earliest.t) {
               earliest = { t: tAbs, normal: { x: 1, y: 0 }, objectType: 'wall', objectId: 'left', point: { x: pos0.x + moveDir.x * tAbs, y: pos0.y + moveDir.y * tAbs } };
-              wallHitType = 'left';
             }
           }
           const txRight = ((canvasSize.w - ball.radius) - pos0.x) / moveDir.x;
@@ -277,7 +275,6 @@ export function processBallCCD(
             const tAbs = txRight;
             if (!earliest || tAbs < earliest.t) {
               earliest = { t: tAbs, normal: { x: -1, y: 0 }, objectType: 'wall', objectId: 'right', point: { x: pos0.x + moveDir.x * tAbs, y: pos0.y + moveDir.y * tAbs } };
-              wallHitType = 'right';
             }
           }
         }
@@ -287,7 +284,6 @@ export function processBallCCD(
             const tAbs = tyTop;
             if (!earliest || tAbs < earliest.t) {
               earliest = { t: tAbs, normal: { x: 0, y: 1 }, objectType: 'wall', objectId: 'top', point: { x: pos0.x + moveDir.x * tAbs, y: pos0.y + moveDir.y * tAbs } };
-              wallHitType = 'top';
             }
           }
           // bottom is allowed (ball falling out) — we do not reflect bottom here; caller may treat y>canvas.h as lost ball
@@ -406,5 +402,5 @@ export function processBallCCD(
     // after substep continue to next substep (ball.dx/dy already updated)
   } // end substeps loop
 
-  return { ball, events, debug, wallHitType };
+  return { ball, events, debug };
 }
