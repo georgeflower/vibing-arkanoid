@@ -64,46 +64,46 @@ export function checkCircleVsRoundedPaddle(
     result.newX = ball.x + result.normal.x * correctionDistance;
     result.newY = ball.y + result.normal.y * correctionDistance;
 
-    // Capture incoming ball speed to preserve it after reflection
+    // Capture incoming ball speed to preserve it after launch
     const incomingSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
 
-    // Calculate dot product for reflection (using ball velocity, not relative velocity)
+    // Calculate dot product to check if moving into paddle
     const dotProduct = ball.dx * result.normal.x + ball.dy * result.normal.y;
 
-    // Only reflect if moving into the paddle
+    // Only apply launcher physics if moving into the paddle
     if (dotProduct < 0) {
-      // Basic reflection along collision normal
-      result.newVelocityX = ball.dx - 2 * dotProduct * result.normal.x;
-      result.newVelocityY = ball.dy - 2 * dotProduct * result.normal.y;
-
-      // Apply dramatic angular deflection for top surface hits using power curve
+      // For top surface hits, use position-based launcher physics
       if (Math.abs(result.normal.y + 1) < 0.1) {
-        // This is a top surface hit - apply extreme deflection at edges, minimal at center
+        // Calculate impact position on paddle
         const paddleCenterX = paddle.x + paddle.width / 2;
         const impactOffsetX = ball.x - paddleCenterX;
         const halfWidth = paddle.width / 2;
-
-        // Normalize offset to range [-1, +1] where -1 = far left, 0 = center, +1 = far right
-        const normalizedOffset = impactOffsetX / halfWidth;
-
-        // Apply power curve for dramatic edge behavior: Math.pow(abs, 1.5) makes edges more extreme
-        const deflectionCurve = Math.sign(normalizedOffset) * Math.pow(Math.abs(normalizedOffset), 1.5);
-
-        // Apply deflection with high strength factor (2.5x stronger than before)
-        const MAX_DEFLECTION_STRENGTH = 3.5;
-        result.newVelocityX += deflectionCurve * MAX_DEFLECTION_STRENGTH * Math.abs(result.newVelocityY);
-      }
-
-      // CRITICAL: Normalize and rescale to preserve incoming speed
-      // This ensures speed in = speed out (only direction changes)
-      const currentSpeed = Math.sqrt(
-        result.newVelocityX * result.newVelocityX + result.newVelocityY * result.newVelocityY,
-      );
-
-      if (currentSpeed > 0.001) {
-        const scale = incomingSpeed / currentSpeed;
-        result.newVelocityX *= scale;
-        result.newVelocityY *= scale;
+        
+        // Normalize to [-1, +1] where -1 = far left, 0 = center, +1 = far right
+        const normalizedOffset = Math.max(-1, Math.min(1, impactOffsetX / halfWidth));
+        
+        // Map position to launch angle using power curve
+        // Power of 1.5 makes edges more extreme, center more vertical
+        const angleFactor = Math.sign(normalizedOffset) * Math.pow(Math.abs(normalizedOffset), 1.5);
+        
+        // Define angle range: ±75° from vertical (in radians)
+        const MAX_ANGLE_DEGREES = 75;
+        const MAX_ANGLE_RADIANS = (MAX_ANGLE_DEGREES * Math.PI) / 180;
+        const launchAngle = angleFactor * MAX_ANGLE_RADIANS;
+        
+        // Calculate launch direction (0° = straight up, positive = right, negative = left)
+        // Note: In canvas coordinates, Y increases downward, so up is negative Y
+        const baseAngle = -Math.PI / 2; // -90° = straight up
+        const finalAngle = baseAngle + launchAngle;
+        
+        // Set velocity from angle and preserved speed (ignore incoming direction)
+        result.newVelocityX = Math.cos(finalAngle) * incomingSpeed;
+        result.newVelocityY = Math.sin(finalAngle) * incomingSpeed;
+        
+      } else {
+        // For side/corner hits, use standard reflection
+        result.newVelocityX = ball.dx - 2 * dotProduct * result.normal.x;
+        result.newVelocityY = ball.dy - 2 * dotProduct * result.normal.y;
       }
     }
 
