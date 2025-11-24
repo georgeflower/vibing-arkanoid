@@ -1851,6 +1851,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           return;
         }
 
+        // Capture ball state BEFORE paddle collision check
+        const beforeState = {
+          x: ball.x,
+          y: ball.y,
+          dx: ball.dx,
+          dy: ball.dy,
+          speed: Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy),
+        };
+
         // Use geometry-based collision with rounded corners
         const collision = checkCircleVsRoundedPaddle(ball, paddle, paddleVelocity);
 
@@ -1866,13 +1875,48 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Mark ball to skip CCD paddle checks (similar to boss flag)
           (ball as any)._hitPaddleThisFrame = true;
 
+          // Enhanced paddle collision logging
           if (debugSettings.enablePaddleLogging) {
+            const afterSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+            const impactX = collision.newX - paddle.x - paddle.width / 2;
+            const launchAngle = Math.atan2(ball.dy, ball.dx) * (180 / Math.PI);
+            
             console.log("[PaddleFirst] Geometry collision resolved", {
               penetration: collision.penetration.toFixed(2),
               normalY: collision.normal.y.toFixed(2),
               paddleVx: paddleVelocity.x.toFixed(2),
+              impactOffset: impactX.toFixed(2),
+              launchAngle: launchAngle.toFixed(1) + "°",
+              speedChange: (afterSpeed - beforeState.speed).toFixed(2),
             });
           }
+
+          // Collision debug logging (C key toggle)
+          if (debugSettings.enableCollisionLogging) {
+            const afterSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+            console.log(
+              `[${performance.now().toFixed(2)}ms] [Collision Debug] PADDLE - ` +
+              `Before: dx=${beforeState.dx.toFixed(2)}, dy=${beforeState.dy.toFixed(2)}, speed=${beforeState.speed.toFixed(2)} | ` +
+              `After: dx=${ball.dx.toFixed(2)}, dy=${ball.dy.toFixed(2)}, speed=${afterSpeed.toFixed(2)} | ` +
+              `Penetration: ${collision.penetration.toFixed(2)}, Normal: (${collision.normal.x.toFixed(2)}, ${collision.normal.y.toFixed(2)}) | ` +
+              `Status: collided`
+            );
+          }
+        } else if (debugSettings.enablePaddleLogging) {
+          // Log when paddle check happens but no collision detected
+          const ballBottom = ball.y + BALL_RADIUS;
+          const paddleTop = paddle.y;
+          const distance = ballBottom - paddleTop;
+          
+          console.log("[PaddleFirst] No collision detected", {
+            ballX: ball.x.toFixed(2),
+            ballY: ball.y.toFixed(2),
+            ballBottom: ballBottom.toFixed(2),
+            paddleTop: paddleTop.toFixed(2),
+            distance: distance.toFixed(2),
+            ballDy: ball.dy.toFixed(2),
+            ballDx: ball.dx.toFixed(2),
+          });
         }
       });
 
