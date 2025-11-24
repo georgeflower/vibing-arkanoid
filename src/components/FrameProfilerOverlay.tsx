@@ -82,6 +82,20 @@ export const FrameProfilerOverlay = ({ visible = true }: FrameProfilerOverlayPro
         </div>
       </div>
 
+      {/* Bottleneck Warnings */}
+      {stats.bottlenecks.length > 0 && (
+        <div className="border-t border-red-500/50 pt-2 mt-2">
+          <div className="text-red-400 text-[10px] mb-1 font-bold">⚠️ BOTTLENECKS</div>
+          <div className="space-y-1">
+            {stats.bottlenecks.map((bottleneck) => (
+              <div key={bottleneck} className="text-red-300 text-[10px] capitalize">
+                • {bottleneck}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="text-[9px] text-gray-500 mt-2 pt-2 border-t border-cyan-500/30">
         § to toggle dashboard | Timings: &gt;5ms red, 2-5ms yellow, &lt;2ms green
       </div>
