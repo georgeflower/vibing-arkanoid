@@ -185,6 +185,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const frameCountRef = useRef(0);
   const [currentFps, setCurrentFps] = useState(60);
   const [showDebugDashboard, setShowDebugDashboard] = useState(false);
+  const [debugDashboardPausedGame, setDebugDashboardPausedGame] = useState(false);
   const {
     settings: debugSettings,
     toggleSetting: toggleDebugSetting,
@@ -208,6 +209,36 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     return count;
   };
   // ═══════════════════════════════════════════════════════════════
+
+  // Enable frame profiler when debug settings change
+  useEffect(() => {
+    if (ENABLE_DEBUG_FEATURES && debugSettings.showFrameProfiler) {
+      frameProfiler.enable();
+    } else {
+      frameProfiler.disable();
+    }
+  }, [debugSettings.showFrameProfiler]);
+
+  // Pause/Resume game when debug dashboard opens/closes
+  useEffect(() => {
+    if (!ENABLE_DEBUG_FEATURES) return;
+
+    if (showDebugDashboard) {
+      // Debug dashboard opened - pause game if it's playing
+      if (gameState === "playing") {
+        setGameState("paused");
+        setDebugDashboardPausedGame(true);
+        console.log("[Debug Dashboard] Game paused");
+      }
+    } else if (debugDashboardPausedGame) {
+      // Debug dashboard closed - resume game if it was paused by dashboard
+      if (gameState === "paused") {
+        setGameState("playing");
+        setDebugDashboardPausedGame(false);
+        console.log("[Debug Dashboard] Game resumed");
+      }
+    }
+  }, [showDebugDashboard, gameState, debugDashboardPausedGame]);
 
   // Sound effect cooldowns (ms timestamps)
   const lastWallBounceSfxMs = useRef(0);
@@ -1116,9 +1147,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (!canvas) return;
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        // Exit pointer lock
-        if (document.pointerLockElement) {
+        // Escape key priority order:
+        // 1. Close debug dashboard if open
+        // 2. Exit pointer lock if active
+        // 3. Pause/Resume game
+        if (ENABLE_DEBUG_FEATURES && showDebugDashboard) {
+          setShowDebugDashboard(false);
+        } else if (document.pointerLockElement) {
           document.exitPointerLock();
+        } else if (gameState === "playing") {
+          setGameState("paused");
+          toast.info("Game paused. Press ESC to resume.");
+        } else if (gameState === "paused" && !debugDashboardPausedGame) {
+          setGameState("playing");
+          toast.info("Game resumed!");
         }
       } else if (e.key === "n" || e.key === "N") {
         soundManager.nextTrack();
@@ -1218,7 +1260,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           URL.revokeObjectURL(url);
           toast.success("Collision history exported to JSON");
         } else if (e.key === "§") {
-          // Toggle debug dashboard
+          // Toggle debug dashboard (pauses/resumes game automatically)
           setShowDebugDashboard((prev) => !prev);
         } else if (e.key === "v" || e.key === "V") {
           // Toggle CCD performance profiler
@@ -4969,8 +5011,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         color: "hsl(0, 0%, 60%)",
                       }}
                     >
-                      Move your mouse or touch to control the paddle • Press ESC to release mouse • Click canvas to
-                      recapture
+                      Move your mouse or touch to control the paddle • Press ESC to pause • Press § for debug
+                    </div>
+                  )}
+                  {gameState === "paused" && !showDebugDashboard && (
+                    <div
+                      className="retro-pixel-text text-sm animate-pulse"
+                      style={{
+                        color: "hsl(48, 100%, 60%)",
+                      }}
+                    >
+                      ⏸️ GAME PAUSED • Press ESC or P to resume
                     </div>
                   )}
                 </div>
