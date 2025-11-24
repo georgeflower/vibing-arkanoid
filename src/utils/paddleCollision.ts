@@ -25,7 +25,7 @@ const SAFETY_MARGIN = 2;
 export function checkCircleVsRoundedPaddle(
   ball: Ball,
   paddle: Paddle,
-  paddleVelocity: Vec2 = { x: 0, y: 0 }
+  paddleVelocity: Vec2 = { x: 0, y: 0 },
 ): CollisionResult {
   const result: CollisionResult = {
     collided: false,
@@ -38,11 +38,7 @@ export function checkCircleVsRoundedPaddle(
   };
 
   // Find closest point on the rounded rectangle to the ball center
-  const closestPoint = getClosestPointOnRoundedRect(
-    { x: ball.x, y: ball.y },
-    paddle,
-    CORNER_RADIUS
-  );
+  const closestPoint = getClosestPointOnRoundedRect({ x: ball.x, y: ball.y }, paddle, CORNER_RADIUS);
 
   // Calculate distance from ball center to closest point
   const dx = ball.x - closestPoint.x;
@@ -86,23 +82,22 @@ export function checkCircleVsRoundedPaddle(
         const paddleCenterX = paddle.x + paddle.width / 2;
         const impactOffsetX = ball.x - paddleCenterX;
         const halfWidth = paddle.width / 2;
-        
+
         // Normalize offset to range [-1, +1] where -1 = far left, 0 = center, +1 = far right
         const normalizedOffset = impactOffsetX / halfWidth;
-        
+
         // Apply power curve for dramatic edge behavior: Math.pow(abs, 1.5) makes edges more extreme
         const deflectionCurve = Math.sign(normalizedOffset) * Math.pow(Math.abs(normalizedOffset), 1.5);
-        
+
         // Apply deflection with high strength factor (2.5x stronger than before)
-        const MAX_DEFLECTION_STRENGTH = 2.5;
+        const MAX_DEFLECTION_STRENGTH = 3.5;
         result.newVelocityX += deflectionCurve * MAX_DEFLECTION_STRENGTH * Math.abs(result.newVelocityY);
       }
 
       // CRITICAL: Normalize and rescale to preserve incoming speed
       // This ensures speed in = speed out (only direction changes)
       const currentSpeed = Math.sqrt(
-        result.newVelocityX * result.newVelocityX + 
-        result.newVelocityY * result.newVelocityY
+        result.newVelocityX * result.newVelocityX + result.newVelocityY * result.newVelocityY,
       );
 
       if (currentSpeed > 0.001) {
@@ -145,7 +140,7 @@ export function checkCircleVsRoundedPaddle(
 function getClosestPointOnRoundedRect(
   point: Vec2,
   rect: { x: number; y: number; width: number; height: number },
-  cornerRadius: number
+  cornerRadius: number,
 ): Vec2 {
   // Define the inner rectangle (rect minus corner radius on all sides)
   const innerLeft = rect.x + cornerRadius;
