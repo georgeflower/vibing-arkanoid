@@ -1,6 +1,90 @@
-export const GAME_VERSION = "0.7.3";
+export const GAME_VERSION = "0.8.0";
 
 export const CHANGELOG = [
+  {
+    version: "0.8.0",
+    changes: [
+      "Paddle deflection angle increased to 80° maximum for more extreme ball control",
+      "Improved ball trajectory control from paddle edges for strategic gameplay",
+    ],
+  },
+  {
+    version: "0.7.12",
+    changes: [
+      "Paddle collision fully integrated into CCD system with linear position-to-angle mapping",
+      "Ball launch angle now purely determined by paddle impact position (-80° to +80°)",
+      "Removed separate Phase 0.5 paddle-first collision system for cleaner architecture",
+      "Ball speed always preserved on paddle hits for consistent gameplay",
+    ],
+  },
+  {
+    version: "0.7.11",
+    changes: [
+      "CRT scanline effects completely disabled on mobile devices for better performance",
+      "Desktop CRT effects reduced in intensity: scanlines 0.08 opacity (was 0.15), vignette 0.15 intensity (was 0.3)",
+      "Brighter, less intrusive retro aesthetic on desktop platforms",
+    ],
+  },
+  {
+    version: "0.7.10",
+    changes: [
+      "Mobile touch paddle control now uses zone-based mapping (15% to 85% of screen width)",
+      "Touch zones smoothly map to full paddle range for comfortable mobile gameplay",
+      "Players can reach paddle extremes without dragging finger all the way across screen",
+    ],
+  },
+  {
+    version: "0.7.9",
+    changes: [
+      "Paddle input prioritized over other game systems for responsive control",
+      "Paddle position updates at monitor refresh rate regardless of game simulation FPS",
+      "Improved paddle responsiveness when total game FPS drops below 30-50",
+    ],
+  },
+  {
+    version: "0.7.8",
+    changes: [
+      "CCD profiler displays microsecond (μs) precision for sub-millisecond operations",
+      "Rolling averages tracked over 60 frames (average, min, max) to reveal performance trends",
+      "Frame budget indicator shows timing relative to 16.6ms budget (e.g., '1.2μs of 16.6ms')",
+      "Cumulative CCD time displayed across all balls per frame for total impact analysis",
+    ],
+  },
+  {
+    version: "0.7.7",
+    changes: [
+      "Automatic bottleneck detection with threshold warnings for subsystems (physics, CCD, rendering, particles, audio)",
+      "Detailed diagnostic logs triggered when subsystems exceed timing thresholds",
+      "Performance logging tracks FPS samples with timestamps and quality changes",
+      "Format: [Performance] Quality: HIGH → MEDIUM | Avg FPS: 52.3 | Time: 12.5s",
+    ],
+  },
+  {
+    version: "0.7.6",
+    changes: [
+      "6-phase performance optimization system: frame profiler, event queue, object pooling, particle limits, effect toggles, batch rendering",
+      "Per-subsystem timing breakdown (physics, CCD, rendering, particles, audio, screen shake, effects)",
+      "Frame profiler overlay displays millisecond timing for each subsystem per frame",
+      "Event queue with time/count budgeting to prevent frame-time spikes",
+      "Goal: stable 55-60 FPS during heavy scenes with bullets, enemies, and explosions",
+    ],
+  },
+  {
+    version: "0.7.5",
+    changes: [
+      "Quality indicator (FPS counter) always visible in production, not gated by debug mode",
+      "Players can monitor current performance metrics during published gameplay",
+      "Quality indicator positioned in bottom-left corner for easy visibility",
+    ],
+  },
+  {
+    version: "0.7.4",
+    changes: [
+      "Score and level HUD elements repositioned further right to prevent overlaying GOD LEVEL indicator",
+      "Debug dashboard component added, toggled by § key for centralized debug control",
+      "Visual reference panel with all debug key instructions and functions",
+    ],
+  },
   {
     version: "0.7.3",
     changes: [
