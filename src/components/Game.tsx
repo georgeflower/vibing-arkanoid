@@ -5036,7 +5036,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         color: "hsl(0, 0%, 60%)",
                       }}
                     >
-                      Move your mouse or touch to control the paddle • Press ESC to pause • Press § for debug
+                      Move your mouse or touch to control the paddle • Press ESC to pause • Click Canvas to Capture
+                      Mouse
                     </div>
                   )}
                   {gameState === "paused" && !showDebugDashboard && (
