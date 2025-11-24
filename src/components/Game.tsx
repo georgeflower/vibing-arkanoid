@@ -17,7 +17,6 @@ import { GameLoopDebugOverlay } from "./GameLoopDebugOverlay";
 import { SubstepDebugOverlay } from "./SubstepDebugOverlay";
 import { CollisionHistoryViewer } from "./CollisionHistoryViewer";
 import { CCDPerformanceOverlay, CCDPerformanceData } from "./CCDPerformanceOverlay";
-import { QualityIndicator } from "./QualityIndicator";
 import { collisionHistory } from "@/utils/collisionHistory";
 import { DebugDashboard } from "./DebugDashboard";
 import { DebugModeIndicator } from "./DebugModeIndicator";
@@ -25,6 +24,7 @@ import { useDebugSettings } from "@/hooks/useDebugSettings";
 import { performanceProfiler } from "@/utils/performanceProfiler";
 // ═══════════════════════════════════════════════════════════════
 import { Maximize2, Minimize2, Home } from "lucide-react";
+import { QualityIndicator } from "./QualityIndicator";
 import type {
   Brick,
   Ball,
@@ -194,7 +194,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (settings.showSubstepDebug) count++;
     if (settings.showCCDPerformance) count++;
     if (settings.showCollisionHistory) count++;
-    if (settings.showQualityIndicator) count++;
     if (settings.enableCollisionLogging) count++;
     if (settings.enablePowerUpLogging) count++;
     if (settings.enablePerformanceLogging) count++;
@@ -4693,10 +4692,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       onReset={resetDebugSettings}
                     />
 
-                    {/* Quality Indicator */}
-                    {debugSettings.showQualityIndicator && (
-                      <QualityIndicator quality={quality} autoAdjustEnabled={autoAdjustEnabled} fps={currentFps} />
-                    )}
+                    {/* Quality Indicator - Always visible */}
+                    <QualityIndicator quality={quality} autoAdjustEnabled={autoAdjustEnabled} fps={currentFps} />
 
                     {/* Substep Debug Overlay */}
                     <SubstepDebugOverlay getDebugInfo={getSubstepDebugInfo} visible={debugSettings.showSubstepDebug} />

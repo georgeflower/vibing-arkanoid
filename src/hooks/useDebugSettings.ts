@@ -6,7 +6,6 @@ export interface DebugSettings {
   showSubstepDebug: boolean;
   showCCDPerformance: boolean;
   showCollisionHistory: boolean;
-  showQualityIndicator: boolean;
   enableCollisionLogging: boolean;
   enablePowerUpLogging: boolean;
   enablePerformanceLogging: boolean;
@@ -22,7 +21,6 @@ const DEFAULT_SETTINGS: DebugSettings = {
   showSubstepDebug: false,
   showCCDPerformance: false,
   showCollisionHistory: false,
-  showQualityIndicator: true,
   enableCollisionLogging: false,
   enablePowerUpLogging: false,
   enablePerformanceLogging: true,
