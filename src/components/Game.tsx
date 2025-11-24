@@ -80,7 +80,6 @@ import { createBoss, createResurrectedPyramid } from "@/utils/bossUtils";
 import { performBossAttack } from "@/utils/bossAttacks";
 import { BOSS_LEVELS, BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
 import { processBallWithCCD } from "@/utils/gameCCD";
-import { checkCircleVsRoundedPaddle } from "@/utils/paddleCollision";
 import { assignPowerUpsToBricks } from "@/utils/powerUpAssignment";
 interface GameProps {
   settings: GameSettings;
@@ -121,7 +120,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [balls, setBalls] = useState<Ball[]>([]);
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
-  const prevPaddleX = useRef(0);
   // High-priority paddle position ref for immediate input response during low FPS
   const paddleXRef = useRef(0);
   const [showHighScoreEntry, setShowHighScoreEntry] = useState(false);
@@ -662,7 +660,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     });
     // Initialize high-priority paddle position ref
     paddleXRef.current = initialPaddleX;
-    prevPaddleX.current = initialPaddleX;
 
     // Initialize ball with speed multiplier - waiting to launch
     const baseSpeed = 4.5; // 50% faster than previous base speed of 3.45
@@ -1862,106 +1859,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const bossFirstEnd = performance.now();
       const bossFirstTimeMs = bossFirstEnd - bossFirstStart;
 
-      // ========== Phase 0.5: Paddle-first collision (before CCD) ==========
-      // Use high-priority paddle position ref for immediate response
-      // Create paddle object with latest position from ref for collision detection
-      const paddleForCollision = paddle ? {
-        ...paddle,
-        x: paddleXRef.current, // Use ref for most recent position
-      } : null;
-
-      // Calculate paddle velocity in pixels per frame using ref position
-      const paddleVelocity = {
-        x: paddleForCollision ? paddleXRef.current - prevPaddleX.current : 0,
-        y: 0,
-      };
-
-      // Update previous paddle position for next frame
-      if (paddleForCollision) {
-        prevPaddleX.current = paddleXRef.current;
-      }
-
-      prevBalls.forEach((ball) => {
-        if (!paddleForCollision) return;
-
-        // Skip paddle resolution if ball hit boss this frame (prevents conflicting corrections)
-        if ((ball as any)._hitBossThisFrame) {
-          if (debugSettings.enablePaddleLogging) {
-            console.log("[PaddleFirst] Skipping paddle - ball hit boss this frame");
-          }
-          return;
-        }
-
-        // Capture ball state BEFORE paddle collision check
-        const beforeState = {
-          x: ball.x,
-          y: ball.y,
-          dx: ball.dx,
-          dy: ball.dy,
-          speed: Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy),
-        };
-
-        // Use geometry-based collision with rounded corners and ref position
-        const collision = checkCircleVsRoundedPaddle(ball, paddleForCollision, paddleVelocity);
-
-        if (collision.collided) {
-          // Apply position correction
-          ball.x = collision.newX;
-          ball.y = collision.newY;
-
-          // Apply velocity correction
-          ball.dx = collision.newVelocityX;
-          ball.dy = collision.newVelocityY;
-
-          // Mark ball to skip CCD paddle checks (similar to boss flag)
-          (ball as any)._hitPaddleThisFrame = true;
-
-          // Enhanced paddle collision logging
-          if (debugSettings.enablePaddleLogging) {
-            const afterSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-            const impactX = collision.newX - paddle.x - paddle.width / 2;
-            const launchAngle = Math.atan2(ball.dy, ball.dx) * (180 / Math.PI);
-            
-            console.log("[PaddleFirst] Geometry collision resolved", {
-              penetration: collision.penetration.toFixed(2),
-              normalY: collision.normal.y.toFixed(2),
-              paddleVx: paddleVelocity.x.toFixed(2),
-              impactOffset: impactX.toFixed(2),
-              launchAngle: launchAngle.toFixed(1) + "°",
-              speedChange: (afterSpeed - beforeState.speed).toFixed(2),
-            });
-          }
-
-          // Collision debug logging (C key toggle)
-          if (debugSettings.enableCollisionLogging) {
-            const afterSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-            console.log(
-              `[${performance.now().toFixed(2)}ms] [Collision Debug] PADDLE - ` +
-              `Before: dx=${beforeState.dx.toFixed(2)}, dy=${beforeState.dy.toFixed(2)}, speed=${beforeState.speed.toFixed(2)} | ` +
-              `After: dx=${ball.dx.toFixed(2)}, dy=${ball.dy.toFixed(2)}, speed=${afterSpeed.toFixed(2)} | ` +
-              `Penetration: ${collision.penetration.toFixed(2)}, Normal: (${collision.normal.x.toFixed(2)}, ${collision.normal.y.toFixed(2)}) | ` +
-              `Status: collided`
-            );
-          }
-        } else if (debugSettings.enablePaddleLogging) {
-          // Log when paddle check happens but no collision detected
-          const ballBottom = ball.y + BALL_RADIUS;
-          const paddleTop = paddle.y;
-          const distance = ballBottom - paddleTop;
-          
-          console.log("[PaddleFirst] No collision detected", {
-            ballX: ball.x.toFixed(2),
-            ballY: ball.y.toFixed(2),
-            ballBottom: ballBottom.toFixed(2),
-            paddleTop: paddleTop.toFixed(2),
-            distance: distance.toFixed(2),
-            ballDy: ball.dy.toFixed(2),
-            ballDx: ball.dx.toFixed(2),
-          });
-        }
-      });
-
-      // ========== Phase 1: CCD for Bricks/Enemies/Walls (Paddle now excluded) ==========
+      // ========== Phase 1: CCD for Bricks/Enemies/Walls/Paddle ==========
       // Capture ball states BEFORE CCD for accurate debug logs
       const ballStatesBeforeCCD = debugSettings.enableCollisionLogging
         ? new Map(
@@ -4377,7 +4275,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     });
     // Initialize high-priority paddle position ref
     paddleXRef.current = initialPaddleX;
-    prevPaddleX.current = initialPaddleX;
 
     // Initialize ball with level speed - waiting to launch
     const baseSpeed = 5.175 * Math.min(levelSpeedMultiplier, 1.75);

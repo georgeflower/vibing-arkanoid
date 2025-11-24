@@ -290,8 +290,30 @@ export function processBallCCD(
         }
       }
 
-      // 2) Paddle (SKIP - handled before CCD in paddle-first architecture)
-      // Paddle collision is now handled outside CCD for precise geometry-based collision
+      // 2) Paddle collision
+      if (paddle) {
+        const exp = expandAABB({ 
+          x: paddle.x, 
+          y: paddle.y, 
+          width: paddle.width, 
+          height: paddle.height, 
+          visible: true, 
+          id: paddle.id ?? 0 
+        }, ball.radius);
+        const rayHit = rayAABB(pos0, pos1, exp);
+        if (rayHit) {
+          const hitPoint = vAdd(pos0, vScale(vSub(pos1, pos0), rayHit.tEntry));
+          if (!earliest || rayHit.tEntry < earliest.t) {
+            earliest = { 
+              t: rayHit.tEntry, 
+              normal: rayHit.normal, 
+              objectType: 'paddle', 
+              objectId: paddle.id ?? 0, 
+              point: hitPoint 
+            };
+          }
+        }
+      }
 
       // 3) Bricks (use candidates)
       for (const b of candidates) {
@@ -357,11 +379,34 @@ export function processBallCCD(
       
       const shouldReflect = 
         earliest.objectType === 'wall' || 
-        earliest.objectType === 'paddle' || 
         earliest.objectType === 'corner' ||
         (earliest.objectType === 'brick' && (!ball.isFireball || isIndestructibleBrick));
 
-      if (shouldReflect) {
+      // Special handling for paddle: linear position-to-angle mapping
+      if (earliest.objectType === 'paddle' && paddle) {
+        // Calculate incoming speed (to preserve it)
+        const incomingSpeed = Math.hypot(ball.dx, ball.dy);
+        
+        // Calculate impact position relative to paddle center
+        const paddleCenterX = paddle.x + paddle.width / 2;
+        const impactX = earliest.point.x; // Where the ball hit
+        const halfWidth = paddle.width / 2;
+        
+        // LINEAR mapping: -1 (left edge) to +1 (right edge)
+        const normalizedOffset = Math.max(-1, Math.min(1, (impactX - paddleCenterX) / halfWidth));
+        
+        // Linear angle calculation (no power curve)
+        const MAX_ANGLE_RADIANS = (75 * Math.PI) / 180; // 75 degrees max
+        const launchAngle = normalizedOffset * MAX_ANGLE_RADIANS;
+        
+        // Final angle: -90° (straight up) + launch offset
+        const finalAngle = -Math.PI / 2 + launchAngle;
+        
+        // Set velocity from angle, PRESERVING incoming speed
+        ball.dx = Math.cos(finalAngle) * incomingSpeed;
+        ball.dy = Math.sin(finalAngle) * incomingSpeed;
+      } else if (shouldReflect) {
+        // Standard reflection for walls, bricks, corners
         const vel = { x: ball.dx, y: ball.dy };
         const dot = vel.x * n.x + vel.y * n.y;
         
