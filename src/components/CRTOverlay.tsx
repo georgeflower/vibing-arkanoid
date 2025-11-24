@@ -1,10 +1,18 @@
 import type { QualityLevel } from "@/hooks/useAdaptiveQuality";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface CRTOverlayProps {
   quality: QualityLevel;
 }
 
 const CRTOverlay = ({ quality }: CRTOverlayProps) => {
+  const isMobile = useIsMobile();
+  
+  // Always disable CRT on mobile devices
+  if (isMobile) {
+    return null;
+  }
+  
   const qualityClass = quality === 'high' ? 'crt-high' : quality === 'medium' ? 'crt-medium' : '';
   
   return (
