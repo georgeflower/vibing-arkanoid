@@ -28,6 +28,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [showAbout, setShowAbout] = useState(false);
   const [showPressToStart, setShowPressToStart] = useState(true);
   const [showChangelog, setShowChangelog] = useState(false);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
   
   // Use adaptive quality hook for CRT effects
   const { quality, qualitySettings } = useAdaptiveQuality({
@@ -64,6 +65,68 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
     return <Changelog onClose={() => setShowChangelog(false)} quality={quality} qualitySettings={qualitySettings} />;
   }
 
+  if (showWhatsNew) {
+    return (
+      <div className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+        {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
+        <Card className="w-full max-w-2xl p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">
+            What's New in v{GAME_VERSION}
+          </h2>
+
+          <div className="space-y-3 sm:space-y-4 text-white">
+            <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(330,100%,65%)]/20 p-3 sm:p-4 rounded-lg border-2 border-[hsl(200,70%,50%)]/50">
+              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">
+                🎮 Latest Updates
+              </h3>
+              <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
+                <li>Paddle deflection angle increased to <span className="text-[hsl(200,70%,50%)] font-bold">80°</span> for more extreme ball control</li>
+                <li>Enhanced ball trajectory control from paddle edges for strategic gameplay</li>
+                <li>Paddle collision fully integrated into CCD physics system</li>
+                <li>Ball launch angle now purely determined by paddle impact position</li>
+              </ul>
+            </div>
+
+            <div className="bg-black/30 p-3 sm:p-4 rounded-lg border border-[hsl(330,100%,65%)]/30">
+              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(330,100%,65%)]">
+                🚀 Recent Performance Improvements
+              </h3>
+              <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
+                <li>Mobile CRT effects disabled for better performance</li>
+                <li>Zone-based touch paddle control for comfortable mobile gameplay</li>
+                <li>Paddle input prioritized for responsive control during FPS drops</li>
+                <li>Automatic bottleneck detection with performance profiling</li>
+              </ul>
+            </div>
+          </div>
+
+          <Button
+            onClick={() => {
+              soundManager.playMenuClick();
+              setShowChangelog(true);
+              setShowWhatsNew(false);
+            }}
+            onMouseEnter={() => soundManager.playMenuHover()}
+            className="w-full mt-3 sm:mt-4 bg-[hsl(330,100%,65%)] hover:bg-[hsl(330,100%,75%)] text-white text-sm sm:text-base py-3 sm:py-4"
+          >
+            View Full Changelog
+          </Button>
+
+          <Button
+            onClick={() => {
+              soundManager.playMenuClick();
+              setShowWhatsNew(false);
+            }}
+            onMouseEnter={() => soundManager.playMenuHover()}
+            className="w-full mt-2 bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white text-sm sm:text-base py-3 sm:py-4"
+          >
+            Back to Menu
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   if (showAbout) {
     return (
       <div className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
@@ -77,13 +140,36 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             <p className="text-xs sm:text-sm md:text-base leading-relaxed">
               Welcome to <span className="text-[hsl(200,70%,50%)] font-bold">Vibing Arkanoid</span> - the most
               electrifying brick-breaking experience ever created! This isn't just another Breakout clone - it's a
-              pulsating, retro-drenched journey through 50 levels of pure arcade bliss.
+              pulsating, retro-drenched journey through <span className="text-[hsl(200,70%,50%)] font-bold">20 action-packed levels</span> of pure arcade bliss.
             </p>
 
+            <div className="bg-gradient-to-r from-[hsl(30,100%,60%)]/20 to-[hsl(0,85%,55%)]/20 p-3 sm:p-4 rounded-lg border-2 border-[hsl(30,100%,60%)]/50">
+              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(30,100%,60%)]">
+                ⚔️ Epic Boss Battles
+              </h3>
+              <p className="text-xs sm:text-sm leading-relaxed">
+                Face off against massive bosses on <span className="text-[hsl(200,70%,50%)] font-bold">levels 5, 10, and 15</span>! 
+                Each boss features unique attack patterns including shots, lasers, spiral attacks, and cross patterns. 
+                The Pyramid Boss even <span className="text-[hsl(330,100%,65%)] font-bold">resurrects into 3 smaller bosses</span> for the ultimate challenge!
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(330,100%,65%)]/20 p-3 sm:p-4 rounded-lg border-2 border-[hsl(200,70%,50%)]/50">
+              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">
+                🌐 Global High Scores
+              </h3>
+              <p className="text-xs sm:text-sm leading-relaxed">
+                Compete with players worldwide! Cloud-based leaderboards track <span className="text-[hsl(330,100%,65%)] font-bold">all-time, weekly, and daily rankings</span>. 
+                Can you reach the top 20 and prove you're the ultimate brick-breaking champion?
+              </p>
+            </div>
+
             <p className="text-xs sm:text-sm md:text-base leading-relaxed">
-              Featuring an authentic retro aesthetic with modern gameplay mechanics, power-ups that actually matter,
-              enemies that fight back, and a soundtrack that'll make your speakers weep with joy. Collect the legendary{" "}
-              <span className="text-[hsl(330,100%,65%)] font-bold">Q-U-M-R-A-N</span> bonus letters for massive rewards!
+              Featuring an authentic retro aesthetic with <span className="text-[hsl(200,70%,50%)] font-bold">CRT scanline effects</span>, 
+              advanced <span className="text-[hsl(330,100%,65%)] font-bold">CCD physics engine</span> for precise collisions, 
+              special brick types (metal, cracked, explosive), 8 powerful power-ups, enemies that fight back, 
+              and a soundtrack that'll make your speakers weep with joy. Collect the legendary{" "}
+              <span className="text-[hsl(330,100%,65%)] font-bold">Q-U-M-R-A-N</span> bonus letters for 5 extra lives!
             </p>
 
             <div className="bg-black/30 p-3 sm:p-4 md:p-5 rounded-lg border border-[hsl(200,70%,50%)]/30">
@@ -399,6 +485,21 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             className="w-full border-[hsl(200,70%,50%)] text-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,50%)] hover:text-white"
           >
             High Scores
+          </Button>
+
+          <Button
+            onClick={() => {
+              soundManager.playMenuClick();
+              setShowWhatsNew(true);
+            }}
+            onMouseEnter={() => soundManager.playMenuHover()}
+            variant="outline"
+            className="w-full relative border-[hsl(330,100%,65%)] text-[hsl(330,100%,65%)] hover:bg-[hsl(330,100%,65%)] hover:text-white"
+          >
+            <span className="absolute -top-2 -right-2 bg-[hsl(0,85%,55%)] text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
+              NEW
+            </span>
+            What's New
           </Button>
 
           <Button
