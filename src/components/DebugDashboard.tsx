@@ -59,11 +59,6 @@ export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }:
               checked={settings.showCollisionHistory}
               onChange={() => onToggle("showCollisionHistory")}
             />
-            <DebugToggle
-              label="Quality Indicator"
-              checked={settings.showQualityIndicator}
-              onChange={() => onToggle("showQualityIndicator")}
-            />
           </div>
         </section>
 
