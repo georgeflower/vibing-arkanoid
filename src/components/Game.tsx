@@ -89,7 +89,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -1047,25 +1047,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const rect = canvasRef.current.getBoundingClientRect();
       const scaleX = SCALED_CANVAS_WIDTH / rect.width;
       const touchX = (activeTouch.clientX - rect.left) * scaleX;
-      
+
       // Implement scaled touch control zone (middle 70% controls full paddle range)
       const controlZoneLeft = SCALED_CANVAS_WIDTH * 0.15;
       const controlZoneRight = SCALED_CANVAS_WIDTH * 0.85;
       const controlZoneWidth = controlZoneRight - controlZoneLeft;
-      
+
       // Clamp touch position to control zone
       const touchInZone = Math.max(controlZoneLeft, Math.min(controlZoneRight, touchX));
-      
+
       // Map to normalized position (0 to 1)
       const normalizedPosition = (touchInZone - controlZoneLeft) / controlZoneWidth;
-      
+
       // Map to full paddle range
       const paddleRange = SCALED_CANVAS_WIDTH - paddle.width;
       const newX = normalizedPosition * paddleRange;
-      
+
       // Update ref immediately for high-priority collision detection
       paddleXRef.current = newX;
-      
+
       // Update state for rendering (may be delayed during low FPS)
       setPaddle((prev) =>
         prev
@@ -1841,7 +1841,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Time the actual boss-first sweep phase
       const bossFirstStart = performance.now();
-      
+
       // Run boss-first sweep for main boss
       if (boss) {
         prevBalls.forEach((ball) => {
@@ -1855,7 +1855,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           performBossFirstSweep(ball, resBoss, dtSeconds);
         });
       });
-      
+
       const bossFirstEnd = performance.now();
       const bossFirstTimeMs = bossFirstEnd - bossFirstStart;
 
@@ -1903,9 +1903,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           collisionCount: ballResults[0].collisionCount,
           toiIterationsUsed: ballResults[0].toiIterationsUsed,
         };
-        
+
         ccdPerformanceRef.current = perfData;
-        
+
         // Track rolling statistics
         if (ENABLE_DEBUG_FEATURES) {
           ccdPerformanceTrackerRef.current.addFrame({
@@ -2848,24 +2848,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Update adaptive quality system and display
       updateFps(fps);
       setCurrentFps(fps);
-      
+
       // ========== Performance Profiling (Debug) ==========
       if (ENABLE_DEBUG_FEATURES && debugSettings.enableDetailedFrameLogging) {
         // Count total particles
-        const totalParticles = 
+        const totalParticles =
           explosions.reduce((sum, exp) => sum + exp.particles.length, 0) +
           gameOverParticles.length +
           highScoreParticles.length;
-        
+
         // Record frame metrics
         performanceProfiler.recordFrame({
           timestamp: performance.now(),
           fps: fps,
           frameNumber: frameCountRef.current,
-          
+
           // Object counts
           ballCount: balls.length,
-          visibleBrickCount: bricks.filter(b => b.visible).length,
+          visibleBrickCount: bricks.filter((b) => b.visible).length,
           totalBrickCount: bricks.length,
           enemyCount: enemies.length,
           powerUpCount: powerUps.length,
@@ -2877,20 +2877,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           bombCount: bombs.length,
           shieldImpactCount: shieldImpacts.length,
           bonusLetterCount: bonusLetters.length,
-          
+
           // CCD performance
           ccdTotalMs: (ccdPerformanceRef.current?.totalUs || 0) / 1000, // Convert μs to ms
           ccdSubsteps: ccdPerformanceRef.current?.substepsUsed || 0,
           ccdCollisions: ccdPerformanceRef.current?.collisionCount || 0,
           ccdToiIterations: ccdPerformanceRef.current?.toiIterationsUsed || 0,
-          
+
           // Rendering complexity
           qualityLevel: quality,
           hasActiveBoss: boss !== null || resurrectedBosses.length > 0,
           hasScreenShake: screenShake > 0,
           hasBackgroundFlash: backgroundFlash > 0,
         });
-        
+
         // Check for performance issues and log if detected
         if (performanceProfiler.detectPerformanceIssue()) {
           performanceProfiler.logDetailedMetrics();
@@ -2907,12 +2907,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
 
     // ═══ PHASE 1: Time Rendering ═══
-    frameProfiler.startTiming('rendering');
-    
+    frameProfiler.startTiming("rendering");
+
     // Update background animation
     setBackgroundPhase((prev) => (prev + 1) % 360);
-    
-    frameProfiler.endTiming('rendering');
+
+    frameProfiler.endTiming("rendering");
 
     // Update balls rotation only (position is updated in checkCollision with substeps)
     setBalls((prev) =>
@@ -2947,12 +2947,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     checkBonusLetterCollision();
 
     // Update bullets
-    frameProfiler.startTiming('bullets');
+    frameProfiler.startTiming("bullets");
     updateBullets(bricks);
-    frameProfiler.endTiming('bullets');
+    frameProfiler.endTiming("bullets");
 
     // Update enemies
-    frameProfiler.startTiming('enemies');
+    frameProfiler.startTiming("enemies");
     setEnemies((prev) =>
       prev.map((enemy) => {
         let newX = enemy.x + enemy.dx;
@@ -2996,29 +2996,29 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         };
       }),
     );
-    frameProfiler.endTiming('enemies');
+    frameProfiler.endTiming("enemies");
 
     // Update explosions and their particles
-    frameProfiler.startTiming('particles');
+    frameProfiler.startTiming("particles");
     if (debugSettings.enableExplosions && debugSettings.enableParticles) {
       setExplosions((prev) =>
-      prev
-        .map((exp) => ({
-          ...exp,
-          frame: exp.frame + 1,
-          particles: exp.particles
-            .map((p) => ({
-              ...p,
-              x: p.x + p.vx,
-              y: p.y + p.vy,
-              vy: p.vy + 0.2,
-              // Add gravity
-              life: p.life - 1,
-            }))
-            .filter((p) => p.life > 0),
-        }))
-        .filter((exp) => exp.frame < exp.maxFrames),
-    );
+        prev
+          .map((exp) => ({
+            ...exp,
+            frame: exp.frame + 1,
+            particles: exp.particles
+              .map((p) => ({
+                ...p,
+                x: p.x + p.vx,
+                y: p.y + p.vy,
+                vy: p.vy + 0.2,
+                // Add gravity
+                life: p.life - 1,
+              }))
+              .filter((p) => p.life > 0),
+          }))
+          .filter((exp) => exp.frame < exp.maxFrames),
+      );
     } else {
       setExplosions([]);
     }
@@ -3026,41 +3026,42 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Update game over particles (Phase 4: Particle Limits)
     if (debugSettings.enableParticles) {
       setGameOverParticles((prev) =>
-      prev
-        .map((p) => ({
-          ...p,
-          x: p.x + p.vx,
-          y: p.y + p.vy,
-          vy: p.vy + 0.15, // Gravity
-          vx: p.vx * 0.98, // Air resistance
-          life: p.life - 1,
-        }))
-        .filter((p) => p.life > 0),
-    );
+        prev
+          .map((p) => ({
+            ...p,
+            x: p.x + p.vx,
+            y: p.y + p.vy,
+            vy: p.vy + 0.15, // Gravity
+            vx: p.vx * 0.98, // Air resistance
+            life: p.life - 1,
+          }))
+          .filter((p) => p.life > 0),
+      );
 
-    // Update high score celebration particles
-    setHighScoreParticles((prev) =>
-      prev
-        .map((p) => ({
-          ...p,
-          x: p.x + p.vx,
-          y: p.y + p.vy,
-          vy: p.vy + 0.2, // Gravity effect
-          life: p.life - 1,
-        }))
-        .filter((p) => p.life > 0),
-    );
+      // Update high score celebration particles
+      setHighScoreParticles((prev) =>
+        prev
+          .map((p) => ({
+            ...p,
+            x: p.x + p.vx,
+            y: p.y + p.vy,
+            vy: p.vy + 0.2, // Gravity effect
+            life: p.life - 1,
+          }))
+          .filter((p) => p.life > 0),
+      );
     } else {
       setGameOverParticles([]);
       setHighScoreParticles([]);
     }
-    frameProfiler.endTiming('particles');
-    
+    frameProfiler.endTiming("particles");
+
     // Count particles for profiler
-    frameProfiler.incrementCounter('particles', 
+    frameProfiler.incrementCounter(
+      "particles",
       explosions.reduce((sum, exp) => sum + exp.particles.length, 0) +
-      gameOverParticles.length + 
-      highScoreParticles.length
+        gameOverParticles.length +
+        highScoreParticles.length,
     );
 
     // Update bombs and rockets (pyramid bullets move in straight lines with angle)
@@ -4783,7 +4784,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                     {/* Substep Debug Overlay */}
                     <SubstepDebugOverlay getDebugInfo={getSubstepDebugInfo} visible={debugSettings.showSubstepDebug} />
-                    
+
                     {/* Frame Profiler Overlay - Phase 1 */}
                     <FrameProfilerOverlay visible={debugSettings.showFrameProfiler} />
 
