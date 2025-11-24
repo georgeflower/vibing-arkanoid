@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 
 export interface DebugSettings {
+  showDebugModeIndicator: boolean;
   showGameLoopDebug: boolean;
   showSubstepDebug: boolean;
   showCCDPerformance: boolean;
@@ -15,6 +16,7 @@ export interface DebugSettings {
 }
 
 const DEFAULT_SETTINGS: DebugSettings = {
+  showDebugModeIndicator: true,
   showGameLoopDebug: false,
   showSubstepDebug: false,
   showCCDPerformance: false,
