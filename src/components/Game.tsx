@@ -835,7 +835,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, [initGame]);
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
-      if (!canvasRef.current || !paddle) return;
+      if (!canvasRef.current || !paddle || gameState === "paused") return;
 
       let newX: number;
 
@@ -1005,7 +1005,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   );
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
-      if (!canvasRef.current || !paddle) return;
+      if (!canvasRef.current || !paddle || gameState === "paused") return;
       e.preventDefault();
       const waitingBall = balls.find((ball) => ball.waitingToLaunch);
 
@@ -1076,7 +1076,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           : null,
       );
     },
-    [paddle, balls, SCALED_CANVAS_WIDTH],
+    [paddle, balls, SCALED_CANVAS_WIDTH, gameState],
   );
   const handleTouchEnd = useCallback((e: TouchEvent) => {
     // Clear active touches when they end
