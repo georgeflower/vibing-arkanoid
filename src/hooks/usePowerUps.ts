@@ -36,12 +36,6 @@ export const usePowerUps = (
       }
 
       const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
-      
-      // Mark extra life as used immediately on creation
-      if (type === "life") {
-        const levelGroup = Math.floor(currentLevel / 5);
-        setExtraLifeUsedLevels(prev => [...prev, levelGroup]);
-      }
 
       return {
         x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
@@ -59,12 +53,6 @@ export const usePowerUps = (
     
     const assignedType = powerUpAssignments.get(brick.id);
     if (!assignedType) return null;
-
-    // Mark extra life as used immediately on creation
-    if (assignedType === "life") {
-      const levelGroup = Math.floor(currentLevel / 5);
-      setExtraLifeUsedLevels(prev => [...prev, levelGroup]);
-    }
 
     return {
       x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
