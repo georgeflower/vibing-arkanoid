@@ -95,15 +95,22 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time' }: High
               <div className="text-center text-slate-500 py-12">No scores yet!</div>
             ) : (
               currentScores.map((entry, index) => (
-                <div key={entry.id || index} className="flex items-center text-sm md:text-xl px-4 py-2 bg-slate-800/60 rounded-lg border border-cyan-500/30 whitespace-nowrap">
-                  <span className="text-cyan-300 w-10 flex-shrink-0">{index + 1}.</span>
-                  <span className="text-white font-bold flex items-center w-20 flex-shrink-0">
-                    {entry.beatLevel50 && <span className="mr-1">👑</span>}
-                    <span>{entry.name}</span>
-                    {entry.difficulty === "godlike" && <span className="text-red-500 text-xs ml-1">GOD-MODE</span>}
-                  </span>
-                  <span className="text-white font-bold w-28 flex-shrink-0 ml-4">{entry.score.toString().padStart(6, '0')}</span>
-                  <span className="text-white flex-shrink-0 ml-8">LVL{entry.level}</span>
+                <div key={entry.id || index} className="grid grid-cols-[auto_1fr_auto_auto] gap-2 sm:gap-3 md:gap-4 items-center text-[10px] sm:text-xs md:text-sm lg:text-xl px-2 sm:px-3 md:px-4 py-1 sm:py-2 bg-slate-800/60 rounded-lg border border-cyan-500/30">
+                  <span className="text-cyan-300">{index + 1}.</span>
+                  
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-white font-bold flex items-center gap-1 truncate">
+                      {entry.beatLevel50 && <span>👑</span>}
+                      <span className="truncate">{entry.name}</span>
+                    </span>
+                    {entry.difficulty === "godlike" && (
+                      <span className="text-red-500 text-[8px] sm:text-[9px] md:text-[10px] font-bold leading-tight">GOD-MODE</span>
+                    )}
+                  </div>
+                  
+                  <span className="text-white font-bold text-right tabular-nums">{entry.score.toString().padStart(6, '0')}</span>
+                  
+                  <span className="text-white text-right whitespace-nowrap">LVL{entry.level}</span>
                 </div>
               ))
             )}
