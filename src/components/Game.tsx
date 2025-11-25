@@ -5041,7 +5041,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     </div>
                   )}
                   {gameState === "paused" && !showDebugDashboard && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-50">
+                    <div className="absolute inset-0 flex items-start justify-center bg-black/70 z-50 pt-16">
                       <div className="bg-slate-900/95 border-4 border-cyan-500 rounded-lg p-8 max-w-md">
                         <h2 
                           className="retro-pixel-text text-3xl mb-6 text-center animate-pulse"

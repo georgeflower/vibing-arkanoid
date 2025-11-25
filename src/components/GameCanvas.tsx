@@ -1718,38 +1718,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillRect(0, 0, width, height);
         
         if (gameState === "paused") {
-          // Retro "PAUSED" text with individual spaced letters
-          const letters = ["P", "A", "U", "S", "E", "D"];
-          const letterSpacing = 60;
-          const totalWidth = (letters.length - 1) * letterSpacing;
-          const startX = width / 2 - totalWidth / 2;
-          const y = height / 2;
-          
-          ctx.font = "bold 48px 'Courier New', monospace";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          
-          letters.forEach((letter, index) => {
-            const x = startX + index * letterSpacing;
-            
-            // Shadow for 3D depth effect
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-            ctx.fillText(letter, x + 3, y + 3);
-            
-            // Outer glow
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = "hsl(50, 100%, 50%)";
-            
-            // Main letter - bright yellow/gold
-            ctx.fillStyle = "hsl(50, 100%, 60%)";
-            ctx.fillText(letter, x, y);
-            
-            // Highlight for retro effect
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-            ctx.fillText(letter, x - 1, y - 1);
-          });
+          // Paused state - overlay handled by React component, no canvas text needed
         } else {
           ctx.shadowBlur = 12;
           ctx.shadowColor = "hsl(280, 60%, 55%)";
