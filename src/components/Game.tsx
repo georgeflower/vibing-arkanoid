@@ -5041,13 +5041,63 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     </div>
                   )}
                   {gameState === "paused" && !showDebugDashboard && (
-                    <div
-                      className="retro-pixel-text text-sm animate-pulse"
-                      style={{
-                        color: "hsl(48, 100%, 60%)",
-                      }}
-                    >
-                      ⏸️ GAME PAUSED • Press ESC or P to resume
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-50">
+                      <div className="bg-slate-900/95 border-4 border-cyan-500 rounded-lg p-8 max-w-md">
+                        <h2 
+                          className="retro-pixel-text text-3xl mb-6 text-center animate-pulse"
+                          style={{ color: "hsl(48, 100%, 60%)" }}
+                        >
+                          ⏸️ GAME PAUSED
+                        </h2>
+                        
+                        <div className="space-y-3 text-white retro-pixel-text text-sm">
+                          <div className="border-b border-cyan-500/30 pb-3 mb-4">
+                            <div className="flex justify-between items-center">
+                              <span className="text-cyan-300 font-bold">ESC or P</span>
+                              <span>Resume Game</span>
+                            </div>
+                          </div>
+                          
+                          <h3 className="text-cyan-400 font-bold text-base mb-2">Controls:</h3>
+                          <div className="flex justify-between">
+                            <span className="text-cyan-300">Mouse/Touch</span>
+                            <span>Move Paddle</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-cyan-300">Click/Space</span>
+                            <span>Launch Ball</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-cyan-300">Space (hold)</span>
+                            <span>Fire Turrets</span>
+                          </div>
+                          
+                          <h3 className="text-cyan-400 font-bold text-base mt-4 mb-2">Game:</h3>
+                          <div className="flex justify-between">
+                            <span className="text-cyan-300">F</span>
+                            <span>Fullscreen Toggle</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-cyan-300">M</span>
+                            <span>Music Settings</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-cyan-300">N</span>
+                            <span>Next Track</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-cyan-300">B</span>
+                            <span>Previous Track</span>
+                          </div>
+                        </div>
+                        
+                        <div 
+                          className="mt-6 text-center retro-pixel-text text-xs animate-pulse"
+                          style={{ color: "hsl(48, 100%, 60%)" }}
+                        >
+                          Press ESC or P to continue
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
