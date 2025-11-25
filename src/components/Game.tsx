@@ -717,7 +717,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setLaserWarnings([]);
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
-  }, [setPowerUps, initBricksForLevel, createRandomLetterAssignments]);
+  }, [setPowerUps, initBricksForLevel, createRandomLetterAssignments, initPowerUpAssignments]);
   const nextLevel = useCallback(() => {
     // Stop game loop before starting new level
     if (gameLoopRef.current) {
@@ -821,7 +821,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     } else {
       toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
     }
-  }, [level, initBricksForLevel, setPowerUps]);
+  }, [level, initBricksForLevel, setPowerUps, initPowerUpAssignments]);
 
   // Update nextLevel ref whenever nextLevel function changes
   nextLevelRef.current = nextLevel;
