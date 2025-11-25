@@ -4760,13 +4760,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   {gameState === "paused" && !showDebugDashboard && (
                     <div className="absolute inset-0 flex items-start justify-center bg-black/70 z-50 pt-16">
                       <div className="bg-slate-900/95 border-4 border-cyan-500 rounded-lg p-8 max-w-md">
-                        <h2 
+                        <h2
                           className="retro-pixel-text text-3xl mb-6 text-center animate-pulse"
                           style={{ color: "hsl(48, 100%, 60%)" }}
                         >
                           ⏸️ GAME PAUSED
                         </h2>
-                        
+
                         <div className="space-y-3 text-white retro-pixel-text text-sm">
                           <div className="border-b border-cyan-500/30 pb-3 mb-4">
                             <div className="flex justify-between items-center">
@@ -4774,21 +4774,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                               <span>Resume Game</span>
                             </div>
                           </div>
-                          
+
                           <h3 className="text-cyan-400 font-bold text-base mb-2">Controls:</h3>
                           <div className="flex justify-between">
                             <span className="text-cyan-300">Mouse/Touch</span>
                             <span>Move Paddle</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-cyan-300">Click/Space</span>
+                            <span className="text-cyan-300">Mouse Click</span>
                             <span>Launch Ball</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-cyan-300">Space (hold)</span>
+                            <span className="text-cyan-300">Mouse Click</span>
                             <span>Fire Turrets</span>
                           </div>
-                          
+
                           <h3 className="text-cyan-400 font-bold text-base mt-4 mb-2">Game:</h3>
                           <div className="flex justify-between">
                             <span className="text-cyan-300">F</span>
@@ -4796,7 +4796,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-cyan-300">M</span>
-                            <span>Music Settings</span>
+                            <span>Mute Music</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-cyan-300">N</span>
@@ -4807,8 +4807,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             <span>Previous Track</span>
                           </div>
                         </div>
-                        
-                        <div 
+
+                        <div
                           className="mt-6 text-center retro-pixel-text text-xs animate-pulse"
                           style={{ color: "hsl(48, 100%, 60%)" }}
                         >
