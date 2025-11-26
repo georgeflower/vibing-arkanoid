@@ -452,12 +452,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     },
   );
 
-  // Cleanup expired shield impacts periodically
+  // Cleanup expired shield impacts periodically (optimized for mobile)
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
       const now = Date.now();
       setShieldImpacts((prev) => prev.filter((impact) => now - impact.startTime < impact.duration));
-    }, 100);
+    }, 500);
 
     return () => clearInterval(cleanupInterval);
   }, []);

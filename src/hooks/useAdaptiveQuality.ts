@@ -111,17 +111,17 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
     stats.samples++;
     stats.sum += fps;
     
-    // Performance logging every second
-    if (now - lastPerformanceLogMs.current >= 1000) {
+    // Performance logging every 5 seconds (reduced for mobile performance)
+    if (now - lastPerformanceLogMs.current >= 5000) {
       performanceLogRef.current.push({ timestamp: now, fps, quality });
       
       // Keep only last 60 seconds of logs
-      if (performanceLogRef.current.length > 60) {
+      if (performanceLogRef.current.length > 12) {
         performanceLogRef.current.shift();
       }
       
-      // Console log current performance
-      if (enableLogging) {
+      // Console log current performance (disabled on mobile for better performance)
+      if (enableLogging && !(/Mobi|Android/i.test(navigator.userAgent))) {
         const avgFps = stats.samples > 0 ? (stats.sum / stats.samples).toFixed(1) : '0.0';
         const baseLog = `[Performance Monitor] FPS: ${fps.toFixed(1)} | Quality: ${quality.toUpperCase()} | ` +
           `Avg: ${avgFps} | Min: ${stats.min.toFixed(0)} | Max: ${stats.max.toFixed(0)}`;
