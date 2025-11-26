@@ -104,7 +104,7 @@ export const TopScoresDisplay = () => {
             className="absolute text-xs md:text-sm tracking-wider whitespace-nowrap"
             style={{
               ...textStyle,
-              animation: "scrollInRight 3s 3s ease-in-out forwards",
+              animation: "scrollInRight 3s 2.5s ease-in-out forwards",
               transform: "translateX(200%)",
             }}
           >

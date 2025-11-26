@@ -1206,9 +1206,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           document.exitPointerLock();
         } else if (gameState === "playing") {
           setGameState("paused");
+          document.exitPointerLock();
           toast.info("Game paused. Press ESC to resume.");
         } else if (gameState === "paused" && !debugDashboardPausedGame) {
           setGameState("playing");
+          if (document.body.requestPointerLock) {
+            document.body.requestPointerLock();
+          }
           toast.info("Game resumed!");
         }
       } else if (e.key === "n" || e.key === "N") {
@@ -1221,12 +1225,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Toggle pause
         if (gameState === "playing") {
           setGameState("paused");
+          document.exitPointerLock();
           if (gameLoopRef.current) {
             gameLoopRef.current.pause();
           }
           toast.success("Game paused");
         } else if (gameState === "paused") {
           setGameState("playing");
+          if (document.body.requestPointerLock) {
+            document.body.requestPointerLock();
+          }
           if (gameLoopRef.current) {
             gameLoopRef.current.resume();
           }
@@ -4864,18 +4872,34 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           Press ESC or P to continue
                         </div>
 
-                        <Button
-                          onClick={() => {
-                            soundManager.stopBackgroundMusic();
-                            soundManager.stopBossMusic();
-                            soundManager.playMenuClick();
-                            onReturnToMenu();
-                          }}
-                          onMouseEnter={() => soundManager.playMenuHover()}
-                          className="w-full mt-6 bg-red-600 hover:bg-red-700 text-white text-sm py-3 retro-pixel-text"
-                        >
-                          EXIT TO MAIN MENU
-                        </Button>
+                        <div className="flex gap-4 mt-6 w-full">
+                          <Button
+                            onClick={() => {
+                              soundManager.playMenuClick();
+                              setGameState("playing");
+                              soundManager.resumeBackgroundMusic();
+                              if (document.body.requestPointerLock) {
+                                document.body.requestPointerLock();
+                              }
+                            }}
+                            onMouseEnter={() => soundManager.playMenuHover()}
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm py-3 retro-pixel-text"
+                          >
+                            RESUME
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              soundManager.stopBackgroundMusic();
+                              soundManager.stopBossMusic();
+                              soundManager.playMenuClick();
+                              onReturnToMenu();
+                            }}
+                            onMouseEnter={() => soundManager.playMenuHover()}
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm py-3 retro-pixel-text"
+                          >
+                            EXIT TO MAIN MENU
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )}
