@@ -29,6 +29,13 @@ export const useSwipeGesture = (
     const element = elementRef.current;
     if (!element) return;
 
+    // Apply touch-action CSS to prevent iOS Safari back gesture
+    const originalTouchAction = element.style.touchAction;
+    const originalOverscrollBehavior = element.style.overscrollBehaviorX;
+    
+    element.style.touchAction = 'pan-y';
+    element.style.overscrollBehaviorX = 'none';
+
     let startX = 0;
     let startY = 0;
     let startTime = 0;
@@ -90,6 +97,10 @@ export const useSwipeGesture = (
     element.addEventListener("touchend", handleTouchEnd, { passive: true });
 
     return () => {
+      // Restore original styles
+      element.style.touchAction = originalTouchAction;
+      element.style.overscrollBehaviorX = originalOverscrollBehavior;
+      
       element.removeEventListener("touchstart", handleTouchStart);
       element.removeEventListener("touchmove", handleTouchMove);
       element.removeEventListener("touchend", handleTouchEnd);
