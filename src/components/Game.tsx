@@ -1198,20 +1198,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (e.key === "Escape") {
         // Escape key priority order:
         // 1. Close debug dashboard if open
-        // 2. Exit pointer lock if active
-        // 3. Pause/Resume game
+        // 2. Pause/Resume game (pointer lock handled by pause state)
         if (ENABLE_DEBUG_FEATURES && showDebugDashboard) {
           setShowDebugDashboard(false);
-        } else if (document.pointerLockElement) {
-          document.exitPointerLock();
         } else if (gameState === "playing") {
           setGameState("paused");
           document.exitPointerLock();
           toast.info("Game paused. Press ESC to resume.");
         } else if (gameState === "paused" && !debugDashboardPausedGame) {
           setGameState("playing");
-          if (document.body.requestPointerLock) {
-            document.body.requestPointerLock();
+          const canvas = canvasRef.current;
+          if (canvas && canvas.requestPointerLock) {
+            canvas.requestPointerLock();
           }
           toast.info("Game resumed!");
         }
@@ -1232,8 +1230,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           toast.success("Game paused");
         } else if (gameState === "paused") {
           setGameState("playing");
-          if (document.body.requestPointerLock) {
-            document.body.requestPointerLock();
+          const canvas = canvasRef.current;
+          if (canvas && canvas.requestPointerLock) {
+            canvas.requestPointerLock();
           }
           if (gameLoopRef.current) {
             gameLoopRef.current.resume();
@@ -4878,8 +4877,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                               soundManager.playMenuClick();
                               setGameState("playing");
                               soundManager.resumeBackgroundMusic();
-                              if (document.body.requestPointerLock) {
-                                document.body.requestPointerLock();
+                              const canvas = canvasRef.current;
+                              if (canvas && canvas.requestPointerLock) {
+                                canvas.requestPointerLock();
                               }
                             }}
                             onMouseEnter={() => soundManager.playMenuHover()}
