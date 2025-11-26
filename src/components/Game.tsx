@@ -126,6 +126,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [showHighScoreEntry, setShowHighScoreEntry] = useState(false);
   const [showHighScoreDisplay, setShowHighScoreDisplay] = useState(false);
   const [showEndScreen, setShowEndScreen] = useState(false);
+  const [qualifiedLeaderboards, setQualifiedLeaderboards] = useState<{
+    daily: boolean;
+    weekly: boolean;
+    allTime: boolean;
+  } | null>(null);
   const [beatLevel50Completed, setBeatLevel50Completed] = useState(false);
   const [timer, setTimer] = useState(0);
   const [totalPlayTime, setTotalPlayTime] = useState(0);
@@ -297,7 +302,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     };
   }, []);
-  const { isHighScore, addHighScore } = useHighScores();
+  const { isHighScore, addHighScore, getQualifiedLeaderboards } = useHighScores();
   const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps, extraLifeUsedLevels } =
     usePowerUps(
       level,
@@ -2737,8 +2742,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             setGameOverParticles(particles);
 
             // Check for high score
-            isHighScore(score).then((result) => {
-              if (!levelSkipped && result) {
+            getQualifiedLeaderboards(score).then((qualification) => {
+              if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
+                setQualifiedLeaderboards(qualification);
                 setShowHighScoreEntry(true);
                 setHighScoreParticles(createHighScoreParticles());
                 soundManager.playHighScoreMusic();
@@ -3158,8 +3164,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setBossAttacks([]);
               setLaserWarnings([]);
               // Check for high score immediately
-              isHighScore(score).then((result) => {
-                if (!levelSkipped && result) {
+              getQualifiedLeaderboards(score).then((qualification) => {
+                if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
+                  setQualifiedLeaderboards(qualification);
                   setShowHighScoreEntry(true);
                   soundManager.playHighScoreMusic();
                   toast.error("Game Over - New High Score!");
@@ -3281,8 +3288,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setBossAttacks([]);
               setLaserWarnings([]);
               // Check for high score immediately
-              isHighScore(score).then((result) => {
-                if (!levelSkipped && result) {
+              getQualifiedLeaderboards(score).then((qualification) => {
+                if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
+                  setQualifiedLeaderboards(qualification);
                   setShowHighScoreEntry(true);
                   soundManager.playHighScoreMusic();
                   toast.error("Game Over - New High Score!");
@@ -3502,8 +3510,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setBossAttacks([]);
               setLaserWarnings([]);
               // Check for high score immediately
-              isHighScore(score).then((result) => {
-                if (!levelSkipped && result) {
+              getQualifiedLeaderboards(score).then((qualification) => {
+                if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
+                  setQualifiedLeaderboards(qualification);
                   setShowHighScoreEntry(true);
                   soundManager.playHighScoreMusic();
                   toast.error("Game Over - New High Score!");
@@ -3604,8 +3613,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setBossAttacks([]);
               setLaserWarnings([]);
               // Check for high score immediately
-              isHighScore(score).then((result) => {
-                if (!levelSkipped && result) {
+              getQualifiedLeaderboards(score).then((qualification) => {
+                if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
+                  setQualifiedLeaderboards(qualification);
                   setShowHighScoreEntry(true);
                   soundManager.playHighScoreMusic();
                   toast.error("Game Over - New High Score!");
@@ -4671,7 +4681,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       ) : (
         <>
           {showHighScoreEntry ? (
-            <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} />
+            <HighScoreEntry 
+              score={score} 
+              level={level} 
+              onSubmit={handleHighScoreSubmit}
+              qualifiedLeaderboards={qualifiedLeaderboards || undefined}
+            />
           ) : (
             <div
               ref={gameContainerRef}

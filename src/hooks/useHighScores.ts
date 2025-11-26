@@ -74,6 +74,20 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => 
     fetchHighScores();
   }, [leaderboardType]);
 
+  // Type for leaderboard qualification status
+  type LeaderboardQualification = {
+    daily: boolean;
+    weekly: boolean;
+    allTime: boolean;
+  };
+
+  // Type for top scores display
+  type TopScores = {
+    daily: { name: string; score: number } | null;
+    weekly: { name: string; score: number } | null;
+    allTime: { name: string; score: number } | null;
+  };
+
   const isHighScore = async (score: number): Promise<boolean> => {
     // Score of 0 or less never qualifies
     if (score <= 0) return false;
@@ -125,6 +139,105 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => 
     } catch (err) {
       console.error('Failed to check high score:', err);
       return false;
+    }
+  };
+
+  const getQualifiedLeaderboards = async (score: number): Promise<LeaderboardQualification> => {
+    // Score of 0 or less never qualifies
+    if (score <= 0) return { daily: false, weekly: false, allTime: false };
+    
+    try {
+      const now = new Date();
+      
+      // Check daily
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
+      
+      const { count: dailyHigherCount } = await supabase
+        .from('high_scores')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', today.toISOString())
+        .gte('score', score);
+      
+      const dailyQualifies = (dailyHigherCount || 0) < MAX_HIGH_SCORES;
+      
+      // Check weekly
+      const weekAgo = new Date(now);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      
+      const { count: weeklyHigherCount } = await supabase
+        .from('high_scores')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', weekAgo.toISOString())
+        .gte('score', score);
+      
+      const weeklyQualifies = (weeklyHigherCount || 0) < MAX_HIGH_SCORES;
+      
+      // Check all-time
+      const { count: allTimeHigherCount } = await supabase
+        .from('high_scores')
+        .select('*', { count: 'exact', head: true })
+        .gte('score', score);
+      
+      const allTimeQualifies = (allTimeHigherCount || 0) < MAX_HIGH_SCORES;
+      
+      return {
+        daily: dailyQualifies,
+        weekly: weeklyQualifies,
+        allTime: allTimeQualifies,
+      };
+      
+    } catch (err) {
+      console.error('Failed to check qualified leaderboards:', err);
+      return { daily: false, weekly: false, allTime: false };
+    }
+  };
+
+  const fetchTopScores = async (): Promise<TopScores> => {
+    try {
+      const now = new Date();
+      
+      // Get top daily score
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
+      
+      const { data: dailyData } = await supabase
+        .from('high_scores')
+        .select('player_name, score')
+        .gte('created_at', today.toISOString())
+        .order('score', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      // Get top weekly score
+      const weekAgo = new Date(now);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      
+      const { data: weeklyData } = await supabase
+        .from('high_scores')
+        .select('player_name, score')
+        .gte('created_at', weekAgo.toISOString())
+        .order('score', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      // Get top all-time score
+      const { data: allTimeData } = await supabase
+        .from('high_scores')
+        .select('player_name, score')
+        .order('score', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      return {
+        daily: dailyData ? { name: dailyData.player_name, score: dailyData.score } : null,
+        weekly: weeklyData ? { name: weeklyData.player_name, score: weeklyData.score } : null,
+        allTime: allTimeData ? { name: allTimeData.player_name, score: allTimeData.score } : null,
+      };
+      
+    } catch (err) {
+      console.error('Failed to fetch top scores:', err);
+      return { daily: null, weekly: null, allTime: null };
     }
   };
 
@@ -194,5 +307,7 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => 
     isLoading,
     error,
     refetch: fetchHighScores,
+    getQualifiedLeaderboards,
+    fetchTopScores,
   };
 };
