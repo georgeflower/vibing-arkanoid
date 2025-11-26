@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { GAME_VERSION } from "@/constants/version";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { useAdaptiveQuality } from "@/hooks/useAdaptiveQuality";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 
 interface MainMenuProps {
   onStartGame: (settings: GameSettings) => void;
@@ -30,6 +31,13 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [showPressToStart, setShowPressToStart] = useState(true);
   const [showChangelog, setShowChangelog] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
+  
+  // Refs for swipe gesture detection
+  const highScoresRef = useRef<HTMLDivElement>(null);
+  const changelogRef = useRef<HTMLDivElement>(null);
+  const whatsNewRef = useRef<HTMLDivElement>(null);
+  const aboutRef = useRef<HTMLDivElement>(null);
+  const instructionsRef = useRef<HTMLDivElement>(null);
   
   // Use adaptive quality hook for CRT effects
   const { quality, qualitySettings } = useAdaptiveQuality({
@@ -65,9 +73,19 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
     onStartGame(settings);
   };
 
+  // Swipe gesture handlers for all sub-screens
+  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    ("ontouchstart" in window && window.matchMedia("(max-width: 768px)").matches);
+
+  useSwipeGesture(highScoresRef, () => setShowHighScores(false), { enabled: showHighScores && isMobileDevice });
+  useSwipeGesture(changelogRef, () => setShowChangelog(false), { enabled: showChangelog && isMobileDevice });
+  useSwipeGesture(whatsNewRef, () => setShowWhatsNew(false), { enabled: showWhatsNew && isMobileDevice });
+  useSwipeGesture(aboutRef, () => setShowAbout(false), { enabled: showAbout && isMobileDevice });
+  useSwipeGesture(instructionsRef, () => setShowInstructions(false), { enabled: showInstructions && isMobileDevice });
+
   if (showHighScores) {
     return (
-      <div className="fixed inset-0 w-full h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)]">
+      <div ref={highScoresRef} className="fixed inset-0 w-full h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)]">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <HighScoreDisplay 
           onClose={() => setShowHighScores(false)} 
@@ -82,7 +100,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showWhatsNew) {
     return (
-      <div className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+      <div ref={whatsNewRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <Card className="w-full h-full max-w-2xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
           <h2 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-3 text-center text-[hsl(200,70%,50%)]">
@@ -144,7 +162,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showAbout) {
     return (
-      <div className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+      <div ref={aboutRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <Card className="w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">
@@ -274,7 +292,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showInstructions) {
     return (
-      <div className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+      <div ref={instructionsRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <Card className="w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">
