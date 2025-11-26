@@ -5,9 +5,14 @@ interface HighScoreEntryProps {
   score: number;
   level: number;
   onSubmit: (name: string) => void;
+  qualifiedLeaderboards?: {
+    daily: boolean;
+    weekly: boolean;
+    allTime: boolean;
+  };
 }
 
-export const HighScoreEntry = ({ score, level, onSubmit }: HighScoreEntryProps) => {
+export const HighScoreEntry = ({ score, level, onSubmit, qualifiedLeaderboards }: HighScoreEntryProps) => {
   const [name, setName] = useState("");
   const [displayScore, setDisplayScore] = useState(0);
 
@@ -67,11 +72,35 @@ export const HighScoreEntry = ({ score, level, onSubmit }: HighScoreEntryProps) 
           </div>
         </div>
         
-        <h2 className="text-6xl font-bold mb-4 font-mono relative">
+        <h2 className="text-6xl font-bold mb-2 font-mono relative">
           <span className="retro-title inline-block animate-pulse">HIGH SCORE!</span>
           <span className="absolute -top-2 -left-4 text-yellow-400 animate-ping">✨</span>
           <span className="absolute -top-2 -right-4 text-yellow-400 animate-ping" style={{ animationDelay: '0.5s' }}>✨</span>
         </h2>
+        
+        {/* Qualification badges */}
+        {qualifiedLeaderboards && (
+          <div className="mb-4">
+            <div className="text-xl text-pink-300 mb-2 font-mono">YOU QUALIFIED FOR:</div>
+            <div className="flex justify-center gap-4 flex-wrap">
+              {qualifiedLeaderboards.daily && (
+                <div className="px-4 py-2 bg-cyan-500/20 border-2 border-cyan-400 rounded-lg animate-pulse">
+                  <span className="text-2xl font-bold font-mono text-cyan-300">📅 DAILY</span>
+                </div>
+              )}
+              {qualifiedLeaderboards.weekly && (
+                <div className="px-4 py-2 bg-purple-500/20 border-2 border-purple-400 rounded-lg animate-pulse" style={{ animationDelay: '0.2s' }}>
+                  <span className="text-2xl font-bold font-mono text-purple-300">📆 WEEKLY</span>
+                </div>
+              )}
+              {qualifiedLeaderboards.allTime && (
+                <div className="px-4 py-2 bg-amber-500/20 border-2 border-amber-400 rounded-lg animate-pulse" style={{ animationDelay: '0.4s' }}>
+                  <span className="text-2xl font-bold font-mono text-amber-300">🌟 ALL-TIME</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         <div className="text-4xl text-cyan-300 mb-4 font-mono font-bold animate-pulse">
           {displayScore.toLocaleString()} POINTS
         </div>

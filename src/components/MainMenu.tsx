@@ -17,6 +17,7 @@ import { GAME_VERSION } from "@/constants/version";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { useAdaptiveQuality } from "@/hooks/useAdaptiveQuality";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
+import { TopScoresDisplay } from "./TopScoresDisplay";
 
 interface MainMenuProps {
   onStartGame: (settings: GameSettings) => void;
@@ -457,6 +458,9 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
       <Card className="max-w-sm w-full p-6 bg-black/60 backdrop-blur-sm border-[hsl(200,70%,50%)]">
         {/* Settings */}
         <div className="space-y-4">
+          {/* Top Scores Display */}
+          <TopScoresDisplay />
+          
           {/* Difficulty */}
           <div className="space-y-2">
             <Label className="text-white text-base">Difficulty</Label>
