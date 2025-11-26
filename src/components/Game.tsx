@@ -8,6 +8,7 @@ import { EndScreen } from "./EndScreen";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import CRTOverlay from "./CRTOverlay";
 
 // ═══════════════════════════════════════════════════════════════
@@ -271,6 +272,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const bombIntervalsRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
   const launchAngleIntervalRef = useRef<NodeJS.Timeout>();
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
+  const gameContainerRef = useRef<HTMLDivElement>(null);
   const timerStartedRef = useRef(false);
   const nextLevelRef = useRef<(() => void) | null>(null);
 
@@ -427,6 +429,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     soundManager.setMusicEnabled(true);
     soundManager.setSfxEnabled(true);
   }, []);
+
+  // Cross-platform swipe-to-pause gesture (works on both iOS and Android)
+  useSwipeGesture(
+    gameContainerRef,
+    () => {
+      if (gameState === "playing") {
+        console.log("[Swipe Gesture] Swipe-right detected, pausing game");
+        setGameState("paused");
+        toast.info("Swiped to pause");
+      }
+    },
+    {
+      enabled: gameState === "playing" && isMobileDevice,
+      minSwipeDistance: 50,
+      leftEdgeThreshold: 0.15,
+    }
+  );
 
   // Cleanup expired shield impacts periodically
   useEffect(() => {
@@ -4655,6 +4674,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             <HighScoreEntry score={score} level={level} onSubmit={handleHighScoreSubmit} />
           ) : (
             <div
+              ref={gameContainerRef}
               className={`metal-frame ${isIOSDevice ? "mobile-fullscreen-mode" : isMobileDevice && isFullscreen ? "mobile-fullscreen-mode" : ""}`}
             >
               {/* Title Bar - Adaptive Visibility (Desktop: only title hides, Mobile: all hides) */}

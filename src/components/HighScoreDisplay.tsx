@@ -5,6 +5,7 @@ import { Environment } from "@react-three/drei";
 import * as THREE from "three";
 import metalBallTexture from "@/assets/metal-ball-texture.png";
 import { useHighScores, type LeaderboardType } from "@/hooks/useHighScores";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 
 interface HighScoreDisplayProps {
   onClose: () => void;
@@ -50,9 +51,16 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time' }: High
   const { highScores, isLoading } = useHighScores(leaderboardType);
   const [selectedType, setSelectedType] = useState<LeaderboardType>(leaderboardType);
   const { highScores: currentScores, isLoading: currentLoading } = useHighScores(selectedType);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Swipe gesture for mobile back navigation
+  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    ("ontouchstart" in window && window.matchMedia("(max-width: 768px)").matches);
+  
+  useSwipeGesture(containerRef, onClose, { enabled: isMobileDevice });
 
   return (
-    <div className="fixed inset-0 w-full h-screen overflow-hidden">
+    <div ref={containerRef} className="fixed inset-0 w-full h-screen overflow-hidden">
       <div className="absolute inset-0 w-full h-full pointer-events-none">
         <Canvas camera={{ position: [0, 0, 15], fov: 50 }}>
           <Scene3D />

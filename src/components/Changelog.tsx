@@ -1,7 +1,9 @@
+import { useRef } from "react";
 import { X } from "lucide-react";
 import { CHANGELOG } from "@/constants/version";
 import CRTOverlay from "./CRTOverlay";
 import type { QualityLevel } from "@/hooks/useAdaptiveQuality";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 
 interface ChangelogProps {
   onClose: () => void;
@@ -10,8 +12,16 @@ interface ChangelogProps {
 }
 
 export const Changelog = ({ onClose, quality, qualitySettings = { backgroundEffects: true } }: ChangelogProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Swipe gesture for mobile back navigation
+  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    ("ontouchstart" in window && window.matchMedia("(max-width: 768px)").matches);
+  
+  useSwipeGesture(containerRef, onClose, { enabled: isMobileDevice });
+
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div ref={containerRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
       {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
       <div className="bg-slate-900/95 rounded-lg border-2 border-cyan-500/30 p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
