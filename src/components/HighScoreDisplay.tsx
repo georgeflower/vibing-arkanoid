@@ -6,6 +6,7 @@ import * as THREE from "three";
 import metalBallTexture from "@/assets/metal-ball-texture.png";
 import { useHighScores, type LeaderboardType } from "@/hooks/useHighScores";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
+import { X } from "lucide-react";
 
 interface HighScoreDisplayProps {
   onClose: () => void;
@@ -68,6 +69,14 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time' }: High
       </div>
       <div className="absolute inset-0 w-full h-full flex items-center justify-center p-4">
         <div className="relative z-10 bg-slate-900/90 backdrop-blur-md rounded-lg p-8 border-2 border-cyan-500/50 max-w-3xl w-full">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors z-20"
+            title="Close"
+          >
+            <X size={24} />
+          </button>
+          
           <h2 className="text-5xl font-bold text-center mb-4 text-cyan-400">
             HIGH SCORES
           </h2>

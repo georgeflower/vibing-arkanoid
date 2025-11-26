@@ -18,6 +18,7 @@ import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { useAdaptiveQuality } from "@/hooks/useAdaptiveQuality";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { TopScoresDisplay } from "./TopScoresDisplay";
+import { X } from "lucide-react";
 
 interface MainMenuProps {
   onStartGame: (settings: GameSettings) => void;
@@ -103,7 +104,18 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
     return (
       <div ref={whatsNewRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
-        <Card className="w-full h-full max-w-2xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
+        <Card className="relative w-full h-full max-w-2xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
+          <button
+            onClick={() => {
+              soundManager.playMenuClick();
+              setShowWhatsNew(false);
+            }}
+            className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors z-10"
+            title="Close"
+          >
+            <X size={24} />
+          </button>
+          
           <h2 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-3 text-center text-[hsl(200,70%,50%)]">
             What's New in v{GAME_VERSION}
           </h2>
@@ -165,7 +177,18 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
     return (
       <div ref={aboutRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
-        <Card className="w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
+        <Card className="relative w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
+          <button
+            onClick={() => {
+              soundManager.playMenuClick();
+              setShowAbout(false);
+            }}
+            className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors z-10"
+            title="Close"
+          >
+            <X size={24} />
+          </button>
+          
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">
             About Vibing Arkanoid
           </h2>
@@ -295,7 +318,18 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
     return (
       <div ref={instructionsRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
-        <Card className="w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
+        <Card className="relative w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
+          <button
+            onClick={() => {
+              soundManager.playMenuClick();
+              setShowInstructions(false);
+            }}
+            className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors z-10"
+            title="Close"
+          >
+            <X size={24} />
+          </button>
+          
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">
             Instructions
           </h2>
