@@ -1382,9 +1382,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
       // ═══════════════════════════════════════════════════════════════
     };
-    const handlePointerLockChange = () => {
-      setIsPointerLocked(document.pointerLockElement === canvas);
-    };
+  const handlePointerLockChange = () => {
+    const isLocked = document.pointerLockElement === canvas;
+    setIsPointerLocked(isLocked);
+    
+    // If pointer lock was released (ESC pressed) while playing, pause the game
+    if (!isLocked && gameState === "playing") {
+      console.log("[PointerLock] Released during gameplay - pausing game");
+      setGameState("paused");
+      if (gameLoopRef.current) {
+        gameLoopRef.current.pause();
+      }
+      toast.info("Game paused. Press ESC to resume.");
+    }
+  };
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("touchstart", handleTouchStart, {
       passive: false,
