@@ -30,7 +30,7 @@ export const TopScoresDisplay = () => {
       setAnimationPhase("showing");
       
       timeout = setTimeout(() => {
-        // Phase 2: Start transition (scroll out + 1s gap + scroll in = 7 seconds total)
+        // Phase 2: Start transition (scroll out + scroll in = 6 seconds total)
         setNextIndex((currentIndex + 1) % 3);
         setAnimationPhase("transitioning");
         
@@ -38,7 +38,7 @@ export const TopScoresDisplay = () => {
           // Complete transition, update current index
           setCurrentIndex((prev) => (prev + 1) % 3);
           runCycle();
-        }, 7000); // Total transition time (3s out + 1s gap + 3s in)
+        }, 6000); // Total transition time (3s out + 3s in)
       }, 5000); // showing duration
     };
     
@@ -97,14 +97,14 @@ export const TopScoresDisplay = () => {
           {getDisplayText(currentIndex)}
         </div>
         
-        {/* Next text - scrolls in from the right after 4s delay (3s scroll-out + 1s gap) */}
+        {/* Next text - scrolls in from the right after 3s (when scroll-out completes) */}
         {animationPhase === "transitioning" && (
           <div
             key={`next-${nextIndex}`}
             className="absolute text-xs md:text-sm tracking-wider whitespace-nowrap"
             style={{
               ...textStyle,
-              animation: "scrollInRight 3s 4s ease-in-out forwards",
+              animation: "scrollInRight 3s 3s ease-in-out forwards",
               transform: "translateX(200%)",
             }}
           >
