@@ -856,7 +856,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     soundManager.preloadSounds().catch((err) => {
       console.error("Failed to preload sounds:", err);
     });
-  }, [initGame]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!canvasRef.current || !paddle || gameState === "paused") return;
