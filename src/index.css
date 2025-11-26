@@ -54,6 +54,24 @@ All colors MUST be HSL.
   }
 }
 
+@keyframes scrollOutLeft {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-200%);
+  }
+}
+
+@keyframes scrollInRight {
+  from {
+    transform: translateX(200%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
 @layer base {
   * {
     @apply border-border;

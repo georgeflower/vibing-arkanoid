@@ -10,7 +10,8 @@ export const TopScoresDisplay = () => {
   }>({ daily: null, weekly: null, allTime: null });
   
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isScrolling, setIsScrolling] = useState(false);
+  const [nextIndex, setNextIndex] = useState(1);
+  const [animationPhase, setAnimationPhase] = useState<"showing" | "transitioning">("showing");
   const [flickerOpacity, setFlickerOpacity] = useState(1);
 
   useEffect(() => {
@@ -22,15 +23,29 @@ export const TopScoresDisplay = () => {
   }, [fetchTopScores]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIsScrolling(true);
-      setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % 3);
-        setTimeout(() => setIsScrolling(false), 800); // Allow scroll animation to complete
-      }, 100);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    let timeout: NodeJS.Timeout;
+    
+    const runCycle = () => {
+      // Phase 1: Show for 5 seconds
+      setAnimationPhase("showing");
+      
+      timeout = setTimeout(() => {
+        // Phase 2: Start transition (scroll out + scroll in = 6 seconds total)
+        setNextIndex((currentIndex + 1) % 3);
+        setAnimationPhase("transitioning");
+        
+        timeout = setTimeout(() => {
+          // Complete transition, update current index
+          setCurrentIndex((prev) => (prev + 1) % 3);
+          runCycle();
+        }, 6000); // Total transition time (3s out + 3s in, but overlapping)
+      }, 5000); // showing duration
+    };
+    
+    runCycle();
+    
+    return () => clearTimeout(timeout);
+  }, [currentIndex]);
 
   // LED flicker effect
   useEffect(() => {
@@ -48,32 +63,54 @@ export const TopScoresDisplay = () => {
     return score.toString().padStart(6, "0");
   };
 
-  const getDisplayText = () => {
+  const getDisplayText = (index: number) => {
     const labels = ["TODAY", "WEEKLY", "ALL-TIME"];
     const scores = [topScores.daily, topScores.weekly, topScores.allTime];
-    const current = scores[currentIndex];
-    const label = labels[currentIndex];
+    const current = scores[index];
+    const label = labels[index];
     
     if (!current) return `${label}: ---`;
     return `${label}: ${current.name} ${formatScore(current.score)}`;
   };
 
+  const textStyle = {
+    fontFamily: "'Press Start 2P', monospace",
+    color: "#ff9500",
+    textShadow: "0 0 10px rgba(255, 149, 0, 0.6), 0 0 20px rgba(255, 149, 0, 0.3)",
+    opacity: flickerOpacity,
+  };
+
   return (
     <div className="retro-border bg-black/90 backdrop-blur-sm rounded-lg p-3 w-full overflow-hidden">
       <div className="relative h-8 flex items-center justify-center">
+        {/* Current text - scrolls out to the left */}
         <div
-          className={`text-xs md:text-sm tracking-wider whitespace-nowrap transition-transform duration-700 ease-out ${
-            isScrolling ? "translate-x-[-100%]" : "translate-x-0"
-          }`}
+          key={`current-${currentIndex}-${animationPhase}`}
+          className="absolute text-xs md:text-sm tracking-wider whitespace-nowrap"
           style={{
-            fontFamily: "'Press Start 2P', monospace",
-            color: "#ff9500",
-            textShadow: "0 0 10px rgba(255, 149, 0, 0.6), 0 0 20px rgba(255, 149, 0, 0.3)",
-            opacity: flickerOpacity,
+            ...textStyle,
+            animation: animationPhase === "transitioning" 
+              ? "scrollOutLeft 3s ease-in-out forwards" 
+              : "none",
           }}
         >
-          {getDisplayText()}
+          {getDisplayText(currentIndex)}
         </div>
+        
+        {/* Next text - scrolls in from the right after 3s delay */}
+        {animationPhase === "transitioning" && (
+          <div
+            key={`next-${nextIndex}`}
+            className="absolute text-xs md:text-sm tracking-wider whitespace-nowrap"
+            style={{
+              ...textStyle,
+              animation: "scrollInRight 3s 3s ease-in-out forwards",
+              transform: "translateX(200%)",
+            }}
+          >
+            {getDisplayText(nextIndex)}
+          </div>
+        )}
       </div>
     </div>
   );
