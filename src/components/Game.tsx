@@ -90,7 +90,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -444,7 +444,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       enabled: gameState === "playing" && isMobileDevice,
       minSwipeDistance: 50,
       leftEdgeThreshold: 0.15,
-    }
+    },
   );
 
   // Cleanup expired shield impacts periodically
