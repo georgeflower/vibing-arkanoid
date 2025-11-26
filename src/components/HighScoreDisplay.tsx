@@ -1,9 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
-import { Canvas, useFrame, useLoader } from "@react-three/fiber";
-import { Environment } from "@react-three/drei";
-import * as THREE from "three";
-import metalBallTexture from "@/assets/metal-ball-texture.png";
 import { useHighScores, type LeaderboardType } from "@/hooks/useHighScores";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { X } from "lucide-react";
@@ -12,41 +8,6 @@ interface HighScoreDisplayProps {
   onClose: () => void;
   leaderboardType?: LeaderboardType;
 }
-
-const MetalBalls = () => {
-  const groupRef = useRef<THREE.Group>(null);
-  const ballsRef = useRef<THREE.Mesh[]>([]);
-  const texture = useLoader(THREE.TextureLoader, metalBallTexture);
-
-  useFrame(() => {
-    ballsRef.current.forEach((ball) => {
-      if (ball) {
-        ball.rotation.x += 0.03;
-        ball.rotation.y += 0.02;
-      }
-    });
-  });
-
-  return (
-    <group ref={groupRef}>
-      {Array.from({ length: 10 }, (_, i) => (
-        <mesh key={i} ref={(el) => { if (el) ballsRef.current[i] = el; }} position={[i - 4.5, 0, 0]}>
-          <sphereGeometry args={[0.5, 32, 32]} />
-          <meshStandardMaterial map={texture} metalness={0.9} roughness={0.1} />
-        </mesh>
-      ))}
-    </group>
-  );
-};
-
-const Scene3D = () => (
-  <>
-    <ambientLight intensity={0.5} />
-    <pointLight position={[10, 10, 10]} intensity={1.5} />
-    <Environment preset="city" />
-    <MetalBalls />
-  </>
-);
 
 export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time' }: HighScoreDisplayProps) => {
   const { highScores, isLoading } = useHighScores(leaderboardType);
@@ -72,12 +33,7 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time' }: High
   }, [onClose]);
 
   return (
-    <div ref={containerRef} className="fixed inset-0 w-full h-screen overflow-hidden swipe-container animate-fade-in">
-      <div className="absolute inset-0 w-full h-full pointer-events-none">
-        <Canvas camera={{ position: [0, 0, 15], fov: 50 }}>
-          <Scene3D />
-        </Canvas>
-      </div>
+    <div ref={containerRef} className="fixed inset-0 w-full h-screen overflow-hidden swipe-container animate-fade-in bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
       <div className="absolute inset-0 w-full h-full flex items-center justify-center p-4">
         <div className="relative z-10 bg-slate-900/90 backdrop-blur-md rounded-lg p-8 border-2 border-cyan-500/50 max-w-3xl w-full animate-scale-in">
           <button
