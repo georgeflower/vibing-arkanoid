@@ -90,7 +90,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -1196,7 +1196,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (!canvas) return;
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        console.log("[ESC Key] Pressed - gameState:", gameState, "showDebugDashboard:", showDebugDashboard, "debugDashboardPausedGame:", debugDashboardPausedGame);
+        console.log(
+          "[ESC Key] Pressed - gameState:",
+          gameState,
+          "showDebugDashboard:",
+          showDebugDashboard,
+          "debugDashboardPausedGame:",
+          debugDashboardPausedGame,
+        );
         // Escape key priority order:
         // 1. Close debug dashboard if open
         // 2. Pause/Resume game
@@ -1382,20 +1389,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
       // ═══════════════════════════════════════════════════════════════
     };
-  const handlePointerLockChange = () => {
-    const isLocked = document.pointerLockElement === canvas;
-    setIsPointerLocked(isLocked);
-    
-    // If pointer lock was released (ESC pressed) while playing, pause the game
-    if (!isLocked && gameState === "playing") {
-      console.log("[PointerLock] Released during gameplay - pausing game");
-      setGameState("paused");
-      if (gameLoopRef.current) {
-        gameLoopRef.current.pause();
+    const handlePointerLockChange = () => {
+      const isLocked = document.pointerLockElement === canvas;
+      setIsPointerLocked(isLocked);
+
+      // If pointer lock was released (ESC pressed) while playing, pause the game
+      if (!isLocked && gameState === "playing") {
+        console.log("[PointerLock] Released during gameplay - pausing game");
+        setGameState("paused");
+        if (gameLoopRef.current) {
+          gameLoopRef.current.pause();
+        }
+        toast.info("Game paused. Press ESC to resume.");
       }
-      toast.info("Game paused. Press ESC to resume.");
-    }
-  };
+    };
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("touchstart", handleTouchStart, {
       passive: false,
@@ -1418,7 +1425,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       window.removeEventListener("keydown", handleKeyPress);
       document.removeEventListener("pointerlockchange", handlePointerLockChange);
     };
-  }, [handleMouseMove, handleTouchMove, handleClick, nextLevel, gameState, showDebugDashboard, debugDashboardPausedGame]);
+  }, [
+    handleMouseMove,
+    handleTouchMove,
+    handleClick,
+    nextLevel,
+    gameState,
+    showDebugDashboard,
+    debugDashboardPausedGame,
+  ]);
 
   // Get substep debug info for overlay
   const getSubstepDebugInfo = useCallback(() => {
@@ -4711,9 +4726,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       ) : (
         <>
           {showHighScoreEntry ? (
-            <HighScoreEntry 
-              score={score} 
-              level={level} 
+            <HighScoreEntry
+              score={score}
+              level={level}
               onSubmit={handleHighScoreSubmit}
               qualifiedLeaderboards={qualifiedLeaderboards || undefined}
             />
@@ -4838,7 +4853,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             <X size={28} />
                           </button>
                         )}
-                        
+
                         <h2
                           className="retro-pixel-text text-3xl mb-6 text-center animate-pulse"
                           style={{ color: "hsl(48, 100%, 60%)" }}
