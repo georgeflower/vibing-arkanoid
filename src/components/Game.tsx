@@ -1204,12 +1204,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         } else if (gameState === "playing") {
           setGameState("paused");
           document.exitPointerLock();
+          if (gameLoopRef.current) {
+            gameLoopRef.current.pause();
+          }
           toast.info("Game paused. Press ESC to resume.");
         } else if (gameState === "paused" && !debugDashboardPausedGame) {
           setGameState("playing");
           const canvas = canvasRef.current;
           if (canvas && canvas.requestPointerLock) {
             canvas.requestPointerLock();
+          }
+          if (gameLoopRef.current) {
+            gameLoopRef.current.resume();
           }
           toast.info("Game resumed!");
         }
@@ -1395,7 +1401,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       window.removeEventListener("keydown", handleKeyPress);
       document.removeEventListener("pointerlockchange", handlePointerLockChange);
     };
-  }, [handleMouseMove, handleTouchMove, handleClick, nextLevel, gameState]);
+  }, [handleMouseMove, handleTouchMove, handleClick, nextLevel, gameState, showDebugDashboard, debugDashboardPausedGame]);
 
   // Get substep debug info for overlay
   const getSubstepDebugInfo = useCallback(() => {
