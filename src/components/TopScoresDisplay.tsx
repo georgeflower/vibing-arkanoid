@@ -8,6 +8,9 @@ export const TopScoresDisplay = () => {
     weekly: { name: string; score: number } | null;
     allTime: { name: string; score: number } | null;
   }>({ daily: null, weekly: null, allTime: null });
+  
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isScrolling, setIsScrolling] = useState(false);
 
   useEffect(() => {
     const loadTopScores = async () => {
@@ -17,64 +20,45 @@ export const TopScoresDisplay = () => {
     loadTopScores();
   }, [fetchTopScores]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsScrolling(true);
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % 3);
+        setIsScrolling(false);
+      }, 500);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   const formatScore = (score: number | undefined) => {
     if (!score) return "---";
     return score.toString().padStart(6, "0");
   };
 
+  const getDisplayText = () => {
+    const labels = ["TODAY", "WEEKLY", "ALL-TIME"];
+    const scores = [topScores.daily, topScores.weekly, topScores.allTime];
+    const current = scores[currentIndex];
+    const label = labels[currentIndex];
+    
+    if (!current) return `HIGH SCORE - ${label}: ---`;
+    return `HIGH SCORE - ${label}: ${current.name} ${formatScore(current.score)}`;
+  };
+
   return (
-    <div className="retro-border bg-background/95 backdrop-blur-sm rounded-lg p-6 w-full">
-      <h3 className="text-2xl font-bold text-center mb-4 font-mono text-primary">
-        🏆 LEADERBOARDS
-      </h3>
-      
-      <div className="space-y-2 font-mono">
-        {/* Daily */}
-        <div className="flex justify-between items-center text-sm md:text-base">
-          <span className="text-cyan-300">📅 TODAY</span>
-          <span className="text-white">
-            {topScores.daily ? (
-              <>
-                <span className="text-cyan-300">{topScores.daily.name}</span>
-                {" "}
-                <span>{formatScore(topScores.daily.score)}</span>
-              </>
-            ) : (
-              <span className="text-muted-foreground">---</span>
-            )}
-          </span>
-        </div>
-
-        {/* Weekly */}
-        <div className="flex justify-between items-center text-sm md:text-base">
-          <span className="text-purple-400">📆 WEEKLY</span>
-          <span className="text-white">
-            {topScores.weekly ? (
-              <>
-                <span className="text-purple-400">{topScores.weekly.name}</span>
-                {" "}
-                <span>{formatScore(topScores.weekly.score)}</span>
-              </>
-            ) : (
-              <span className="text-muted-foreground">---</span>
-            )}
-          </span>
-        </div>
-
-        {/* All-Time */}
-        <div className="flex justify-between items-center text-sm md:text-base">
-          <span className="text-amber-400">🌟 ALL-TIME</span>
-          <span className="text-white">
-            {topScores.allTime ? (
-              <>
-                <span className="text-amber-400">{topScores.allTime.name}</span>
-                {" "}
-                <span>{formatScore(topScores.allTime.score)}</span>
-              </>
-            ) : (
-              <span className="text-muted-foreground">---</span>
-            )}
-          </span>
+    <div className="retro-border bg-black/90 backdrop-blur-sm rounded-lg p-3 w-full overflow-hidden">
+      <div className="relative h-8 flex items-center justify-center">
+        <div
+          className={`font-mono text-sm md:text-base tracking-wider transition-transform duration-500 ${
+            isScrolling ? "-translate-x-full" : "translate-x-0"
+          }`}
+          style={{
+            color: "#ff9500",
+            textShadow: "0 0 10px rgba(255, 149, 0, 0.6), 0 0 20px rgba(255, 149, 0, 0.3)",
+          }}
+        >
+          🏆 {getDisplayText()}
         </div>
       </div>
     </div>
