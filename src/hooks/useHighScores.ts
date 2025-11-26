@@ -75,15 +75,53 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => 
   }, [leaderboardType]);
 
   const isHighScore = async (score: number): Promise<boolean> => {
+    // Score of 0 or less never qualifies
+    if (score <= 0) return false;
+    
     try {
-      const { count, error } = await supabase
+      const now = new Date();
+      
+      // Check daily (scores from today)
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
+      
+      const { count: dailyHigherCount, error: dailyError } = await supabase
+        .from('high_scores')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', today.toISOString())
+        .gte('score', score);
+      
+      if (dailyError) throw dailyError;
+      
+      // If fewer than 20 scores higher or equal today, qualifies for daily
+      if ((dailyHigherCount || 0) < MAX_HIGH_SCORES) return true;
+      
+      // Check weekly (scores from past 7 days)
+      const weekAgo = new Date(now);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      
+      const { count: weeklyHigherCount, error: weeklyError } = await supabase
+        .from('high_scores')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', weekAgo.toISOString())
+        .gte('score', score);
+      
+      if (weeklyError) throw weeklyError;
+      
+      // If fewer than 20 scores higher or equal this week, qualifies for weekly
+      if ((weeklyHigherCount || 0) < MAX_HIGH_SCORES) return true;
+      
+      // Check all-time
+      const { count: allTimeHigherCount, error: allTimeError } = await supabase
         .from('high_scores')
         .select('*', { count: 'exact', head: true })
         .gte('score', score);
-
-      if (error) throw error;
       
-      return (count || 0) < MAX_HIGH_SCORES || highScores.some(hs => score > hs.score);
+      if (allTimeError) throw allTimeError;
+      
+      // If fewer than 20 scores higher or equal all-time, qualifies
+      return (allTimeHigherCount || 0) < MAX_HIGH_SCORES;
+      
     } catch (err) {
       console.error('Failed to check high score:', err);
       return false;
