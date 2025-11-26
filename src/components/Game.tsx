@@ -4863,6 +4863,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         >
                           Press ESC or P to continue
                         </div>
+
+                        <Button
+                          onClick={() => {
+                            soundManager.stopBackgroundMusic();
+                            soundManager.stopBossMusic();
+                            soundManager.playMenuClick();
+                            onReturnToMenu();
+                          }}
+                          onMouseEnter={() => soundManager.playMenuHover()}
+                          className="w-full mt-6 bg-red-600 hover:bg-red-700 text-white text-sm py-3 retro-pixel-text"
+                        >
+                          EXIT TO MAIN MENU
+                        </Button>
                       </div>
                     </div>
                   )}
