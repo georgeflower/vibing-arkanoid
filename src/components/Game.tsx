@@ -4935,7 +4935,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             onMouseEnter={() => soundManager.playMenuHover()}
                             className="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm py-3 retro-pixel-text"
                           >
-                            EXIT TO MAIN MENU
+                            MAIN MENU
                           </Button>
                         </div>
                       </div>
