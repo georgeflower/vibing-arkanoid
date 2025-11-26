@@ -1196,10 +1196,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (!canvas) return;
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        console.log("[ESC Key] Pressed - gameState:", gameState, "showDebugDashboard:", showDebugDashboard, "debugDashboardPausedGame:", debugDashboardPausedGame);
         // Escape key priority order:
         // 1. Close debug dashboard if open
         // 2. Pause/Resume game
         if (ENABLE_DEBUG_FEATURES && showDebugDashboard) {
+          console.log("[ESC Key] Closing debug dashboard");
           setShowDebugDashboard(false);
         } else if (gameState === "playing") {
           console.log("[ESC Key] Opening pause menu from playing state");
@@ -1210,6 +1212,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
           toast.info("Game paused. Press ESC to resume.");
         } else if (gameState === "paused" && !debugDashboardPausedGame) {
+          console.log("[ESC Key] Resuming game from paused state");
           setGameState("playing");
           const canvas = canvasRef.current;
           if (canvas && canvas.requestPointerLock) {
@@ -1219,6 +1222,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             gameLoopRef.current.resume();
           }
           toast.info("Game resumed!");
+        } else {
+          console.log("[ESC Key] No action taken - conditions not met");
         }
       } else if (e.key === "n" || e.key === "N") {
         soundManager.nextTrack();
