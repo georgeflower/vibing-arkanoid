@@ -16,6 +16,24 @@ export const HighScoreEntry = ({ score, level, onSubmit, qualifiedLeaderboards }
   const [name, setName] = useState("");
   const [displayScore, setDisplayScore] = useState(0);
 
+  // Prevent game keyboard shortcuts from interfering with input
+  useEffect(() => {
+    const preventGameShortcuts = (e: KeyboardEvent) => {
+      // If the event target is the input field, don't let it propagate
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT') {
+        // Prevent specific game keys from triggering their actions
+        const gameKeys = ['f', 'F', 'p', 'P', 'm', 'M', 'n', 'N', 'b', 'B', 'Escape'];
+        if (gameKeys.includes(e.key)) {
+          e.stopPropagation();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', preventGameShortcuts, true);
+    return () => window.removeEventListener('keydown', preventGameShortcuts, true);
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toUpperCase().slice(0, 3);
     setName(value);
@@ -28,9 +46,14 @@ export const HighScoreEntry = ({ score, level, onSubmit, qualifiedLeaderboards }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
+    e.stopPropagation(); // Stop propagation to prevent game shortcuts
     if (e.key === "Enter" && name.length === 3) {
       handleSubmit();
     }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    e.stopPropagation(); // Stop propagation for all key presses in the input
   };
 
   useEffect(() => {
@@ -117,6 +140,7 @@ export const HighScoreEntry = ({ score, level, onSubmit, qualifiedLeaderboards }
             value={name}
             onChange={handleInputChange}
             onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyDown}
             maxLength={3}
             placeholder="___"
             autoFocus
