@@ -1198,7 +1198,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (e.key === "Escape") {
         // Escape key priority order:
         // 1. Close debug dashboard if open
-        // 2. Pause/Resume game (pointer lock handled by pause state)
+        // 2. Pause/Resume game
         if (ENABLE_DEBUG_FEATURES && showDebugDashboard) {
           setShowDebugDashboard(false);
         } else if (gameState === "playing") {
