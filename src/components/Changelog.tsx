@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { X } from "lucide-react";
 import { CHANGELOG } from "@/constants/version";
 import CRTOverlay from "./CRTOverlay";
@@ -20,10 +20,21 @@ export const Changelog = ({ onClose, quality, qualitySettings = { backgroundEffe
   
   useSwipeGesture(containerRef, onClose, { enabled: isMobileDevice });
 
+  // ESC key to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 swipe-container">
+    <div ref={containerRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 swipe-container animate-fade-in">
       {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
-      <div className="bg-slate-900/95 rounded-lg border-2 border-cyan-500/30 p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+      <div className="bg-slate-900/95 rounded-lg border-2 border-cyan-500/30 p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto animate-scale-in">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-3xl font-bold text-cyan-400 font-mono">CHANGELOG</h2>
           <button

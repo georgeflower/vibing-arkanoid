@@ -85,9 +85,35 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   useSwipeGesture(aboutRef, () => setShowAbout(false), { enabled: showAbout && isMobileDevice });
   useSwipeGesture(instructionsRef, () => setShowInstructions(false), { enabled: showInstructions && isMobileDevice });
 
+  // ESC key to close overlay screens
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showHighScores) {
+          soundManager.playMenuClick();
+          setShowHighScores(false);
+        } else if (showChangelog) {
+          soundManager.playMenuClick();
+          setShowChangelog(false);
+        } else if (showWhatsNew) {
+          soundManager.playMenuClick();
+          setShowWhatsNew(false);
+        } else if (showAbout) {
+          soundManager.playMenuClick();
+          setShowAbout(false);
+        } else if (showInstructions) {
+          soundManager.playMenuClick();
+          setShowInstructions(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showHighScores, showChangelog, showWhatsNew, showAbout, showInstructions]);
+
   if (showHighScores) {
     return (
-      <div ref={highScoresRef} className="fixed inset-0 w-full h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] swipe-container">
+      <div ref={highScoresRef} className="fixed inset-0 w-full h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] swipe-container animate-fade-in">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <HighScoreDisplay 
           onClose={() => setShowHighScores(false)} 
@@ -102,9 +128,9 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showWhatsNew) {
     return (
-      <div ref={whatsNewRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container">
+      <div ref={whatsNewRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container animate-fade-in">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
-        <Card className="relative w-full h-full max-w-2xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
+        <Card className="relative w-full h-full max-w-2xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)] animate-scale-in">
           <button
             onClick={() => {
               soundManager.playMenuClick();
@@ -175,9 +201,9 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showAbout) {
     return (
-      <div ref={aboutRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container">
+      <div ref={aboutRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container animate-fade-in">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
-        <Card className="relative w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
+        <Card className="relative w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)] animate-scale-in">
           <button
             onClick={() => {
               soundManager.playMenuClick();
@@ -316,9 +342,9 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showInstructions) {
     return (
-      <div ref={instructionsRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container">
+      <div ref={instructionsRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container animate-fade-in">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
-        <Card className="relative w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
+        <Card className="relative w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)] animate-scale-in">
           <button
             onClick={() => {
               soundManager.playMenuClick();

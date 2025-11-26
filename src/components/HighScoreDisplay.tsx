@@ -60,15 +60,26 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time' }: High
   
   useSwipeGesture(containerRef, onClose, { enabled: isMobileDevice });
 
+  // ESC key to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div ref={containerRef} className="fixed inset-0 w-full h-screen overflow-hidden swipe-container">
+    <div ref={containerRef} className="fixed inset-0 w-full h-screen overflow-hidden swipe-container animate-fade-in">
       <div className="absolute inset-0 w-full h-full pointer-events-none">
         <Canvas camera={{ position: [0, 0, 15], fov: 50 }}>
           <Scene3D />
         </Canvas>
       </div>
       <div className="absolute inset-0 w-full h-full flex items-center justify-center p-4">
-        <div className="relative z-10 bg-slate-900/90 backdrop-blur-md rounded-lg p-8 border-2 border-cyan-500/50 max-w-3xl w-full">
+        <div className="relative z-10 bg-slate-900/90 backdrop-blur-md rounded-lg p-8 border-2 border-cyan-500/50 max-w-3xl w-full animate-scale-in">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors z-20"
