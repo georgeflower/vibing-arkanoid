@@ -60,7 +60,7 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time' }: High
   useSwipeGesture(containerRef, onClose, { enabled: isMobileDevice });
 
   return (
-    <div ref={containerRef} className="fixed inset-0 w-full h-screen overflow-hidden">
+    <div ref={containerRef} className="fixed inset-0 w-full h-screen overflow-hidden swipe-container">
       <div className="absolute inset-0 w-full h-full pointer-events-none">
         <Canvas camera={{ position: [0, 0, 15], fov: 50 }}>
           <Scene3D />

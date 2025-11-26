@@ -21,7 +21,7 @@ export const Changelog = ({ onClose, quality, qualitySettings = { backgroundEffe
   useSwipeGesture(containerRef, onClose, { enabled: isMobileDevice });
 
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div ref={containerRef} className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 swipe-container">
       {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
       <div className="bg-slate-900/95 rounded-lg border-2 border-cyan-500/30 p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">

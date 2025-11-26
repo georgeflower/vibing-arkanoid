@@ -85,7 +85,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showHighScores) {
     return (
-      <div ref={highScoresRef} className="fixed inset-0 w-full h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)]">
+      <div ref={highScoresRef} className="fixed inset-0 w-full h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] swipe-container">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <HighScoreDisplay 
           onClose={() => setShowHighScores(false)} 
@@ -100,7 +100,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showWhatsNew) {
     return (
-      <div ref={whatsNewRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+      <div ref={whatsNewRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <Card className="w-full h-full max-w-2xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
           <h2 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-3 text-center text-[hsl(200,70%,50%)]">
@@ -162,7 +162,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showAbout) {
     return (
-      <div ref={aboutRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+      <div ref={aboutRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <Card className="w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">
@@ -292,7 +292,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showInstructions) {
     return (
-      <div ref={instructionsRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+      <div ref={instructionsRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container">
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <Card className="w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)]">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">

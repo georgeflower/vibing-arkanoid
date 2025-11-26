@@ -714,4 +714,23 @@ All colors MUST be HSL.
   }
 }
 
+/* Prevent iOS Safari's edge swipe back gesture */
+html, body, #root {
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
+}
+
+.ios-fullscreen-container,
+.metal-frame,
+.fixed.inset-0 {
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
+}
+
+/* Swipeable container - prevents browser back gesture */
+.swipe-container {
+  touch-action: pan-y !important;
+  overscroll-behavior-x: none !important;
+  -webkit-touch-callout: none !important;
+}
 

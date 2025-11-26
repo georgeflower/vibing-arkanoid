@@ -29,7 +29,7 @@ import { getParticleLimits, shouldCreateParticle, calculateParticleCount } from 
 import { FrameProfilerOverlay } from "./FrameProfilerOverlay";
 import { CCDPerformanceTracker } from "@/utils/rollingStats";
 // ═══════════════════════════════════════════════════════════════
-import { Maximize2, Minimize2, Home } from "lucide-react";
+import { Maximize2, Minimize2, Home, X } from "lucide-react";
 import { QualityIndicator } from "./QualityIndicator";
 import type {
   Brick,
@@ -4779,7 +4779,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   {/* Pause Overlay */}
                   {gameState === "paused" && !showDebugDashboard && (
                     <div className="absolute inset-0 flex items-start justify-center bg-black/70 z-50 pt-16">
-                      <div className="bg-slate-900/95 border-4 border-cyan-500 rounded-lg p-8 max-w-md">
+                      <div className="bg-slate-900/95 border-4 border-cyan-500 rounded-lg p-8 max-w-md relative">
+                        {/* X button for mobile - positioned in top right corner */}
+                        {isMobileDevice && (
+                          <button
+                            onClick={() => {
+                              setGameState("playing");
+                              gameLoopRef.current?.start();
+                            }}
+                            className="absolute top-2 right-2 text-white hover:text-cyan-300 transition-colors p-2"
+                            title="Resume Game"
+                          >
+                            <X size={28} />
+                          </button>
+                        )}
+                        
                         <h2
                           className="retro-pixel-text text-3xl mb-6 text-center animate-pulse"
                           style={{ color: "hsl(48, 100%, 60%)" }}
