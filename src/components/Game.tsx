@@ -1202,6 +1202,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (ENABLE_DEBUG_FEATURES && showDebugDashboard) {
           setShowDebugDashboard(false);
         } else if (gameState === "playing") {
+          console.log("[ESC Key] Opening pause menu from playing state");
           setGameState("paused");
           document.exitPointerLock();
           if (gameLoopRef.current) {
