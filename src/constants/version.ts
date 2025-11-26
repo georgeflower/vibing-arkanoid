@@ -1,6 +1,14 @@
-export const GAME_VERSION = "0.8.0";
+export const GAME_VERSION = "0.8.1";
 
 export const CHANGELOG = [
+  {
+    version: "0.8.1",
+    changes: [
+      "Fixed ESC key pause functionality - now properly triggers pause menu when mouse is captured",
+      "ESC key reliably releases pointer lock and pauses gameplay via pointer lock change detection",
+      "Added toast notification when game is paused via ESC during active gameplay",
+    ],
+  },
   {
     version: "0.8.0",
     changes: [
