@@ -29,6 +29,10 @@ export const useSwipeGesture = (
     const element = elementRef.current;
     if (!element) return;
 
+    // Detect iOS devices
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || 
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
     // Apply touch-action CSS to prevent iOS Safari back gesture
     const originalTouchAction = element.style.touchAction;
     const originalOverscrollBehavior = element.style.overscrollBehaviorX;
@@ -45,6 +49,15 @@ export const useSwipeGesture = (
       startX = touch.clientX;
       startY = touch.clientY;
       startTime = Date.now();
+
+      // iOS Safari: Aggressively prevent back gesture immediately if touch starts near left edge
+      // Use pixel-based threshold for iOS (30px), percentage for others
+      const screenWidth = window.innerWidth;
+      const edgeZonePixels = isIOS ? 30 : screenWidth * leftEdgeThreshold;
+      
+      if (startX <= edgeZonePixels) {
+        e.preventDefault();
+      }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
@@ -56,11 +69,21 @@ export const useSwipeGesture = (
       if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX > 30) {
         // Check if swipe started from left edge
         const screenWidth = window.innerWidth;
-        if (startX <= screenWidth * leftEdgeThreshold) {
+        const edgeZonePixels = isIOS ? 30 : screenWidth * leftEdgeThreshold;
+        if (startX <= edgeZonePixels) {
           // Prevent default to stop iOS Safari back gesture
           e.preventDefault();
         }
       }
+    };
+
+    // iOS Safari-specific gesture handlers
+    const handleGestureStart = (e: Event) => {
+      e.preventDefault();
+    };
+
+    const handleGestureChange = (e: Event) => {
+      e.preventDefault();
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
@@ -73,7 +96,8 @@ export const useSwipeGesture = (
 
       // Check if swipe started from left edge
       const screenWidth = window.innerWidth;
-      if (startX > screenWidth * leftEdgeThreshold) {
+      const edgeZonePixels = isIOS ? 30 : screenWidth * leftEdgeThreshold;
+      if (startX > edgeZonePixels) {
         return; // Ignore swipes not starting from left edge
       }
 
@@ -92,9 +116,16 @@ export const useSwipeGesture = (
     };
 
     // Add listeners with appropriate passive flags
-    element.addEventListener("touchstart", handleTouchStart, { passive: true });
+    // touchstart must have passive: false for iOS preventDefault to work
+    element.addEventListener("touchstart", handleTouchStart, { passive: false });
     element.addEventListener("touchmove", handleTouchMove, { passive: false }); // passive: false to allow preventDefault
     element.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    // Add iOS Safari-specific gesture event listeners
+    if (isIOS) {
+      element.addEventListener("gesturestart", handleGestureStart as EventListener);
+      element.addEventListener("gesturechange", handleGestureChange as EventListener);
+    }
 
     return () => {
       // Restore original styles
@@ -104,6 +135,12 @@ export const useSwipeGesture = (
       element.removeEventListener("touchstart", handleTouchStart);
       element.removeEventListener("touchmove", handleTouchMove);
       element.removeEventListener("touchend", handleTouchEnd);
+
+      // Remove iOS Safari-specific gesture event listeners
+      if (isIOS) {
+        element.removeEventListener("gesturestart", handleGestureStart as EventListener);
+        element.removeEventListener("gesturechange", handleGestureChange as EventListener);
+      }
     };
   }, [elementRef, onSwipeRight, minSwipeDistance, enabled, leftEdgeThreshold]);
 };

@@ -4569,6 +4569,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // iOS Safari: Document-level gesture prevention when game is active
+  useEffect(() => {
+    if (!isIOSDevice) return;
+    if (gameState !== "playing" && gameState !== "ready") return;
+
+    const preventGesture = (e: Event) => {
+      e.preventDefault();
+    };
+
+    // Add aggressive gesture prevention at document level for iOS
+    document.addEventListener("gesturestart", preventGesture);
+    document.addEventListener("gesturechange", preventGesture);
+
+    return () => {
+      document.removeEventListener("gesturestart", preventGesture);
+      document.removeEventListener("gesturechange", preventGesture);
+    };
+  }, [isIOSDevice, gameState]);
+
   // Adaptive header and frame visibility based on vertical space
   useEffect(() => {
     let debounceTimer: NodeJS.Timeout;
