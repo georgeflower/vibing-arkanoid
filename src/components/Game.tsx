@@ -90,7 +90,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -184,7 +184,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [shieldImpacts, setShieldImpacts] = useState<ShieldImpact[]>([]);
   const [lastScoreMilestone, setLastScoreMilestone] = useState(0);
   const [scoreBlinking, setScoreBlinking] = useState(false);
-  
+
   // Boss power-up states
   const [reflectShieldActive, setReflectShieldActive] = useState(false);
   const [homingBallActive, setHomingBallActive] = useState(false);
@@ -308,55 +308,61 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     };
   }, []);
-  
+
   // Boss power-up effect handlers
   const handleBossStunner = useCallback(() => {
     if (boss) {
-      setBoss(prev => prev ? {
-        ...prev,
-        isStunned: true,
-        stunnedUntil: Date.now() + 5000
-      } : null);
-      
+      setBoss((prev) =>
+        prev
+          ? {
+              ...prev,
+              isStunned: true,
+              stunnedUntil: Date.now() + 5000,
+            }
+          : null,
+      );
+
       // Also stun resurrected bosses
-      setResurrectedBosses(prev => prev.map(rb => ({
-        ...rb,
-        isStunned: true,
-        stunnedUntil: Date.now() + 5000
-      })));
+      setResurrectedBosses((prev) =>
+        prev.map((rb) => ({
+          ...rb,
+          isStunned: true,
+          stunnedUntil: Date.now() + 5000,
+        })),
+      );
     }
   }, [boss]);
 
   const handleReflectShield = useCallback(() => {
     setReflectShieldActive(true);
-    setPaddle(prev => prev ? { ...prev, hasReflectShield: true } : null);
-    
+    setPaddle((prev) => (prev ? { ...prev, hasReflectShield: true } : null));
+
     if (reflectShieldTimeoutRef.current) {
       clearTimeout(reflectShieldTimeoutRef.current);
     }
-    
+
     reflectShieldTimeoutRef.current = setTimeout(() => {
       setReflectShieldActive(false);
-      setPaddle(prev => prev ? { ...prev, hasReflectShield: false } : null);
+      setPaddle((prev) => (prev ? { ...prev, hasReflectShield: false } : null));
       toast.info("Reflect Shield expired!");
     }, 15000);
   }, []);
 
   const handleHomingBall = useCallback(() => {
     setHomingBallActive(true);
-    setBalls(prev => prev.map(ball => ({ ...ball, isHoming: true })));
-    
+    setBalls((prev) => prev.map((ball) => ({ ...ball, isHoming: true })));
+
     if (homingBallTimeoutRef.current) {
       clearTimeout(homingBallTimeoutRef.current);
     }
-    
+
     homingBallTimeoutRef.current = setTimeout(() => {
       setHomingBallActive(false);
-      setBalls(prev => prev.map(ball => ({ ...ball, isHoming: false })));
+      setBalls((prev) => prev.map((ball) => ({ ...ball, isHoming: false })));
       toast.info("Homing Ball expired!");
     }, 8000);
   }, []);
-  
+
   const { isHighScore, addHighScore, getQualifiedLeaderboards } = useHighScores();
   const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps, extraLifeUsedLevels } =
     usePowerUps(
@@ -2802,35 +2808,35 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           delete (result.ball as any)._hitPaddleThisFrame;
         }
       });
-      
+
       // Apply homing ball physics (steer toward boss)
       ballResults.forEach((result) => {
         if (!result.ball || !result.ball.isHoming || result.ball.waitingToLaunch) return;
-        
+
         // Find closest boss (main boss or resurrected)
         const targetBoss = boss || resurrectedBosses[0];
         if (!targetBoss) return;
-        
+
         // Calculate direction to boss center
         const bossCenterX = targetBoss.x + targetBoss.width / 2;
         const bossCenterY = targetBoss.y + targetBoss.height / 2;
         const toBossX = bossCenterX - result.ball.x;
         const toBossY = bossCenterY - result.ball.y;
-        
+
         // Current ball angle
         const currentAngle = Math.atan2(result.ball.dy, result.ball.dx);
         const targetAngle = Math.atan2(toBossY, toBossX);
-        
+
         // Calculate angle difference and limit turn rate
         let angleDiff = targetAngle - currentAngle;
         while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
         while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
-        
+
         const HOMING_MAX_TURN = 0.1; // Max radians per frame
         const HOMING_STRENGTH = 0.15;
         const turnAmount = Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), HOMING_MAX_TURN);
         const newAngle = currentAngle + turnAmount * HOMING_STRENGTH;
-        
+
         // Apply new direction while preserving speed
         const speed = Math.sqrt(result.ball.dx * result.ball.dx + result.ball.dy * result.ball.dy);
         result.ball.dx = Math.cos(newAngle) * speed;
@@ -3535,14 +3541,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         );
       }
     }
-    
+
     // Check if boss stun has expired
     if (boss?.isStunned && Date.now() >= (boss.stunnedUntil || 0)) {
-      setBoss(prev => prev ? { ...prev, isStunned: false, stunnedUntil: undefined } : null);
+      setBoss((prev) => (prev ? { ...prev, isStunned: false, stunnedUntil: undefined } : null));
       toast.info("Boss recovered from stun!");
     }
 
-    if (boss && !boss.isStunned && boss.phase === "attacking" && Date.now() - boss.lastAttackTime >= boss.attackCooldown && paddle) {
+    if (
+      boss &&
+      !boss.isStunned &&
+      boss.phase === "attacking" &&
+      Date.now() - boss.lastAttackTime >= boss.attackCooldown &&
+      paddle
+    ) {
       performBossAttack(boss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings);
       const nextIndex = (boss.currentPositionIndex + 1) % boss.positions.length;
       setBoss((prev) =>
@@ -3643,11 +3655,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             toast.success("Shield absorbed boss attack!");
             return false; // Remove attack
           }
-          
+
           // Check for reflect shield (reflects back to boss)
           if (paddle.hasReflectShield) {
             soundManager.playReflectedAttackSound();
-            
+
             // Reflect attack back toward boss
             const targetBoss = boss || resurrectedBosses[0];
             if (targetBoss) {
@@ -3656,7 +3668,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 dy: -Math.abs(attack.dy || attack.speed), // Always go upward
                 dx: attack.dx || 0,
               };
-              
+
               // Check if reflected attack will hit the boss (simple box collision)
               if (
                 reversedAttack.x + reversedAttack.width > targetBoss.x &&
@@ -3666,21 +3678,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               ) {
                 // Damage the boss
                 if (boss && targetBoss === boss) {
-                  setBoss((prev) => prev ? {
-                    ...prev,
-                    currentHealth: prev.currentHealth - 1
-                  } : null);
+                  setBoss((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          currentHealth: prev.currentHealth - 1,
+                        }
+                      : null,
+                  );
                 } else {
-                  setResurrectedBosses((prev) => prev.map(rb => 
-                    rb === targetBoss ? { ...rb, currentHealth: rb.currentHealth - 1 } : rb
-                  ));
+                  setResurrectedBosses((prev) =>
+                    prev.map((rb) => (rb === targetBoss ? { ...rb, currentHealth: rb.currentHealth - 1 } : rb)),
+                  );
                 }
                 soundManager.playBossHitSound();
                 setScreenShake(8);
                 toast.success("Reflected attack hit the boss!");
               }
             }
-            
+
             return false; // Remove attack
           }
 
