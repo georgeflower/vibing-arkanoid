@@ -24,7 +24,9 @@ export const usePowerUps = (
   const fireballTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const createPowerUp = useCallback((brick: Brick, isBossMinion: boolean = false): PowerUp | null => {
-    // Boss minions have 50% bonus drop rate
+    const isEnemyDrop = brick.id < 0; // Enemies use fakeBricks with id: -1
+    
+    // Boss minions: 50% chance to drop power-up
     if (isBossMinion && Math.random() < 0.5) {
       const isBossLevel = [5, 10, 15].includes(currentLevel);
       
@@ -63,7 +65,33 @@ export const usePowerUps = (
       };
     }
     
-    // Regular bricks: use pre-assigned power-ups (20% of bricks)
+    // Regular enemy drops (non-boss minions) - every 3rd kill triggers this
+    if (isEnemyDrop) {
+      let availableTypes = [...regularPowerUpTypes];
+      
+      if (difficulty === "godlike") {
+        availableTypes = availableTypes.filter(t => t !== "life");
+      } else {
+        const levelGroup = Math.floor(currentLevel / 5);
+        if (extraLifeUsedLevels.includes(levelGroup)) {
+          availableTypes = availableTypes.filter(t => t !== "life");
+        }
+      }
+      
+      const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+      
+      return {
+        x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
+        y: brick.y,
+        width: POWERUP_SIZE,
+        height: POWERUP_SIZE,
+        type,
+        speed: POWERUP_FALL_SPEED,
+        active: true,
+      };
+    }
+    
+    // Regular bricks: use pre-assigned power-ups
     if (!powerUpAssignments) return null;
     
     const assignedType = powerUpAssignments.get(brick.id);
