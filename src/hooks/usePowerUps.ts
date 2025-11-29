@@ -4,7 +4,8 @@ import { POWERUP_SIZE, POWERUP_FALL_SPEED, POWERUP_DROP_CHANCE, CANVAS_HEIGHT, F
 import { toast } from "sonner";
 import { soundManager } from "@/utils/sounds";
 
-const powerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life", "slowdown", "paddleExtend", "paddleShrink", "shield"];
+const regularPowerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life", "slowdown", "paddleExtend", "paddleShrink", "shield"];
+const bossPowerUpTypes: PowerUpType[] = ["bossStunner", "reflectShield", "homingBall"];
 
 export const usePowerUps = (
   currentLevel: number,
@@ -13,25 +14,39 @@ export const usePowerUps = (
   difficulty: Difficulty = "normal",
   setBrickHitSpeedAccumulated?: React.Dispatch<React.SetStateAction<number>>,
   onPowerUpCollected?: (type: string) => void,
-  powerUpAssignments?: Map<number, PowerUpType> // NEW: Pre-assigned power-ups
+  powerUpAssignments?: Map<number, PowerUpType>, // Pre-assigned power-ups
+  onBossStunner?: () => void,
+  onReflectShield?: () => void,
+  onHomingBall?: () => void,
 ) => {
   const [powerUps, setPowerUps] = useState<PowerUp[]>([]);
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
   const fireballTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const createPowerUp = useCallback((brick: Brick, isBossMinion: boolean = false): PowerUp | null => {
-    // Boss minions have 50% bonus drop rate (random power-up)
+    // Boss minions have 50% bonus drop rate
     if (isBossMinion && Math.random() < 0.5) {
-      let availableTypes = [...powerUpTypes];
+      const isBossLevel = [5, 10, 15].includes(currentLevel);
       
-      // In godlike mode, never drop extra lives
-      if (difficulty === "godlike") {
-        availableTypes = availableTypes.filter(t => t !== "life");
+      // 50% chance for boss-exclusive power-ups on boss levels
+      const useBossPowerUp = isBossLevel && Math.random() < 0.5;
+      
+      let availableTypes: PowerUpType[];
+      
+      if (useBossPowerUp) {
+        availableTypes = [...bossPowerUpTypes];
       } else {
-        // Extra life only once per 5 levels in normal mode
-        const levelGroup = Math.floor(currentLevel / 5);
-        if (extraLifeUsedLevels.includes(levelGroup)) {
+        availableTypes = [...regularPowerUpTypes];
+        
+        // In godlike mode, never drop extra lives
+        if (difficulty === "godlike") {
           availableTypes = availableTypes.filter(t => t !== "life");
+        } else {
+          // Extra life only once per 5 levels in normal mode
+          const levelGroup = Math.floor(currentLevel / 5);
+          if (extraLifeUsedLevels.includes(levelGroup)) {
+            availableTypes = availableTypes.filter(t => t !== "life");
+          }
         }
       }
 
@@ -183,6 +198,24 @@ export const usePowerUps = (
               setPaddle(prev => prev ? { ...prev, hasShield: true } : null);
               toast.success("Shield activated!");
               break;
+            
+            case "bossStunner":
+              soundManager.playBossStunnerSound();
+              onBossStunner?.();
+              toast.success("Boss Stunner! Boss frozen for 5 seconds!");
+              break;
+
+            case "reflectShield":
+              soundManager.playReflectShieldSound();
+              onReflectShield?.();
+              toast.success("Reflect Shield! Boss attacks reflected for 15 seconds!");
+              break;
+
+            case "homingBall":
+              soundManager.playHomingBallSound();
+              onHomingBall?.();
+              toast.success("Homing Ball! Ball seeks the boss for 8 seconds!");
+              break;
           }
 
           return { ...powerUp, active: false };
@@ -190,7 +223,7 @@ export const usePowerUps = (
         return powerUp;
       });
     });
-  }, [currentLevel, extraLifeUsedLevels, setLives]);
+  }, [currentLevel, extraLifeUsedLevels, setLives, onBossStunner, onReflectShield, onHomingBall]);
 
   return {
     powerUps,

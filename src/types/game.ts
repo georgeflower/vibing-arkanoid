@@ -30,6 +30,7 @@ export interface Ball {
   lastHitTime?: number; // Timestamp of last brick hit
   lastWallHitTime?: number; // Timestamp of last wall hit (for cooldown)
   skipRemainingSubsteps?: boolean; // Exit substep loop after brick hit to prevent tunneling
+  isHoming?: boolean; // Ball curves toward boss
 }
 
 export interface Paddle {
@@ -40,6 +41,7 @@ export interface Paddle {
   hasTurrets?: boolean;
   hasShield?: boolean;
   turretShots?: number;
+  hasReflectShield?: boolean;
 }
 
 export interface Bullet {
@@ -51,7 +53,7 @@ export interface Bullet {
   isBounced?: boolean;
 }
 
-export type PowerUpType = "multiball" | "turrets" | "fireball" | "life" | "slowdown" | "paddleExtend" | "paddleShrink" | "shield";
+export type PowerUpType = "multiball" | "turrets" | "fireball" | "life" | "slowdown" | "paddleExtend" | "paddleShrink" | "shield" | "bossStunner" | "reflectShield" | "homingBall";
 
 export interface PowerUp {
   x: number;
@@ -179,6 +181,10 @@ export interface Boss {
   
   // Boss-local hit cooldown timestamp
   lastHitAt?: number;
+  
+  // Boss stun
+  isStunned?: boolean;
+  stunnedUntil?: number;
 }
 
 export interface BossAttack {
