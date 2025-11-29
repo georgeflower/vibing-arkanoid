@@ -2775,10 +2775,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 isIndestructible: false,
                 type: "normal",
               };
-              let powerUp = createPowerUp(fakeBrick);
+              let powerUp = createPowerUp(fakeBrick, isBossSpawned);
               let attempts = 0;
               while (!powerUp && attempts < 10) {
-                powerUp = createPowerUp(fakeBrick);
+                powerUp = createPowerUp(fakeBrick, isBossSpawned);
                 attempts++;
               }
               if (powerUp) {
