@@ -17,6 +17,9 @@ export const powerUpImages: Record<PowerUpType, string> = {
   paddleExtend: extendImg,
   paddleShrink: shrinkImg,
   shield: shieldImg,
+  bossStunner: "", // Rendered with emoji
+  reflectShield: "", // Rendered with emoji
+  homingBall: "", // Rendered with emoji
 };
 
 export const powerUpColors: Record<PowerUpType, string> = {
@@ -28,4 +31,7 @@ export const powerUpColors: Record<PowerUpType, string> = {
   paddleExtend: "hsl(120, 60%, 45%)", // green
   paddleShrink: "hsl(0, 75%, 55%)", // red
   shield: "hsl(280, 100%, 70%)", // purple
+  bossStunner: "hsl(60, 100%, 50%)", // bright yellow
+  reflectShield: "hsl(0, 0%, 75%)", // silver
+  homingBall: "hsl(0, 100%, 50%)", // red
 };

@@ -425,6 +425,28 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fill();
           ctx.shadowBlur = 0;
         }
+        
+        // Homing ball trail effect
+        if (ball.isHoming && boss) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.beginPath();
+          ctx.moveTo(ball.x, ball.y);
+          ctx.lineTo(boss.x + boss.width / 2, boss.y + boss.height / 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          
+          // Red glow around homing ball
+          ctx.shadowColor = 'red';
+          ctx.shadowBlur = 15;
+          ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, ball.radius * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
 
         // Draw launch indicator if ball is waiting to launch
         if (ball.waitingToLaunch) {
@@ -467,6 +489,18 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.save();
         ctx.translate(powerUp.x + size / 2, powerUp.y + size / 2);
         ctx.scale(pulseScale, pulseScale);
+        ctx.translate(-size / 2, -size / 2);
+
+        // Boss power-ups - render with emoji
+        if (powerUp.type === 'bossStunner' || powerUp.type === 'reflectShield' || powerUp.type === 'homingBall') {
+          ctx.font = '48px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const emoji = powerUp.type === 'bossStunner' ? '⚡' : powerUp.type === 'reflectShield' ? '🪞' : '🎯';
+          ctx.fillText(emoji, size / 2, size / 2);
+          ctx.restore();
+          return;
+        }
         
         // Draw background (light grey with rounded corners)
         ctx.fillStyle = "hsl(0, 0%, 70%)";
@@ -696,6 +730,26 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         });
       }
 
+      // Reflect shield visual effect
+      if (paddle?.hasReflectShield) {
+        ctx.save();
+        const gradient = ctx.createLinearGradient(
+          paddle.x, paddle.y - 30,
+          paddle.x + paddle.width, paddle.y - 30
+        );
+        gradient.addColorStop(0, 'rgba(192, 192, 192, 0.3)');
+        gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.6)');
+        gradient.addColorStop(1, 'rgba(192, 192, 192, 0.3)');
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(paddle.x - 10, paddle.y - 30, paddle.width + 20, 25);
+        
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + Math.sin(Date.now() / 200) * 0.3})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(paddle.x - 10, paddle.y - 30, paddle.width + 20, 25);
+        ctx.restore();
+      }
+      
       // Draw turrets if paddle has them
       if (paddle && paddle.hasTurrets) {
         const turretWidth = 10; // Narrower turrets
@@ -1270,6 +1324,25 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw boss
       if (boss) {
+        // Boss stun visual effect
+        if (boss.isStunned) {
+          ctx.save();
+          ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 100) * 0.3;
+          ctx.strokeStyle = '#00FFFF';
+          ctx.lineWidth = 3;
+          for (let i = 0; i < 6; i++) {
+            const angle = (Date.now() / 500 + i * Math.PI / 3) % (2 * Math.PI);
+            const r = boss.width / 2 + 10;
+            const x = boss.x + boss.width / 2 + Math.cos(angle) * r;
+            const y = boss.y + boss.height / 2 + Math.sin(angle) * r;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + Math.random() * 10 - 5, y + Math.random() * 10 - 5);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+        
         // Debug: Draw shape-specific, rotating boss hitbox (1px wider than visual)
         if (SHOW_BOSS_HITBOX) {
           const centerX = boss.x + boss.width / 2;

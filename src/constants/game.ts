@@ -102,3 +102,12 @@ export const PHYSICS_CONFIG = {
   BOSS_HIT_COOLDOWN_TICKS: 60, // At 60Hz = 1 second
   EPS_TOI: 0.01, // Tolerance for duplicate collision events
 } as const;
+
+// Boss-exclusive power-up durations
+export const BOSS_STUNNER_DURATION = 5000;     // 5 seconds
+export const REFLECT_SHIELD_DURATION = 15000;  // 15 seconds  
+export const HOMING_BALL_DURATION = 8000;      // 8 seconds
+
+// Homing ball physics
+export const HOMING_STRENGTH = 0.15;           // How strongly ball curves toward boss
+export const HOMING_MAX_TURN = 0.1;            // Maximum turn rate per frame (radians)

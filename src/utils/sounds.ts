@@ -898,6 +898,120 @@ class SoundManager {
   isBossMusicPlaying(): boolean {
     return this.bossMusic !== null && !this.bossMusic.paused;
   }
+
+  // Boss power-up sound effects
+  playBossStunnerSound() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Electric zap sound - synthesized
+    const oscillator1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    oscillator1.connect(gain1);
+    gain1.connect(ctx.destination);
+    oscillator1.frequency.value = 800;
+    oscillator1.type = 'square';
+    gain1.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+    oscillator1.start(ctx.currentTime);
+    oscillator1.stop(ctx.currentTime + 0.2);
+    
+    setTimeout(() => {
+      const oscillator2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      oscillator2.connect(gain2);
+      gain2.connect(ctx.destination);
+      oscillator2.frequency.value = 1200;
+      oscillator2.type = 'square';
+      gain2.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      oscillator2.start(ctx.currentTime);
+      oscillator2.stop(ctx.currentTime + 0.15);
+    }, 50);
+    
+    setTimeout(() => {
+      const oscillator3 = ctx.createOscillator();
+      const gain3 = ctx.createGain();
+      oscillator3.connect(gain3);
+      gain3.connect(ctx.destination);
+      oscillator3.frequency.value = 600;
+      oscillator3.type = 'square';
+      gain3.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain3.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      oscillator3.start(ctx.currentTime);
+      oscillator3.stop(ctx.currentTime + 0.25);
+    }, 100);
+  }
+
+  playReflectShieldSound() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Metallic shield activation
+    [400, 600, 800].forEach((freq, i) => {
+      setTimeout(() => {
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        oscillator.frequency.value = freq;
+        oscillator.type = 'triangle';
+        gainNode.gain.setValueAtTime(i === 2 ? 0.2 : 0.15, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + 0.2);
+      }, i * 100);
+    });
+  }
+
+  playHomingBallSound() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Lock-on beep sequence
+    [1000, 1200, 1400].forEach((freq, i) => {
+      setTimeout(() => {
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        oscillator.frequency.value = freq;
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(i === 2 ? 0.15 : 0.1, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + (i === 2 ? 0.15 : 0.1));
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + (i === 2 ? 0.15 : 0.1));
+      }, i * 150);
+    });
+  }
+
+  playReflectedAttackSound() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Deflection ping
+    const oscillator1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    oscillator1.connect(gain1);
+    gain1.connect(ctx.destination);
+    oscillator1.frequency.value = 900;
+    oscillator1.type = 'sine';
+    gain1.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+    oscillator1.start(ctx.currentTime);
+    oscillator1.stop(ctx.currentTime + 0.1);
+    
+    const oscillator2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    oscillator2.connect(gain2);
+    gain2.connect(ctx.destination);
+    oscillator2.frequency.value = 1100;
+    oscillator2.type = 'sine';
+    gain2.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    oscillator2.start(ctx.currentTime);
+    oscillator2.stop(ctx.currentTime + 0.15);
+  }
 }
 
 export const soundManager = new SoundManager();
