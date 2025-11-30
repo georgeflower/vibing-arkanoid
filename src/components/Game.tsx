@@ -289,6 +289,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Fixed-step game loop
   const gameLoopRef = useRef<FixedStepGameLoop | null>(null);
+  const isTogglingFullscreenRef = useRef(false);
 
   // Initialize fixed-step game loop on mount
   useEffect(() => {
@@ -1481,6 +1482,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const handlePointerLockChange = () => {
       const isLocked = document.pointerLockElement === canvas;
       setIsPointerLocked(isLocked);
+
+      // If pointer lock was released while toggling fullscreen, don't pause
+      if (isTogglingFullscreenRef.current) {
+        return;
+      }
 
       // If pointer lock was released (ESC pressed) while playing, pause the game
       if (!isLocked && gameState === "playing") {
@@ -4776,6 +4782,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const toggleFullscreen = async () => {
     if (!fullscreenContainerRef.current) return;
 
+    // Set flag before fullscreen change
+    isTogglingFullscreenRef.current = true;
+
     // iOS doesn't support the Fullscreen API
     // Use CSS-based fullscreen instead
     if (isIOSDevice) {
@@ -4797,6 +4806,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         document.body.style.width = "";
         document.body.style.height = "";
       }
+      
+      // Reset flag after a short delay
+      setTimeout(() => {
+        isTogglingFullscreenRef.current = false;
+      }, 500);
       return;
     }
 
@@ -4822,9 +4836,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     } catch (err) {
       console.error("Fullscreen error:", err);
-      // Fallback to CSS-based fullscreen on error
-      setIsFullscreen(!isFullscreen);
     }
+    
+    // Reset flag after a short delay to allow fullscreen change to complete
+    setTimeout(() => {
+      isTogglingFullscreenRef.current = false;
+    }, 500);
   };
 
   // Listen for fullscreen changes
@@ -5243,10 +5260,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             onClick={() => {
                               soundManager.playMenuClick();
                               setGameState("playing");
-                              soundManager.resumeBackgroundMusic();
+                              // Only resume music if it's not already playing
+                              if (!soundManager.isMusicPlaying() && !soundManager.isBossMusicPlaying()) {
+                                soundManager.resumeBackgroundMusic();
+                              }
                               const canvas = canvasRef.current;
                               if (canvas && canvas.requestPointerLock) {
                                 canvas.requestPointerLock();
+                              }
+                              if (gameLoopRef.current) {
+                                gameLoopRef.current.resume();
                               }
                             }}
                             onMouseEnter={() => soundManager.playMenuHover()}
