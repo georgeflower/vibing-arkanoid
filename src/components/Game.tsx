@@ -90,7 +90,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -1456,10 +1456,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setLevelSkipped(true);
           const bossPowerUpMap: Record<string, PowerUpType> = {
             "9": "bossStunner",
-            "r": "reflectShield",
-            "R": "reflectShield",
-            "e": "homingBall",
-            "E": "homingBall",
+            r: "reflectShield",
+            R: "reflectShield",
+            e: "homingBall",
+            E: "homingBall",
           };
 
           const type = bossPowerUpMap[e.key];
@@ -3653,80 +3653,73 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBossAttacks((prev) =>
       prev.filter((attack) => {
         if (attack.type === "laser") return true;
-        
+
         // Apply homing behavior to reflected attacks
         if (attack.isReflected) {
           // Find closest target (boss or enemy)
           let closestTarget: { x: number; y: number; width: number; height: number } | null = null;
           let closestDist = Infinity;
-          
+
           const attackCenterX = attack.x + attack.width / 2;
           const attackCenterY = attack.y + attack.height / 2;
-          
+
           // Check main boss
           if (boss) {
             const bossCenterX = boss.x + boss.width / 2;
             const bossCenterY = boss.y + boss.height / 2;
-            const dist = Math.sqrt(
-              Math.pow(bossCenterX - attackCenterX, 2) + 
-              Math.pow(bossCenterY - attackCenterY, 2)
-            );
+            const dist = Math.sqrt(Math.pow(bossCenterX - attackCenterX, 2) + Math.pow(bossCenterY - attackCenterY, 2));
             if (dist < closestDist) {
               closestDist = dist;
               closestTarget = boss;
             }
           }
-          
+
           // Check resurrected bosses
           for (const rb of resurrectedBosses) {
             const rbCenterX = rb.x + rb.width / 2;
             const rbCenterY = rb.y + rb.height / 2;
-            const dist = Math.sqrt(
-              Math.pow(rbCenterX - attackCenterX, 2) + 
-              Math.pow(rbCenterY - attackCenterY, 2)
-            );
+            const dist = Math.sqrt(Math.pow(rbCenterX - attackCenterX, 2) + Math.pow(rbCenterY - attackCenterY, 2));
             if (dist < closestDist) {
               closestDist = dist;
               closestTarget = rb;
             }
           }
-          
+
           // Check enemies
           for (const enemy of enemies) {
             const enemyCenterX = enemy.x + enemy.width / 2;
             const enemyCenterY = enemy.y + enemy.height / 2;
             const dist = Math.sqrt(
-              Math.pow(enemyCenterX - attackCenterX, 2) + 
-              Math.pow(enemyCenterY - attackCenterY, 2)
+              Math.pow(enemyCenterX - attackCenterX, 2) + Math.pow(enemyCenterY - attackCenterY, 2),
             );
             if (dist < closestDist) {
               closestDist = dist;
               closestTarget = enemy;
             }
           }
-          
+
           // Steer toward closest target
           if (closestTarget) {
             const targetCenterX = closestTarget.x + closestTarget.width / 2;
             const targetCenterY = closestTarget.y + closestTarget.height / 2;
-            
+
             // Calculate direction to target
             const dirX = targetCenterX - attackCenterX;
             const dirY = targetCenterY - attackCenterY;
             const dirLength = Math.sqrt(dirX * dirX + dirY * dirY);
-            
+
             if (dirLength > 0) {
               // Normalize direction
               const normDirX = dirX / dirLength;
               const normDirY = dirY / dirLength;
-              
+
               // Apply steering (blend current direction with target direction)
               const steeringStrength = 0.15; // How aggressively it homes
               const currentSpeed = Math.sqrt((attack.dx || 0) ** 2 + (attack.dy || 0) ** 2);
-              
+
               attack.dx = (attack.dx || 0) * (1 - steeringStrength) + normDirX * currentSpeed * steeringStrength;
               attack.dy = (attack.dy || 0) * (1 - steeringStrength) + normDirY * currentSpeed * steeringStrength;
-              
+
               // Normalize to maintain speed
               const newSpeed = Math.sqrt(attack.dx * attack.dx + attack.dy * attack.dy);
               if (newSpeed > 0) {
@@ -3736,21 +3729,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             }
           }
         }
-        
+
         const newX = attack.x + (attack.dx || 0);
         const newY = attack.y + (attack.dy || 0);
         if (newX < 0 || newX > SCALED_CANVAS_WIDTH || newY < 0 || newY > SCALED_CANVAS_HEIGHT) return false;
         attack.x = newX;
         attack.y = newY;
-        
+
         // Check reflected attacks against boss and enemies
         if (attack.isReflected) {
           // Check collision with main boss
-          if (boss && 
-              attack.x + attack.width > boss.x &&
-              attack.x < boss.x + boss.width &&
-              attack.y + attack.height > boss.y &&
-              attack.y < boss.y + boss.height) {
+          if (
+            boss &&
+            attack.x + attack.width > boss.x &&
+            attack.x < boss.x + boss.width &&
+            attack.y + attack.height > boss.y &&
+            attack.y < boss.y + boss.height
+          ) {
             // Damage the boss
             setBoss((prev) =>
               prev
@@ -3765,13 +3760,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             toast.success("Reflected attack hit the boss!");
             return false; // Remove attack
           }
-          
+
           // Check collision with resurrected bosses
           for (const rb of resurrectedBosses) {
-            if (attack.x + attack.width > rb.x &&
-                attack.x < rb.x + rb.width &&
-                attack.y + attack.height > rb.y &&
-                attack.y < rb.y + rb.height) {
+            if (
+              attack.x + attack.width > rb.x &&
+              attack.x < rb.x + rb.width &&
+              attack.y + attack.height > rb.y &&
+              attack.y < rb.y + rb.height
+            ) {
               setResurrectedBosses((prev) =>
                 prev.map((b) => (b === rb ? { ...b, currentHealth: b.currentHealth - 1 } : b)),
               );
@@ -3781,18 +3778,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               return false; // Remove attack
             }
           }
-          
+
           // Check collision with enemies
           for (const enemy of enemies) {
-            if (attack.x + attack.width > enemy.x &&
-                attack.x < enemy.x + enemy.width &&
-                attack.y + attack.height > enemy.y &&
-                attack.y < enemy.y + enemy.height) {
+            if (
+              attack.x + attack.width > enemy.x &&
+              attack.x < enemy.x + enemy.width &&
+              attack.y + attack.height > enemy.y &&
+              attack.y < enemy.y + enemy.height
+            ) {
               // Remove enemy
               setEnemies((prev) => prev.filter((e) => e !== enemy));
               setScore((prev) => prev + 100);
               setEnemiesKilled((prev) => prev + 1);
-              
+
               // Create explosion particles
               const particles = createExplosionParticles(
                 enemy.x + enemy.width / 2,
@@ -3810,16 +3809,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   particles: particles,
                 },
               ]);
-              
+
               soundManager.playCrackedBrickBreakSound();
               toast.success("Reflected attack destroyed enemy!");
               return false; // Remove attack
             }
           }
-          
+
           return true; // Continue moving reflected attack
         }
-        
+
         // Check boss shot collisions with paddle (only for non-reflected attacks)
         if (
           paddle &&
@@ -3851,11 +3850,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Check for reflect shield (reflects back to boss)
           if (paddle.hasReflectShield) {
             soundManager.playReflectedAttackSound();
-            
+
             // Mark attack as reflected and reverse direction
             attack.isReflected = true;
             attack.dy = -Math.abs(attack.dy || attack.speed); // Always go upward
-            
+
             toast.success("Attack reflected!");
             return true; // Keep attack in array, now moving upward
           }
@@ -4806,7 +4805,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         document.body.style.width = "";
         document.body.style.height = "";
       }
-      
+
       // Reset flag after a short delay
       setTimeout(() => {
         isTogglingFullscreenRef.current = false;
@@ -4837,7 +4836,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     } catch (err) {
       console.error("Fullscreen error:", err);
     }
-    
+
     // Reset flag after a short delay to allow fullscreen change to complete
     setTimeout(() => {
       isTogglingFullscreenRef.current = false;
