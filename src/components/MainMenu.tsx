@@ -147,27 +147,26 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           </h2>
 
           <div className="space-y-2 sm:space-y-3 text-white">
-            <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(330,100%,65%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(200,70%,50%)]/50">
-              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(200,70%,50%)]">
-                🎮 Latest Updates
+            <div className="bg-gradient-to-r from-[hsl(45,100%,50%)]/20 to-[hsl(280,90%,60%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(45,100%,50%)]/50">
+              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(45,100%,50%)]">
+                ⚡ New Boss Power-Ups!
               </h3>
               <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-xs">
-                <li>Paddle deflection angle increased to <span className="text-[hsl(200,70%,50%)] font-bold">80°</span> for more extreme ball control</li>
-                <li>Enhanced ball trajectory control from paddle edges for strategic gameplay</li>
-                <li>Paddle collision fully integrated into CCD physics system</li>
-                <li>Ball launch angle now purely determined by paddle impact position</li>
+                <li><span className="text-[hsl(45,100%,50%)] font-bold">Boss Stunner</span> - Freezes boss for 5 seconds, stopping all movement and attacks</li>
+                <li><span className="text-[hsl(280,90%,60%)] font-bold">Reflect Shield</span> - Reflects boss attacks back for 15 seconds, damaging the boss</li>
+                <li><span className="text-[hsl(0,100%,50%)] font-bold">Homing Ball</span> - Ball curves toward boss for 8 seconds with red targeting trail</li>
+                <li>Boss minions have <span className="text-[hsl(330,100%,65%)] font-bold">50% drop rate</span> for these exclusive power-ups</li>
               </ul>
             </div>
 
-            <div className="bg-black/30 p-2 sm:p-3 rounded-lg border border-[hsl(330,100%,65%)]/30">
-              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(330,100%,65%)]">
-                🚀 Recent Performance Improvements
+            <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(120,60%,50%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(120,60%,50%)]/50">
+              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(120,60%,50%)]">
+                🐛 Bug Fixes
               </h3>
               <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-xs">
-                <li>Mobile CRT effects disabled for better performance</li>
-                <li>Zone-based touch paddle control for comfortable mobile gameplay</li>
-                <li>Paddle input prioritized for responsive control during FPS drops</li>
-                <li>Automatic bottleneck detection with performance profiling</li>
+                <li>F key now only toggles fullscreen and no longer pauses the game</li>
+                <li>Resume button checks if music is playing to prevent audio overlap</li>
+                <li>Replaced power-up icons: turtle for slowdown, red arrows for shrink</li>
               </ul>
             </div>
           </div>
