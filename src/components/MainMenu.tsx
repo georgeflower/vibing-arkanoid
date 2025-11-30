@@ -475,6 +475,15 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 <li>
                   <span className="text-[hsl(280,80%,60%)]">Shield</span> - Protects paddle from 1 projectile hit
                 </li>
+                <li>
+                  <span className="text-[hsl(45,100%,50%)] font-bold">Boss Stunner</span> - Freezes boss for 5 seconds (boss minions only)
+                </li>
+                <li>
+                  <span className="text-[hsl(280,90%,60%)] font-bold">Reflect Shield</span> - Reflects boss attacks back for 15 seconds (boss minions only)
+                </li>
+                <li>
+                  <span className="text-[hsl(0,100%,50%)] font-bold">Homing Ball</span> - Ball curves toward boss for 8 seconds with red trail (boss minions only)
+                </li>
               </ul>
             </div>
 
