@@ -1,6 +1,17 @@
-export const GAME_VERSION = "0.8.1";
+export const GAME_VERSION = "0.8.2";
 
 export const CHANGELOG = [
+  {
+    version: "0.8.2",
+    changes: [
+      "Replaced power-up icons: turtle now represents slowdown, red arrows now represent shrink",
+      "Bug fix: F key now only toggles fullscreen and no longer pauses the game",
+      "Bug fix: Resume button now checks if music is already playing to prevent audio overlap",
+      "New power-up Boss Stunner: freezes boss for 5 seconds, stopping movement and attacks",
+      "New power-up Reflect Shield: reflects boss attacks back for 15 seconds, damaging the boss",
+      "New power-up Homing Ball: ball curves toward boss for 8 seconds with a red targeting trail",
+    ],
+  },
   {
     version: "0.8.1",
     changes: [
