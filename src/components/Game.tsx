@@ -1450,6 +1450,30 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           setPowerUps((prev) => [...prev, newPowerUp]);
           toast.warning(`Debug: ${type} power-up dropped - DISQUALIFIED from high scores!`);
+        } else if ((e.key === "9" || e.key === "r" || e.key === "R" || e.key === "e" || e.key === "E") && paddle) {
+          // Drop boss-exclusive power-ups for testing - disqualifies from high scores
+          setLevelSkipped(true);
+          const bossPowerUpMap: Record<string, PowerUpType> = {
+            "9": "bossStunner",
+            "r": "reflectShield",
+            "R": "reflectShield",
+            "e": "homingBall",
+            "E": "homingBall",
+          };
+
+          const type = bossPowerUpMap[e.key];
+          const newPowerUp: PowerUp = {
+            x: paddle.x + paddle.width / 2 - POWERUP_SIZE / 2,
+            y: paddle.y - 50, // Drop from above paddle
+            width: POWERUP_SIZE,
+            height: POWERUP_SIZE,
+            type: type,
+            speed: POWERUP_FALL_SPEED,
+            active: true,
+          };
+
+          setPowerUps((prev) => [...prev, newPowerUp]);
+          toast.warning(`Debug: ${type} power-up dropped - DISQUALIFIED from high scores!`);
         }
       }
       // ═══════════════════════════════════════════════════════════════
