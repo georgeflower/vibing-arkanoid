@@ -199,6 +199,7 @@ export interface BossAttack {
   damage: number;
   dx?: number;
   dy?: number;
+  isReflected?: boolean; // Marked as reflected by reflect shield
 }
 
 export type GameState = "ready" | "playing" | "paused" | "gameOver" | "won";
