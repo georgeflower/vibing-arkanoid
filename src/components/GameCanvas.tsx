@@ -730,23 +730,23 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         });
       }
 
-      // Reflect shield visual effect
+      // Reflect shield visual effect (smaller/thinner)
       if (paddle?.hasReflectShield) {
         ctx.save();
         const gradient = ctx.createLinearGradient(
-          paddle.x, paddle.y - 30,
-          paddle.x + paddle.width, paddle.y - 30
+          paddle.x, paddle.y - 18,
+          paddle.x + paddle.width, paddle.y - 18
         );
         gradient.addColorStop(0, 'rgba(192, 192, 192, 0.3)');
         gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.6)');
         gradient.addColorStop(1, 'rgba(192, 192, 192, 0.3)');
         
         ctx.fillStyle = gradient;
-        ctx.fillRect(paddle.x - 10, paddle.y - 30, paddle.width + 20, 25);
+        ctx.fillRect(paddle.x - 5, paddle.y - 18, paddle.width + 10, 12);
         
         ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + Math.sin(Date.now() / 200) * 0.3})`;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(paddle.x - 10, paddle.y - 30, paddle.width + 20, 25);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(paddle.x - 5, paddle.y - 18, paddle.width + 10, 12);
         ctx.restore();
       }
       

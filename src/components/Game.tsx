@@ -3647,6 +3647,90 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBossAttacks((prev) =>
       prev.filter((attack) => {
         if (attack.type === "laser") return true;
+        
+        // Apply homing behavior to reflected attacks
+        if (attack.isReflected) {
+          // Find closest target (boss or enemy)
+          let closestTarget: { x: number; y: number; width: number; height: number } | null = null;
+          let closestDist = Infinity;
+          
+          const attackCenterX = attack.x + attack.width / 2;
+          const attackCenterY = attack.y + attack.height / 2;
+          
+          // Check main boss
+          if (boss) {
+            const bossCenterX = boss.x + boss.width / 2;
+            const bossCenterY = boss.y + boss.height / 2;
+            const dist = Math.sqrt(
+              Math.pow(bossCenterX - attackCenterX, 2) + 
+              Math.pow(bossCenterY - attackCenterY, 2)
+            );
+            if (dist < closestDist) {
+              closestDist = dist;
+              closestTarget = boss;
+            }
+          }
+          
+          // Check resurrected bosses
+          for (const rb of resurrectedBosses) {
+            const rbCenterX = rb.x + rb.width / 2;
+            const rbCenterY = rb.y + rb.height / 2;
+            const dist = Math.sqrt(
+              Math.pow(rbCenterX - attackCenterX, 2) + 
+              Math.pow(rbCenterY - attackCenterY, 2)
+            );
+            if (dist < closestDist) {
+              closestDist = dist;
+              closestTarget = rb;
+            }
+          }
+          
+          // Check enemies
+          for (const enemy of enemies) {
+            const enemyCenterX = enemy.x + enemy.width / 2;
+            const enemyCenterY = enemy.y + enemy.height / 2;
+            const dist = Math.sqrt(
+              Math.pow(enemyCenterX - attackCenterX, 2) + 
+              Math.pow(enemyCenterY - attackCenterY, 2)
+            );
+            if (dist < closestDist) {
+              closestDist = dist;
+              closestTarget = enemy;
+            }
+          }
+          
+          // Steer toward closest target
+          if (closestTarget) {
+            const targetCenterX = closestTarget.x + closestTarget.width / 2;
+            const targetCenterY = closestTarget.y + closestTarget.height / 2;
+            
+            // Calculate direction to target
+            const dirX = targetCenterX - attackCenterX;
+            const dirY = targetCenterY - attackCenterY;
+            const dirLength = Math.sqrt(dirX * dirX + dirY * dirY);
+            
+            if (dirLength > 0) {
+              // Normalize direction
+              const normDirX = dirX / dirLength;
+              const normDirY = dirY / dirLength;
+              
+              // Apply steering (blend current direction with target direction)
+              const steeringStrength = 0.15; // How aggressively it homes
+              const currentSpeed = Math.sqrt((attack.dx || 0) ** 2 + (attack.dy || 0) ** 2);
+              
+              attack.dx = (attack.dx || 0) * (1 - steeringStrength) + normDirX * currentSpeed * steeringStrength;
+              attack.dy = (attack.dy || 0) * (1 - steeringStrength) + normDirY * currentSpeed * steeringStrength;
+              
+              // Normalize to maintain speed
+              const newSpeed = Math.sqrt(attack.dx * attack.dx + attack.dy * attack.dy);
+              if (newSpeed > 0) {
+                attack.dx = (attack.dx / newSpeed) * currentSpeed;
+                attack.dy = (attack.dy / newSpeed) * currentSpeed;
+              }
+            }
+          }
+        }
+        
         const newX = attack.x + (attack.dx || 0);
         const newY = attack.y + (attack.dy || 0);
         if (newX < 0 || newX > SCALED_CANVAS_WIDTH || newY < 0 || newY > SCALED_CANVAS_HEIGHT) return false;
