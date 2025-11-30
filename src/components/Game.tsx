@@ -3652,7 +3652,85 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (newX < 0 || newX > SCALED_CANVAS_WIDTH || newY < 0 || newY > SCALED_CANVAS_HEIGHT) return false;
         attack.x = newX;
         attack.y = newY;
-        // Check boss shot collisions with paddle
+        
+        // Check reflected attacks against boss and enemies
+        if (attack.isReflected) {
+          // Check collision with main boss
+          if (boss && 
+              attack.x + attack.width > boss.x &&
+              attack.x < boss.x + boss.width &&
+              attack.y + attack.height > boss.y &&
+              attack.y < boss.y + boss.height) {
+            // Damage the boss
+            setBoss((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    currentHealth: prev.currentHealth - 1,
+                  }
+                : null,
+            );
+            soundManager.playBossHitSound();
+            setScreenShake(8);
+            toast.success("Reflected attack hit the boss!");
+            return false; // Remove attack
+          }
+          
+          // Check collision with resurrected bosses
+          for (const rb of resurrectedBosses) {
+            if (attack.x + attack.width > rb.x &&
+                attack.x < rb.x + rb.width &&
+                attack.y + attack.height > rb.y &&
+                attack.y < rb.y + rb.height) {
+              setResurrectedBosses((prev) =>
+                prev.map((b) => (b === rb ? { ...b, currentHealth: b.currentHealth - 1 } : b)),
+              );
+              soundManager.playBossHitSound();
+              setScreenShake(6);
+              toast.success("Reflected attack hit resurrected boss!");
+              return false; // Remove attack
+            }
+          }
+          
+          // Check collision with enemies
+          for (const enemy of enemies) {
+            if (attack.x + attack.width > enemy.x &&
+                attack.x < enemy.x + enemy.width &&
+                attack.y + attack.height > enemy.y &&
+                attack.y < enemy.y + enemy.height) {
+              // Remove enemy
+              setEnemies((prev) => prev.filter((e) => e !== enemy));
+              setScore((prev) => prev + 100);
+              setEnemiesKilled((prev) => prev + 1);
+              
+              // Create explosion particles
+              const particles = createExplosionParticles(
+                enemy.x + enemy.width / 2,
+                enemy.y + enemy.height / 2,
+                enemy.type,
+              );
+              setExplosions((prev) => [
+                ...prev,
+                {
+                  x: enemy.x + enemy.width / 2,
+                  y: enemy.y + enemy.height / 2,
+                  frame: 0,
+                  maxFrames: 20,
+                  enemyType: enemy.type,
+                  particles: particles,
+                },
+              ]);
+              
+              soundManager.playCrackedBrickBreakSound();
+              toast.success("Reflected attack destroyed enemy!");
+              return false; // Remove attack
+            }
+          }
+          
+          return true; // Continue moving reflected attack
+        }
+        
+        // Check boss shot collisions with paddle (only for non-reflected attacks)
         if (
           paddle &&
           attack.x + attack.width > paddle.x &&
@@ -3683,45 +3761,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Check for reflect shield (reflects back to boss)
           if (paddle.hasReflectShield) {
             soundManager.playReflectedAttackSound();
-
-            // Reflect attack back toward boss
-            const targetBoss = boss || resurrectedBosses[0];
-            if (targetBoss) {
-              const reversedAttack = {
-                ...attack,
-                dy: -Math.abs(attack.dy || attack.speed), // Always go upward
-                dx: attack.dx || 0,
-              };
-
-              // Check if reflected attack will hit the boss (simple box collision)
-              if (
-                reversedAttack.x + reversedAttack.width > targetBoss.x &&
-                reversedAttack.x < targetBoss.x + targetBoss.width &&
-                reversedAttack.y + reversedAttack.height > targetBoss.y &&
-                reversedAttack.y < targetBoss.y + targetBoss.height
-              ) {
-                // Damage the boss
-                if (boss && targetBoss === boss) {
-                  setBoss((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          currentHealth: prev.currentHealth - 1,
-                        }
-                      : null,
-                  );
-                } else {
-                  setResurrectedBosses((prev) =>
-                    prev.map((rb) => (rb === targetBoss ? { ...rb, currentHealth: rb.currentHealth - 1 } : rb)),
-                  );
-                }
-                soundManager.playBossHitSound();
-                setScreenShake(8);
-                toast.success("Reflected attack hit the boss!");
-              }
-            }
-
-            return false; // Remove attack
+            
+            // Mark attack as reflected and reverse direction
+            attack.isReflected = true;
+            attack.dy = -Math.abs(attack.dy || attack.speed); // Always go upward
+            
+            toast.success("Attack reflected!");
+            return true; // Keep attack in array, now moving upward
           }
 
           // No shield - take damage
