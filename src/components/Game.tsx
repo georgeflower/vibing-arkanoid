@@ -3114,13 +3114,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     }
 
-    // Also feed real-time FPS from fixed-step game loop if available
-    if (gameLoopRef.current) {
-      const debugInfo = gameLoopRef.current.getDebugInfo();
-      if (debugInfo.fps > 0) {
-        updateFps(debugInfo.fps);
-      }
-    }
+    // FPS is already being updated once per second at line 3065, no need to duplicate here
 
     // ═══ PHASE 1: Time Rendering ═══
     frameProfiler.startTiming("rendering");
