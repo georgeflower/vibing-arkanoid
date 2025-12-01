@@ -106,7 +106,7 @@ export const usePowerUps = (
       speed: POWERUP_FALL_SPEED,
       active: true,
     };
-  }, [currentLevel, extraLifeUsedLevels, timer, difficulty, powerUpAssignments]);
+  }, [currentLevel, extraLifeUsedLevels, difficulty, powerUpAssignments]);
 
   const updatePowerUps = useCallback(() => {
     setPowerUps(prev => 
