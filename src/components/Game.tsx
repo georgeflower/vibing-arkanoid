@@ -2055,6 +2055,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           boss: null, // Boss handled in Phase 0, not by CCD
           resurrectedBosses: [], // Resurrected bosses handled in Phase 0
           enemies,
+          qualityLevel: qualitySettings.level,
         }),
       );
 
@@ -3211,24 +3212,30 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Update explosions and their particles
     frameProfiler.startTiming("particles");
     if (debugSettings.enableExplosions && debugSettings.enableParticles) {
-      setExplosions((prev) =>
-        prev
-          .map((exp) => ({
-            ...exp,
-            frame: exp.frame + 1,
-            particles: exp.particles
-              .map((p) => ({
-                ...p,
-                x: p.x + p.vx,
-                y: p.y + p.vy,
-                vy: p.vy + 0.2,
-                // Add gravity
-                life: p.life - 1,
-              }))
-              .filter((p) => p.life > 0),
-          }))
-          .filter((exp) => exp.frame < exp.maxFrames),
-      );
+      // Skip particle updates on alternate frames when quality is low
+      const currentFrameTick = gameLoopRef.current?.getFrameTick() || 0;
+      const shouldUpdateParticles = qualitySettings.level !== 'low' || currentFrameTick % 2 === 0;
+      
+      if (shouldUpdateParticles) {
+        setExplosions((prev) =>
+          prev
+            .map((exp) => ({
+              ...exp,
+              frame: exp.frame + 1,
+              particles: exp.particles
+                .map((p) => ({
+                  ...p,
+                  x: p.x + p.vx,
+                  y: p.y + p.vy,
+                  vy: p.vy + 0.2,
+                  // Add gravity
+                  life: p.life - 1,
+                }))
+                .filter((p) => p.life > 0),
+            }))
+            .filter((exp) => exp.frame < exp.maxFrames),
+        );
+      }
     } else {
       setExplosions([]);
     }
