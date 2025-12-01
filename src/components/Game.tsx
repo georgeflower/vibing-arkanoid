@@ -120,7 +120,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bricks, setBricks] = useState<Brick[]>([]);
   const [balls, setBalls] = useState<Ball[]>([]);
   const [paddle, setPaddle] = useState<Paddle | null>(null);
-  const [speedMultiplier, setSpeedMultiplier] = useState(1);
+  const [speedMultiplier, setSpeedMultiplier] = useState(() => {
+    const baseMultiplier = settings.difficulty === "godlike" ? 1.25 : 1.0;
+    return baseMultiplier; // Level 1 starts at base multiplier
+  });
   // High-priority paddle position ref for immediate input response during low FPS
   const paddleXRef = useRef(0);
   const [showHighScoreEntry, setShowHighScoreEntry] = useState(false);
