@@ -90,7 +90,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -890,7 +890,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Boss level - trigger intro sequence
       setBossIntroActive(true);
       soundManager.playBossIntroSound();
-      
+
       // Reset first boss minion tracking for this boss level
       firstBossMinionKilledRef.current = false;
 
@@ -2793,7 +2793,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             const isBossSpawned = bossSpawnedEnemiesRef.current.has(enemy.id || -1);
             const isBossLevel = [5, 10, 15].includes(level);
             const isFirstBossMinion = isBossSpawned && isBossLevel && !firstBossMinionKilledRef.current;
-            
+
             // First boss minion on boss level ALWAYS drops a power-up
             const shouldDrop = isFirstBossMinion || (isBossSpawned ? Math.random() < 0.5 : newCount % 3 === 0);
 
@@ -2817,7 +2817,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               if (isFirstBossMinion) {
                 firstBossMinionKilledRef.current = true;
               }
-              
+
               let powerUp = createPowerUp(fakeBrick, isBossSpawned, isFirstBossMinion);
               let attempts = 0;
               while (!powerUp && attempts < 10) {
