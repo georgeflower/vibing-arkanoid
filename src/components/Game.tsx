@@ -3419,14 +3419,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Check bounced bullet-paddle collision
     if (paddle) {
       bullets.forEach((bullet) => {
-        // Check for shield first
+        // Check for shield first - use same collision box as damage check
         if (
           paddle.hasShield &&
           bullet.isBounced &&
           bullet.x + bullet.width > paddle.x &&
           bullet.x < paddle.x + paddle.width &&
-          bullet.y + bullet.height > paddle.y - 10 &&
-          bullet.y < paddle.y
+          bullet.y + bullet.height > paddle.y &&
+          bullet.y < paddle.y + paddle.height
         ) {
           // Bullet hit shield - destroy both
           soundManager.playBounce();
