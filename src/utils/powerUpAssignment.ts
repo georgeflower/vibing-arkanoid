@@ -23,8 +23,8 @@ export const assignPowerUpsToBricks = (
 
   if (destructibleBricks.length === 0) return assignments;
 
-  // Calculate 5% of destructible bricks
-  const powerUpCount = Math.max(1, Math.floor(destructibleBricks.length * 0.05));
+  // Calculate 8% of destructible bricks
+  const powerUpCount = Math.max(1, Math.floor(destructibleBricks.length * 0.08));
 
   // Shuffle and select random bricks
   const shuffled = [...destructibleBricks].sort(() => Math.random() - 0.5);

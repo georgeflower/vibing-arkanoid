@@ -23,15 +23,15 @@ export const usePowerUps = (
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
   const fireballTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const createPowerUp = useCallback((brick: Brick, isBossMinion: boolean = false): PowerUp | null => {
+  const createPowerUp = useCallback((brick: Brick, isBossMinion: boolean = false, forceBossPowerUp: boolean = false): PowerUp | null => {
     const isEnemyDrop = brick.id < 0; // Enemies use fakeBricks with id: -1
     
-    // Boss minions: 50% chance to drop power-up
-    if (isBossMinion && Math.random() < 0.5) {
+    // Boss minions: 50% chance to drop power-up (or forced drop)
+    if (isBossMinion && (forceBossPowerUp || Math.random() < 0.5)) {
       const isBossLevel = [5, 10, 15].includes(currentLevel);
       
-      // 50% chance for boss-exclusive power-ups on boss levels
-      const useBossPowerUp = isBossLevel && Math.random() < 0.5;
+      // Force boss-exclusive power-up if requested, otherwise 50% chance on boss levels
+      const useBossPowerUp = forceBossPowerUp || (isBossLevel && Math.random() < 0.5);
       
       let availableTypes: PowerUpType[];
       

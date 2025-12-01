@@ -155,6 +155,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bossHitCooldown, setBossHitCooldown] = useState(0);
   const [laserWarnings, setLaserWarnings] = useState<Array<{ x: number; startTime: number }>>([]);
   const bossSpawnedEnemiesRef = useRef<Set<number>>(new Set());
+  const firstBossMinionKilledRef = useRef(false);
   const [isMobileDevice] = useState(() => {
     return (
       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
@@ -889,6 +890,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Boss level - trigger intro sequence
       setBossIntroActive(true);
       soundManager.playBossIntroSound();
+      
+      // Reset first boss minion tracking for this boss level
+      firstBossMinionKilledRef.current = false;
 
       // Show boss name and start boss music after 1 second
       setTimeout(() => {
@@ -2787,7 +2791,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (!enemy) return;
 
             const isBossSpawned = bossSpawnedEnemiesRef.current.has(enemy.id || -1);
-            const shouldDrop = isBossSpawned ? Math.random() < 0.5 : newCount % 3 === 0;
+            const isBossLevel = [5, 10, 15].includes(level);
+            const isFirstBossMinion = isBossSpawned && isBossLevel && !firstBossMinionKilledRef.current;
+            
+            // First boss minion on boss level ALWAYS drops a power-up
+            const shouldDrop = isFirstBossMinion || (isBossSpawned ? Math.random() < 0.5 : newCount % 3 === 0);
 
             if (shouldDrop) {
               const fakeBrick: Brick = {
@@ -2805,16 +2813,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 isIndestructible: false,
                 type: "normal",
               };
-              let powerUp = createPowerUp(fakeBrick, isBossSpawned);
+              // Mark first boss minion as killed before attempting power-up creation
+              if (isFirstBossMinion) {
+                firstBossMinionKilledRef.current = true;
+              }
+              
+              let powerUp = createPowerUp(fakeBrick, isBossSpawned, isFirstBossMinion);
               let attempts = 0;
               while (!powerUp && attempts < 10) {
-                powerUp = createPowerUp(fakeBrick, isBossSpawned);
+                powerUp = createPowerUp(fakeBrick, isBossSpawned, isFirstBossMinion);
                 attempts++;
               }
               if (powerUp) {
                 setPowerUps((prev) => [...prev, powerUp]);
                 if (isBossSpawned) {
-                  toast.success("Boss minion bonus! Power-up dropped!");
+                  if (isFirstBossMinion) {
+                    toast.success("First boss minion! Guaranteed boss power-up!");
+                  } else {
+                    toast.success("Boss minion bonus! Power-up dropped!");
+                  }
                 } else {
                   toast.success("Enemy kill bonus! Power-up dropped!");
                 }
