@@ -784,7 +784,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setScore(0);
     setLives(3);
     setLevel(1);
-    setSpeedMultiplier(1);
+    const baseMultiplier = settings.difficulty === "godlike" ? 1.25 : 1.0;
+    setSpeedMultiplier(baseMultiplier);
     setGameState("ready");
     setPowerUps([]);
     setTimer(0);
