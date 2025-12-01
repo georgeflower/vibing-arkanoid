@@ -755,7 +755,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     paddleXRef.current = initialPaddleX;
 
     // Initialize ball with speed multiplier - waiting to launch
-    const baseSpeed = 4.5; // 50% faster than previous base speed of 3.45
+    const baseSpeed = 4.5 * speedMultiplier; // Scale base speed by current difficulty multiplier
     const initialAngle = (-20 * Math.PI) / 180; // Start from left side
     const initialBall: Ball = {
       x: SCALED_CANVAS_WIDTH / 2,
