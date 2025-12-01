@@ -90,7 +90,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -3218,8 +3218,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (debugSettings.enableExplosions && debugSettings.enableParticles) {
       // Skip particle updates on alternate frames when quality is low
       const currentFrameTick = gameLoopRef.current?.getFrameTick() || 0;
-      const shouldUpdateParticles = qualitySettings.level !== 'low' || currentFrameTick % 2 === 0;
-      
+      const shouldUpdateParticles = qualitySettings.level !== "low" || currentFrameTick % 2 === 0;
+
       if (shouldUpdateParticles) {
         setExplosions((prev) =>
           prev
