@@ -2121,8 +2121,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const now = Date.now();
           const objectKey = `${event.objectType}-${event.objectId}`;
 
-          // Debug log for boss-related IDs
-          if (typeof event.objectId === "number" && event.objectId <= 0) {
+          // Debug log for boss-related IDs (only when boss present, excludes paddle objectId 0)
+          if (boss && typeof event.objectId === "number" && event.objectId < 0) {
             console.log("[CCD] Negative objectId event", {
               objectType: event.objectType,
               objectId: event.objectId,
