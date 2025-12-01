@@ -63,10 +63,10 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
   const {
     initialQuality = 'high',
     autoAdjust = true,
-    lowFpsThreshold = 50,
-    mediumFpsThreshold = 55,
-    highFpsThreshold = 55,
-    sampleWindow = 3,
+    lowFpsThreshold = 45,
+    mediumFpsThreshold = 52,
+    highFpsThreshold = 58,
+    sampleWindow = 2,
     enableLogging = true
   } = options;
 
@@ -75,7 +75,7 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
   
   const fpsHistoryRef = useRef<number[]>([]);
   const lastAdjustmentTimeRef = useRef<number>(0);
-  const adjustmentCooldownMs = 3000; // 3 seconds between adjustments
+  const adjustmentCooldownMs = 2000; // 2 seconds between adjustments
   const notificationCooldownRef = useRef<number>(0);
   const performanceLogRef = useRef<PerformanceLogEntry[]>([]);
   const lastPerformanceLogMs = useRef<number>(0);

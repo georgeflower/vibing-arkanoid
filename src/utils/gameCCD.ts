@@ -30,12 +30,19 @@ export function processBallWithCCD(
     boss?: Boss | null;
     resurrectedBosses?: Boss[];
     enemies?: Enemy[];
+    qualityLevel?: 'low' | 'medium' | 'high';
   }
 ): CCDResult {
   // Start total performance timer
   const perfStart = performance.now();
   
-  const MAX_SUBSTEPS = 20; // Adaptive upper bound
+  // Quality-aware substep limits
+  const qualitySubstepCaps = {
+    low: 8,
+    medium: 12,
+    high: 20
+  };
+  const MAX_SUBSTEPS = qualitySubstepCaps[gameState.qualityLevel || 'high'];
   
   // Calculate adaptive substeps based on ball speed
   const ballSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);

@@ -15,22 +15,22 @@ export interface ParticleLimits {
 
 export const PARTICLE_LIMITS: Record<QualityLevel, ParticleLimits> = {
   low: {
-    maxTotal: 50,
-    maxPerExplosion: 8,
-    maxPerHighScore: 20,
-    maxPerGameOver: 30,
+    maxTotal: 30,
+    maxPerExplosion: 5,
+    maxPerHighScore: 15,
+    maxPerGameOver: 20,
   },
   medium: {
-    maxTotal: 150,
-    maxPerExplosion: 15,
-    maxPerHighScore: 50,
-    maxPerGameOver: 80,
+    maxTotal: 80,
+    maxPerExplosion: 10,
+    maxPerHighScore: 30,
+    maxPerGameOver: 50,
   },
   high: {
-    maxTotal: 300,
-    maxPerExplosion: 20,
-    maxPerHighScore: 100,
-    maxPerGameOver: 150,
+    maxTotal: 200,
+    maxPerExplosion: 15,
+    maxPerHighScore: 60,
+    maxPerGameOver: 100,
   },
 };
 
