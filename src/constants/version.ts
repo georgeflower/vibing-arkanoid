@@ -1,6 +1,17 @@
-export const GAME_VERSION = "0.8.2";
+export const GAME_VERSION = "0.8.3";
 
 export const CHANGELOG = [
+  {
+    version: "0.8.2",
+    changes: [
+      "Reflected bombs now deal single-hit damage, are removed on impact, and include a short cooldown to prevent rapid hits",
+      "Enhanced hit effects: glow trails, impact explosions, and distinct colors for super vs normal bullets",
+      "Turrets now persist across levels, stack ammo, and can upgrade to powerful golden turrets",
+      "Improved particle system for smoother, more efficient visual effects",
+      "Added animated boss power-up timers near the paddle",
+      "Turret ammo capped at 45 with HUD indicator that warns when low",
+    ],
+  },
   {
     version: "0.8.2",
     changes: [
