@@ -39,11 +39,12 @@ interface GameCanvasProps {
   bossIntroActive: boolean;
   bossSpawnAnimation: {active: boolean; startTime: number} | null;
   shieldImpacts: ShieldImpact[];
+  bulletImpacts?: Array<{ x: number; y: number; startTime: number; isSuper: boolean }>;
   debugEnabled?: boolean; // DEBUG: Remove before production
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, debugEnabled = false }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], debugEnabled = false }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -559,16 +560,90 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw bullets
       bullets.forEach((bullet) => {
-        if (bullet.isBounced) {
+        if (bullet.isSuper) {
+          // Super bullets - golden/yellow glow
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = "hsl(45, 100%, 50%)";
+          ctx.fillStyle = "hsl(45, 90%, 55%)";
+          
+          // Draw bullet with glow trail
+          ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+          
+          // Extra glow effect
+          ctx.fillStyle = "hsla(45, 100%, 70%, 0.5)";
+          ctx.fillRect(bullet.x - 2, bullet.y, bullet.width + 4, bullet.height + 8);
+        } else if (bullet.isBounced) {
           ctx.shadowBlur = 10;
           ctx.shadowColor = "hsl(0, 85%, 55%)";
           ctx.fillStyle = "hsl(0, 85%, 55%)";
+          ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
         } else {
           ctx.shadowBlur = 8;
           ctx.shadowColor = "hsl(200, 70%, 50%)";
           ctx.fillStyle = "hsl(200, 70%, 50%)";
+          ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
         }
-        ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+      });
+
+      // Draw bullet impact effects on boss hits
+      bulletImpacts.forEach(impact => {
+        const elapsed = Date.now() - impact.startTime;
+        if (elapsed >= 500) return;
+        
+        const progress = elapsed / 500;
+        const fadeOut = 1 - progress;
+        
+        // Expanding rings
+        const ringCount = impact.isSuper ? 4 : 2;
+        for (let i = 0; i < ringCount; i++) {
+          const ringRadius = 10 + progress * 50 + i * 10;
+          const ringAlpha = fadeOut * (1 - i * 0.2);
+          
+          const color = impact.isSuper ? `hsla(45, 100%, 60%, ${ringAlpha})` : `hsla(200, 100%, 60%, ${ringAlpha})`;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 3 - i * 0.5;
+          ctx.shadowBlur = impact.isSuper ? 15 : 8;
+          ctx.shadowColor = impact.isSuper ? 'hsl(45, 100%, 50%)' : 'hsl(200, 100%, 50%)';
+          
+          ctx.beginPath();
+          ctx.arc(impact.x, impact.y, ringRadius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        
+        // Central flash
+        const flashSize = (impact.isSuper ? 20 : 12) * (1 - progress * 0.5);
+        const flashGradient = ctx.createRadialGradient(impact.x, impact.y, 0, impact.x, impact.y, flashSize);
+        if (impact.isSuper) {
+          flashGradient.addColorStop(0, `rgba(255, 255, 200, ${fadeOut})`);
+          flashGradient.addColorStop(0.5, `rgba(255, 220, 50, ${fadeOut * 0.7})`);
+          flashGradient.addColorStop(1, `rgba(255, 180, 0, 0)`);
+        } else {
+          flashGradient.addColorStop(0, `rgba(200, 255, 255, ${fadeOut})`);
+          flashGradient.addColorStop(0.5, `rgba(50, 200, 255, ${fadeOut * 0.7})`);
+          flashGradient.addColorStop(1, `rgba(0, 150, 255, 0)`);
+        }
+        ctx.fillStyle = flashGradient;
+        ctx.beginPath();
+        ctx.arc(impact.x, impact.y, flashSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Spark particles (for super bullets)
+        if (impact.isSuper && qualitySettings.level !== 'low') {
+          const sparkCount = 6;
+          for (let i = 0; i < sparkCount; i++) {
+            const angle = (i / sparkCount) * Math.PI * 2 + progress * 3;
+            const sparkDist = 15 + progress * 40;
+            const sparkX = impact.x + Math.cos(angle) * sparkDist;
+            const sparkY = impact.y + Math.sin(angle) * sparkDist;
+            
+            ctx.fillStyle = `rgba(255, 220, 50, ${fadeOut * 0.8})`;
+            ctx.beginPath();
+            ctx.arc(sparkX, sparkY, 3 * fadeOut, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        
+        ctx.shadowBlur = 0;
       });
 
       // Draw shield if paddle has it - animated yellow energy force field

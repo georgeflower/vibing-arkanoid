@@ -21,7 +21,8 @@ export const useBullets = (
   onBossDefeated?: (bossType: 'cube' | 'sphere' | 'pyramid', boss: Boss) => void,
   onResurrectedBossDefeated?: (boss: Boss, index: number) => void,
   onSpherePhaseChange?: (boss: Boss) => Boss,
-  onPyramidSplit?: (boss: Boss) => void
+  onPyramidSplit?: (boss: Boss) => void,
+  onBossHit?: (x: number, y: number, isSuper: boolean) => void
 ) => {
   const [bullets, setBullets] = useState<Bullet[]>([]);
 
@@ -30,12 +31,15 @@ export const useBullets = (
 
     soundManager.playShoot();
 
+    const isSuper = paddle.hasSuperTurrets || false;
+
     const leftBullet: Bullet = {
       x: paddle.x + 10,
       y: paddle.y,
       width: BULLET_WIDTH,
       height: BULLET_HEIGHT,
       speed: BULLET_SPEED,
+      isSuper,
     };
 
     const rightBullet: Bullet = {
@@ -44,6 +48,7 @@ export const useBullets = (
       width: BULLET_WIDTH,
       height: BULLET_HEIGHT,
       speed: BULLET_SPEED,
+      isSuper,
     };
 
     setBullets(prev => [...prev, leftBullet, rightBullet]);
@@ -98,6 +103,7 @@ export const useBullets = (
       
       // Check boss collisions (only for bullets going up, not bounced)
       const bossDamageMap = new Map<number, number>();
+      const bossHitEffects: Array<{ x: number; y: number; isSuper: boolean }> = [];
       
       if (boss || (resurrectedBosses && resurrectedBosses.length > 0)) {
         movedBullets.forEach((bullet, bulletIdx) => {
@@ -112,7 +118,8 @@ export const useBullets = (
               bullet.y + bullet.height > boss.y
             ) {
               bulletIndicesHit.add(bulletIdx);
-              bossDamageMap.set(boss.id, (bossDamageMap.get(boss.id) || 0) + 0.5);
+              bossDamageMap.set(boss.id, (bossDamageMap.get(boss.id) || 0) + (bullet.isSuper ? 1 : 0.5));
+              bossHitEffects.push({ x: bullet.x + bullet.width / 2, y: bullet.y, isSuper: bullet.isSuper || false });
               soundManager.playBounce();
             }
           }
@@ -129,11 +136,17 @@ export const useBullets = (
                 bullet.y + bullet.height > resBoss.y
               ) {
                 bulletIndicesHit.add(bulletIdx);
-                bossDamageMap.set(resBoss.id, (bossDamageMap.get(resBoss.id) || 0) + 0.5);
+                bossDamageMap.set(resBoss.id, (bossDamageMap.get(resBoss.id) || 0) + (bullet.isSuper ? 1 : 0.5));
+                bossHitEffects.push({ x: bullet.x + bullet.width / 2, y: bullet.y, isSuper: bullet.isSuper || false });
                 soundManager.playBounce();
               }
             });
           }
+        });
+        
+        // Trigger boss hit visual effects
+        bossHitEffects.forEach(effect => {
+          onBossHit?.(effect.x, effect.y, effect.isSuper);
         });
         
         // Apply boss damage
@@ -223,9 +236,14 @@ export const useBullets = (
           
           // Collision detected
           if (brick.isIndestructible) {
-            // Metal brick: remove bullet but don't damage brick
-            bulletIndicesHit.add(bulletIdx);
-            soundManager.playBounce(); // Metallic ricochet sound
+            // Metal brick: super bullets destroy it, normal bullets bounce
+            if (bullet.isSuper) {
+              bulletIndicesHit.add(bulletIdx);
+              brickIndicesToDestroy.add(brickIdx);
+            } else {
+              bulletIndicesHit.add(bulletIdx);
+              soundManager.playBounce(); // Metallic ricochet sound
+            }
           } else {
             // Normal brick: remove bullet and damage brick
             bulletIndicesHit.add(bulletIdx);

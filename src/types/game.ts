@@ -42,6 +42,7 @@ export interface Paddle {
   hasShield?: boolean;
   turretShots?: number;
   hasReflectShield?: boolean;
+  hasSuperTurrets?: boolean;
 }
 
 export interface Bullet {
@@ -51,6 +52,7 @@ export interface Bullet {
   height: number;
   speed: number;
   isBounced?: boolean;
+  isSuper?: boolean;
 }
 
 export type PowerUpType = "multiball" | "turrets" | "fireball" | "life" | "slowdown" | "paddleExtend" | "paddleShrink" | "shield" | "bossStunner" | "reflectShield" | "homingBall";
