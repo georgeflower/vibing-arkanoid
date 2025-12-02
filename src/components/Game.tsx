@@ -90,7 +90,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -3637,11 +3637,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           bomb.y < paddle.y;
 
         // Check for reflect shield FIRST (on boss levels) - preserves regular shield
-        if (
-          paddle.hasReflectShield &&
-          BOSS_LEVELS.includes(level) &&
-          bombHitsShieldZone
-        ) {
+        if (paddle.hasReflectShield && BOSS_LEVELS.includes(level) && bombHitsShieldZone) {
           // Reflect the bomb back, DON'T consume regular shield
           setBombs((prev) =>
             prev.map((b) =>
@@ -3661,11 +3657,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
 
         // Only check regular shield if reflect shield is NOT active
-        if (
-          paddle.hasShield &&
-          !paddle.hasReflectShield &&
-          bombHitsShieldZone
-        ) {
+        if (paddle.hasShield && !paddle.hasReflectShield && bombHitsShieldZone) {
           // Bomb hit shield - destroy both
           soundManager.playBounce();
 
@@ -3807,11 +3799,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           bullet.y < paddle.y + paddle.height;
 
         // Check for reflect shield FIRST (on boss levels) - preserves regular shield
-        if (
-          paddle.hasReflectShield &&
-          BOSS_LEVELS.includes(level) &&
-          bulletHitsPaddle
-        ) {
+        if (paddle.hasReflectShield && BOSS_LEVELS.includes(level) && bulletHitsPaddle) {
           // Reflect the bullet back, DON'T consume regular shield
           setBullets((prev) =>
             prev.map((b) =>
@@ -3830,11 +3818,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
 
         // Only check regular shield if reflect shield is NOT active
-        if (
-          paddle.hasShield &&
-          !paddle.hasReflectShield &&
-          bulletHitsPaddle
-        ) {
+        if (paddle.hasShield && !paddle.hasReflectShield && bulletHitsPaddle) {
           // Bullet hit shield - destroy both
           soundManager.playBounce();
 
