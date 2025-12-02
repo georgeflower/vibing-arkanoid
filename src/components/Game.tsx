@@ -4248,6 +4248,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     );
 
     // Check reflected bomb collisions with boss and enemies
+    const reflectedBombNow = Date.now();
+    const REFLECTED_BOMB_COOLDOWN = 200; // 200ms cooldown between reflected bomb hits
+    
     bombs.forEach((bomb) => {
       if (!bomb.isReflected) return;
 
@@ -4259,18 +4262,139 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         bomb.y + bomb.height > boss.y &&
         bomb.y < boss.y + boss.height
       ) {
-        // Damage boss by 1 HP
-        setBoss((prev) =>
-          prev
-            ? {
-                ...prev,
-                currentHealth: prev.currentHealth - 1,
+        // Check cooldown to prevent rapid-fire damage
+        const lastHit = boss.lastHitAt || 0;
+        if (reflectedBombNow - lastHit < REFLECTED_BOMB_COOLDOWN) {
+          // Still in cooldown, just remove the bomb without damage
+          setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
+          return;
+        }
+        
+        // Damage boss by 1 HP with defeat logic
+        setBoss((prev) => {
+          if (!prev) return null;
+          const newHealth = prev.currentHealth - 1;
+          
+          soundManager.playBossHitSound();
+          setScreenShake(8);
+          toast.success("Reflected shot hit the boss!");
+          
+          // Check for defeat
+          if (newHealth <= 0) {
+            // Handle boss defeat based on type
+            if (prev.type === "cube") {
+              // Cube boss defeat
+              soundManager.playExplosion();
+              soundManager.playBossDefeatSound();
+              setScore((s) => s + BOSS_CONFIG.cube.points);
+              toast.success(`CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points`);
+              setExplosions((e) => [
+                ...e,
+                {
+                  x: prev.x + prev.width / 2,
+                  y: prev.y + prev.height / 2,
+                  frame: 0,
+                  maxFrames: 30,
+                  enemyType: "cube" as EnemyType,
+                  particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, "cube" as EnemyType),
+                },
+              ]);
+              setBossesKilled((k) => k + 1);
+              setBossActive(false);
+              setBossDefeatedTransitioning(true);
+              setBalls([]);
+              setEnemies([]);
+              setBossAttacks([]);
+              setBombs([]);
+              setBullets([]);
+              soundManager.stopBossMusic();
+              soundManager.resumeBackgroundMusic();
+              setTimeout(() => nextLevel(), 3000);
+              return null;
+            } else if (prev.type === "sphere") {
+              if (prev.currentStage === 1) {
+                // Sphere phase 1 -> phase 2
+                soundManager.playExplosion();
+                toast.error("SPHERE PHASE 2: DESTROYER MODE!");
+                setExplosions((e) => [
+                  ...e,
+                  {
+                    x: prev.x + prev.width / 2,
+                    y: prev.y + prev.height / 2,
+                    frame: 0,
+                    maxFrames: 30,
+                    enemyType: "sphere" as EnemyType,
+                    particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, "sphere" as EnemyType),
+                  },
+                ]);
+                return {
+                  ...prev,
+                  currentHealth: BOSS_CONFIG.sphere.healthPhase2,
+                  currentStage: 2,
+                  isAngry: true,
+                  speed: BOSS_CONFIG.sphere.angryMoveSpeed,
+                  lastHitAt: reflectedBombNow,
+                };
+              } else {
+                // Sphere phase 2 defeat
+                soundManager.playExplosion();
+                soundManager.playBossDefeatSound();
+                setScore((s) => s + BOSS_CONFIG.sphere.points);
+                toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points`);
+                setExplosions((e) => [
+                  ...e,
+                  {
+                    x: prev.x + prev.width / 2,
+                    y: prev.y + prev.height / 2,
+                    frame: 0,
+                    maxFrames: 30,
+                    enemyType: "sphere" as EnemyType,
+                    particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, "sphere" as EnemyType),
+                  },
+                ]);
+                setBossesKilled((k) => k + 1);
+                setBossActive(false);
+                setBossDefeatedTransitioning(true);
+                setBalls([]);
+                setEnemies([]);
+                setBossAttacks([]);
+                setBombs([]);
+                setBullets([]);
+                soundManager.stopBossMusic();
+                soundManager.resumeBackgroundMusic();
+                setTimeout(() => nextLevel(), 3000);
+                return null;
               }
-            : null,
-        );
-        soundManager.playBossHitSound();
-        setScreenShake(8);
-        toast.success("Reflected shot hit the boss!");
+            } else if (prev.type === "pyramid") {
+              if (prev.currentStage === 1) {
+                // Pyramid splits into 3
+                soundManager.playExplosion();
+                toast.error("PYRAMID LORD SPLITS INTO 3!");
+                setExplosions((e) => [
+                  ...e,
+                  {
+                    x: prev.x + prev.width / 2,
+                    y: prev.y + prev.height / 2,
+                    frame: 0,
+                    maxFrames: 30,
+                    enemyType: "pyramid" as EnemyType,
+                    particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, "pyramid" as EnemyType),
+                  },
+                ]);
+                // Create 3 smaller resurrected pyramids
+                const resurrected: Boss[] = [];
+                for (let i = 0; i < 3; i++) {
+                  resurrected.push(createResurrectedPyramid(prev, i, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT));
+                }
+                setResurrectedBosses(resurrected);
+                return null;
+              }
+            }
+          }
+          
+          return { ...prev, currentHealth: newHealth, lastHitAt: reflectedBombNow };
+        });
+        
         // Remove bomb by ID
         setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
         return;
@@ -4284,12 +4408,77 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           bomb.y + bomb.height > rb.y &&
           bomb.y < rb.y + rb.height
         ) {
-          setResurrectedBosses((prev) =>
-            prev.map((b) => (b.id === rb.id ? { ...b, currentHealth: b.currentHealth - 1 } : b)),
-          );
+          // Check cooldown
+          const lastHit = rb.lastHitAt || 0;
+          if (reflectedBombNow - lastHit < REFLECTED_BOMB_COOLDOWN) {
+            setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
+            return;
+          }
+          
+          const newHealth = rb.currentHealth - 1;
+          
           soundManager.playBossHitSound();
           setScreenShake(6);
           toast.success("Reflected shot hit resurrected boss!");
+          
+          if (newHealth <= 0) {
+            // Defeat this resurrected boss
+            const config = BOSS_CONFIG.pyramid;
+            setScore((s) => s + config.resurrectedPoints);
+            toast.success(`PYRAMID DESTROYED! +${config.resurrectedPoints} points`);
+            soundManager.playBossDefeatSound();
+            soundManager.playExplosion();
+            
+            setExplosions((e) => [
+              ...e,
+              {
+                x: rb.x + rb.width / 2,
+                y: rb.y + rb.height / 2,
+                frame: 0,
+                maxFrames: 30,
+                enemyType: "pyramid" as EnemyType,
+                particles: createExplosionParticles(rb.x + rb.width / 2, rb.y + rb.height / 2, "pyramid" as EnemyType),
+              },
+            ]);
+            
+            // Check remaining resurrected bosses
+            setResurrectedBosses((prev) => {
+              const remaining = prev.filter((b) => b.id !== rb.id);
+              
+              // Make last one super angry
+              if (remaining.length === 1) {
+                toast.error("FINAL PYRAMID ENRAGED!");
+                remaining[0] = {
+                  ...remaining[0],
+                  isSuperAngry: true,
+                  speed: BOSS_CONFIG.pyramid.superAngryMoveSpeed,
+                };
+              }
+              
+              // Check if all defeated
+              if (remaining.length === 0) {
+                toast.success("ALL PYRAMIDS DEFEATED!");
+                setBossActive(false);
+                setBossesKilled((k) => k + 1);
+                setBossDefeatedTransitioning(true);
+                setBalls([]);
+                setEnemies([]);
+                setBossAttacks([]);
+                setBombs([]);
+                setBullets([]);
+                soundManager.stopBossMusic();
+                soundManager.resumeBackgroundMusic();
+                setTimeout(() => nextLevel(), 3000);
+              }
+              
+              return remaining;
+            });
+          } else {
+            setResurrectedBosses((prev) =>
+              prev.map((b) => (b.id === rb.id ? { ...b, currentHealth: newHealth, lastHitAt: reflectedBombNow } : b)),
+            );
+          }
+          
           // Remove bomb by ID
           setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
           return;
