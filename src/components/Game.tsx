@@ -4118,8 +4118,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               attack.y + attack.height > enemy.y &&
               attack.y < enemy.y + enemy.height
             ) {
-              // Remove enemy
-              setEnemies((prev) => prev.filter((e) => e !== enemy));
+              // Remove enemy by ID
+              setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
               setScore((prev) => prev + 100);
               setEnemiesKilled((prev) => prev + 1);
 
