@@ -182,6 +182,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [enemiesKilled, setEnemiesKilled] = useState(0);
   const [lastPaddleHitTime, setLastPaddleHitTime] = useState(0);
   const [screenShake, setScreenShake] = useState(0);
+  const screenShakeStartRef = useRef<number | null>(null);
+  
+  // Debug: Track screen shake duration
+  useEffect(() => {
+    if (screenShake > 0 && screenShakeStartRef.current === null) {
+      screenShakeStartRef.current = Date.now();
+      console.log(`[ScreenShake] ON - intensity: ${screenShake}`);
+    } else if (screenShake === 0 && screenShakeStartRef.current !== null) {
+      const duration = Date.now() - screenShakeStartRef.current;
+      console.log(`[ScreenShake] OFF - duration: ${duration}ms`);
+      screenShakeStartRef.current = null;
+    }
+  }, [screenShake]);
+  
   const [backgroundFlash, setBackgroundFlash] = useState(0);
   const [lastBossSpawnTime, setLastBossSpawnTime] = useState(0);
   const [bossSpawnAnimation, setBossSpawnAnimation] = useState<{ active: boolean; startTime: number } | null>(null);
