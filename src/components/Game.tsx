@@ -90,7 +90,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -208,14 +208,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [homingBallActive, setHomingBallActive] = useState(false);
   const reflectShieldTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const homingBallTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Boss power-up end times (for countdown display)
   const [bossStunnerEndTime, setBossStunnerEndTime] = useState<number | null>(null);
   const [reflectShieldEndTime, setReflectShieldEndTime] = useState<number | null>(null);
   const [homingBallEndTime, setHomingBallEndTime] = useState<number | null>(null);
-  
+
   // Bullet impact effects for boss hits
-  const [bulletImpacts, setBulletImpacts] = useState<Array<{ x: number; y: number; startTime: number; isSuper: boolean }>>([]);
+  const [bulletImpacts, setBulletImpacts] = useState<
+    Array<{ x: number; y: number; startTime: number; isSuper: boolean }>
+  >([]);
 
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG STATE - REMOVE BEFORE PRODUCTION ████████╗
@@ -340,7 +342,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const handleBossStunner = useCallback(() => {
     const endTime = Date.now() + 5000;
     setBossStunnerEndTime(endTime);
-    
+
     if (boss) {
       setBoss((prev) =>
         prev
@@ -361,7 +363,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         })),
       );
     }
-    
+
     // Clear end time when stun expires
     setTimeout(() => setBossStunnerEndTime(null), 5000);
   }, [boss]);
@@ -401,12 +403,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       toast.info("Homing Ball expired!");
     }, 8000);
   }, []);
-  
+
   const handleBossHit = useCallback((x: number, y: number, isSuper: boolean) => {
-    setBulletImpacts(prev => [...prev, { x, y, startTime: Date.now(), isSuper }]);
+    setBulletImpacts((prev) => [...prev, { x, y, startTime: Date.now(), isSuper }]);
     // Clean up old impacts after 500ms
     setTimeout(() => {
-      setBulletImpacts(prev => prev.filter(impact => Date.now() - impact.startTime < 500));
+      setBulletImpacts((prev) => prev.filter((impact) => Date.now() - impact.startTime < 500));
     }, 600);
   }, []);
 
@@ -5812,42 +5814,60 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       bulletImpacts={bulletImpacts}
                       debugEnabled={ENABLE_DEBUG_FEATURES}
                     />
-                    
+
                     {/* Boss Power-Up Duration Timers */}
                     {paddle && (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime) && (
-                      <div className="absolute inset-0 pointer-events-none" style={{ transform: `scale(${gameScale})`, transformOrigin: "top center" }}>
+                      <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{ transform: `scale(${gameScale})`, transformOrigin: "top center" }}
+                      >
                         {bossStunnerEndTime && Date.now() < bossStunnerEndTime && (
-                          <div className="absolute retro-pixel-text" style={{
-                            left: `${paddle.x + paddle.width / 2}px`,
-                            top: `${paddle.y - 45}px`,
-                            transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
-                            color: `hsl(${Math.max(0, 50 - ((1 - (bossStunnerEndTime - Date.now()) / 5000) * 50))}, 100%, 50%)`,
-                            textShadow: `0 0 10px currentColor`,
-                            fontSize: "12px",
-                            fontWeight: "bold",
-                          }}>STUN: {((bossStunnerEndTime - Date.now()) / 1000).toFixed(1)}s</div>
+                          <div
+                            className="absolute retro-pixel-text"
+                            style={{
+                              left: `${paddle.x + paddle.width / 2}px`,
+                              top: `${paddle.y - 45}px`,
+                              transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              color: `hsl(${Math.max(0, 50 - (1 - (bossStunnerEndTime - Date.now()) / 5000) * 50)}, 100%, 50%)`,
+                              textShadow: `0 0 10px currentColor`,
+                              fontSize: "12px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            STUN: {((bossStunnerEndTime - Date.now()) / 1000).toFixed(1)}s
+                          </div>
                         )}
                         {reflectShieldEndTime && Date.now() < reflectShieldEndTime && (
-                          <div className="absolute retro-pixel-text" style={{
-                            left: `${paddle.x + paddle.width / 2}px`,
-                            top: `${paddle.y - 60}px`,
-                            transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
-                            color: `hsl(${Math.max(0, 50 - ((1 - (reflectShieldEndTime - Date.now()) / 15000) * 50))}, 100%, 50%)`,
-                            textShadow: `0 0 10px currentColor`,
-                            fontSize: "12px",
-                            fontWeight: "bold",
-                          }}>REFLECT: {((reflectShieldEndTime - Date.now()) / 1000).toFixed(1)}s</div>
+                          <div
+                            className="absolute retro-pixel-text"
+                            style={{
+                              left: `${paddle.x + paddle.width / 2}px`,
+                              top: `${paddle.y - 60}px`,
+                              transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              color: `hsl(${Math.max(0, 50 - (1 - (reflectShieldEndTime - Date.now()) / 15000) * 50)}, 100%, 50%)`,
+                              textShadow: `0 0 10px currentColor`,
+                              fontSize: "12px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            REFLECT: {((reflectShieldEndTime - Date.now()) / 1000).toFixed(1)}s
+                          </div>
                         )}
                         {homingBallEndTime && Date.now() < homingBallEndTime && (
-                          <div className="absolute retro-pixel-text" style={{
-                            left: `${paddle.x + paddle.width / 2}px`,
-                            top: `${paddle.y - 75}px`,
-                            transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
-                            color: `hsl(${Math.max(0, 50 - ((1 - (homingBallEndTime - Date.now()) / 8000) * 50))}, 100%, 50%)`,
-                            textShadow: `0 0 10px currentColor`,
-                            fontSize: "12px",
-                            fontWeight: "bold",
-                          }}>HOMING: {((homingBallEndTime - Date.now()) / 1000).toFixed(1)}s</div>
+                          <div
+                            className="absolute retro-pixel-text"
+                            style={{
+                              left: `${paddle.x + paddle.width / 2}px`,
+                              top: `${paddle.y - 75}px`,
+                              transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              color: `hsl(${Math.max(0, 50 - (1 - (homingBallEndTime - Date.now()) / 8000) * 50)}, 100%, 50%)`,
+                              textShadow: `0 0 10px currentColor`,
+                              fontSize: "12px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            HOMING: {((homingBallEndTime - Date.now()) / 1000).toFixed(1)}s
+                          </div>
                         )}
                       </div>
                     )}
