@@ -4271,8 +4271,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         soundManager.playBossHitSound();
         setScreenShake(8);
         toast.success("Reflected shot hit the boss!");
-        // Remove bomb
-        setBombs((prev) => prev.filter((b) => b !== bomb));
+        // Remove bomb by ID
+        setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
         return;
       }
 
@@ -4285,13 +4285,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           bomb.y < rb.y + rb.height
         ) {
           setResurrectedBosses((prev) =>
-            prev.map((b) => (b === rb ? { ...b, currentHealth: b.currentHealth - 1 } : b)),
+            prev.map((b) => (b.id === rb.id ? { ...b, currentHealth: b.currentHealth - 1 } : b)),
           );
           soundManager.playBossHitSound();
           setScreenShake(6);
           toast.success("Reflected shot hit resurrected boss!");
-          // Remove bomb
-          setBombs((prev) => prev.filter((b) => b !== bomb));
+          // Remove bomb by ID
+          setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
           return;
         }
       }
@@ -4304,8 +4304,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           bomb.y + bomb.height > enemy.y &&
           bomb.y < enemy.y + enemy.height
         ) {
-          // Remove enemy
-          setEnemies((prev) => prev.filter((e) => e !== enemy));
+          // Remove enemy by ID
+          setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
           setScore((prev) => prev + 100);
           setEnemiesKilled((prev) => prev + 1);
 
@@ -4325,8 +4325,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           soundManager.playCrackedBrickBreakSound();
           toast.success("Reflected shot destroyed enemy!");
-          // Remove bomb
-          setBombs((prev) => prev.filter((b) => b !== bomb));
+          // Remove bomb by ID
+          setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
           return;
         }
       }
@@ -4730,6 +4730,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               const randomAngle = (Math.random() * 160 - 80) * (Math.PI / 180); // -80 to +80 degrees
               const bulletSpeed = 4;
               const newBullet: Bomb = {
+                id: Date.now() + Math.random(),
                 x: currentEnemy.x + currentEnemy.width / 2 - 4,
                 y: currentEnemy.y + currentEnemy.height,
                 width: 8,
@@ -4743,6 +4744,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setBombs((prev) => [...prev, newBullet]);
             } else {
               const newProjectile: Bomb = {
+                id: Date.now() + Math.random(),
                 x: currentEnemy.x + currentEnemy.width / 2 - 5,
                 y: currentEnemy.y + currentEnemy.height,
                 width: 10,
@@ -4869,6 +4871,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             setBombs((prev) => [
               ...prev,
               {
+                id: Date.now() + Math.random(),
                 x: currentEnemy.x + currentEnemy.width / 2 - 5,
                 y: currentEnemy.y + currentEnemy.height,
                 width: 10,

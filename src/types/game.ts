@@ -88,6 +88,7 @@ export interface Enemy {
 export type ProjectileType = "bomb" | "rocket" | "pyramidBullet";
 
 export interface Bomb {
+  id: number; // Unique bomb identifier for reliable removal
   x: number;
   y: number;
   width: number;
