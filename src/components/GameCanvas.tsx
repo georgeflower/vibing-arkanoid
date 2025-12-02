@@ -830,15 +830,39 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         const turretWidth = 10; // Narrower turrets
         const turretHeight = 12;
         
+        // Calculate turret color based on super status and ammo
+        let turretHue = 0; // Grey (achromatic)
+        let turretSat = 0;
+        let turretLight = 60;
+        let glowColor = "hsl(0, 0%, 60%)";
+        
+        if (paddle.hasSuperTurrets) {
+          // Super turrets: yellow to red based on ammo (45 max)
+          const maxShots = 45;
+          const ammoRatio = Math.min((paddle.turretShots || 0) / maxShots, 1);
+          // Yellow (50) to Red (0) as ammo depletes
+          turretHue = ammoRatio * 50;
+          turretSat = 90;
+          turretLight = 55;
+          glowColor = `hsl(${turretHue}, ${turretSat}%, ${turretLight}%)`;
+        }
+        
+        const mainColor = paddle.hasSuperTurrets 
+          ? `hsl(${turretHue}, ${turretSat}%, ${turretLight}%)`
+          : "hsl(0, 0%, 60%)";
+        const darkColor = paddle.hasSuperTurrets
+          ? `hsl(${turretHue}, ${turretSat}%, ${turretLight - 20}%)`
+          : "hsl(0, 0%, 40%)";
+        
         // Left turret
-        ctx.shadowBlur = 6;
-        ctx.shadowColor = "hsl(0, 0%, 60%)";
-        ctx.fillStyle = "hsl(0, 0%, 60%)"; // Grey
+        ctx.shadowBlur = paddle.hasSuperTurrets ? 10 : 6;
+        ctx.shadowColor = glowColor;
+        ctx.fillStyle = mainColor;
         ctx.fillRect(paddle.x + 5, paddle.y - turretHeight, turretWidth, turretHeight);
         
         // Retro pattern - darker lines
         ctx.shadowBlur = 0;
-        ctx.fillStyle = "hsl(0, 0%, 40%)";
+        ctx.fillStyle = darkColor;
         for (let i = 0; i < turretHeight; i += 3) {
           ctx.fillRect(paddle.x + 5, paddle.y - turretHeight + i, turretWidth, 1);
         }
@@ -848,14 +872,14 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillRect(paddle.x + 5, paddle.y - turretHeight, turretWidth, 2);
         
         // Right turret
-        ctx.shadowBlur = 6;
-        ctx.shadowColor = "hsl(0, 0%, 60%)";
-        ctx.fillStyle = "hsl(0, 0%, 60%)"; // Grey
+        ctx.shadowBlur = paddle.hasSuperTurrets ? 10 : 6;
+        ctx.shadowColor = glowColor;
+        ctx.fillStyle = mainColor;
         ctx.fillRect(paddle.x + paddle.width - 15, paddle.y - turretHeight, turretWidth, turretHeight);
         
         // Retro pattern - darker lines
         ctx.shadowBlur = 0;
-        ctx.fillStyle = "hsl(0, 0%, 40%)";
+        ctx.fillStyle = darkColor;
         for (let i = 0; i < turretHeight; i += 3) {
           ctx.fillRect(paddle.x + paddle.width - 15, paddle.y - turretHeight + i, turretWidth, 1);
         }
