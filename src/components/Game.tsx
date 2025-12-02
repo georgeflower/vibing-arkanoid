@@ -403,6 +403,193 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         toast.info("Turrets depleted!");
       }
     },
+    // Boss defeat callback
+    (bossType, defeatedBoss) => {
+      if (bossType === "cube") {
+        // Cube boss defeat
+        soundManager.playExplosion();
+        soundManager.playBossDefeatSound();
+        setScore((s) => s + BOSS_CONFIG.cube.points);
+        toast.success(`CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points`);
+        setExplosions((e) => [
+          ...e,
+          {
+            x: defeatedBoss.x + defeatedBoss.width / 2,
+            y: defeatedBoss.y + defeatedBoss.height / 2,
+            frame: 0,
+            maxFrames: 30,
+            enemyType: "cube" as EnemyType,
+            particles: createExplosionParticles(
+              defeatedBoss.x + defeatedBoss.width / 2,
+              defeatedBoss.y + defeatedBoss.height / 2,
+              "cube" as EnemyType,
+            ),
+          },
+        ]);
+        setBossesKilled((k) => k + 1);
+        setBossActive(false);
+        setBossDefeatedTransitioning(true);
+        // Clean up game entities
+        setBalls([]);
+        setEnemies([]);
+        setBossAttacks([]);
+        setBombs([]);
+        setBullets([]);
+        // Stop boss music and resume background music
+        soundManager.stopBossMusic();
+        soundManager.resumeBackgroundMusic();
+        setTimeout(() => nextLevel(), 3000);
+      } else if (bossType === "sphere") {
+        // Sphere phase 2 defeat
+        soundManager.playExplosion();
+        soundManager.playBossDefeatSound();
+        setScore((s) => s + BOSS_CONFIG.sphere.points);
+        toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points`);
+        setExplosions((e) => [
+          ...e,
+          {
+            x: defeatedBoss.x + defeatedBoss.width / 2,
+            y: defeatedBoss.y + defeatedBoss.height / 2,
+            frame: 0,
+            maxFrames: 30,
+            enemyType: "sphere" as EnemyType,
+            particles: createExplosionParticles(
+              defeatedBoss.x + defeatedBoss.width / 2,
+              defeatedBoss.y + defeatedBoss.height / 2,
+              "sphere" as EnemyType,
+            ),
+          },
+        ]);
+        setBossesKilled((k) => k + 1);
+        setBossActive(false);
+        setBossDefeatedTransitioning(true);
+        // Clean up game entities
+        setBalls([]);
+        setEnemies([]);
+        setBossAttacks([]);
+        setBombs([]);
+        setBullets([]);
+        // Stop boss music and resume background music
+        soundManager.stopBossMusic();
+        soundManager.resumeBackgroundMusic();
+        setTimeout(() => nextLevel(), 3000);
+      }
+    },
+    // Resurrected boss defeat callback
+    (defeatedBoss, bossIdx) => {
+      const config = BOSS_CONFIG.pyramid;
+      setScore((s) => s + config.resurrectedPoints);
+      toast.success(`PYRAMID DESTROYED! +${config.resurrectedPoints} points`);
+      soundManager.playBossDefeatSound();
+      soundManager.playExplosion();
+
+      setExplosions((e) => [
+        ...e,
+        {
+          x: defeatedBoss.x + defeatedBoss.width / 2,
+          y: defeatedBoss.y + defeatedBoss.height / 2,
+          frame: 0,
+          maxFrames: 30,
+          enemyType: "pyramid" as EnemyType,
+          particles: createExplosionParticles(
+            defeatedBoss.x + defeatedBoss.width / 2,
+            defeatedBoss.y + defeatedBoss.height / 2,
+            "pyramid" as EnemyType,
+          ),
+        },
+      ]);
+
+      // Check remaining resurrected bosses
+      setResurrectedBosses((prev) => {
+        const remaining = prev.filter((b) => b.id !== defeatedBoss.id);
+        
+        // Make last one super angry
+        if (remaining.length === 1) {
+          toast.error("FINAL PYRAMID ENRAGED!");
+          remaining[0] = {
+            ...remaining[0],
+            isSuperAngry: true,
+            speed: BOSS_CONFIG.pyramid.superAngryMoveSpeed,
+          };
+        }
+
+        // Check if all defeated
+        if (remaining.length === 0) {
+          toast.success("ALL PYRAMIDS DEFEATED!");
+          setBossActive(false);
+          setBossesKilled((k) => k + 1);
+          setBossDefeatedTransitioning(true);
+          // Clean up game entities
+          setBalls([]);
+          setEnemies([]);
+          setBossAttacks([]);
+          setBombs([]);
+          setBullets([]);
+          // Stop boss music and resume background music
+          soundManager.stopBossMusic();
+          soundManager.resumeBackgroundMusic();
+          setTimeout(() => nextLevel(), 3000);
+        }
+
+        return remaining;
+      });
+    },
+    // Sphere phase change callback
+    (sphereBoss) => {
+      soundManager.playExplosion();
+      toast.error("SPHERE PHASE 2: DESTROYER MODE!");
+      setExplosions((e) => [
+        ...e,
+        {
+          x: sphereBoss.x + sphereBoss.width / 2,
+          y: sphereBoss.y + sphereBoss.height / 2,
+          frame: 0,
+          maxFrames: 30,
+          enemyType: "sphere" as EnemyType,
+          particles: createExplosionParticles(
+            sphereBoss.x + sphereBoss.width / 2,
+            sphereBoss.y + sphereBoss.height / 2,
+            "sphere" as EnemyType,
+          ),
+        },
+      ]);
+      
+      return {
+        ...sphereBoss,
+        currentHealth: BOSS_CONFIG.sphere.healthPhase2,
+        currentStage: 2,
+        isAngry: true,
+        speed: BOSS_CONFIG.sphere.angryMoveSpeed,
+        lastHitAt: Date.now(),
+      };
+    },
+    // Pyramid split callback
+    (pyramidBoss) => {
+      soundManager.playExplosion();
+      toast.error("PYRAMID LORD SPLITS INTO 3!");
+      setExplosions((e) => [
+        ...e,
+        {
+          x: pyramidBoss.x + pyramidBoss.width / 2,
+          y: pyramidBoss.y + pyramidBoss.height / 2,
+          frame: 0,
+          maxFrames: 30,
+          enemyType: "pyramid" as EnemyType,
+          particles: createExplosionParticles(
+            pyramidBoss.x + pyramidBoss.width / 2,
+            pyramidBoss.y + pyramidBoss.height / 2,
+            "pyramid" as EnemyType,
+          ),
+        },
+      ]);
+
+      // Create 3 smaller resurrected pyramids
+      const resurrected: Boss[] = [];
+      for (let i = 0; i < 3; i++) {
+        resurrected.push(createResurrectedPyramid(pyramidBoss, i, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT));
+      }
+      setResurrectedBosses(resurrected);
+    },
   );
 
   // Adaptive quality system
