@@ -90,7 +90,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -3324,9 +3324,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             for (const enemy of enemies) {
               const enemyCenterX = enemy.x + enemy.width / 2;
               const enemyCenterY = enemy.y + enemy.height / 2;
-              const dist = Math.sqrt(
-                Math.pow(enemyCenterX - bombCenterX, 2) + Math.pow(enemyCenterY - bombCenterY, 2),
-              );
+              const dist = Math.sqrt(Math.pow(enemyCenterX - bombCenterX, 2) + Math.pow(enemyCenterY - bombCenterY, 2));
               if (dist < closestDist) {
                 closestDist = dist;
                 closestTarget = enemy;
@@ -3387,8 +3385,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         .filter((bomb) => {
           // Reflected bombs: remove if off any edge
           if (bomb.isReflected) {
-            return bomb.y > 0 && bomb.y < SCALED_CANVAS_HEIGHT && 
-                   bomb.x > 0 && bomb.x < SCALED_CANVAS_WIDTH;
+            return bomb.y > 0 && bomb.y < SCALED_CANVAS_HEIGHT && bomb.x > 0 && bomb.x < SCALED_CANVAS_WIDTH;
           }
           // Non-reflected: remove if below screen
           return bomb.y < SCALED_CANVAS_HEIGHT;
@@ -4126,11 +4123,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setEnemiesKilled((prev) => prev + 1);
 
           // Create explosion particles
-          const particles = createExplosionParticles(
-            enemy.x + enemy.width / 2,
-            enemy.y + enemy.height / 2,
-            enemy.type,
-          );
+          const particles = createExplosionParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type);
           setExplosions((prev) => [
             ...prev,
             {
