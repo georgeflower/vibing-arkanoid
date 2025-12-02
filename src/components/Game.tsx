@@ -3289,6 +3289,88 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBombs((prev) =>
       prev
         .map((bomb) => {
+          // Apply homing behavior to reflected bombs
+          if (bomb.isReflected) {
+            // Find closest target (boss or enemy)
+            let closestTarget: { x: number; y: number; width: number; height: number } | null = null;
+            let closestDist = Infinity;
+
+            const bombCenterX = bomb.x + bomb.width / 2;
+            const bombCenterY = bomb.y + bomb.height / 2;
+
+            // Check main boss
+            if (boss) {
+              const bossCenterX = boss.x + boss.width / 2;
+              const bossCenterY = boss.y + boss.height / 2;
+              const dist = Math.sqrt(Math.pow(bossCenterX - bombCenterX, 2) + Math.pow(bossCenterY - bombCenterY, 2));
+              if (dist < closestDist) {
+                closestDist = dist;
+                closestTarget = boss;
+              }
+            }
+
+            // Check resurrected bosses
+            for (const rb of resurrectedBosses) {
+              const rbCenterX = rb.x + rb.width / 2;
+              const rbCenterY = rb.y + rb.height / 2;
+              const dist = Math.sqrt(Math.pow(rbCenterX - bombCenterX, 2) + Math.pow(rbCenterY - bombCenterY, 2));
+              if (dist < closestDist) {
+                closestDist = dist;
+                closestTarget = rb;
+              }
+            }
+
+            // Check enemies
+            for (const enemy of enemies) {
+              const enemyCenterX = enemy.x + enemy.width / 2;
+              const enemyCenterY = enemy.y + enemy.height / 2;
+              const dist = Math.sqrt(
+                Math.pow(enemyCenterX - bombCenterX, 2) + Math.pow(enemyCenterY - bombCenterY, 2),
+              );
+              if (dist < closestDist) {
+                closestDist = dist;
+                closestTarget = enemy;
+              }
+            }
+
+            // Steer toward closest target
+            if (closestTarget) {
+              const targetCenterX = closestTarget.x + closestTarget.width / 2;
+              const targetCenterY = closestTarget.y + closestTarget.height / 2;
+
+              // Calculate direction to target
+              const dirX = targetCenterX - bombCenterX;
+              const dirY = targetCenterY - bombCenterY;
+              const dirLength = Math.sqrt(dirX * dirX + dirY * dirY);
+
+              if (dirLength > 0) {
+                // Normalize direction
+                const normDirX = dirX / dirLength;
+                const normDirY = dirY / dirLength;
+
+                // Apply steering (blend current direction with target direction)
+                const steeringStrength = 0.15;
+                const currentSpeed = Math.sqrt((bomb.dx || 0) ** 2 + (bomb.dy || 0) ** 2);
+
+                bomb.dx = (bomb.dx || 0) * (1 - steeringStrength) + normDirX * currentSpeed * steeringStrength;
+                bomb.dy = (bomb.dy || 0) * (1 - steeringStrength) + normDirY * currentSpeed * steeringStrength;
+
+                // Normalize to maintain speed
+                const newSpeed = Math.sqrt(bomb.dx * bomb.dx + bomb.dy * bomb.dy);
+                if (newSpeed > 0) {
+                  bomb.dx = (bomb.dx / newSpeed) * currentSpeed;
+                  bomb.dy = (bomb.dy / newSpeed) * currentSpeed;
+                }
+              }
+            }
+
+            return {
+              ...bomb,
+              x: bomb.x + (bomb.dx || 0),
+              y: bomb.y + (bomb.dy || 0),
+            };
+          }
+
           if (bomb.type === "pyramidBullet" && bomb.dx !== undefined) {
             // Pyramid bullets move in straight line at angle
             return {
@@ -3302,7 +3384,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             y: bomb.y + bomb.speed,
           };
         })
-        .filter((bomb) => bomb.y < SCALED_CANVAS_HEIGHT),
+        .filter((bomb) => {
+          // Reflected bombs: remove if off any edge
+          if (bomb.isReflected) {
+            return bomb.y > 0 && bomb.y < SCALED_CANVAS_HEIGHT && 
+                   bomb.x > 0 && bomb.x < SCALED_CANVAS_WIDTH;
+          }
+          // Non-reflected: remove if below screen
+          return bomb.y < SCALED_CANVAS_HEIGHT;
+        }),
     );
 
     // Check bomb-paddle collision
@@ -3348,7 +3438,26 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           bomb.y + bomb.height > paddle.y &&
           bomb.y < paddle.y + paddle.height
         ) {
-          // Bomb hit paddle - lose a life
+          // Check if on boss level - reflect instead of taking damage
+          if (BOSS_LEVELS.includes(level)) {
+            // Mark bomb as reflected and reverse direction
+            setBombs((prev) =>
+              prev.map((b) =>
+                b.enemyId === bomb.enemyId
+                  ? {
+                      ...b,
+                      isReflected: true,
+                      dy: -b.speed, // Move upward
+                      dx: 0, // Start with no horizontal movement
+                    }
+                  : b,
+              ),
+            );
+            soundManager.playBounce();
+            toast.success("Shot reflected!");
+            return;
+          }
+          // Not on boss level - lose a life
           soundManager.playLoseLife();
           setBombs((prev) => prev.filter((b) => b.enemyId !== bomb.enemyId));
           setLives((prev) => {
@@ -3953,6 +4062,95 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         return true;
       }),
     );
+
+    // Check reflected bomb collisions with boss and enemies
+    bombs.forEach((bomb) => {
+      if (!bomb.isReflected) return;
+
+      // Check collision with main boss
+      if (
+        boss &&
+        bomb.x + bomb.width > boss.x &&
+        bomb.x < boss.x + boss.width &&
+        bomb.y + bomb.height > boss.y &&
+        bomb.y < boss.y + boss.height
+      ) {
+        // Damage boss by 1 HP
+        setBoss((prev) =>
+          prev
+            ? {
+                ...prev,
+                currentHealth: prev.currentHealth - 1,
+              }
+            : null,
+        );
+        soundManager.playBossHitSound();
+        setScreenShake(8);
+        toast.success("Reflected shot hit the boss!");
+        // Remove bomb
+        setBombs((prev) => prev.filter((b) => b !== bomb));
+        return;
+      }
+
+      // Check collision with resurrected bosses
+      for (const rb of resurrectedBosses) {
+        if (
+          bomb.x + bomb.width > rb.x &&
+          bomb.x < rb.x + rb.width &&
+          bomb.y + bomb.height > rb.y &&
+          bomb.y < rb.y + rb.height
+        ) {
+          setResurrectedBosses((prev) =>
+            prev.map((b) => (b === rb ? { ...b, currentHealth: b.currentHealth - 1 } : b)),
+          );
+          soundManager.playBossHitSound();
+          setScreenShake(6);
+          toast.success("Reflected shot hit resurrected boss!");
+          // Remove bomb
+          setBombs((prev) => prev.filter((b) => b !== bomb));
+          return;
+        }
+      }
+
+      // Check collision with enemies
+      for (const enemy of enemies) {
+        if (
+          bomb.x + bomb.width > enemy.x &&
+          bomb.x < enemy.x + enemy.width &&
+          bomb.y + bomb.height > enemy.y &&
+          bomb.y < enemy.y + enemy.height
+        ) {
+          // Remove enemy
+          setEnemies((prev) => prev.filter((e) => e !== enemy));
+          setScore((prev) => prev + 100);
+          setEnemiesKilled((prev) => prev + 1);
+
+          // Create explosion particles
+          const particles = createExplosionParticles(
+            enemy.x + enemy.width / 2,
+            enemy.y + enemy.height / 2,
+            enemy.type,
+          );
+          setExplosions((prev) => [
+            ...prev,
+            {
+              x: enemy.x + enemy.width / 2,
+              y: enemy.y + enemy.height / 2,
+              frame: 0,
+              maxFrames: 20,
+              enemyType: enemy.type,
+              particles: particles,
+            },
+          ]);
+
+          soundManager.playCrackedBrickBreakSound();
+          toast.success("Reflected shot destroyed enemy!");
+          // Remove bomb
+          setBombs((prev) => prev.filter((b) => b !== bomb));
+          return;
+        }
+      }
+    });
 
     // Check laser collisions with paddle separately
     bossAttacks.forEach((attack) => {

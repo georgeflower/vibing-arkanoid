@@ -96,6 +96,8 @@ export interface Bomb {
   enemyId?: number;
   type: ProjectileType;
   dx?: number; // For rockets with magnetic behavior
+  dy?: number; // Vertical velocity for homing
+  isReflected?: boolean; // Track if bomb is reflected on boss levels
 }
 
 export type BonusLetterType = "Q" | "U" | "M" | "R" | "A" | "N";
