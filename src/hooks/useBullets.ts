@@ -17,7 +17,11 @@ export const useBullets = (
   setBoss?: React.Dispatch<React.SetStateAction<Boss | null>>,
   setResurrectedBosses?: React.Dispatch<React.SetStateAction<Boss[]>>,
   onLevelComplete?: () => void,
-  onTurretDepleted?: () => void
+  onTurretDepleted?: () => void,
+  onBossDefeated?: (bossType: 'cube' | 'sphere' | 'pyramid', boss: Boss) => void,
+  onResurrectedBossDefeated?: (boss: Boss, index: number) => void,
+  onSpherePhaseChange?: (boss: Boss) => Boss,
+  onPyramidSplit?: (boss: Boss) => void
 ) => {
   const [bullets, setBullets] = useState<Bullet[]>([]);
 
@@ -141,27 +145,56 @@ export const useBullets = (
               if (!prev) return null;
               const newHealth = Math.max(0, prev.currentHealth - damage);
               
-              if (newHealth > 0) {
-                soundManager.playBossHitSound();
-                return { ...prev, currentHealth: newHealth };
+              soundManager.playBossHitSound();
+              
+              // Check for defeat/phase change
+              if (newHealth <= 0) {
+                if (prev.type === "cube") {
+                  onBossDefeated?.("cube", prev);
+                  return null;
+                } else if (prev.type === "sphere") {
+                  if (prev.currentStage === 1) {
+                    // Phase 2 transition
+                    const phase2Boss = onSpherePhaseChange?.(prev);
+                    return phase2Boss || null;
+                  } else {
+                    // Sphere defeated
+                    onBossDefeated?.("sphere", prev);
+                    return null;
+                  }
+                } else if (prev.type === "pyramid") {
+                  if (prev.currentStage === 1) {
+                    // Pyramid split
+                    onPyramidSplit?.(prev);
+                    return null;
+                  }
+                }
               }
-              return prev;
+              
+              // Health updated but boss still alive
+              return { ...prev, currentHealth: newHealth };
             });
           }
           
           // Damage resurrected bosses
-          setResurrectedBosses(prev => prev.map(resBoss => {
-            if (bossDamageMap.has(resBoss.id)) {
-              const damage = bossDamageMap.get(resBoss.id)!;
-              const newHealth = Math.max(0, resBoss.currentHealth - damage);
-              
-              if (newHealth > 0) {
+          setResurrectedBosses(prev => {
+            return prev.map((resBoss, idx) => {
+              if (bossDamageMap.has(resBoss.id)) {
+                const damage = bossDamageMap.get(resBoss.id)!;
+                const newHealth = Math.max(0, resBoss.currentHealth - damage);
+                
                 soundManager.playBossHitSound();
+                
+                if (newHealth <= 0) {
+                  onResurrectedBossDefeated?.(resBoss, idx);
+                  return { ...resBoss, currentHealth: 0 }; // Mark for removal
+                }
+                
                 return { ...resBoss, currentHealth: newHealth };
               }
-            }
-            return resBoss;
-          }));
+              return resBoss;
+            }).filter(b => b.currentHealth > 0);
+          });
         }
       }
       
