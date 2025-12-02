@@ -3630,13 +3630,41 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Check bomb-paddle collision
     if (paddle) {
       bombs.forEach((bomb) => {
-        // Check for shield first
-        if (
-          paddle.hasShield &&
+        const bombHitsShieldZone =
           bomb.x + bomb.width > paddle.x &&
           bomb.x < paddle.x + paddle.width &&
           bomb.y + bomb.height > paddle.y - 10 &&
-          bomb.y < paddle.y
+          bomb.y < paddle.y;
+
+        // Check for reflect shield FIRST (on boss levels) - preserves regular shield
+        if (
+          paddle.hasReflectShield &&
+          BOSS_LEVELS.includes(level) &&
+          bombHitsShieldZone
+        ) {
+          // Reflect the bomb back, DON'T consume regular shield
+          setBombs((prev) =>
+            prev.map((b) =>
+              b.enemyId === bomb.enemyId
+                ? {
+                    ...b,
+                    isReflected: true,
+                    dy: -b.speed,
+                    dx: 0,
+                  }
+                : b,
+            ),
+          );
+          soundManager.playReflectedAttackSound();
+          toast.success("Reflect shield reflected the shot!");
+          return;
+        }
+
+        // Only check regular shield if reflect shield is NOT active
+        if (
+          paddle.hasShield &&
+          !paddle.hasReflectShield &&
+          bombHitsShieldZone
         ) {
           // Bomb hit shield - destroy both
           soundManager.playBounce();
@@ -3771,14 +3799,41 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Check bounced bullet-paddle collision
     if (paddle) {
       bullets.forEach((bullet) => {
-        // Check for shield first - use same collision box as damage check
-        if (
-          paddle.hasShield &&
+        const bulletHitsPaddle =
           bullet.isBounced &&
           bullet.x + bullet.width > paddle.x &&
           bullet.x < paddle.x + paddle.width &&
           bullet.y + bullet.height > paddle.y &&
-          bullet.y < paddle.y + paddle.height
+          bullet.y < paddle.y + paddle.height;
+
+        // Check for reflect shield FIRST (on boss levels) - preserves regular shield
+        if (
+          paddle.hasReflectShield &&
+          BOSS_LEVELS.includes(level) &&
+          bulletHitsPaddle
+        ) {
+          // Reflect the bullet back, DON'T consume regular shield
+          setBullets((prev) =>
+            prev.map((b) =>
+              b === bullet
+                ? {
+                    ...b,
+                    isBounced: false,
+                    dy: -Math.abs(b.speed),
+                  }
+                : b,
+            ),
+          );
+          soundManager.playReflectedAttackSound();
+          toast.success("Reflect shield reflected the bullet!");
+          return;
+        }
+
+        // Only check regular shield if reflect shield is NOT active
+        if (
+          paddle.hasShield &&
+          !paddle.hasReflectShield &&
+          bulletHitsPaddle
         ) {
           // Bullet hit shield - destroy both
           soundManager.playBounce();
@@ -4192,7 +4247,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           attack.y + attack.height > paddle.y &&
           attack.y < paddle.y + paddle.height
         ) {
-          // Check for shield first
+          // Check for reflect shield FIRST (reflects back to boss) - preserves regular shield
+          if (paddle.hasReflectShield) {
+            soundManager.playReflectedAttackSound();
+
+            // Mark attack as reflected and reverse direction
+            attack.isReflected = true;
+            attack.dy = -Math.abs(attack.dy || attack.speed); // Always go upward
+
+            toast.success("Attack reflected!");
+            return true; // Keep attack in array, now moving upward
+          }
+
+          // Only check regular shield if reflect shield is NOT active
           if (paddle.hasShield) {
             soundManager.playBounce();
 
@@ -4210,18 +4277,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             setPaddle((prev) => (prev ? { ...prev, hasShield: false } : null));
             toast.success("Shield absorbed boss attack!");
             return false; // Remove attack
-          }
-
-          // Check for reflect shield (reflects back to boss)
-          if (paddle.hasReflectShield) {
-            soundManager.playReflectedAttackSound();
-
-            // Mark attack as reflected and reverse direction
-            attack.isReflected = true;
-            attack.dy = -Math.abs(attack.dy || attack.speed); // Always go upward
-
-            toast.success("Attack reflected!");
-            return true; // Keep attack in array, now moving upward
           }
 
           // No shield - take damage
