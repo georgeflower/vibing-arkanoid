@@ -4086,6 +4086,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             );
             soundManager.playBossHitSound();
             setScreenShake(8);
+            setTimeout(() => setScreenShake(0), 400);
             toast.success("Reflected attack hit the boss!");
             return false; // Remove attack
           }
@@ -4103,6 +4104,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               );
               soundManager.playBossHitSound();
               setScreenShake(6);
+              setTimeout(() => setScreenShake(0), 400);
               toast.success("Reflected attack hit resurrected boss!");
               return false; // Remove attack
             }
@@ -4291,6 +4293,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           
           soundManager.playBossHitSound();
           setScreenShake(8);
+          setTimeout(() => setScreenShake(0), 400);
           toast.success("Reflected shot hit the boss!");
           
           // Check for defeat
@@ -4433,6 +4436,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           
           soundManager.playBossHitSound();
           setScreenShake(6);
+          setTimeout(() => setScreenShake(0), 400);
           toast.success("Reflected shot hit resurrected boss!");
           
           if (newHealth <= 0) {
