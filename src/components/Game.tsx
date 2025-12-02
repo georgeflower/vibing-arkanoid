@@ -90,7 +90,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -183,7 +183,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [lastPaddleHitTime, setLastPaddleHitTime] = useState(0);
   const [screenShake, setScreenShake] = useState(0);
   const screenShakeStartRef = useRef<number | null>(null);
-  
+
   // Debug: Track screen shake duration
   useEffect(() => {
     if (screenShake > 0 && screenShakeStartRef.current === null) {
@@ -195,7 +195,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       screenShakeStartRef.current = null;
     }
   }, [screenShake]);
-  
+
   const [backgroundFlash, setBackgroundFlash] = useState(0);
   const [lastBossSpawnTime, setLastBossSpawnTime] = useState(0);
   const [bossSpawnAnimation, setBossSpawnAnimation] = useState<{ active: boolean; startTime: number } | null>(null);
@@ -516,7 +516,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Check remaining resurrected bosses
       setResurrectedBosses((prev) => {
         const remaining = prev.filter((b) => b.id !== defeatedBoss.id);
-        
+
         // Make last one super angry
         if (remaining.length === 1) {
           toast.error("FINAL PYRAMID ENRAGED!");
@@ -567,7 +567,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           ),
         },
       ]);
-      
+
       return {
         ...sphereBoss,
         currentHealth: BOSS_CONFIG.sphere.healthPhase2,
@@ -4266,7 +4266,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Check reflected bomb collisions with boss and enemies
     const reflectedBombNow = Date.now();
     const REFLECTED_BOMB_COOLDOWN = 200; // 200ms cooldown between reflected bomb hits
-    
+
     bombs.forEach((bomb) => {
       if (!bomb.isReflected) return;
 
@@ -4285,17 +4285,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
           return;
         }
-        
+
         // Damage boss by 1 HP with defeat logic
         setBoss((prev) => {
           if (!prev) return null;
           const newHealth = prev.currentHealth - 1;
-          
+
           soundManager.playBossHitSound();
           setScreenShake(8);
           setTimeout(() => setScreenShake(0), 400);
           toast.success("Reflected shot hit the boss!");
-          
+
           // Check for defeat
           if (newHealth <= 0) {
             // Handle boss defeat based on type
@@ -4313,7 +4313,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   frame: 0,
                   maxFrames: 30,
                   enemyType: "cube" as EnemyType,
-                  particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, "cube" as EnemyType),
+                  particles: createExplosionParticles(
+                    prev.x + prev.width / 2,
+                    prev.y + prev.height / 2,
+                    "cube" as EnemyType,
+                  ),
                 },
               ]);
               setBossesKilled((k) => k + 1);
@@ -4341,7 +4345,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     frame: 0,
                     maxFrames: 30,
                     enemyType: "sphere" as EnemyType,
-                    particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, "sphere" as EnemyType),
+                    particles: createExplosionParticles(
+                      prev.x + prev.width / 2,
+                      prev.y + prev.height / 2,
+                      "sphere" as EnemyType,
+                    ),
                   },
                 ]);
                 return {
@@ -4366,7 +4374,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     frame: 0,
                     maxFrames: 30,
                     enemyType: "sphere" as EnemyType,
-                    particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, "sphere" as EnemyType),
+                    particles: createExplosionParticles(
+                      prev.x + prev.width / 2,
+                      prev.y + prev.height / 2,
+                      "sphere" as EnemyType,
+                    ),
                   },
                 ]);
                 setBossesKilled((k) => k + 1);
@@ -4395,7 +4407,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     frame: 0,
                     maxFrames: 30,
                     enemyType: "pyramid" as EnemyType,
-                    particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, "pyramid" as EnemyType),
+                    particles: createExplosionParticles(
+                      prev.x + prev.width / 2,
+                      prev.y + prev.height / 2,
+                      "pyramid" as EnemyType,
+                    ),
                   },
                 ]);
                 // Create 3 smaller resurrected pyramids
@@ -4408,10 +4424,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               }
             }
           }
-          
+
           return { ...prev, currentHealth: newHealth, lastHitAt: reflectedBombNow };
         });
-        
+
         // Remove bomb by ID
         setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
         return;
@@ -4431,14 +4447,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
             return;
           }
-          
+
           const newHealth = rb.currentHealth - 1;
-          
+
           soundManager.playBossHitSound();
           setScreenShake(6);
           setTimeout(() => setScreenShake(0), 400);
           toast.success("Reflected shot hit resurrected boss!");
-          
+
           if (newHealth <= 0) {
             // Defeat this resurrected boss
             const config = BOSS_CONFIG.pyramid;
@@ -4446,7 +4462,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             toast.success(`PYRAMID DESTROYED! +${config.resurrectedPoints} points`);
             soundManager.playBossDefeatSound();
             soundManager.playExplosion();
-            
+
             setExplosions((e) => [
               ...e,
               {
@@ -4458,11 +4474,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 particles: createExplosionParticles(rb.x + rb.width / 2, rb.y + rb.height / 2, "pyramid" as EnemyType),
               },
             ]);
-            
+
             // Check remaining resurrected bosses
             setResurrectedBosses((prev) => {
               const remaining = prev.filter((b) => b.id !== rb.id);
-              
+
               // Make last one super angry
               if (remaining.length === 1) {
                 toast.error("FINAL PYRAMID ENRAGED!");
@@ -4472,7 +4488,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   speed: BOSS_CONFIG.pyramid.superAngryMoveSpeed,
                 };
               }
-              
+
               // Check if all defeated
               if (remaining.length === 0) {
                 toast.success("ALL PYRAMIDS DEFEATED!");
@@ -4488,7 +4504,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 soundManager.resumeBackgroundMusic();
                 setTimeout(() => nextLevel(), 3000);
               }
-              
+
               return remaining;
             });
           } else {
@@ -4496,7 +4512,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               prev.map((b) => (b.id === rb.id ? { ...b, currentHealth: newHealth, lastHitAt: reflectedBombNow } : b)),
             );
           }
-          
+
           // Remove bomb by ID
           setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
           return;
