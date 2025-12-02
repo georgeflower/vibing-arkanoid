@@ -152,8 +152,18 @@ export const usePowerUps = (
             case "turrets":
               soundManager.playTurretsSound();
               const shotsCount = difficulty === "godlike" ? 15 : 30;
-              setPaddle(prev => prev ? { ...prev, hasTurrets: true, turretShots: shotsCount } : null);
-              toast.success(`Turrets activated! (${shotsCount} shots)`);
+              setPaddle(prev => {
+                if (!prev) return null;
+                if (prev.hasTurrets && (prev.turretShots || 0) > 0) {
+                  // Already have turrets - upgrade to super + add shots
+                  const newShots = (prev.turretShots || 0) + shotsCount;
+                  toast.success(`Super Turrets! (+${shotsCount} shots = ${newShots} total)`);
+                  return { ...prev, turretShots: newShots, hasSuperTurrets: true };
+                }
+                // First turret pickup
+                toast.success(`Turrets activated! (${shotsCount} shots)`);
+                return { ...prev, hasTurrets: true, turretShots: shotsCount, hasSuperTurrets: false };
+              });
               break;
             
             case "fireball":
