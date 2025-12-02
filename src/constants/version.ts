@@ -2,7 +2,7 @@ export const GAME_VERSION = "0.8.3";
 
 export const CHANGELOG = [
   {
-    version: "0.8.2",
+    version: "0.8.3",
     changes: [
       "Reflected bombs now deal single-hit damage, are removed on impact, and include a short cooldown to prevent rapid hits",
       "Enhanced hit effects: glow trails, impact explosions, and distinct colors for super vs normal bullets",
