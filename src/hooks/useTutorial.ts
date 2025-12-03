@@ -66,27 +66,16 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   },
 ];
 
-const TUTORIAL_STORAGE_KEY = 'vibing_arkanoid_tutorial_completed';
-const COMPLETED_STEPS_KEY = 'vibing_arkanoid_tutorial_steps';
+const TUTORIAL_STORAGE_KEY = 'vibing_arkanoid_tutorial_enabled';
 
 export const useTutorial = () => {
   const [tutorialEnabled, setTutorialEnabled] = useState<boolean>(() => {
     const stored = localStorage.getItem(TUTORIAL_STORAGE_KEY);
-    return stored !== 'true'; // Tutorial enabled if NOT completed
+    return stored !== 'false'; // Tutorial enabled by default
   });
   const [currentStep, setCurrentStep] = useState<TutorialStep | null>(null);
-  const [completedSteps, setCompletedSteps] = useState<Set<string>>(() => {
-    const stored = localStorage.getItem(COMPLETED_STEPS_KEY);
-    return stored ? new Set(JSON.parse(stored)) : new Set();
-  });
+  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set()); // Reset each session
   const [tutorialActive, setTutorialActive] = useState(false);
-
-  // Persist completed steps to localStorage
-  useEffect(() => {
-    if (completedSteps.size > 0) {
-      localStorage.setItem(COMPLETED_STEPS_KEY, JSON.stringify([...completedSteps]));
-    }
-  }, [completedSteps]);
 
   // Check if a tutorial step should trigger
   const checkTrigger = useCallback((
@@ -137,7 +126,7 @@ export const useTutorial = () => {
     setTutorialEnabled(false);
     setCurrentStep(null);
     setTutorialActive(false);
-    localStorage.setItem(TUTORIAL_STORAGE_KEY, 'true');
+    localStorage.setItem(TUTORIAL_STORAGE_KEY, 'false');
   }, []);
 
   // Reset tutorials (for testing or new players)
@@ -146,16 +135,8 @@ export const useTutorial = () => {
     setCompletedSteps(new Set());
     setCurrentStep(null);
     setTutorialActive(false);
-    localStorage.removeItem(TUTORIAL_STORAGE_KEY);
-    localStorage.removeItem(COMPLETED_STEPS_KEY);
+    localStorage.setItem(TUTORIAL_STORAGE_KEY, 'true');
   }, []);
-
-  // Mark tutorial as complete when all steps are done
-  useEffect(() => {
-    if (completedSteps.size >= TUTORIAL_STEPS.length) {
-      localStorage.setItem(TUTORIAL_STORAGE_KEY, 'true');
-    }
-  }, [completedSteps]);
 
   return {
     tutorialEnabled,
