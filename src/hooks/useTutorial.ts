@@ -162,6 +162,12 @@ export const useTutorial = () => {
     const step = checkTrigger(trigger, level);
     
     if (step) {
+      // For floatingText tutorials, don't show overlay - just mark as completed
+      if (step.floatingText) {
+        setCompletedSteps(prev => new Set([...prev, step.id]));
+        return { shouldPause: false, shouldSlowMotion: false };
+      }
+      
       setCurrentStep(step);
       setTutorialActive(true);
       return { 
