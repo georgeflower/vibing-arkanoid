@@ -132,7 +132,7 @@ export const TutorialOverlay = ({
               textShadow: '0 0 10px hsl(120, 100%, 50%)',
             }}
           >
-            ▶ CLICK/TAP OR PRESS SPACE ◀
+            ▶ CLICK/TAP ◀
           </div>
         )}
 
