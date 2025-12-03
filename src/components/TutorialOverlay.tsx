@@ -46,12 +46,41 @@ export const TutorialOverlay = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onDismiss]);
 
+  // Handle mouse click (works even during pointer lock)
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      // Left click dismisses tutorial
+      if (e.button === 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        onDismiss();
+      }
+    };
+
+    // Listen on document to capture clicks even during pointer lock
+    document.addEventListener('mousedown', handleMouseDown, true);
+    return () => document.removeEventListener('mousedown', handleMouseDown, true);
+  }, [onDismiss]);
+
+  // Handle touch input
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      // Single touch dismisses tutorial
+      if (e.touches.length === 1) {
+        e.preventDefault();
+        onDismiss();
+      }
+    };
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: false });
+    return () => document.removeEventListener('touchstart', handleTouchStart);
+  }, [onDismiss]);
+
   return (
     <div 
       className="absolute inset-0 z-[200] flex items-center justify-center"
-      onClick={onDismiss}
       style={{
-        backgroundColor: isPaused ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.6)',
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
       }}
     >
       {/* Slow motion indicator */}
@@ -103,7 +132,7 @@ export const TutorialOverlay = ({
               textShadow: '0 0 10px hsl(120, 100%, 50%)',
             }}
           >
-            {isPaused ? '▶ PRESS SPACE TO CONTINUE ◀' : '▶ CLICK OR PRESS SPACE ◀'}
+            ▶ CLICK/TAP OR PRESS SPACE ◀
           </div>
         )}
 
