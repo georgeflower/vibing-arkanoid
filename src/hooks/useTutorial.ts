@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 
 export interface TutorialStep {
   id: string;
-  trigger: 'level_start' | 'power_up_drop' | 'boss_spawn' | 'first_brick_hit' | 'boss_power_up_drop';
+  trigger: 'level_start' | 'power_up_drop' | 'boss_spawn' | 'first_brick_hit' | 'boss_power_up_drop' | 'turret_collected';
   level?: number; // Optional: only trigger on specific level
   message: string;
   title: string;
@@ -27,18 +27,25 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     level: 1,
     title: 'GREAT HIT!',
     message: 'You can also press F for fullscreen and P or ESC to pause.\nDestroy all bricks to advance to the next level!',
-    pauseGame: false,
-    slowMotion: true,
+    pauseGame: true,
+    slowMotion: false,
   },
   {
     id: 'power_up_intro',
     trigger: 'power_up_drop',
-    level: 1,
     title: 'POWER-UP DROPPED!',
-    message: 'Catch power-ups to gain special abilities!\n🔥 Fireball - passes through bricks\n⚡ Multi-ball - creates extra balls\n🛡️ Shield - protects from losing a life',
+    message: 'Catch power-ups to gain special abilities!\n🔥 Fireball - passes through bricks\n⚡ Multi-ball - creates extra balls\n🛡️ Shield - protects from losing a life\n🔫 Turrets - fire bullets at bricks!',
     highlight: { description: 'power_up' },
-    pauseGame: false,
-    slowMotion: true,
+    pauseGame: true,
+    slowMotion: false,
+  },
+  {
+    id: 'turret_collected',
+    trigger: 'turret_collected',
+    title: 'TURRETS ACTIVATED!',
+    message: 'You collected turrets with 30 bullets!\nClick or tap to fire at bricks.\n\n💡 TIP: Collect another turret while active\nto get SUPER TURRETS that destroy metal bricks!',
+    pauseGame: true,
+    slowMotion: false,
   },
   {
     id: 'boss_intro',
@@ -52,15 +59,15 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 'boss_power_ups',
     trigger: 'boss_power_up_drop',
-    level: 5,
     title: 'BOSS POWER-UP!',
     message: 'Special boss power-ups help defeat the boss!\n⚡ STUNNER - Freezes the boss for 5 seconds\n🔄 REFLECT - Reflects boss attacks back\n🎯 HOMING - Ball seeks the boss!',
-    pauseGame: false,
-    slowMotion: true,
+    pauseGame: true,
+    slowMotion: false,
   },
 ];
 
 const TUTORIAL_STORAGE_KEY = 'vibing_arkanoid_tutorial_completed';
+const COMPLETED_STEPS_KEY = 'vibing_arkanoid_tutorial_steps';
 
 export const useTutorial = () => {
   const [tutorialEnabled, setTutorialEnabled] = useState<boolean>(() => {
@@ -68,8 +75,18 @@ export const useTutorial = () => {
     return stored !== 'true'; // Tutorial enabled if NOT completed
   });
   const [currentStep, setCurrentStep] = useState<TutorialStep | null>(null);
-  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
+  const [completedSteps, setCompletedSteps] = useState<Set<string>>(() => {
+    const stored = localStorage.getItem(COMPLETED_STEPS_KEY);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  });
   const [tutorialActive, setTutorialActive] = useState(false);
+
+  // Persist completed steps to localStorage
+  useEffect(() => {
+    if (completedSteps.size > 0) {
+      localStorage.setItem(COMPLETED_STEPS_KEY, JSON.stringify([...completedSteps]));
+    }
+  }, [completedSteps]);
 
   // Check if a tutorial step should trigger
   const checkTrigger = useCallback((
@@ -130,6 +147,7 @@ export const useTutorial = () => {
     setCurrentStep(null);
     setTutorialActive(false);
     localStorage.removeItem(TUTORIAL_STORAGE_KEY);
+    localStorage.removeItem(COMPLETED_STEPS_KEY);
   }, []);
 
   // Mark tutorial as complete when all steps are done

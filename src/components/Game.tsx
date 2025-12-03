@@ -229,9 +229,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     triggerTutorial,
     dismissTutorial,
     skipAllTutorials,
+    resetTutorials,
+    setTutorialEnabled,
   } = useTutorial();
-  const [tutorialSlowMotion, setTutorialSlowMotion] = useState(false);
-  const tutorialSpeedRef = useRef(1.0); // Store speed before tutorial slowdown
+  
+  // Track if power-up drop tutorial has been triggered this session
+  const powerUpTutorialTriggeredRef = useRef(false);
 
   // Bullet impact effects for boss hits
   const [bulletImpacts, setBulletImpacts] = useState<
@@ -450,20 +453,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setBrickHitSpeedAccumulated,
       (type: string) => {
         setPowerUpsCollectedTypes((prev) => new Set(prev).add(type));
-        // Trigger tutorial on first power-up collection
-        if (tutorialEnabled && type !== 'life') {
-          const { shouldSlowMotion } = triggerTutorial('power_up_drop', level);
-          if (shouldSlowMotion) {
-            setTutorialSlowMotion(true);
-            tutorialSpeedRef.current = speedMultiplier;
+        
+        // Trigger turret tutorial when turret is collected
+        if (tutorialEnabled && type === 'turrets') {
+          const { shouldPause } = triggerTutorial('turret_collected', level);
+          if (shouldPause) {
+            setGameState("paused");
+            if (gameLoopRef.current) gameLoopRef.current.pause();
           }
         }
-        // Trigger boss power-up tutorial
+        
+        // Trigger boss power-up tutorial when collected
         if (tutorialEnabled && ['bossStunner', 'reflectShield', 'homingBall'].includes(type)) {
-          const { shouldSlowMotion } = triggerTutorial('boss_power_up_drop', level);
-          if (shouldSlowMotion) {
-            setTutorialSlowMotion(true);
-            tutorialSpeedRef.current = speedMultiplier;
+          const { shouldPause } = triggerTutorial('boss_power_up_drop', level);
+          if (shouldPause) {
+            setGameState("paused");
+            if (gameLoopRef.current) gameLoopRef.current.pause();
           }
         }
       },
@@ -2946,6 +2951,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
           return next;
         });
+        
+        // Trigger power-up drop tutorial when first power-up becomes visible (only once)
+        if (tutorialEnabled && !powerUpTutorialTriggeredRef.current) {
+          powerUpTutorialTriggeredRef.current = true;
+          const { shouldPause } = triggerTutorial('power_up_drop', level);
+          if (shouldPause) {
+            setGameState("paused");
+            if (gameLoopRef.current) gameLoopRef.current.pause();
+          }
+        }
       }
 
       // Handle explosive bricks
@@ -6090,8 +6105,32 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           </div>
                         </div>
 
+                        {/* Tutorial Toggle */}
+                        <div className="mt-4 pt-4 border-t border-cyan-500/30">
+                          <div className="flex justify-between items-center">
+                            <span className="text-cyan-300 retro-pixel-text text-sm">Tutorial Tips</span>
+                            <button
+                              onClick={() => {
+                                soundManager.playMenuClick();
+                                if (tutorialEnabled) {
+                                  skipAllTutorials();
+                                } else {
+                                  resetTutorials();
+                                }
+                              }}
+                              className={`px-3 py-1 rounded text-xs retro-pixel-text transition-colors ${
+                                tutorialEnabled 
+                                  ? 'bg-green-600 hover:bg-green-700 text-white' 
+                                  : 'bg-gray-600 hover:bg-gray-700 text-gray-300'
+                              }`}
+                            >
+                              {tutorialEnabled ? 'ON' : 'OFF'}
+                            </button>
+                          </div>
+                        </div>
+
                         <div
-                          className="mt-6 text-center retro-pixel-text text-xs animate-pulse"
+                          className="mt-4 text-center retro-pixel-text text-xs animate-pulse"
                           style={{ color: "hsl(48, 100%, 60%)" }}
                         >
                           Press ESC or P to continue
@@ -6143,10 +6182,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     step={tutorialStep}
                     onDismiss={() => {
                       dismissTutorial();
-                      setTutorialSlowMotion(false);
                       // Resume game if it was paused for tutorial
-                      if (gameState === "paused" && tutorialStep.pauseGame) {
+                      if (tutorialStep.pauseGame) {
                         setGameState("playing");
+                        // Re-acquire pointer lock for mouse control
+                        const canvas = canvasRef.current;
+                        if (canvas && canvas.requestPointerLock) {
+                          canvas.requestPointerLock();
+                        }
                         if (gameLoopRef.current) {
                           gameLoopRef.current.resume();
                         }
@@ -6154,16 +6197,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     }}
                     onSkipAll={() => {
                       skipAllTutorials();
-                      setTutorialSlowMotion(false);
                       if (gameState === "paused") {
                         setGameState("playing");
+                        // Re-acquire pointer lock for mouse control
+                        const canvas = canvasRef.current;
+                        if (canvas && canvas.requestPointerLock) {
+                          canvas.requestPointerLock();
+                        }
                         if (gameLoopRef.current) {
                           gameLoopRef.current.resume();
                         }
                       }
                     }}
                     isPaused={tutorialStep.pauseGame}
-                    isSlowMotion={tutorialSlowMotion}
+                    isSlowMotion={false}
                   />
                 )}
 
