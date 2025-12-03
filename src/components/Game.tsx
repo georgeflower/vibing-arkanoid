@@ -6193,8 +6193,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                   {/* Pause Overlay - only show when NOT in tutorial mode */}
                   {gameState === "paused" && !showDebugDashboard && !tutorialActive && (
-                    <div className="absolute inset-0 flex items-start justify-center bg-black/70 z-50 pt-16">
-                      <div className="bg-slate-900/95 border-4 border-cyan-500 rounded-lg p-8 max-w-md relative">
+                    <div className="absolute inset-0 flex items-start justify-center bg-black/70 z-50 pt-4 md:pt-16 overflow-y-auto">
+                      <div className="bg-slate-900/95 border-4 border-cyan-500 rounded-lg p-4 md:p-8 max-w-md relative mx-2 my-2 max-h-[90vh] overflow-y-auto">
                         {/* X button for mobile - positioned in top right corner */}
                         {isMobileDevice && (
                           <button
@@ -6210,21 +6210,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         )}
 
                         <h2
-                          className="retro-pixel-text text-3xl mb-6 text-center animate-pulse"
+                          className="retro-pixel-text text-xl md:text-3xl mb-3 md:mb-6 text-center animate-pulse"
                           style={{ color: "hsl(48, 100%, 60%)" }}
                         >
                           ⏸️ GAME PAUSED
                         </h2>
 
-                        <div className="space-y-3 text-white retro-pixel-text text-sm">
-                          <div className="border-b border-cyan-500/30 pb-3 mb-4">
+                        <div className="space-y-2 md:space-y-3 text-white retro-pixel-text text-xs md:text-sm">
+                          <div className="border-b border-cyan-500/30 pb-2 md:pb-3 mb-2 md:mb-4">
                             <div className="flex justify-between items-center">
                               <span className="text-cyan-300 font-bold">ESC or P</span>
                               <span>Resume Game</span>
                             </div>
                           </div>
 
-                          <h3 className="text-cyan-400 font-bold text-base mb-2">Controls:</h3>
+                          <h3 className="text-cyan-400 font-bold text-sm md:text-base mb-1 md:mb-2">Controls:</h3>
                           <div className="flex justify-between">
                             <span className="text-cyan-300">Mouse/Touch</span>
                             <span>Move Paddle</span>
@@ -6238,7 +6238,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             <span>Fire Turrets</span>
                           </div>
 
-                          <h3 className="text-cyan-400 font-bold text-base mt-4 mb-2">Game:</h3>
+                          <h3 className="text-cyan-400 font-bold text-sm md:text-base mt-2 md:mt-4 mb-1 md:mb-2">Game:</h3>
                           <div className="flex justify-between">
                             <span className="text-cyan-300">F</span>
                             <span>Fullscreen Toggle</span>
@@ -6258,7 +6258,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         </div>
 
                         {/* Tutorial Toggle */}
-                        <div className="mt-4 pt-4 border-t border-cyan-500/30">
+                        <div className="mt-2 md:mt-4 pt-2 md:pt-4 border-t border-cyan-500/30">
                           <div className="flex justify-between items-center">
                             <span className="text-cyan-300 retro-pixel-text text-sm">Tutorial Tips</span>
                             <button
@@ -6282,13 +6282,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         </div>
 
                         <div
-                          className="mt-4 text-center retro-pixel-text text-xs animate-pulse"
+                          className="mt-2 md:mt-4 text-center retro-pixel-text text-[10px] md:text-xs animate-pulse"
                           style={{ color: "hsl(48, 100%, 60%)" }}
                         >
                           Press ESC or P to continue
                         </div>
 
-                        <div className="flex gap-4 mt-6 w-full">
+                        <div className="flex gap-2 md:gap-4 mt-3 md:mt-6 w-full">
                           <Button
                             onClick={() => {
                               soundManager.playMenuClick();
@@ -6306,7 +6306,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                               }
                             }}
                             onMouseEnter={() => soundManager.playMenuHover()}
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm py-3 retro-pixel-text"
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm py-2 md:py-3 retro-pixel-text"
                           >
                             RESUME
                           </Button>
@@ -6318,7 +6318,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                               onReturnToMenu();
                             }}
                             onMouseEnter={() => soundManager.playMenuHover()}
-                            className="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm py-3 retro-pixel-text"
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs md:text-sm py-2 md:py-3 retro-pixel-text"
                           >
                             MAIN MENU
                           </Button>
