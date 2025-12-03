@@ -40,7 +40,7 @@ interface GameCanvasProps {
   bossSpawnAnimation: {active: boolean; startTime: number} | null;
   shieldImpacts: ShieldImpact[];
   bulletImpacts?: Array<{ x: number; y: number; startTime: number; isSuper: boolean }>;
-  tutorialHighlight?: { type: 'power_up' | 'boss' | 'enemy' } | null;
+  tutorialHighlight?: { type: 'power_up' | 'boss' | 'enemy'; zoomScale?: number } | null;
   debugEnabled?: boolean; // DEBUG: Remove before production
 }
 
@@ -484,21 +484,12 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         const size = powerUp.width; // Square power-up
         const cornerRadius = 4;
         
-        // Tutorial highlight - draw glowing ring around power-ups
-        if (tutorialHighlight?.type === 'power_up') {
-          const glowPhase = (Date.now() % 800) / 800;
-          const glowRadius = size * 0.8 + Math.sin(glowPhase * Math.PI * 2) * 8;
-          const glowAlpha = 0.6 + Math.sin(glowPhase * Math.PI * 2) * 0.3;
-          
-          ctx.save();
-          ctx.strokeStyle = `rgba(0, 255, 255, ${glowAlpha})`;
-          ctx.lineWidth = 4;
-          ctx.shadowBlur = 25;
-          ctx.shadowColor = 'rgba(0, 255, 255, 0.9)';
-          ctx.beginPath();
-          ctx.arc(powerUp.x + size / 2, powerUp.y + size / 2, glowRadius, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
+        // Tutorial highlight - power-up is rendered with zoom in TutorialOverlay
+        // Skip normal rendering if this power-up is being highlighted (first power-up)
+        const isHighlighted = tutorialHighlight?.type === 'power_up' && powerUps.indexOf(powerUp) === 0;
+        if (isHighlighted) {
+          // Don't render here - TutorialOverlay handles the zoomed spotlight view
+          return;
         }
         
         // Pulse animation: zoom in 5% and out 5% on 1 second interval
