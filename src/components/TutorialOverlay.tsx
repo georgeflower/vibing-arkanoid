@@ -370,7 +370,7 @@ export const TutorialOverlay = ({
         }}
       >
         <div 
-          className={`relative mx-2 rounded-lg border-2 ${isMobile ? 'max-w-[280px] px-3 py-2' : 'max-w-xs px-4 py-3'}`}
+          className={`relative mx-2 rounded-lg border-2 ${isMobile ? 'max-w-[320px] px-4 py-2' : 'max-w-sm px-4 py-3'}`}
           style={{
             backgroundColor: 'rgba(10, 25, 50, 0.95)',
             borderColor: 'hsl(180, 100%, 50%)',
