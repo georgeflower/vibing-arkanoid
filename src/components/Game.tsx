@@ -5112,9 +5112,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     };
   }, [gameState]);
 
-  // Enemy spawn at regular intervals
+  // Enemy spawn at regular intervals (boss levels only)
   useEffect(() => {
-    // Don't spawn normal enemies during boss fights
+    // Only spawn enemies on boss levels (5, 10, 15)
+    if (!BOSS_LEVELS.includes(level)) return;
+    
+    // Don't spawn normal enemies during active boss fights
     if (bossActive) return;
 
     if (gameState === "playing" && timer > 0) {
@@ -5210,7 +5213,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const enemyName = enemyType === "sphere" ? "Sphere" : enemyType === "pyramid" ? "Pyramid" : "Cube";
         toast.warning(`${enemyName} enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
 
-        // Trigger minion tutorial on first enemy spawn (non-boss level enemies)
+        // Trigger minion tutorial on first enemy spawn (boss level enemies before boss is active)
         if (tutorialEnabled && !minionTutorialTriggeredRef.current) {
           minionTutorialTriggeredRef.current = true;
           // Small delay to ensure enemy is rendered before showing tutorial
