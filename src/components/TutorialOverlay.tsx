@@ -171,7 +171,7 @@ export const TutorialOverlay = ({
     };
 
     document.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
-    return () => document.removeEventListener('touchstart', handleTouchStart);
+    return () => document.removeEventListener('touchstart', handleTouchStart, { capture: true });
   }, [handleDismiss]);
 
   // Calculate canvas dimensions
