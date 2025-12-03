@@ -2,14 +2,15 @@ import { useState, useCallback, useEffect } from "react";
 
 export interface TutorialStep {
   id: string;
-  trigger: 'level_start' | 'power_up_drop' | 'boss_spawn' | 'first_brick_hit' | 'boss_power_up_drop' | 'turret_collected' | 'minion_spawn';
+  trigger: 'level_start' | 'power_up_drop' | 'boss_spawn' | 'first_brick_hit' | 'boss_power_up_drop' | 'turret_collected' | 'minion_spawn' | 'bonus_letter_drop';
   level?: number; // Optional: only trigger on specific level
   bossLevelOnly?: boolean; // Only trigger on boss levels (5, 10, 15, 20)
   message: string;
   title: string;
-  highlight?: { type: 'power_up' | 'boss' | 'enemy' };
+  highlight?: { type: 'power_up' | 'boss' | 'enemy' | 'bonus_letter' };
   pauseGame: boolean;
   slowMotion: boolean; // 0.25x speed
+  floatingText?: boolean; // Special floating text that follows target
 }
 
 const BOSS_LEVELS = [5, 10, 15, 20];
@@ -78,6 +79,16 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     highlight: { type: 'power_up' },
     pauseGame: true,
     slowMotion: false,
+  },
+  {
+    id: 'bonus_letter_intro',
+    trigger: 'bonus_letter_drop',
+    title: '',
+    message: 'Catch all letters for megabonus!',
+    highlight: { type: 'bonus_letter' },
+    pauseGame: false,
+    slowMotion: false,
+    floatingText: true,
   },
 ];
 

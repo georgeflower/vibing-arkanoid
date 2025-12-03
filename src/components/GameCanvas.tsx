@@ -40,7 +40,7 @@ interface GameCanvasProps {
   bossSpawnAnimation: {active: boolean; startTime: number} | null;
   shieldImpacts: ShieldImpact[];
   bulletImpacts?: Array<{ x: number; y: number; startTime: number; isSuper: boolean }>;
-  tutorialHighlight?: { type: 'power_up' | 'boss' | 'enemy'; zoomScale?: number } | null;
+  tutorialHighlight?: { type: 'power_up' | 'boss' | 'enemy' | 'bonus_letter'; zoomScale?: number } | null;
   debugEnabled?: boolean; // DEBUG: Remove before production
 }
 
@@ -512,16 +512,19 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           return;
         }
         
-        // Draw background (light grey with rounded corners)
+        // Draw background (light grey with rounded corners) - 50% transparent
+        ctx.globalAlpha = 0.5;
         ctx.fillStyle = "hsl(0, 0%, 70%)";
         ctx.shadowBlur = 10;
         ctx.shadowColor = "hsl(280, 60%, 55%)";
         ctx.beginPath();
         ctx.roundRect(-size / 2, -size / 2, size, size, cornerRadius);
         ctx.fill();
+        ctx.globalAlpha = 1;
         
-        // 16-bit pixel texture (grey retro pattern)
+        // 16-bit pixel texture (grey retro pattern) - also 50% transparent
         ctx.shadowBlur = 0;
+        ctx.globalAlpha = 0.5;
         ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
         for (let py = -size / 2 + 2; py < size / 2 - 2; py += 3) {
           for (let px = -size / 2 + 2; px < size / 2 - 2; px += 3) {
@@ -539,8 +542,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             }
           }
         }
+        ctx.globalAlpha = 1;
         
-        // Draw the icon
+        // Draw the icon - 10% transparent (0.9 alpha)
         if (isImageValid(img)) {
           ctx.save();
           ctx.beginPath();
@@ -569,7 +573,39 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw bullets
       bullets.forEach((bullet) => {
-        if (bullet.isSuper) {
+        if (bullet.isSuper && bullet.isBounced) {
+          // Super bullets reflected from minion - RED with particle trail (dangerous!)
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = "hsl(0, 100%, 50%)";
+          ctx.fillStyle = "hsl(0, 90%, 55%)";
+          
+          // Draw bullet
+          ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+          
+          // Extra red glow effect
+          ctx.fillStyle = "hsla(0, 100%, 60%, 0.6)";
+          ctx.fillRect(bullet.x - 3, bullet.y, bullet.width + 6, bullet.height + 10);
+          
+          // Particle trail effect for reflected super bullets
+          if (qualitySettings.level !== 'low') {
+            const particleCount = 4;
+            for (let i = 0; i < particleCount; i++) {
+              const offset = i * 8;
+              const alpha = 0.6 - i * 0.15;
+              const size = 4 - i * 0.8;
+              ctx.fillStyle = `hsla(30, 100%, 60%, ${alpha})`;
+              ctx.beginPath();
+              ctx.arc(
+                bullet.x + bullet.width / 2 + (Math.random() - 0.5) * 6,
+                bullet.y + bullet.height + offset,
+                size,
+                0,
+                Math.PI * 2
+              );
+              ctx.fill();
+            }
+          }
+        } else if (bullet.isSuper) {
           // Super bullets - golden/yellow glow
           ctx.shadowBlur = 15;
           ctx.shadowColor = "hsl(45, 100%, 50%)";
@@ -655,101 +691,126 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.shadowBlur = 0;
       });
 
-      // Draw shield if paddle has it - animated yellow energy force field
+      // Draw shield if paddle has it - animated yellow energy force field (static on low quality)
       if (paddle && paddle.hasShield) {
-        const time = Date.now() / 1000;
-        const pulseIntensity = 0.5 + Math.sin(time * 4) * 0.3;
-        
         const shieldPadding = 8;
         const shieldX = paddle.x - shieldPadding;
         const shieldY = paddle.y - shieldPadding - 5;
         const shieldWidth = paddle.width + shieldPadding * 2;
         const shieldHeight = paddle.height + shieldPadding * 2 + 5;
         
-        // Multiple layers for depth
-        for (let layer = 0; layer < 3; layer++) {
-          const layerOffset = layer * 2;
-          const layerAlpha = (1 - layer * 0.3) * pulseIntensity;
+        if (qualitySettings.level === 'low') {
+          // LOW QUALITY: Static simple yellow outline
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = 'rgba(255, 220, 0, 0.6)';
+          ctx.strokeStyle = 'rgba(255, 220, 0, 0.8)';
+          ctx.lineWidth = 3;
           
-          ctx.shadowBlur = 20 - layer * 5;
-          ctx.shadowColor = `rgba(255, 220, 0, ${layerAlpha})`;
-          ctx.strokeStyle = `rgba(255, 220, 0, ${layerAlpha * 0.8})`;
-          ctx.lineWidth = 3 - layer;
-          
-          // Draw rounded shield outline
+          // Draw simple rounded rectangle
           ctx.beginPath();
           const radius = 8;
-          ctx.moveTo(shieldX - layerOffset + radius, shieldY - layerOffset);
-          ctx.lineTo(shieldX - layerOffset + shieldWidth - radius, shieldY - layerOffset);
-          ctx.arcTo(shieldX - layerOffset + shieldWidth, shieldY - layerOffset, 
-                    shieldX - layerOffset + shieldWidth, shieldY - layerOffset + radius, radius);
-          ctx.lineTo(shieldX - layerOffset + shieldWidth, shieldY - layerOffset + shieldHeight - radius);
-          ctx.arcTo(shieldX - layerOffset + shieldWidth, shieldY - layerOffset + shieldHeight, 
-                    shieldX - layerOffset + shieldWidth - radius, shieldY - layerOffset + shieldHeight, radius);
-          ctx.lineTo(shieldX - layerOffset + radius, shieldY - layerOffset + shieldHeight);
-          ctx.arcTo(shieldX - layerOffset, shieldY - layerOffset + shieldHeight, 
-                    shieldX - layerOffset, shieldY - layerOffset + shieldHeight - radius, radius);
-          ctx.lineTo(shieldX - layerOffset, shieldY - layerOffset + radius);
-          ctx.arcTo(shieldX - layerOffset, shieldY - layerOffset, 
-                    shieldX - layerOffset + radius, shieldY - layerOffset, radius);
+          ctx.moveTo(shieldX + radius, shieldY);
+          ctx.lineTo(shieldX + shieldWidth - radius, shieldY);
+          ctx.arcTo(shieldX + shieldWidth, shieldY, shieldX + shieldWidth, shieldY + radius, radius);
+          ctx.lineTo(shieldX + shieldWidth, shieldY + shieldHeight - radius);
+          ctx.arcTo(shieldX + shieldWidth, shieldY + shieldHeight, shieldX + shieldWidth - radius, shieldY + shieldHeight, radius);
+          ctx.lineTo(shieldX + radius, shieldY + shieldHeight);
+          ctx.arcTo(shieldX, shieldY + shieldHeight, shieldX, shieldY + shieldHeight - radius, radius);
+          ctx.lineTo(shieldX, shieldY + radius);
+          ctx.arcTo(shieldX, shieldY, shieldX + radius, shieldY, radius);
           ctx.closePath();
           ctx.stroke();
-        }
-        
-        // Electrical arcs animation
-        const arcCount = qualitySettings.level !== 'low' ? 6 : 3;
-        for (let i = 0; i < arcCount; i++) {
-          const arcTime = time * 3 + i * (Math.PI * 2 / arcCount);
-          const arcX = shieldX + shieldWidth / 2 + Math.cos(arcTime) * (shieldWidth / 2 - 5);
-          const arcY = shieldY + shieldHeight / 2 + Math.sin(arcTime) * (shieldHeight / 2 - 5);
-          const arcEndX = shieldX + shieldWidth / 2 + Math.cos(arcTime + 0.5) * (shieldWidth / 2);
-          const arcEndY = shieldY + shieldHeight / 2 + Math.sin(arcTime + 0.5) * (shieldHeight / 2);
+          ctx.shadowBlur = 0;
+        } else {
+          // MEDIUM/HIGH QUALITY: Animated shield effect
+          const time = Date.now() / 1000;
+          const pulseIntensity = 0.5 + Math.sin(time * 4) * 0.3;
           
-          const branchIntensity = (Math.sin(arcTime * 5) + 1) / 2;
-          
-          ctx.strokeStyle = `rgba(255, 255, 100, ${branchIntensity * 0.7})`;
-          ctx.lineWidth = 2;
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = "rgba(255, 220, 0, 0.8)";
-          
-          ctx.beginPath();
-          ctx.moveTo(arcX, arcY);
-          
-          // Create jagged electrical path
-          const segments = 4;
-          for (let s = 1; s <= segments; s++) {
-            const t = s / segments;
-            const baseX = arcX + (arcEndX - arcX) * t;
-            const baseY = arcY + (arcEndY - arcY) * t;
-            const jitterX = (Math.random() - 0.5) * 8;
-            const jitterY = (Math.random() - 0.5) * 8;
-            ctx.lineTo(baseX + jitterX, baseY + jitterY);
+          // Multiple layers for depth
+          for (let layer = 0; layer < 3; layer++) {
+            const layerOffset = layer * 2;
+            const layerAlpha = (1 - layer * 0.3) * pulseIntensity;
+            
+            ctx.shadowBlur = 20 - layer * 5;
+            ctx.shadowColor = `rgba(255, 220, 0, ${layerAlpha})`;
+            ctx.strokeStyle = `rgba(255, 220, 0, ${layerAlpha * 0.8})`;
+            ctx.lineWidth = 3 - layer;
+            
+            // Draw rounded shield outline
+            ctx.beginPath();
+            const radius = 8;
+            ctx.moveTo(shieldX - layerOffset + radius, shieldY - layerOffset);
+            ctx.lineTo(shieldX - layerOffset + shieldWidth - radius, shieldY - layerOffset);
+            ctx.arcTo(shieldX - layerOffset + shieldWidth, shieldY - layerOffset, 
+                      shieldX - layerOffset + shieldWidth, shieldY - layerOffset + radius, radius);
+            ctx.lineTo(shieldX - layerOffset + shieldWidth, shieldY - layerOffset + shieldHeight - radius);
+            ctx.arcTo(shieldX - layerOffset + shieldWidth, shieldY - layerOffset + shieldHeight, 
+                      shieldX - layerOffset + shieldWidth - radius, shieldY - layerOffset + shieldHeight, radius);
+            ctx.lineTo(shieldX - layerOffset + radius, shieldY - layerOffset + shieldHeight);
+            ctx.arcTo(shieldX - layerOffset, shieldY - layerOffset + shieldHeight, 
+                      shieldX - layerOffset, shieldY - layerOffset + shieldHeight - radius, radius);
+            ctx.lineTo(shieldX - layerOffset, shieldY - layerOffset + radius);
+            ctx.arcTo(shieldX - layerOffset, shieldY - layerOffset, 
+                      shieldX - layerOffset + radius, shieldY - layerOffset, radius);
+            ctx.closePath();
+            ctx.stroke();
           }
-          ctx.stroke();
+          
+          // Electrical arcs animation (only on medium/high)
+          const arcCount = 6;
+          for (let i = 0; i < arcCount; i++) {
+            const arcTime = time * 3 + i * (Math.PI * 2 / arcCount);
+            const arcX = shieldX + shieldWidth / 2 + Math.cos(arcTime) * (shieldWidth / 2 - 5);
+            const arcY = shieldY + shieldHeight / 2 + Math.sin(arcTime) * (shieldHeight / 2 - 5);
+            const arcEndX = shieldX + shieldWidth / 2 + Math.cos(arcTime + 0.5) * (shieldWidth / 2);
+            const arcEndY = shieldY + shieldHeight / 2 + Math.sin(arcTime + 0.5) * (shieldHeight / 2);
+            
+            const branchIntensity = (Math.sin(arcTime * 5) + 1) / 2;
+            
+            ctx.strokeStyle = `rgba(255, 255, 100, ${branchIntensity * 0.7})`;
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "rgba(255, 220, 0, 0.8)";
+            
+            ctx.beginPath();
+            ctx.moveTo(arcX, arcY);
+            
+            // Create jagged electrical path
+            const segments = 4;
+            for (let s = 1; s <= segments; s++) {
+              const t = s / segments;
+              const baseX = arcX + (arcEndX - arcX) * t;
+              const baseY = arcY + (arcEndY - arcY) * t;
+              const jitterX = (Math.random() - 0.5) * 8;
+              const jitterY = (Math.random() - 0.5) * 8;
+              ctx.lineTo(baseX + jitterX, baseY + jitterY);
+            }
+            ctx.stroke();
+          }
+          
+          // Inner energy fill (semi-transparent)
+          const gradient = ctx.createRadialGradient(
+            shieldX + shieldWidth / 2, shieldY + shieldHeight / 2, 0,
+            shieldX + shieldWidth / 2, shieldY + shieldHeight / 2, shieldWidth / 2
+          );
+          gradient.addColorStop(0, `rgba(255, 255, 150, ${0.15 * pulseIntensity})`);
+          gradient.addColorStop(1, `rgba(255, 220, 0, 0)`);
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.moveTo(shieldX + 8, shieldY);
+          ctx.lineTo(shieldX + shieldWidth - 8, shieldY);
+          ctx.arcTo(shieldX + shieldWidth, shieldY, shieldX + shieldWidth, shieldY + 8, 8);
+          ctx.lineTo(shieldX + shieldWidth, shieldY + shieldHeight - 8);
+          ctx.arcTo(shieldX + shieldWidth, shieldY + shieldHeight, shieldX + shieldWidth - 8, shieldY + shieldHeight, 8);
+          ctx.lineTo(shieldX + 8, shieldY + shieldHeight);
+          ctx.arcTo(shieldX, shieldY + shieldHeight, shieldX, shieldY + shieldHeight - 8, 8);
+          ctx.lineTo(shieldX, shieldY + 8);
+          ctx.arcTo(shieldX, shieldY, shieldX + 8, shieldY, 8);
+          ctx.closePath();
+          ctx.fill();
+          
+          ctx.shadowBlur = 0;
         }
-        
-        // Inner energy fill (semi-transparent)
-        const gradient = ctx.createRadialGradient(
-          shieldX + shieldWidth / 2, shieldY + shieldHeight / 2, 0,
-          shieldX + shieldWidth / 2, shieldY + shieldHeight / 2, shieldWidth / 2
-        );
-        gradient.addColorStop(0, `rgba(255, 255, 150, ${0.15 * pulseIntensity})`);
-        gradient.addColorStop(1, `rgba(255, 220, 0, 0)`);
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.moveTo(shieldX + 8, shieldY);
-        ctx.lineTo(shieldX + shieldWidth - 8, shieldY);
-        ctx.arcTo(shieldX + shieldWidth, shieldY, shieldX + shieldWidth, shieldY + 8, 8);
-        ctx.lineTo(shieldX + shieldWidth, shieldY + shieldHeight - 8);
-        ctx.arcTo(shieldX + shieldWidth, shieldY + shieldHeight, shieldX + shieldWidth - 8, shieldY + shieldHeight, 8);
-        ctx.lineTo(shieldX + 8, shieldY + shieldHeight);
-        ctx.arcTo(shieldX, shieldY + shieldHeight, shieldX, shieldY + shieldHeight - 8, 8);
-        ctx.lineTo(shieldX, shieldY + 8);
-        ctx.arcTo(shieldX, shieldY, shieldX + 8, shieldY, 8);
-        ctx.closePath();
-        ctx.fill();
-        
-        ctx.shadowBlur = 0;
         
         // Draw impact effects
         const now = Date.now();
@@ -896,6 +957,23 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         // Highlight
         ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
         ctx.fillRect(paddle.x + paddle.width - 15, paddle.y - turretHeight, turretWidth, 2);
+        
+        // Draw turret ammo counter near paddle
+        if (paddle.turretShots && paddle.turretShots > 0) {
+          ctx.save();
+          ctx.font = '10px "Press Start 2P", monospace';
+          ctx.fillStyle = paddle.hasSuperTurrets ? 'hsl(45, 90%, 60%)' : 'hsl(0, 0%, 80%)';
+          ctx.shadowBlur = 4;
+          ctx.shadowColor = paddle.hasSuperTurrets ? 'hsl(45, 100%, 50%)' : 'hsl(0, 0%, 60%)';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(
+            paddle.turretShots.toString(),
+            paddle.x + paddle.width / 2,
+            paddle.y - turretHeight - 8
+          );
+          ctx.restore();
+        }
       }
 
       // Draw enemies (cubes and spheres)

@@ -12,6 +12,7 @@ interface TutorialOverlayProps {
   isSlowMotion: boolean;
   highlightPosition?: { x: number; y: number; width: number; height: number; type?: string; bossType?: BossType } | null;
   canvasRect?: DOMRect | null;
+  bonusLetterPosition?: { x: number; y: number } | null;
 }
 
 export const TutorialOverlay = ({
@@ -22,6 +23,7 @@ export const TutorialOverlay = ({
   isSlowMotion,
   highlightPosition,
   canvasRect,
+  bonusLetterPosition,
 }: TutorialOverlayProps) => {
   const [showPrompt, setShowPrompt] = useState(false);
   const [scale, setScale] = useState(1);
