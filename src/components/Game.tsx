@@ -94,7 +94,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -320,7 +320,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Pause-aware timer management - save remaining durations on pause, restore on resume
   useEffect(() => {
     const isPaused = gameState === "paused" || gameState === "ready" || tutorialActive;
-    
+
     if (isPaused && pauseStartTimeRef.current === null) {
       // Entering pause - save remaining durations
       pauseStartTimeRef.current = Date.now();
@@ -331,7 +331,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         homingBall: homingBallEndTime ? Math.max(0, homingBallEndTime - now) : null,
         fireball: fireballEndTime ? Math.max(0, fireballEndTime - now) : null,
       };
-      
+
       // Clear active timeouts
       if (reflectShieldTimeoutRef.current) {
         clearTimeout(reflectShieldTimeoutRef.current);
@@ -345,38 +345,38 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Resuming from pause - restore timers with remaining duration
       const saved = savedTimerDurationsRef.current;
       const now = Date.now();
-      
+
       if (saved.bossStunner !== null && saved.bossStunner > 0) {
         setBossStunnerEndTime(now + saved.bossStunner);
         if (boss) {
-          setBoss(prev => prev ? { ...prev, stunnedUntil: now + saved.bossStunner! } : null);
+          setBoss((prev) => (prev ? { ...prev, stunnedUntil: now + saved.bossStunner! } : null));
         }
       }
-      
+
       if (saved.reflectShield !== null && saved.reflectShield > 0) {
         setReflectShieldEndTime(now + saved.reflectShield);
         reflectShieldTimeoutRef.current = setTimeout(() => {
           setReflectShieldActive(false);
           setReflectShieldEndTime(null);
-          setPaddle(prev => prev ? { ...prev, hasReflectShield: false } : null);
+          setPaddle((prev) => (prev ? { ...prev, hasReflectShield: false } : null));
           toast.info("Reflect Shield expired!");
         }, saved.reflectShield);
       }
-      
+
       if (saved.homingBall !== null && saved.homingBall > 0) {
         setHomingBallEndTime(now + saved.homingBall);
         homingBallTimeoutRef.current = setTimeout(() => {
           setHomingBallActive(false);
           setHomingBallEndTime(null);
-          setBalls(prev => prev.map(ball => ({ ...ball, isHoming: false })));
+          setBalls((prev) => prev.map((ball) => ({ ...ball, isHoming: false })));
           toast.info("Homing Ball expired!");
         }, saved.homingBall);
       }
-      
+
       if (saved.fireball !== null && saved.fireball > 0) {
         setFireballEndTime(now + saved.fireball);
       }
-      
+
       pauseStartTimeRef.current = null;
       savedTimerDurationsRef.current = { bossStunner: null, reflectShield: null, homingBall: null, fireball: null };
     }
@@ -1302,7 +1302,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Tutorial trigger for boss spawn - fires when bossIntroActive starts
   useEffect(() => {
     if (!tutorialEnabled || !bossIntroActive) return;
-    
+
     if (!bossTutorialTriggeredRef.current) {
       bossTutorialTriggeredRef.current = true;
       const { shouldPause } = triggerTutorial("boss_spawn", level);
@@ -3044,8 +3044,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
 
         // Trigger boss power-up tutorial when first boss power-up drops (only once)
-        const hasBossPowerUp = createdPowerUps.some(p => 
-          ["bossStunner", "reflectShield", "homingBall"].includes(p.type)
+        const hasBossPowerUp = createdPowerUps.some((p) =>
+          ["bossStunner", "reflectShield", "homingBall"].includes(p.type),
         );
         if (tutorialEnabled && hasBossPowerUp && !bossPowerUpTutorialTriggeredRef.current) {
           bossPowerUpTutorialTriggeredRef.current = true;
@@ -3245,7 +3245,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               }
               if (powerUp) {
                 setPowerUps((prev) => [...prev, powerUp]);
-                
+
                 // Trigger boss power-up tutorial when boss minion drops a boss power-up
                 const isBossPowerUpType = ["bossStunner", "reflectShield", "homingBall"].includes(powerUp.type);
                 if (tutorialEnabled && isBossPowerUpType && !bossPowerUpTutorialTriggeredRef.current) {
@@ -3256,7 +3256,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     if (gameLoopRef.current) gameLoopRef.current.pause();
                   }
                 }
-                
+
                 if (isBossSpawned) {
                   if (isFirstBossMinion) {
                     toast.success("First boss minion! Guaranteed boss power-up!");
@@ -3407,7 +3407,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   }
                 : null,
             );
-            
+
             // Clear all boss power-up states on life loss
             setBossStunnerEndTime(null);
             setReflectShieldEndTime(null);
@@ -5206,7 +5206,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setEnemySpawnCount((prev) => prev + 1);
         const enemyName = enemyType === "sphere" ? "Sphere" : enemyType === "pyramid" ? "Pyramid" : "Cube";
         toast.warning(`${enemyName} enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
-        
+
         // Trigger minion tutorial on first enemy spawn (non-boss level enemies)
         if (tutorialEnabled && !minionTutorialTriggeredRef.current) {
           minionTutorialTriggeredRef.current = true;
@@ -6326,7 +6326,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 </div>
 
                 {/* Tutorial Overlay */}
-{tutorialStep && tutorialActive && (
+                {tutorialStep && tutorialActive && (
                   <TutorialOverlay
                     step={tutorialStep}
                     onDismiss={() => {
@@ -6361,7 +6361,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     isPaused={tutorialStep.pauseGame}
                     isSlowMotion={false}
                     highlightPosition={
-                      tutorialStep.highlight?.type === 'power_up' && powerUps.length > 0
+                      tutorialStep.highlight?.type === "power_up" && powerUps.length > 0
                         ? {
                             x: powerUps[0].x,
                             y: powerUps[0].y,
@@ -6369,24 +6369,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             height: powerUps[0].height,
                             type: powerUps[0].type,
                           }
-                        : tutorialStep.highlight?.type === 'boss' && boss
-                        ? {
-                            x: boss.x,
-                            y: boss.y,
-                            width: boss.width,
-                            height: boss.height,
-                            type: 'boss',
-                            bossType: boss.type,
-                          }
-                        : tutorialStep.highlight?.type === 'enemy' && enemies.length > 0
-                        ? {
-                            x: enemies[0].x,
-                            y: enemies[0].y,
-                            width: enemies[0].width,
-                            height: enemies[0].height,
-                            type: 'enemy',
-                          }
-                        : null
+                        : tutorialStep.highlight?.type === "boss" && boss
+                          ? {
+                              x: boss.x,
+                              y: boss.y,
+                              width: boss.width,
+                              height: boss.height,
+                              type: "boss",
+                              bossType: boss.type,
+                            }
+                          : tutorialStep.highlight?.type === "enemy" && enemies.length > 0
+                            ? {
+                                x: enemies[0].x,
+                                y: enemies[0].y,
+                                width: enemies[0].width,
+                                height: enemies[0].height,
+                                type: "enemy",
+                              }
+                            : null
                     }
                     canvasRect={canvasRef.current?.getBoundingClientRect() ?? null}
                   />
