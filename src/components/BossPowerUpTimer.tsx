@@ -7,6 +7,7 @@ interface BossPowerUpTimerProps {
   paddleX: number;
   paddleY: number;
   canvasWidth: number;
+  isMobile?: boolean;
 }
 
 export const BossPowerUpTimer = ({
@@ -16,6 +17,7 @@ export const BossPowerUpTimer = ({
   paddleX,
   paddleY,
   canvasWidth,
+  isMobile = false,
 }: BossPowerUpTimerProps) => {
   const [remaining, setRemaining] = useState(0);
   const [scale, setScale] = useState(1);
@@ -55,17 +57,22 @@ export const BossPowerUpTimer = ({
 
   const seconds = (remaining / 1000).toFixed(1);
 
+  // Position adjustments for mobile - closer to paddle, slightly left
+  const leftPos = isMobile ? paddleX - 10 : paddleX + 50;
+  const topPos = isMobile ? paddleY - 22 : paddleY - 35;
+  const fontSize = isMobile ? "10px" : "14px";
+
   return (
     <div
       className="absolute pointer-events-none retro-pixel-text"
       style={{
-        left: `${paddleX + 50}px`,
-        top: `${paddleY - 35}px`,
+        left: `${leftPos}px`,
+        top: `${topPos}px`,
         transform: `scale(${scale})`,
         transformOrigin: "center bottom",
         color,
         textShadow: `0 0 10px ${color}, 0 0 20px ${color}`,
-        fontSize: "14px",
+        fontSize,
         fontWeight: "bold",
         whiteSpace: "nowrap",
         zIndex: 100,
