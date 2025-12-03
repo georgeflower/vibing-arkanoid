@@ -201,7 +201,8 @@ export const TutorialOverlay = ({
   // Calculate popup position to avoid overlapping with highlight
   const calculatePopupPosition = () => {
     if (!hasHighlight || !highlightPosition || !canvasRect) {
-      return { top: isMobile ? 16 : 32, bottom: 'auto' };
+      // No highlight - center the popup vertically on mobile
+      return { top: isMobile ? '40%' : 32, bottom: 'auto' };
     }
     
     const highlightCenterY = spotlightY;
@@ -217,9 +218,10 @@ export const TutorialOverlay = ({
       const topPos = Math.min(highlightBottom + 20, canvasHeight - popupHeight - 50);
       return { top: Math.max(topPos, canvasHeight * 0.5), bottom: 'auto' };
     } else {
-      // Highlight is in bottom half - put popup at top
-      const topPos = Math.min(highlightTop - popupHeight - 20, 32);
-      return { top: Math.max(16, topPos), bottom: 'auto' };
+      // Highlight is in bottom half - put popup at top, but more centered on mobile
+      const desiredTop = isMobile ? canvasHeight * 0.25 : 32;
+      const topPos = Math.min(highlightTop - popupHeight - 20, desiredTop);
+      return { top: Math.max(isMobile ? canvasHeight * 0.15 : 16, topPos), bottom: 'auto' };
     }
   };
   
