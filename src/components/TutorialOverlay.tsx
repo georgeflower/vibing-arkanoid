@@ -114,7 +114,7 @@ export const TutorialOverlay = ({
   }, [handleDismiss]);
 
   // Calculate spotlight position relative to overlay
-  const hasHighlight = step.highlight?.type === 'power_up' && highlightPosition && canvasRect;
+  const hasHighlight = (step.highlight?.type === 'power_up' || step.highlight?.type === 'boss' || step.highlight?.type === 'enemy') && highlightPosition && canvasRect;
   const spotlightX = hasHighlight ? highlightPosition.x + highlightPosition.width / 2 + wobble.x : 0;
   const spotlightY = hasHighlight ? highlightPosition.y + highlightPosition.height / 2 + wobble.y : 0;
   const baseSpotlightRadius = hasHighlight ? Math.max(highlightPosition.width, highlightPosition.height) * 1.5 : 0;
@@ -193,7 +193,7 @@ export const TutorialOverlay = ({
         />
       )}
 
-      {/* Zoomed power-up rendering */}
+      {/* Zoomed highlight rendering */}
       {hasHighlight && highlightPosition && (
         <div
           className="absolute pointer-events-none flex items-center justify-center"
@@ -208,8 +208,38 @@ export const TutorialOverlay = ({
             zIndex: 201,
           }}
         >
-          {/* Render boss power-ups with emoji, regular power-ups with image */}
-          {highlightPosition.type === 'bossStunner' || highlightPosition.type === 'reflectShield' || highlightPosition.type === 'homingBall' ? (
+          {/* Render based on highlight type */}
+          {highlightPosition.type === 'boss' ? (
+            <div
+              style={{
+                width: highlightPosition.width,
+                height: highlightPosition.height,
+                background: 'radial-gradient(circle, hsl(0, 80%, 50%) 0%, hsl(0, 60%, 30%) 100%)',
+                borderRadius: '8px',
+                boxShadow: '0 0 20px hsl(0, 80%, 50%), 0 0 40px hsl(0, 60%, 40%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <span style={{ fontSize: `${Math.min(highlightPosition.width, highlightPosition.height) * 0.6}px` }}>👹</span>
+            </div>
+          ) : highlightPosition.type === 'enemy' ? (
+            <div
+              style={{
+                width: highlightPosition.width,
+                height: highlightPosition.height,
+                background: 'radial-gradient(circle, hsl(30, 80%, 50%) 0%, hsl(30, 60%, 30%) 100%)',
+                borderRadius: '50%',
+                boxShadow: '0 0 15px hsl(30, 80%, 50%), 0 0 30px hsl(30, 60%, 40%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <span style={{ fontSize: `${Math.min(highlightPosition.width, highlightPosition.height) * 0.5}px` }}>👾</span>
+            </div>
+          ) : highlightPosition.type === 'bossStunner' || highlightPosition.type === 'reflectShield' || highlightPosition.type === 'homingBall' ? (
             <span style={{ fontSize: `${highlightPosition.width}px` }}>
               {highlightPosition.type === 'bossStunner' ? '⚡' : highlightPosition.type === 'reflectShield' ? '🪞' : '🎯'}
             </span>
