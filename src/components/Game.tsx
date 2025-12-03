@@ -6300,7 +6300,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 </div>
 
                 {/* Tutorial Overlay */}
-                {tutorialStep && tutorialActive && (
+{tutorialStep && tutorialActive && (
                   <TutorialOverlay
                     step={tutorialStep}
                     onDismiss={() => {
@@ -6334,6 +6334,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     }}
                     isPaused={tutorialStep.pauseGame}
                     isSlowMotion={false}
+                    highlightPosition={
+                      tutorialStep.highlight?.type === 'power_up' && powerUps.length > 0
+                        ? {
+                            x: powerUps[0].x,
+                            y: powerUps[0].y,
+                            width: powerUps[0].width,
+                            height: powerUps[0].height,
+                            type: powerUps[0].type,
+                          }
+                        : null
+                    }
+                    canvasRect={canvasRef.current?.getBoundingClientRect() ?? null}
                   />
                 )}
 
