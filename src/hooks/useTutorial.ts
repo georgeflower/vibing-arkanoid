@@ -69,15 +69,48 @@ const TUTORIAL_STEPS: TutorialStep[] = [
 ];
 
 const TUTORIAL_STORAGE_KEY = 'vibing_arkanoid_tutorial_enabled';
+const COMPLETED_TUTORIALS_KEY = 'vibing_arkanoid_completed_tutorials';
 
 export const useTutorial = () => {
-  const [tutorialEnabled, setTutorialEnabled] = useState<boolean>(() => {
+  const [tutorialEnabled, setTutorialEnabledState] = useState<boolean>(() => {
     const stored = localStorage.getItem(TUTORIAL_STORAGE_KEY);
     return stored !== 'false'; // Tutorial enabled by default
   });
   const [currentStep, setCurrentStep] = useState<TutorialStep | null>(null);
-  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set()); // Reset each session
+  const [completedSteps, setCompletedSteps] = useState<Set<string>>(() => {
+    // Load completed tutorials from localStorage
+    const stored = localStorage.getItem(COMPLETED_TUTORIALS_KEY);
+    if (stored) {
+      try {
+        return new Set(JSON.parse(stored));
+      } catch {
+        return new Set();
+      }
+    }
+    return new Set();
+  });
   const [tutorialActive, setTutorialActive] = useState(false);
+
+  // Persist completed tutorials and auto-disable when all are done
+  useEffect(() => {
+    localStorage.setItem(COMPLETED_TUTORIALS_KEY, JSON.stringify([...completedSteps]));
+    
+    // Check if all tutorials are complete
+    const allTutorialIds = TUTORIAL_STEPS.map(s => s.id);
+    const allComplete = allTutorialIds.every(id => completedSteps.has(id));
+    
+    if (allComplete && tutorialEnabled) {
+      // Auto-disable tutorials when all have been seen
+      setTutorialEnabledState(false);
+      localStorage.setItem(TUTORIAL_STORAGE_KEY, 'false');
+    }
+  }, [completedSteps, tutorialEnabled]);
+
+  // Custom setter that persists to localStorage
+  const setTutorialEnabled = useCallback((enabled: boolean) => {
+    setTutorialEnabledState(enabled);
+    localStorage.setItem(TUTORIAL_STORAGE_KEY, enabled ? 'true' : 'false');
+  }, []);
 
   // Check if a tutorial step should trigger
   const checkTrigger = useCallback((
@@ -123,9 +156,9 @@ export const useTutorial = () => {
     setTutorialActive(false);
   }, [currentStep]);
 
-  // Skip all tutorials
+  // Skip all tutorials - persists the setting
   const skipAllTutorials = useCallback(() => {
-    setTutorialEnabled(false);
+    setTutorialEnabledState(false);
     setCurrentStep(null);
     setTutorialActive(false);
     localStorage.setItem(TUTORIAL_STORAGE_KEY, 'false');
@@ -133,11 +166,12 @@ export const useTutorial = () => {
 
   // Reset tutorials (for testing or new players)
   const resetTutorials = useCallback(() => {
-    setTutorialEnabled(true);
+    setTutorialEnabledState(true);
     setCompletedSteps(new Set());
     setCurrentStep(null);
     setTutorialActive(false);
     localStorage.setItem(TUTORIAL_STORAGE_KEY, 'true');
+    localStorage.removeItem(COMPLETED_TUTORIALS_KEY);
   }, []);
 
   return {

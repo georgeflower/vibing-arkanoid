@@ -6162,8 +6162,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     {/* ═══════════════════════════════════════════════════════════════ */}
                   </div>
 
-                  {/* Pause Overlay */}
-                  {gameState === "paused" && !showDebugDashboard && (
+                  {/* Pause Overlay - only show when NOT in tutorial mode */}
+                  {gameState === "paused" && !showDebugDashboard && !tutorialActive && (
                     <div className="absolute inset-0 flex items-start justify-center bg-black/70 z-50 pt-16">
                       <div className="bg-slate-900/95 border-4 border-cyan-500 rounded-lg p-8 max-w-md relative">
                         {/* X button for mobile - positioned in top right corner */}
