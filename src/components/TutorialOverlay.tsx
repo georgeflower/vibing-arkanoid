@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { TutorialStep } from "@/hooks/useTutorial";
 import { powerUpImages } from "@/utils/powerUpImages";
-import type { PowerUpType } from "@/types/game";
+import type { PowerUpType, BossType } from "@/types/game";
+import { renderBossToCanvas, type EntityType } from "@/utils/tutorialEntityRenderer";
 
 interface TutorialOverlayProps {
   step: TutorialStep;
@@ -9,7 +10,7 @@ interface TutorialOverlayProps {
   onSkipAll: () => void;
   isPaused: boolean;
   isSlowMotion: boolean;
-  highlightPosition?: { x: number; y: number; width: number; height: number; type?: string } | null;
+  highlightPosition?: { x: number; y: number; width: number; height: number; type?: string; bossType?: BossType } | null;
   canvasRect?: DOMRect | null;
 }
 
@@ -27,6 +28,8 @@ export const TutorialOverlay = ({
   const [wobble, setWobble] = useState({ x: 0, y: 0 });
   const [isDismissing, setIsDismissing] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
+  const [rotation, setRotation] = useState({ x: 0.3, y: 0, z: 0.1 });
+  const entityCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Animate zoom in on mount
   useEffect(() => {
@@ -62,6 +65,46 @@ export const TutorialOverlay = ({
     animationId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationId);
   }, []);
+
+  // Rotation animation for boss/enemy
+  useEffect(() => {
+    let animationId: number;
+    const animate = () => {
+      const time = Date.now() * 0.001;
+      setRotation({
+        x: 0.3 + Math.sin(time * 0.5) * 0.2,
+        y: time * 0.8,
+        z: 0.1 + Math.cos(time * 0.3) * 0.1
+      });
+      animationId = requestAnimationFrame(animate);
+    };
+    animationId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationId);
+  }, []);
+
+  // Render boss/enemy to canvas
+  useEffect(() => {
+    if (!entityCanvasRef.current || !highlightPosition) return;
+    if (highlightPosition.type !== 'boss' && highlightPosition.type !== 'enemy') return;
+    
+    const canvas = entityCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const entityType: EntityType = highlightPosition.type === 'boss' 
+      ? (highlightPosition.bossType || 'cube') 
+      : 'enemy';
+    
+    const size = Math.min(canvas.width, canvas.height) * 0.8;
+    
+    renderBossToCanvas(ctx, entityType, canvas.width / 2, canvas.height / 2, size, {
+      rotationX: rotation.x,
+      rotationY: rotation.y,
+      rotationZ: rotation.z
+    });
+  }, [highlightPosition, rotation]);
 
   // Handle dismiss with animation
   const handleDismiss = useCallback(() => {
@@ -209,36 +252,16 @@ export const TutorialOverlay = ({
           }}
         >
           {/* Render based on highlight type */}
-          {highlightPosition.type === 'boss' ? (
-            <div
+          {(highlightPosition.type === 'boss' || highlightPosition.type === 'enemy') ? (
+            <canvas
+              ref={entityCanvasRef}
+              width={highlightPosition.width * 2}
+              height={highlightPosition.height * 2}
               style={{
                 width: highlightPosition.width,
                 height: highlightPosition.height,
-                background: 'radial-gradient(circle, hsl(0, 80%, 50%) 0%, hsl(0, 60%, 30%) 100%)',
-                borderRadius: '8px',
-                boxShadow: '0 0 20px hsl(0, 80%, 50%), 0 0 40px hsl(0, 60%, 40%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
               }}
-            >
-              <span style={{ fontSize: `${Math.min(highlightPosition.width, highlightPosition.height) * 0.6}px` }}>👹</span>
-            </div>
-          ) : highlightPosition.type === 'enemy' ? (
-            <div
-              style={{
-                width: highlightPosition.width,
-                height: highlightPosition.height,
-                background: 'radial-gradient(circle, hsl(30, 80%, 50%) 0%, hsl(30, 60%, 30%) 100%)',
-                borderRadius: '50%',
-                boxShadow: '0 0 15px hsl(30, 80%, 50%), 0 0 30px hsl(30, 60%, 40%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <span style={{ fontSize: `${Math.min(highlightPosition.width, highlightPosition.height) * 0.5}px` }}>👾</span>
-            </div>
+            />
           ) : highlightPosition.type === 'bossStunner' || highlightPosition.type === 'reflectShield' || highlightPosition.type === 'homingBall' ? (
             <span style={{ fontSize: `${highlightPosition.width}px` }}>
               {highlightPosition.type === 'bossStunner' ? '⚡' : highlightPosition.type === 'reflectShield' ? '🪞' : '🎯'}
