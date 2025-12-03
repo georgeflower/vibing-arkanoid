@@ -6376,6 +6376,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             width: boss.width,
                             height: boss.height,
                             type: 'boss',
+                            bossType: boss.type,
                           }
                         : tutorialStep.highlight?.type === 'enemy' && enemies.length > 0
                         ? {
