@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 
 export interface TutorialStep {
   id: string;
-  trigger: 'level_start' | 'power_up_drop' | 'boss_spawn' | 'first_brick_hit' | 'boss_power_up_drop' | 'turret_collected';
+  trigger: 'level_start' | 'power_up_drop' | 'boss_spawn' | 'first_brick_hit' | 'boss_power_up_drop' | 'turret_collected' | 'minion_spawn';
   level?: number; // Optional: only trigger on specific level
   message: string;
   title: string;
@@ -17,7 +17,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     trigger: 'level_start',
     level: 1,
     title: 'WELCOME!',
-    message: 'MOUSE to move paddle\nCLICK to launch ball',
+    message: 'MOUSE to move paddle\nCLICK to launch ball\nDestroy bricks to clear level',
     pauseGame: true,
     slowMotion: false,
   },
@@ -52,8 +52,17 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     trigger: 'boss_spawn',
     level: 5,
     title: 'BOSS BATTLE!',
-    message: 'Hit the boss with your ball\nAvoid its attacks!',
+    message: 'Use ball or turret to kill boss\nAvoid its attacks!',
     highlight: { type: 'boss' },
+    pauseGame: true,
+    slowMotion: false,
+  },
+  {
+    id: 'minion_intro',
+    trigger: 'minion_spawn',
+    title: 'MINION!',
+    message: 'Kill minions to get\nspecial boss power-ups!',
+    highlight: { type: 'enemy' },
     pauseGame: true,
     slowMotion: false,
   },

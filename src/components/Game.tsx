@@ -247,6 +247,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const turretTutorialTriggeredRef = useRef(false);
   const bossTutorialTriggeredRef = useRef(false);
   const bossPowerUpTutorialTriggeredRef = useRef(false);
+  const minionTutorialTriggeredRef = useRef(false);
 
   // Bullet impact effects for boss hits
   const [bulletImpacts, setBulletImpacts] = useState<
@@ -5205,6 +5206,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setEnemySpawnCount((prev) => prev + 1);
         const enemyName = enemyType === "sphere" ? "Sphere" : enemyType === "pyramid" ? "Pyramid" : "Cube";
         toast.warning(`${enemyName} enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
+        
+        // Trigger minion tutorial on first enemy spawn (non-boss level enemies)
+        if (tutorialEnabled && !minionTutorialTriggeredRef.current) {
+          minionTutorialTriggeredRef.current = true;
+          // Small delay to ensure enemy is rendered before showing tutorial
+          setTimeout(() => {
+            const { shouldPause } = triggerTutorial("minion_spawn", level);
+            if (shouldPause) {
+              setGameState("paused");
+              if (gameLoopRef.current) gameLoopRef.current.pause();
+            }
+          }, 100);
+        }
 
         // Start dropping projectiles for this enemy
         // Set up bomb/rocket drop with level-scaled intervals
@@ -5400,6 +5414,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       setEnemies((prev) => [...prev, ...newEnemies]);
       setLastBossSpawnTime(timer);
+
+      // Trigger minion tutorial on first boss minion spawn
+      if (tutorialEnabled && !minionTutorialTriggeredRef.current) {
+        minionTutorialTriggeredRef.current = true;
+        setTimeout(() => {
+          const { shouldPause } = triggerTutorial("minion_spawn", level);
+          if (shouldPause) {
+            setGameState("paused");
+            if (gameLoopRef.current) gameLoopRef.current.pause();
+          }
+        }, 100);
+      }
 
       // Trigger spawn animation
       setBossSpawnAnimation({ active: true, startTime: Date.now() });
@@ -6342,6 +6368,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             width: powerUps[0].width,
                             height: powerUps[0].height,
                             type: powerUps[0].type,
+                          }
+                        : tutorialStep.highlight?.type === 'boss' && boss
+                        ? {
+                            x: boss.x,
+                            y: boss.y,
+                            width: boss.width,
+                            height: boss.height,
+                            type: 'boss',
+                          }
+                        : tutorialStep.highlight?.type === 'enemy' && enemies.length > 0
+                        ? {
+                            x: enemies[0].x,
+                            y: enemies[0].y,
+                            width: enemies[0].width,
+                            height: enemies[0].height,
+                            type: 'enemy',
                           }
                         : null
                     }
