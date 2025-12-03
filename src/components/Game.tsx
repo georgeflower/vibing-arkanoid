@@ -94,7 +94,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -217,10 +217,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bossStunnerEndTime, setBossStunnerEndTime] = useState<number | null>(null);
   const [reflectShieldEndTime, setReflectShieldEndTime] = useState<number | null>(null);
   const [homingBallEndTime, setHomingBallEndTime] = useState<number | null>(null);
-  
+
   // Fireball timer state
   const [fireballEndTime, setFireballEndTime] = useState<number | null>(null);
-  
+
   // Tutorial system
   const {
     tutorialEnabled,
@@ -232,7 +232,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     resetTutorials,
     setTutorialEnabled,
   } = useTutorial();
-  
+
   // Track if power-up drop tutorial has been triggered this session
   const powerUpTutorialTriggeredRef = useRef(false);
 
@@ -438,7 +438,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const handleFireballStart = useCallback(() => {
     setFireballEndTime(Date.now() + FIREBALL_DURATION);
   }, []);
-  
+
   const handleFireballEnd = useCallback(() => {
     setFireballEndTime(null);
   }, []);
@@ -453,19 +453,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setBrickHitSpeedAccumulated,
       (type: string) => {
         setPowerUpsCollectedTypes((prev) => new Set(prev).add(type));
-        
+
         // Trigger turret tutorial when turret is collected
-        if (tutorialEnabled && type === 'turrets') {
-          const { shouldPause } = triggerTutorial('turret_collected', level);
+        if (tutorialEnabled && type === "turrets") {
+          const { shouldPause } = triggerTutorial("turret_collected", level);
           if (shouldPause) {
             setGameState("paused");
             if (gameLoopRef.current) gameLoopRef.current.pause();
           }
         }
-        
+
         // Trigger boss power-up tutorial when collected
-        if (tutorialEnabled && ['bossStunner', 'reflectShield', 'homingBall'].includes(type)) {
-          const { shouldPause } = triggerTutorial('boss_power_up_drop', level);
+        if (tutorialEnabled && ["bossStunner", "reflectShield", "homingBall"].includes(type)) {
+          const { shouldPause } = triggerTutorial("boss_power_up_drop", level);
           if (shouldPause) {
             setGameState("paused");
             if (gameLoopRef.current) gameLoopRef.current.pause();
@@ -1210,28 +1210,28 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Update nextLevel ref whenever nextLevel function changes
   nextLevelRef.current = nextLevel;
-  
+
   // Tutorial triggers for level start and boss spawn
   useEffect(() => {
     if (!tutorialEnabled) return;
-    
+
     // Trigger tutorial on level 1 start
     if (gameState === "ready" && level === 1) {
-      const { shouldPause } = triggerTutorial('level_start', level);
+      const { shouldPause } = triggerTutorial("level_start", level);
       if (shouldPause) {
         setGameState("paused");
       }
     }
-    
+
     // Trigger tutorial on boss level start
     if (gameState === "ready" && BOSS_LEVELS.includes(level) && bossActive) {
-      const { shouldPause } = triggerTutorial('boss_spawn', level);
+      const { shouldPause } = triggerTutorial("boss_spawn", level);
       if (shouldPause) {
         setGameState("paused");
       }
     }
   }, [gameState, level, tutorialEnabled, bossActive, triggerTutorial]);
-  
+
   useEffect(() => {
     initGame();
 
@@ -2951,11 +2951,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
           return next;
         });
-        
+
         // Trigger power-up drop tutorial when first power-up becomes visible (only once)
         if (tutorialEnabled && !powerUpTutorialTriggeredRef.current) {
           powerUpTutorialTriggeredRef.current = true;
-          const { shouldPause } = triggerTutorial('power_up_drop', level);
+          const { shouldPause } = triggerTutorial("power_up_drop", level);
           if (shouldPause) {
             setGameState("paused");
             if (gameLoopRef.current) gameLoopRef.current.pause();
@@ -6119,12 +6119,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                                 }
                               }}
                               className={`px-3 py-1 rounded text-xs retro-pixel-text transition-colors ${
-                                tutorialEnabled 
-                                  ? 'bg-green-600 hover:bg-green-700 text-white' 
-                                  : 'bg-gray-600 hover:bg-gray-700 text-gray-300'
+                                tutorialEnabled
+                                  ? "bg-green-600 hover:bg-green-700 text-white"
+                                  : "bg-gray-600 hover:bg-gray-700 text-gray-300"
                               }`}
                             >
-                              {tutorialEnabled ? 'ON' : 'OFF'}
+                              {tutorialEnabled ? "ON" : "OFF"}
                             </button>
                           </div>
                         </div>
