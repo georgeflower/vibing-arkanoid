@@ -1583,8 +1583,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
   }, []);
   const handleClick = useCallback(() => {
-    // Request pointer lock on canvas click
-    if (canvasRef.current && document.pointerLockElement !== canvasRef.current) {
+    // Don't process clicks during tutorial - let TutorialOverlay handle it
+    if (tutorialActive) return;
+
+    // Request pointer lock on canvas click (desktop only)
+    if (!isMobileDevice && canvasRef.current && document.pointerLockElement !== canvasRef.current) {
       canvasRef.current.requestPointerLock();
     }
 
@@ -1658,7 +1661,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (paddle.hasTurrets) {
       fireBullets(paddle);
     }
-  }, [paddle, gameState, fireBullets, bricks, nextLevel, balls, launchAngle, level]);
+  }, [paddle, gameState, fireBullets, bricks, nextLevel, balls, launchAngle, level, tutorialActive, isMobileDevice]);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -1890,8 +1893,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         return;
       }
 
-      // If pointer lock was released (ESC pressed) while playing, pause the game
-      if (!isLocked && gameState === "playing") {
+      // If pointer lock was released (ESC pressed) while playing, pause the game (desktop only)
+      // Mobile devices don't use pointer lock, so skip this check entirely
+      if (!isLocked && gameState === "playing" && !isMobileDevice) {
         console.log("[PointerLock] Released during gameplay - pausing game");
         setGameState("paused");
         if (gameLoopRef.current) {
@@ -6333,33 +6337,39 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   <TutorialOverlay
                     step={tutorialStep}
                     onDismiss={() => {
-                      dismissTutorial();
-                      // Resume game if it was paused for tutorial
+                      // Resume game FIRST if it was paused for tutorial (before dismissTutorial sets tutorialActive=false)
                       if (tutorialStep.pauseGame) {
                         setGameState("playing");
-                        // Re-acquire pointer lock for mouse control
-                        const canvas = canvasRef.current;
-                        if (canvas && canvas.requestPointerLock) {
-                          canvas.requestPointerLock();
+                        // Re-acquire pointer lock for mouse control (desktop only)
+                        if (!isMobileDevice) {
+                          const canvas = canvasRef.current;
+                          if (canvas && canvas.requestPointerLock) {
+                            canvas.requestPointerLock();
+                          }
                         }
                         if (gameLoopRef.current) {
                           gameLoopRef.current.resume();
                         }
                       }
+                      // Then dismiss tutorial (sets tutorialActive = false)
+                      dismissTutorial();
                     }}
                     onSkipAll={() => {
-                      skipAllTutorials();
+                      // Resume game FIRST before skipping tutorials
                       if (gameState === "paused") {
                         setGameState("playing");
-                        // Re-acquire pointer lock for mouse control
-                        const canvas = canvasRef.current;
-                        if (canvas && canvas.requestPointerLock) {
-                          canvas.requestPointerLock();
+                        // Re-acquire pointer lock for mouse control (desktop only)
+                        if (!isMobileDevice) {
+                          const canvas = canvasRef.current;
+                          if (canvas && canvas.requestPointerLock) {
+                            canvas.requestPointerLock();
+                          }
                         }
                         if (gameLoopRef.current) {
                           gameLoopRef.current.resume();
                         }
                       }
+                      skipAllTutorials();
                     }}
                     isPaused={tutorialStep.pauseGame}
                     isSlowMotion={false}
