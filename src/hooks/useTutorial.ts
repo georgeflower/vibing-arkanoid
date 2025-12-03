@@ -4,12 +4,15 @@ export interface TutorialStep {
   id: string;
   trigger: 'level_start' | 'power_up_drop' | 'boss_spawn' | 'first_brick_hit' | 'boss_power_up_drop' | 'turret_collected' | 'minion_spawn';
   level?: number; // Optional: only trigger on specific level
+  bossLevelOnly?: boolean; // Only trigger on boss levels (5, 10, 15, 20)
   message: string;
   title: string;
   highlight?: { type: 'power_up' | 'boss' | 'enemy' };
   pauseGame: boolean;
   slowMotion: boolean; // 0.25x speed
 }
+
+const BOSS_LEVELS = [5, 10, 15, 20];
 
 const TUTORIAL_STEPS: TutorialStep[] = [
   {
@@ -60,6 +63,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 'minion_intro',
     trigger: 'minion_spawn',
+    bossLevelOnly: true,
     title: 'MINION!',
     message: 'Kill minions to get\nspecial boss power-ups!',
     highlight: { type: 'enemy' },
@@ -128,11 +132,13 @@ export const useTutorial = () => {
   ): TutorialStep | null => {
     if (!tutorialEnabled) return null;
     
-    const step = TUTORIAL_STEPS.find(s => 
-      s.trigger === trigger && 
-      !completedSteps.has(s.id) &&
-      (s.level === undefined || s.level === level)
-    );
+    const step = TUTORIAL_STEPS.find(s => {
+      if (s.trigger !== trigger) return false;
+      if (completedSteps.has(s.id)) return false;
+      if (s.level !== undefined && s.level !== level) return false;
+      if (s.bossLevelOnly && !BOSS_LEVELS.includes(level)) return false;
+      return true;
+    });
     
     return step || null;
   }, [tutorialEnabled, completedSteps]);
