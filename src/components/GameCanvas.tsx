@@ -40,11 +40,12 @@ interface GameCanvasProps {
   bossSpawnAnimation: {active: boolean; startTime: number} | null;
   shieldImpacts: ShieldImpact[];
   bulletImpacts?: Array<{ x: number; y: number; startTime: number; isSuper: boolean }>;
+  tutorialHighlight?: { type: 'power_up' | 'boss' | 'enemy' } | null;
   debugEnabled?: boolean; // DEBUG: Remove before production
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], debugEnabled = false }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -482,6 +483,23 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         const img = loadedImagesRef.current[powerUp.type];
         const size = powerUp.width; // Square power-up
         const cornerRadius = 4;
+        
+        // Tutorial highlight - draw glowing ring around power-ups
+        if (tutorialHighlight?.type === 'power_up') {
+          const glowPhase = (Date.now() % 800) / 800;
+          const glowRadius = size * 0.8 + Math.sin(glowPhase * Math.PI * 2) * 8;
+          const glowAlpha = 0.6 + Math.sin(glowPhase * Math.PI * 2) * 0.3;
+          
+          ctx.save();
+          ctx.strokeStyle = `rgba(0, 255, 255, ${glowAlpha})`;
+          ctx.lineWidth = 4;
+          ctx.shadowBlur = 25;
+          ctx.shadowColor = 'rgba(0, 255, 255, 0.9)';
+          ctx.beginPath();
+          ctx.arc(powerUp.x + size / 2, powerUp.y + size / 2, glowRadius, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
         
         // Pulse animation: zoom in 5% and out 5% on 1 second interval
         const pulsePhase = (Date.now() % 1000) / 1000; // 0 to 1 over 1 second

@@ -221,6 +221,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Fireball timer state
   const [fireballEndTime, setFireballEndTime] = useState<number | null>(null);
 
+  // Pause-aware timer tracking
+  const pauseStartTimeRef = useRef<number | null>(null);
+  const savedTimerDurationsRef = useRef<{
+    bossStunner: number | null;
+    reflectShield: number | null;
+    homingBall: number | null;
+    fireball: number | null;
+  }>({ bossStunner: null, reflectShield: null, homingBall: null, fireball: null });
+
   // Tutorial system
   const {
     tutorialEnabled,
@@ -306,6 +315,71 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     }
   }, [showDebugDashboard, gameState, debugDashboardPausedGame]);
+
+  // Pause-aware timer management - save remaining durations on pause, restore on resume
+  useEffect(() => {
+    const isPaused = gameState === "paused" || gameState === "ready" || tutorialActive;
+    
+    if (isPaused && pauseStartTimeRef.current === null) {
+      // Entering pause - save remaining durations
+      pauseStartTimeRef.current = Date.now();
+      const now = Date.now();
+      savedTimerDurationsRef.current = {
+        bossStunner: bossStunnerEndTime ? Math.max(0, bossStunnerEndTime - now) : null,
+        reflectShield: reflectShieldEndTime ? Math.max(0, reflectShieldEndTime - now) : null,
+        homingBall: homingBallEndTime ? Math.max(0, homingBallEndTime - now) : null,
+        fireball: fireballEndTime ? Math.max(0, fireballEndTime - now) : null,
+      };
+      
+      // Clear active timeouts
+      if (reflectShieldTimeoutRef.current) {
+        clearTimeout(reflectShieldTimeoutRef.current);
+        reflectShieldTimeoutRef.current = null;
+      }
+      if (homingBallTimeoutRef.current) {
+        clearTimeout(homingBallTimeoutRef.current);
+        homingBallTimeoutRef.current = null;
+      }
+    } else if (!isPaused && pauseStartTimeRef.current !== null) {
+      // Resuming from pause - restore timers with remaining duration
+      const saved = savedTimerDurationsRef.current;
+      const now = Date.now();
+      
+      if (saved.bossStunner !== null && saved.bossStunner > 0) {
+        setBossStunnerEndTime(now + saved.bossStunner);
+        if (boss) {
+          setBoss(prev => prev ? { ...prev, stunnedUntil: now + saved.bossStunner! } : null);
+        }
+      }
+      
+      if (saved.reflectShield !== null && saved.reflectShield > 0) {
+        setReflectShieldEndTime(now + saved.reflectShield);
+        reflectShieldTimeoutRef.current = setTimeout(() => {
+          setReflectShieldActive(false);
+          setReflectShieldEndTime(null);
+          setPaddle(prev => prev ? { ...prev, hasReflectShield: false } : null);
+          toast.info("Reflect Shield expired!");
+        }, saved.reflectShield);
+      }
+      
+      if (saved.homingBall !== null && saved.homingBall > 0) {
+        setHomingBallEndTime(now + saved.homingBall);
+        homingBallTimeoutRef.current = setTimeout(() => {
+          setHomingBallActive(false);
+          setHomingBallEndTime(null);
+          setBalls(prev => prev.map(ball => ({ ...ball, isHoming: false })));
+          toast.info("Homing Ball expired!");
+        }, saved.homingBall);
+      }
+      
+      if (saved.fireball !== null && saved.fireball > 0) {
+        setFireballEndTime(now + saved.fireball);
+      }
+      
+      pauseStartTimeRef.current = null;
+      savedTimerDurationsRef.current = { bossStunner: null, reflectShield: null, homingBall: null, fireball: null };
+    }
+  }, [gameState, tutorialActive, bossStunnerEndTime, reflectShieldEndTime, homingBallEndTime, fireballEndTime, boss]);
 
   // Sound effect cooldowns (ms timestamps)
   const lastWallBounceSfxMs = useRef(0);
@@ -1211,7 +1285,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     bossTutorialTriggeredRef.current = false;
   }, [level]);
 
-  // Tutorial triggers for level start and boss spawn
+  // Tutorial triggers for level start
   useEffect(() => {
     if (!tutorialEnabled) return;
 
@@ -1222,16 +1296,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setGameState("paused");
       }
     }
+  }, [gameState, level, tutorialEnabled, triggerTutorial]);
 
-    // Trigger tutorial on boss level start (when entering ready state on boss level)
-    if (gameState === "ready" && BOSS_LEVELS.includes(level) && !bossTutorialTriggeredRef.current) {
+  // Tutorial trigger for boss spawn - fires when bossIntroActive starts
+  useEffect(() => {
+    if (!tutorialEnabled || !bossIntroActive) return;
+    
+    if (!bossTutorialTriggeredRef.current) {
       bossTutorialTriggeredRef.current = true;
       const { shouldPause } = triggerTutorial("boss_spawn", level);
       if (shouldPause) {
         setGameState("paused");
+        if (gameLoopRef.current) gameLoopRef.current.pause();
       }
     }
-  }, [gameState, level, tutorialEnabled, triggerTutorial]);
+  }, [bossIntroActive, tutorialEnabled, triggerTutorial, level]);
 
   useEffect(() => {
     initGame();
@@ -3165,6 +3244,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               }
               if (powerUp) {
                 setPowerUps((prev) => [...prev, powerUp]);
+                
+                // Trigger boss power-up tutorial when boss minion drops a boss power-up
+                const isBossPowerUpType = ["bossStunner", "reflectShield", "homingBall"].includes(powerUp.type);
+                if (tutorialEnabled && isBossPowerUpType && !bossPowerUpTutorialTriggeredRef.current) {
+                  bossPowerUpTutorialTriggeredRef.current = true;
+                  const { shouldPause } = triggerTutorial("boss_power_up_drop", level);
+                  if (shouldPause) {
+                    setGameState("paused");
+                    if (gameLoopRef.current) gameLoopRef.current.pause();
+                  }
+                }
+                
                 if (isBossSpawned) {
                   if (isFirstBossMinion) {
                     toast.success("First boss minion! Guaranteed boss power-up!");
@@ -3310,10 +3401,27 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     ...prev,
                     hasTurrets: false,
                     hasShield: false,
+                    hasReflectShield: false,
                     width: SCALED_PADDLE_WIDTH,
                   }
                 : null,
             );
+            
+            // Clear all boss power-up states on life loss
+            setBossStunnerEndTime(null);
+            setReflectShieldEndTime(null);
+            setHomingBallEndTime(null);
+            setFireballEndTime(null);
+            setReflectShieldActive(false);
+            setHomingBallActive(false);
+            if (reflectShieldTimeoutRef.current) {
+              clearTimeout(reflectShieldTimeoutRef.current);
+              reflectShieldTimeoutRef.current = null;
+            }
+            if (homingBallTimeoutRef.current) {
+              clearTimeout(homingBallTimeoutRef.current);
+              homingBallTimeoutRef.current = null;
+            }
             setBullets([]);
             if (speedMultiplier < 1) {
               setSpeedMultiplier(1);
@@ -5950,6 +6058,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       bossSpawnAnimation={bossSpawnAnimation}
                       shieldImpacts={shieldImpacts}
                       bulletImpacts={bulletImpacts}
+                      tutorialHighlight={tutorialStep?.highlight}
                       debugEnabled={ENABLE_DEBUG_FEATURES}
                     />
 
