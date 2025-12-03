@@ -233,8 +233,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setTutorialEnabled,
   } = useTutorial();
 
-  // Track if power-up drop tutorial has been triggered this session
+  // Track if tutorials have been triggered this session
   const powerUpTutorialTriggeredRef = useRef(false);
+  const turretTutorialTriggeredRef = useRef(false);
+  const bossTutorialTriggeredRef = useRef(false);
+  const bossPowerUpTutorialTriggeredRef = useRef(false);
 
   // Bullet impact effects for boss hits
   const [bulletImpacts, setBulletImpacts] = useState<
@@ -454,18 +457,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       (type: string) => {
         setPowerUpsCollectedTypes((prev) => new Set(prev).add(type));
 
-        // Trigger turret tutorial when turret is collected
-        if (tutorialEnabled && type === "turrets") {
+        // Trigger turret tutorial when turret is collected (only once per session)
+        if (tutorialEnabled && type === "turrets" && !turretTutorialTriggeredRef.current) {
+          turretTutorialTriggeredRef.current = true;
           const { shouldPause } = triggerTutorial("turret_collected", level);
-          if (shouldPause) {
-            setGameState("paused");
-            if (gameLoopRef.current) gameLoopRef.current.pause();
-          }
-        }
-
-        // Trigger boss power-up tutorial when collected
-        if (tutorialEnabled && ["bossStunner", "reflectShield", "homingBall"].includes(type)) {
-          const { shouldPause } = triggerTutorial("boss_power_up_drop", level);
           if (shouldPause) {
             setGameState("paused");
             if (gameLoopRef.current) gameLoopRef.current.pause();
@@ -1211,6 +1206,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Update nextLevel ref whenever nextLevel function changes
   nextLevelRef.current = nextLevel;
 
+  // Reset boss tutorial ref when level changes
+  useEffect(() => {
+    bossTutorialTriggeredRef.current = false;
+  }, [level]);
+
   // Tutorial triggers for level start and boss spawn
   useEffect(() => {
     if (!tutorialEnabled) return;
@@ -1223,14 +1223,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     }
 
-    // Trigger tutorial on boss level start
-    if (gameState === "ready" && BOSS_LEVELS.includes(level) && bossActive) {
+    // Trigger tutorial on boss level start (when entering ready state on boss level)
+    if (gameState === "ready" && BOSS_LEVELS.includes(level) && !bossTutorialTriggeredRef.current) {
+      bossTutorialTriggeredRef.current = true;
       const { shouldPause } = triggerTutorial("boss_spawn", level);
       if (shouldPause) {
         setGameState("paused");
       }
     }
-  }, [gameState, level, tutorialEnabled, bossActive, triggerTutorial]);
+  }, [gameState, level, tutorialEnabled, triggerTutorial]);
 
   useEffect(() => {
     initGame();
@@ -2956,6 +2957,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (tutorialEnabled && !powerUpTutorialTriggeredRef.current) {
           powerUpTutorialTriggeredRef.current = true;
           const { shouldPause } = triggerTutorial("power_up_drop", level);
+          if (shouldPause) {
+            setGameState("paused");
+            if (gameLoopRef.current) gameLoopRef.current.pause();
+          }
+        }
+
+        // Trigger boss power-up tutorial when first boss power-up drops (only once)
+        const hasBossPowerUp = createdPowerUps.some(p => 
+          ["bossStunner", "reflectShield", "homingBall"].includes(p.type)
+        );
+        if (tutorialEnabled && hasBossPowerUp && !bossPowerUpTutorialTriggeredRef.current) {
+          bossPowerUpTutorialTriggeredRef.current = true;
+          const { shouldPause } = triggerTutorial("boss_power_up_drop", level);
           if (shouldPause) {
             setGameState("paused");
             if (gameLoopRef.current) gameLoopRef.current.pause();
