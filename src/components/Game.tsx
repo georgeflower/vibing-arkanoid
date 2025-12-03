@@ -70,7 +70,11 @@ import {
   getBrickColors,
   POWERUP_SIZE,
   POWERUP_FALL_SPEED,
+  FINAL_LEVEL,
+  FIREBALL_DURATION,
 } from "@/constants/game";
+import { useTutorial } from "@/hooks/useTutorial";
+import { TutorialOverlay } from "./TutorialOverlay";
 import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
@@ -213,6 +217,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bossStunnerEndTime, setBossStunnerEndTime] = useState<number | null>(null);
   const [reflectShieldEndTime, setReflectShieldEndTime] = useState<number | null>(null);
   const [homingBallEndTime, setHomingBallEndTime] = useState<number | null>(null);
+  
+  // Fireball timer state
+  const [fireballEndTime, setFireballEndTime] = useState<number | null>(null);
+  
+  // Tutorial system
+  const {
+    tutorialEnabled,
+    currentStep: tutorialStep,
+    tutorialActive,
+    triggerTutorial,
+    dismissTutorial,
+    skipAllTutorials,
+  } = useTutorial();
+  const [tutorialSlowMotion, setTutorialSlowMotion] = useState(false);
+  const tutorialSpeedRef = useRef(1.0); // Store speed before tutorial slowdown
 
   // Bullet impact effects for boss hits
   const [bulletImpacts, setBulletImpacts] = useState<
@@ -412,6 +431,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }, 600);
   }, []);
 
+  // Handle fireball activation
+  const handleFireballStart = useCallback(() => {
+    setFireballEndTime(Date.now() + FIREBALL_DURATION);
+  }, []);
+  
+  const handleFireballEnd = useCallback(() => {
+    setFireballEndTime(null);
+  }, []);
+
   const { isHighScore, addHighScore, getQualifiedLeaderboards } = useHighScores();
   const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps, extraLifeUsedLevels } =
     usePowerUps(
@@ -420,11 +448,31 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       timer,
       settings.difficulty,
       setBrickHitSpeedAccumulated,
-      (type: string) => setPowerUpsCollectedTypes((prev) => new Set(prev).add(type)),
+      (type: string) => {
+        setPowerUpsCollectedTypes((prev) => new Set(prev).add(type));
+        // Trigger tutorial on first power-up collection
+        if (tutorialEnabled && type !== 'life') {
+          const { shouldSlowMotion } = triggerTutorial('power_up_drop', level);
+          if (shouldSlowMotion) {
+            setTutorialSlowMotion(true);
+            tutorialSpeedRef.current = speedMultiplier;
+          }
+        }
+        // Trigger boss power-up tutorial
+        if (tutorialEnabled && ['bossStunner', 'reflectShield', 'homingBall'].includes(type)) {
+          const { shouldSlowMotion } = triggerTutorial('boss_power_up_drop', level);
+          if (shouldSlowMotion) {
+            setTutorialSlowMotion(true);
+            tutorialSpeedRef.current = speedMultiplier;
+          }
+        }
+      },
       powerUpAssignments,
       handleBossStunner,
       handleReflectShield,
       handleHomingBall,
+      handleFireballStart,
+      handleFireballEnd,
     );
   const { bullets, setBullets, fireBullets, updateBullets } = useBullets(
     setScore,
@@ -1157,6 +1205,28 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Update nextLevel ref whenever nextLevel function changes
   nextLevelRef.current = nextLevel;
+  
+  // Tutorial triggers for level start and boss spawn
+  useEffect(() => {
+    if (!tutorialEnabled) return;
+    
+    // Trigger tutorial on level 1 start
+    if (gameState === "ready" && level === 1) {
+      const { shouldPause } = triggerTutorial('level_start', level);
+      if (shouldPause) {
+        setGameState("paused");
+      }
+    }
+    
+    // Trigger tutorial on boss level start
+    if (gameState === "ready" && BOSS_LEVELS.includes(level) && bossActive) {
+      const { shouldPause } = triggerTutorial('boss_spawn', level);
+      if (shouldPause) {
+        setGameState("paused");
+      }
+    }
+  }, [gameState, level, tutorialEnabled, bossActive, triggerTutorial]);
+  
   useEffect(() => {
     initGame();
 
@@ -2935,7 +3005,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (hasDestructibleBricks) {
               soundManager.playWin();
 
-              if (level >= 20) {
+              if (level >= FINAL_LEVEL) {
                 setScore((prev) => prev + 1000000);
                 setBeatLevel50Completed(true);
                 setGameState("won");
@@ -2950,7 +3020,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               return newBricks.map((b) => ({ ...b, visible: false }));
             } else if (!BOSS_LEVELS.includes(level)) {
               soundManager.playWin();
-              if (level >= 50) {
+              if (level >= FINAL_LEVEL) {
                 setScore((prev) => prev + 1000000);
                 setBeatLevel50Completed(true);
                 setGameState("won");
@@ -5908,6 +5978,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             HOMING: {((homingBallEndTime - Date.now()) / 1000).toFixed(1)}s
                           </div>
                         )}
+                        {fireballEndTime && Date.now() < fireballEndTime && (
+                          <div
+                            className="absolute retro-pixel-text"
+                            style={{
+                              left: `${paddle.x + paddle.width / 2}px`,
+                              top: `${paddle.y - 90}px`,
+                              transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              color: `hsl(${Math.max(0, 30 - (1 - (fireballEndTime - Date.now()) / FIREBALL_DURATION) * 30)}, 100%, 50%)`,
+                              textShadow: `0 0 10px currentColor`,
+                              fontSize: "12px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            FIREBALL: {((fireballEndTime - Date.now()) / 1000).toFixed(1)}s
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -6050,6 +6136,36 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     </div>
                   )}
                 </div>
+
+                {/* Tutorial Overlay */}
+                {tutorialStep && tutorialActive && (
+                  <TutorialOverlay
+                    step={tutorialStep}
+                    onDismiss={() => {
+                      dismissTutorial();
+                      setTutorialSlowMotion(false);
+                      // Resume game if it was paused for tutorial
+                      if (gameState === "paused" && tutorialStep.pauseGame) {
+                        setGameState("playing");
+                        if (gameLoopRef.current) {
+                          gameLoopRef.current.resume();
+                        }
+                      }
+                    }}
+                    onSkipAll={() => {
+                      skipAllTutorials();
+                      setTutorialSlowMotion(false);
+                      if (gameState === "paused") {
+                        setGameState("playing");
+                        if (gameLoopRef.current) {
+                          gameLoopRef.current.resume();
+                        }
+                      }
+                    }}
+                    isPaused={tutorialStep.pauseGame}
+                    isSlowMotion={tutorialSlowMotion}
+                  />
+                )}
 
                 {/* ═══════════════════════════════════════════════════════════════
                      ████████╗ DEBUG UI COMPONENTS - REMOVE BEFORE PRODUCTION ████████╗
