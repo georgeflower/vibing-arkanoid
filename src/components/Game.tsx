@@ -1360,6 +1360,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const secondTouchRef = useRef<number | null>(null);
   const handleTouchStart = useCallback(
     (e: TouchEvent) => {
+      // Don't process game input during tutorial - let TutorialOverlay handle it
+      if (tutorialActive) return;
+      
       if (!canvasRef.current || !paddle) return;
       e.preventDefault();
 
@@ -1490,7 +1493,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
       }
     },
-    [paddle, balls, gameState, launchAngle, fireBullets, SCALED_CANVAS_WIDTH, bricks, nextLevel],
+    [paddle, balls, gameState, launchAngle, fireBullets, SCALED_CANVAS_WIDTH, bricks, nextLevel, tutorialActive],
   );
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
