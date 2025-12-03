@@ -20,7 +20,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     trigger: 'level_start',
     level: 1,
     title: 'WELCOME!',
-    message: 'MOUSE to move paddle\nCLICK to launch ball\nDestroy bricks to clear level',
+    message: 'MOUSE to move paddle\nCLICK to launch ball\nDestroy bricks to clear level\nThe 1st boss awaits on level 5!',
     pauseGame: true,
     slowMotion: false,
   },
