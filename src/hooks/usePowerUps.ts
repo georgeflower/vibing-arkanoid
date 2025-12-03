@@ -18,6 +18,8 @@ export const usePowerUps = (
   onBossStunner?: () => void,
   onReflectShield?: () => void,
   onHomingBall?: () => void,
+  onFireballStart?: () => void,
+  onFireballEnd?: () => void,
 ) => {
   const [powerUps, setPowerUps] = useState<PowerUp[]>([]);
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
@@ -174,10 +176,13 @@ export const usePowerUps = (
               if (fireballTimeoutRef.current) {
                 clearTimeout(fireballTimeoutRef.current);
               }
+              // Notify start for timer display
+              onFireballStart?.();
               // Set new timeout and store reference
               fireballTimeoutRef.current = setTimeout(() => {
                 setBalls(prev => prev.map(ball => ({ ...ball, isFireball: false })));
                 fireballTimeoutRef.current = null;
+                onFireballEnd?.();
               }, FIREBALL_DURATION);
               toast.success("Fireball activated!");
               break;

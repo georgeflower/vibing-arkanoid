@@ -16,6 +16,9 @@ export const POWERUP_FALL_SPEED = 2;
 export const POWERUP_DROP_CHANCE = 0.20; // 20%
 export const FIREBALL_DURATION = 5000; // 5 seconds
 
+// Final level - game ends after this level
+export const FINAL_LEVEL = 20;
+
 export const BULLET_WIDTH = 4;
 export const BULLET_HEIGHT = 12;
 export const BULLET_SPEED = 7;
