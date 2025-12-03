@@ -945,10 +945,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         },
       ]);
 
-      // Trigger bonus letter tutorial (only once per session, doesn't pause)
-      if (tutorialEnabled && !bonusLetterTutorialTriggeredRef.current) {
+      // Show floating text for bonus letter (only once per session)
+      if (!bonusLetterTutorialTriggeredRef.current) {
         bonusLetterTutorialTriggeredRef.current = true;
-        triggerTutorial("bonus_letter_drop", level);
         setBonusLetterFloatingText({ active: true, startTime: Date.now() });
       }
 
