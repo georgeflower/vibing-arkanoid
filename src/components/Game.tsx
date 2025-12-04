@@ -949,6 +949,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (!bonusLetterTutorialTriggeredRef.current) {
         bonusLetterTutorialTriggeredRef.current = true;
         setBonusLetterFloatingText({ active: true, startTime: Date.now() });
+        console.log('[BonusLetterFloatingText] Triggered floating text for first bonus letter drop');
       }
 
       toast(`Bonus letter ${assignedLetter} dropped!`, {
@@ -6182,9 +6183,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     )}
 
                     {/* Bonus Letter Floating Text Tutorial */}
+                    {(() => {
+                      console.log('[BonusLetterFloatingText] Render check:', {
+                        floatingTextActive: bonusLetterFloatingText?.active,
+                        bonusLettersLength: bonusLetters.length,
+                        shouldRender: bonusLetterFloatingText?.active && bonusLetters.length > 0
+                      });
+                      return null;
+                    })()}
                     {bonusLetterFloatingText?.active && bonusLetters.length > 0 && (
                       <div
-                        className="absolute pointer-events-none z-[150]"
+                        className="absolute inset-0 pointer-events-none z-[150]"
                         style={{
                           transform: `scale(${gameScale})`,
                           transformOrigin: "top center",
@@ -6194,6 +6203,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           const letter = bonusLetters[0];
                           const elapsed = Date.now() - bonusLetterFloatingText.startTime;
                           const duration = 4000; // 4 seconds
+                          
+                          console.log('[BonusLetterFloatingText] Rendering text at:', {
+                            letterX: letter.x,
+                            letterY: letter.y,
+                            elapsed,
+                            duration
+                          });
                           
                           // Auto-dismiss after duration
                           if (elapsed >= duration) {
@@ -6210,15 +6226,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             <div
                               className="absolute retro-pixel-text text-center whitespace-nowrap"
                               style={{
-                                left: letter.x + letter.width / 2,
-                                top: letter.y - 35,
+                                left: `${letter.x + letter.width / 2}px`,
+                                top: `${letter.y - 35}px`,
                                 transform: `translateX(-50%) scale(${zoomScale})`,
                                 color: 'hsl(48, 100%, 60%)',
-                                textShadow: '0 0 12px hsl(48, 100%, 60%), 0 0 24px hsl(48, 100%, 50%)',
-                                fontSize: isMobileDevice ? '10px' : '12px',
+                                textShadow: '0 0 10px hsl(48, 100%, 60%), 0 0 20px hsl(48, 100%, 50%)',
+                                fontSize: isMobileDevice ? '10px' : '14px',
                                 fontWeight: 'bold',
                                 opacity,
-                                transition: 'opacity 0.2s ease-out',
                               }}
                             >
                               Catch all letters for megabonus!
