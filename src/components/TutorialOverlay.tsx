@@ -210,12 +210,6 @@ export const TutorialOverlay = ({
     ? canvasRect.top + highlightPosition.y + highlightPosition.height / 2 
     : 0;
 
-  // Debug logging for positioning
-  if (hasHighlight) {
-    console.log('[Tutorial Debug] highlightPosition:', highlightPosition);
-    console.log('[Tutorial Debug] canvasRect:', { left: canvasRect.left, top: canvasRect.top, width: canvasRect.width, height: canvasRect.height });
-    console.log('[Tutorial Debug] spotlight:', { spotlightX, spotlightY, spotlightRadius });
-  }
 
   // Calculate popup position to avoid overlapping with highlight
   const calculatePopupPosition = () => {
