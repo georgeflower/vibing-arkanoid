@@ -191,9 +191,9 @@ export const TutorialOverlay = ({
     return () => document.removeEventListener('touchstart', handleTouchStart, { capture: true });
   }, [handleDismiss]);
 
-  // Calculate canvas dimensions
-  const canvasWidth = canvasRect?.width ?? 800;
-  const canvasHeight = canvasRect?.height ?? 600;
+  // Use viewport dimensions for fixed positioning
+  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 800;
+  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
 
   // Calculate spotlight position relative to overlay with clamping
   const hasHighlight = (step.highlight?.type === 'power_up' || step.highlight?.type === 'boss' || step.highlight?.type === 'enemy') && highlightPosition && canvasRect;
@@ -202,34 +202,42 @@ export const TutorialOverlay = ({
   const baseSpotlightRadius = hasHighlight ? Math.max(highlightPosition.width, highlightPosition.height) * 0.8 : 0;
   const spotlightRadius = baseSpotlightRadius * zoomScale;
   
-  // Calculate spotlight position - exactly on the powerup, wobble only affects glow rings
-  const spotlightX = hasHighlight ? highlightPosition.x + highlightPosition.width / 2 : 0;
-  const spotlightY = hasHighlight ? highlightPosition.y + highlightPosition.height / 2 : 0;
+  // Calculate spotlight position - convert game coords to screen coords using canvasRect offset
+  const spotlightX = hasHighlight 
+    ? canvasRect.left + highlightPosition.x + highlightPosition.width / 2 
+    : 0;
+  const spotlightY = hasHighlight 
+    ? canvasRect.top + highlightPosition.y + highlightPosition.height / 2 
+    : 0;
+
+  // Debug logging for positioning
+  if (hasHighlight) {
+    console.log('[Tutorial Debug] highlightPosition:', highlightPosition);
+    console.log('[Tutorial Debug] canvasRect:', { left: canvasRect.left, top: canvasRect.top, width: canvasRect.width, height: canvasRect.height });
+    console.log('[Tutorial Debug] spotlight:', { spotlightX, spotlightY, spotlightRadius });
+  }
 
   // Calculate popup position to avoid overlapping with highlight
   const calculatePopupPosition = () => {
     if (!hasHighlight || !highlightPosition || !canvasRect) {
       // No highlight - center the popup vertically on mobile
-      return { top: isMobile ? '40%' : 32, bottom: 'auto' };
+      return { top: isMobile ? viewportHeight * 0.4 : 100, bottom: 'auto' };
     }
     
-    const highlightCenterY = spotlightY;
-    const highlightBottom = highlightCenterY + spotlightRadius;
-    const highlightTop = highlightCenterY - spotlightRadius;
+    const highlightBottom = spotlightY + spotlightRadius;
+    const highlightTop = spotlightY - spotlightRadius;
     
     // Popup approximate height
     const popupHeight = isMobile ? 120 : 150;
     
-    // If highlight is in top half, put popup at bottom
-    if (highlightCenterY < canvasHeight * 0.45) {
-      // Position below the highlight with some margin
-      const topPos = Math.min(highlightBottom + 20, canvasHeight - popupHeight - 50);
-      return { top: Math.max(topPos, canvasHeight * 0.5), bottom: 'auto' };
+    // If highlight is in top half of viewport, put popup below
+    if (spotlightY < viewportHeight * 0.45) {
+      const topPos = Math.min(highlightBottom + 40, viewportHeight - popupHeight - 50);
+      return { top: Math.max(topPos, viewportHeight * 0.5), bottom: 'auto' };
     } else {
-      // Highlight is in bottom half - put popup at top, but more centered on mobile
-      const desiredTop = isMobile ? canvasHeight * 0.25 : 32;
-      const topPos = Math.min(highlightTop - popupHeight - 20, desiredTop);
-      return { top: Math.max(isMobile ? canvasHeight * 0.15 : 16, topPos), bottom: 'auto' };
+      // Highlight is in bottom half - put popup at top
+      const topPos = Math.min(highlightTop - popupHeight - 40, viewportHeight * 0.25);
+      return { top: Math.max(80, topPos), bottom: 'auto' };
     }
   };
   
@@ -237,16 +245,18 @@ export const TutorialOverlay = ({
 
   return (
     <div 
-      className="absolute inset-0 z-[200] pointer-events-auto"
+      className="fixed inset-0 z-[200] pointer-events-auto"
       style={{
         opacity: isDismissing ? 0 : 1,
         transition: 'opacity 0.3s ease-out',
       }}
     >
-      {/* SVG mask for flashlight effect */}
+      {/* SVG mask for flashlight effect - uses viewport dimensions */}
       {hasHighlight ? (
         <svg 
-          className="absolute inset-0 w-full h-full"
+          width={viewportWidth}
+          height={viewportHeight}
+          className="fixed inset-0"
           style={{ pointerEvents: 'none' }}
         >
           <defs>
@@ -304,8 +314,8 @@ export const TutorialOverlay = ({
           <line
             x1={spotlightX + wobble.x * 0.5}
             y1={spotlightY - spotlightRadius + wobble.y * 0.5}
-            x2={canvasWidth / 2 + sway}
-            y2={typeof popupPosition.top === 'number' ? popupPosition.top + 100 : canvasHeight * 0.4 + 100}
+            x2={viewportWidth / 2 + sway}
+            y2={typeof popupPosition.top === 'number' ? popupPosition.top + 100 : viewportHeight * 0.4 + 100}
             stroke="rgba(0, 255, 255, 0.6)"
             strokeWidth="2"
             strokeDasharray="6,4"
