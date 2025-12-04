@@ -949,7 +949,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (!bonusLetterTutorialTriggeredRef.current) {
         bonusLetterTutorialTriggeredRef.current = true;
         setBonusLetterFloatingText({ active: true, startTime: Date.now() });
-        console.log('[BonusLetterFloatingText] Triggered floating text for first bonus letter drop');
       }
 
       toast(`Bonus letter ${assignedLetter} dropped!`, {
@@ -6183,14 +6182,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     )}
 
                     {/* Bonus Letter Floating Text Tutorial */}
-                    {(() => {
-                      console.log('[BonusLetterFloatingText] Render check:', {
-                        floatingTextActive: bonusLetterFloatingText?.active,
-                        bonusLettersLength: bonusLetters.length,
-                        shouldRender: bonusLetterFloatingText?.active && bonusLetters.length > 0
-                      });
-                      return null;
-                    })()}
                     {bonusLetterFloatingText?.active && bonusLetters.length > 0 && (
                       <div
                         className="absolute inset-0 pointer-events-none z-[150]"
@@ -6203,13 +6194,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           const letter = bonusLetters[0];
                           const elapsed = Date.now() - bonusLetterFloatingText.startTime;
                           const duration = 4000; // 4 seconds
-                          
-                          console.log('[BonusLetterFloatingText] Rendering text at:', {
-                            letterX: letter.x,
-                            letterY: letter.y,
-                            elapsed,
-                            duration
-                          });
                           
                           // Auto-dismiss after duration
                           if (elapsed >= duration) {
