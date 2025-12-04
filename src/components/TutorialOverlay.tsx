@@ -198,22 +198,13 @@ export const TutorialOverlay = ({
   // Calculate spotlight position relative to overlay with clamping
   const hasHighlight = (step.highlight?.type === 'power_up' || step.highlight?.type === 'boss' || step.highlight?.type === 'enemy') && highlightPosition && canvasRect;
   
-  // Calculate base spotlight radius
-  const baseSpotlightRadius = hasHighlight ? Math.max(highlightPosition.width, highlightPosition.height) * 1.5 : 0;
+  // Calculate base spotlight radius - smaller circle that tightly wraps the powerup
+  const baseSpotlightRadius = hasHighlight ? Math.max(highlightPosition.width, highlightPosition.height) * 0.8 : 0;
   const spotlightRadius = baseSpotlightRadius * zoomScale;
   
-  // Calculate spotlight position with clamping to keep within screen bounds
-  const rawSpotlightX = hasHighlight ? highlightPosition.x + highlightPosition.width / 2 + wobble.x : 0;
-  const rawSpotlightY = hasHighlight ? highlightPosition.y + highlightPosition.height / 2 + wobble.y : 0;
-  
-  // Clamp spotlight position to keep the zoomed content within canvas
-  const padding = isMobile ? 20 : 40;
-  const spotlightX = hasHighlight 
-    ? Math.max(spotlightRadius + padding, Math.min(canvasWidth - spotlightRadius - padding, rawSpotlightX))
-    : 0;
-  const spotlightY = hasHighlight 
-    ? Math.max(spotlightRadius + padding, Math.min(canvasHeight - spotlightRadius - padding, rawSpotlightY))
-    : 0;
+  // Calculate spotlight position - exactly on the powerup, wobble only affects glow rings
+  const spotlightX = hasHighlight ? highlightPosition.x + highlightPosition.width / 2 : 0;
+  const spotlightY = hasHighlight ? highlightPosition.y + highlightPosition.height / 2 : 0;
 
   // Calculate popup position to avoid overlapping with highlight
   const calculatePopupPosition = () => {
@@ -309,18 +300,18 @@ export const TutorialOverlay = ({
               opacity: isDismissing ? 0 : 1,
             }}
           />
-          {/* Connecting line from highlight to popup */}
+          {/* Connecting line from TOP of highlight circle to popup frame bottom */}
           <line
-            x1={spotlightX}
-            y1={spotlightY + spotlightRadius}
+            x1={spotlightX + wobble.x * 0.5}
+            y1={spotlightY - spotlightRadius + wobble.y * 0.5}
             x2={canvasWidth / 2 + sway}
-            y2={typeof popupPosition.top === 'number' ? popupPosition.top : canvasHeight * 0.4}
-            stroke="rgba(0, 255, 255, 0.5)"
+            y2={typeof popupPosition.top === 'number' ? popupPosition.top + 100 : canvasHeight * 0.4 + 100}
+            stroke="rgba(0, 255, 255, 0.6)"
             strokeWidth="2"
-            strokeDasharray="8,4"
+            strokeDasharray="6,4"
             style={{
               transition: 'opacity 0.3s',
-              opacity: isDismissing ? 0 : 0.7,
+              opacity: isDismissing ? 0 : 0.8,
             }}
           />
         </svg>
