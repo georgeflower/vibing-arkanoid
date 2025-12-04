@@ -3054,13 +3054,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         });
 
         // Trigger power-up drop tutorial when first power-up becomes visible (only once)
+        // 2-second delay before showing tutorial
         if (tutorialEnabled && !powerUpTutorialTriggeredRef.current) {
           powerUpTutorialTriggeredRef.current = true;
-          const { shouldPause } = triggerTutorial("power_up_drop", level);
-          if (shouldPause) {
-            setGameState("paused");
-            if (gameLoopRef.current) gameLoopRef.current.pause();
-          }
+          setTimeout(() => {
+            const { shouldPause } = triggerTutorial("power_up_drop", level);
+            if (shouldPause) {
+              setGameState("paused");
+              if (gameLoopRef.current) gameLoopRef.current.pause();
+            }
+          }, 2000);
         }
 
         // Trigger boss power-up tutorial when first boss power-up drops (only once)
@@ -5228,12 +5231,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         toast.warning(`${enemyName} enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
 
         // Trigger minion tutorial on first enemy spawn (non-boss level enemies)
+        // Only set ref AFTER successful trigger to fix bug where tutorial wouldn't show
         if (tutorialEnabled && !minionTutorialTriggeredRef.current) {
-          minionTutorialTriggeredRef.current = true;
           // Small delay to ensure enemy is rendered before showing tutorial
           setTimeout(() => {
             const { shouldPause } = triggerTutorial("minion_spawn", level);
             if (shouldPause) {
+              minionTutorialTriggeredRef.current = true;
               setGameState("paused");
               if (gameLoopRef.current) gameLoopRef.current.pause();
             }
@@ -5436,11 +5440,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setLastBossSpawnTime(timer);
 
       // Trigger minion tutorial on first boss minion spawn
+      // Only set ref AFTER successful trigger to fix bug where tutorial wouldn't show
       if (tutorialEnabled && !minionTutorialTriggeredRef.current) {
-        minionTutorialTriggeredRef.current = true;
         setTimeout(() => {
           const { shouldPause } = triggerTutorial("minion_spawn", level);
           if (shouldPause) {
+            minionTutorialTriggeredRef.current = true;
             setGameState("paused");
             if (gameLoopRef.current) gameLoopRef.current.pause();
           }

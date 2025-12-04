@@ -44,14 +44,29 @@ export const TutorialOverlay = ({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Target zoom scale based on device
-  const targetZoomScale = isMobile ? 2 : 3;
+  // Target zoom scale - 200% for all devices
+  const targetZoomScale = 2;
+
+  // Sway animation for the popup
+  const [sway, setSway] = useState(0);
 
   // Animate zoom in on mount
   useEffect(() => {
     const timer = setTimeout(() => setZoomScale(targetZoomScale), 50);
     return () => clearTimeout(timer);
   }, [targetZoomScale]);
+
+  // Sway animation effect for popup
+  useEffect(() => {
+    let animationId: number;
+    const animate = () => {
+      const time = Date.now() * 0.001;
+      setSway(Math.sin(time * 1.5) * 10); // Sway ±10px horizontally
+      animationId = requestAnimationFrame(animate);
+    };
+    animationId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationId);
+  }, []);
 
   // Pulsing animation for the prompt
   useEffect(() => {
@@ -294,6 +309,20 @@ export const TutorialOverlay = ({
               opacity: isDismissing ? 0 : 1,
             }}
           />
+          {/* Connecting line from highlight to popup */}
+          <line
+            x1={spotlightX}
+            y1={spotlightY + spotlightRadius}
+            x2={canvasWidth / 2 + sway}
+            y2={typeof popupPosition.top === 'number' ? popupPosition.top : canvasHeight * 0.4}
+            stroke="rgba(0, 255, 255, 0.5)"
+            strokeWidth="2"
+            strokeDasharray="8,4"
+            style={{
+              transition: 'opacity 0.3s',
+              opacity: isDismissing ? 0 : 0.7,
+            }}
+          />
         </svg>
       ) : (
         <div 
@@ -360,14 +389,14 @@ export const TutorialOverlay = ({
         </div>
       )}
 
-      {/* Tutorial popup box - dynamically positioned */}
+      {/* Tutorial popup box - dynamically positioned with sway */}
       <div 
-        className="absolute left-1/2 -translate-x-1/2 flex items-start justify-center px-2"
+        className="absolute left-1/2 flex items-start justify-center px-2"
         style={{
           top: typeof popupPosition.top === 'number' ? popupPosition.top : popupPosition.top,
           opacity: isDismissing ? 0 : 1,
-          transform: `translateX(-50%) scale(${isDismissing ? 0.9 : 1})`,
-          transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
+          transform: `translateX(calc(-50% + ${sway}px)) scale(${isDismissing ? 0.9 : 1})`,
+          transition: 'opacity 0.3s ease-out',
           maxWidth: '100%',
         }}
       >
