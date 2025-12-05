@@ -6106,6 +6106,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   <div
                     className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}
                     style={{
+                      width: `${SCALED_CANVAS_WIDTH}px`,
+                      height: `${SCALED_CANVAS_HEIGHT}px`,
                       transform: `scale(${gameScale})`,
                       transformOrigin: "top center",
                       transition: "transform 150ms ease-in-out",
