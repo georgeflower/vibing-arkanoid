@@ -29,10 +29,10 @@ export const GetReadyOverlay = ({
     return () => clearTimeout(timer);
   }, []);
 
-  // Progress animation over 2 seconds
+  // Progress animation over 3 seconds
   useEffect(() => {
     const startTime = Date.now();
-    const duration = 2000;
+    const duration = 3000;
 
     const animate = () => {
       const elapsed = Date.now() - startTime;
@@ -122,20 +122,6 @@ export const GetReadyOverlay = ({
         GET READY!
       </div>
 
-      {/* Speed indicator */}
-      <div
-        className="absolute retro-pixel-text text-xs"
-        style={{
-          left: textX,
-          top: textY + 30,
-          transform: 'translate(-50%, -50%)',
-          color: progress < 0.5 ? 'hsl(180, 100%, 60%)' : 'hsl(120, 100%, 60%)',
-          textShadow: '0 0 8px currentColor',
-          opacity: 0.8,
-        }}
-      >
-        {progress < 0.3 ? '▶ SLOW' : progress < 0.7 ? '▶▶ MEDIUM' : '▶▶▶ FAST'}
-      </div>
     </div>
   );
 };
