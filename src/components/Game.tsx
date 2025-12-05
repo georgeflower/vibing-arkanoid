@@ -399,7 +399,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   useEffect(() => {
     if (!getReadyActive || getReadyStartTimeRef.current === null) return;
 
-    const rampDuration = 2000; // 2 seconds
+    const rampDuration = 3000; // 3 seconds
     const startSpeed = baseSpeedMultiplierRef.current * 0.1;
     const targetSpeed = baseSpeedMultiplierRef.current;
 
