@@ -6291,6 +6291,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       </>
                     )}
                     {/* ═══════════════════════════════════════════════════════════════ */}
+
+                    {/* Get Ready Overlay - inside scaled container for correct positioning */}
+                    {getReadyActive && balls.length > 0 && (
+                      <GetReadyOverlay
+                        ballPosition={{ x: balls[0].x, y: balls[0].y }}
+                        onComplete={() => {
+                          setGetReadyActive(false);
+                          setSpeedMultiplier(baseSpeedMultiplierRef.current);
+                          getReadyStartTimeRef.current = null;
+                        }}
+                      />
+                    )}
                   </div>
 
                   {/* Pause Overlay - only show when NOT in tutorial mode */}
@@ -6517,20 +6529,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   />
                 )}
 
-                {/* Get Ready Overlay - shows after tutorial dismiss */}
-                {getReadyActive && balls.length > 0 && (
-                  <GetReadyOverlay
-                    ballPosition={{ x: balls[0].x, y: balls[0].y }}
-                    canvasRect={canvasRef.current?.getBoundingClientRect() ?? null}
-                    canvasWidth={SCALED_CANVAS_WIDTH}
-                    canvasHeight={SCALED_CANVAS_HEIGHT}
-                    onComplete={() => {
-                      setGetReadyActive(false);
-                      setSpeedMultiplier(baseSpeedMultiplierRef.current);
-                      getReadyStartTimeRef.current = null;
-                    }}
-                  />
-                )}
 
                 {/* ═══════════════════════════════════════════════════════════════
                      ████████╗ DEBUG UI COMPONENTS - REMOVE BEFORE PRODUCTION ████████╗
