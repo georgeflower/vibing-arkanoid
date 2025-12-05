@@ -5,6 +5,7 @@ import { HighScoreTable } from "./HighScoreTable";
 import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { EndScreen } from "./EndScreen";
+import { GetReadyOverlay } from "./GetReadyOverlay";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
@@ -261,6 +262,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     Array<{ x: number; y: number; startTime: number; isSuper: boolean }>
   >([]);
 
+  // Get Ready overlay state (after dismissing tutorials)
+  const [getReadyActive, setGetReadyActive] = useState(false);
+  const getReadyStartTimeRef = useRef<number | null>(null);
+  const baseSpeedMultiplierRef = useRef(1);
+
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG STATE - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
@@ -388,6 +394,34 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       savedTimerDurationsRef.current = { bossStunner: null, reflectShield: null, homingBall: null, fireball: null };
     }
   }, [gameState, tutorialActive, bossStunnerEndTime, reflectShieldEndTime, homingBallEndTime, fireballEndTime, boss]);
+
+  // "Get Ready" speed ramp - gradually increase speed from 30% to 100% over 2 seconds
+  useEffect(() => {
+    if (!getReadyActive || getReadyStartTimeRef.current === null) return;
+
+    const rampDuration = 2000; // 2 seconds
+    const startSpeed = baseSpeedMultiplierRef.current * 0.3;
+    const targetSpeed = baseSpeedMultiplierRef.current;
+
+    const animate = () => {
+      if (!getReadyActive || getReadyStartTimeRef.current === null) return;
+      
+      const elapsed = Date.now() - getReadyStartTimeRef.current;
+      const progress = Math.min(elapsed / rampDuration, 1);
+      
+      // Ease-out curve for smoother acceleration
+      const easeProgress = 1 - Math.pow(1 - progress, 2);
+      const newSpeed = startSpeed + (targetSpeed - startSpeed) * easeProgress;
+      
+      setSpeedMultiplier(newSpeed);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [getReadyActive]);
 
   // Sound effect cooldowns (ms timestamps)
   const lastWallBounceSfxMs = useRef(0);
@@ -3054,7 +3088,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         });
 
         // Trigger power-up drop tutorial when first power-up becomes visible (only once)
-        // 2-second delay before showing tutorial
+        // 1-second delay before showing tutorial
         if (tutorialEnabled && !powerUpTutorialTriggeredRef.current) {
           powerUpTutorialTriggeredRef.current = true;
           setTimeout(() => {
@@ -3063,7 +3097,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setGameState("paused");
               if (gameLoopRef.current) gameLoopRef.current.pause();
             }
-          }, 2000);
+          }, 1000);
         }
 
         // Trigger boss power-up tutorial when first boss power-up drops (only once)
@@ -6403,6 +6437,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     onDismiss={() => {
                       // Resume game FIRST if it was paused for tutorial (before dismissTutorial sets tutorialActive=false)
                       if (tutorialStep.pauseGame) {
+                        // Store current speed multiplier and start "Get Ready" sequence
+                        baseSpeedMultiplierRef.current = speedMultiplier;
+                        setSpeedMultiplier(speedMultiplier * 0.3); // Start at 30% speed
+                        getReadyStartTimeRef.current = Date.now();
+                        setGetReadyActive(true);
+                        
                         setGameState("playing");
                         // Re-acquire pointer lock for mouse control (desktop only)
                         if (!isMobileDevice) {
@@ -6421,6 +6461,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     onSkipAll={() => {
                       // Resume game FIRST before skipping tutorials
                       if (gameState === "paused") {
+                        // Also trigger "Get Ready" when skipping
+                        baseSpeedMultiplierRef.current = speedMultiplier;
+                        setSpeedMultiplier(speedMultiplier * 0.3);
+                        getReadyStartTimeRef.current = Date.now();
+                        setGetReadyActive(true);
+                        
                         setGameState("playing");
                         // Re-acquire pointer lock for mouse control (desktop only)
                         if (!isMobileDevice) {
@@ -6466,6 +6512,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             : null
                     }
                     canvasRect={canvasRef.current?.getBoundingClientRect() ?? null}
+                  />
+                )}
+
+                {/* Get Ready Overlay - shows after tutorial dismiss */}
+                {getReadyActive && balls.length > 0 && (
+                  <GetReadyOverlay
+                    ballPosition={{ x: balls[0].x, y: balls[0].y }}
+                    canvasRect={canvasRef.current?.getBoundingClientRect() ?? null}
+                    onComplete={() => {
+                      setGetReadyActive(false);
+                      setSpeedMultiplier(baseSpeedMultiplierRef.current);
+                      getReadyStartTimeRef.current = null;
+                    }}
                   />
                 )}
 

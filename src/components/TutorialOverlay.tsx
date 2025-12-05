@@ -191,9 +191,36 @@ export const TutorialOverlay = ({
     return () => document.removeEventListener('touchstart', handleTouchStart, { capture: true });
   }, [handleDismiss]);
 
-  // Use viewport dimensions for fixed positioning
-  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 800;
-  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
+  // Use viewport dimensions for fixed positioning - track as state for mobile updates
+  const [viewportDimensions, setViewportDimensions] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 800,
+    height: typeof window !== 'undefined' ? window.innerHeight : 600,
+  });
+
+  // Update viewport dimensions on resize/orientation change for mobile accuracy
+  useEffect(() => {
+    const updateDimensions = () => {
+      setViewportDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+    
+    window.addEventListener('resize', updateDimensions);
+    window.addEventListener('orientationchange', updateDimensions);
+    
+    // Also update after a short delay to catch any layout shifts
+    const initialTimeout = setTimeout(updateDimensions, 100);
+    
+    return () => {
+      window.removeEventListener('resize', updateDimensions);
+      window.removeEventListener('orientationchange', updateDimensions);
+      clearTimeout(initialTimeout);
+    };
+  }, []);
+
+  const viewportWidth = viewportDimensions.width;
+  const viewportHeight = viewportDimensions.height;
 
   // Calculate spotlight position relative to overlay with clamping
   const hasHighlight = (step.highlight?.type === 'power_up' || step.highlight?.type === 'boss' || step.highlight?.type === 'enemy') && highlightPosition && canvasRect;
