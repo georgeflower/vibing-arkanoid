@@ -6512,8 +6512,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             : null
                     }
                     canvasRect={canvasRef.current?.getBoundingClientRect() ?? null}
-                    canvasWidth={CANVAS_WIDTH}
-                    canvasHeight={CANVAS_HEIGHT}
+                    canvasWidth={SCALED_CANVAS_WIDTH}
+                    canvasHeight={SCALED_CANVAS_HEIGHT}
                   />
                 )}
 
@@ -6522,8 +6522,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   <GetReadyOverlay
                     ballPosition={{ x: balls[0].x, y: balls[0].y }}
                     canvasRect={canvasRef.current?.getBoundingClientRect() ?? null}
-                    canvasWidth={CANVAS_WIDTH}
-                    canvasHeight={CANVAS_HEIGHT}
+                    canvasWidth={SCALED_CANVAS_WIDTH}
+                    canvasHeight={SCALED_CANVAS_HEIGHT}
                     onComplete={() => {
                       setGetReadyActive(false);
                       setSpeedMultiplier(baseSpeedMultiplierRef.current);
