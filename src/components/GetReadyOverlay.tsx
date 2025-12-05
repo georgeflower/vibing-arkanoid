@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/constants/game";
 
 interface GetReadyOverlayProps {
   ballPosition: { x: number; y: number } | null;
   canvasRect: DOMRect | null;
+  canvasWidth?: number;
+  canvasHeight?: number;
   onComplete: () => void;
 }
 
 export const GetReadyOverlay = ({
   ballPosition,
   canvasRect,
+  canvasWidth = CANVAS_WIDTH,
+  canvasHeight = CANVAS_HEIGHT,
   onComplete,
 }: GetReadyOverlayProps) => {
   const [scale, setScale] = useState(0.5);
@@ -47,16 +52,25 @@ export const GetReadyOverlay = ({
     requestAnimationFrame(animate);
   }, [onComplete]);
 
-  // Calculate position
-  const textX = ballPosition && canvasRect 
-    ? canvasRect.left + ballPosition.x 
+  // Calculate scale ratios for game coords -> screen coords
+  const scaleX = canvasRect ? canvasRect.width / canvasWidth : 1;
+  const scaleY = canvasRect ? canvasRect.height / canvasHeight : 1;
+
+  // Calculate position with proper scaling
+  const ringX = ballPosition && canvasRect 
+    ? canvasRect.left + (ballPosition.x * scaleX)
     : window.innerWidth / 2;
-  const textY = ballPosition && canvasRect 
-    ? canvasRect.top + ballPosition.y - 60 
+  const ringY = ballPosition && canvasRect 
+    ? canvasRect.top + (ballPosition.y * scaleY)
     : window.innerHeight / 2;
 
-  // Calculate glow ring size around ball
-  const ringRadius = 30 + progress * 20;
+  // Text position above the ball
+  const textX = ringX;
+  const textY = ringY - 60;
+
+  // Calculate glow ring size around ball (scale the ring size too)
+  const baseRingRadius = 30 + progress * 20;
+  const ringRadius = baseRingRadius * Math.min(scaleX, scaleY);
 
   return (
     <div 
@@ -71,8 +85,8 @@ export const GetReadyOverlay = ({
         <div
           className="absolute rounded-full"
           style={{
-            left: canvasRect.left + ballPosition.x,
-            top: canvasRect.top + ballPosition.y,
+            left: ringX,
+            top: ringY,
             width: ringRadius * 2,
             height: ringRadius * 2,
             transform: 'translate(-50%, -50%)',

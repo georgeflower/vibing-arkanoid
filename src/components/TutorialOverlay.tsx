@@ -13,6 +13,8 @@ interface TutorialOverlayProps {
   highlightPosition?: { x: number; y: number; width: number; height: number; type?: string; bossType?: BossType } | null;
   canvasRect?: DOMRect | null;
   bonusLetterPosition?: { x: number; y: number } | null;
+  canvasWidth?: number;
+  canvasHeight?: number;
 }
 
 export const TutorialOverlay = ({
@@ -24,6 +26,8 @@ export const TutorialOverlay = ({
   highlightPosition,
   canvasRect,
   bonusLetterPosition,
+  canvasWidth = 850,
+  canvasHeight = 650,
 }: TutorialOverlayProps) => {
   const [showPrompt, setShowPrompt] = useState(false);
   const [scale, setScale] = useState(1);
@@ -225,16 +229,20 @@ export const TutorialOverlay = ({
   // Calculate spotlight position relative to overlay with clamping
   const hasHighlight = (step.highlight?.type === 'power_up' || step.highlight?.type === 'boss' || step.highlight?.type === 'enemy') && highlightPosition && canvasRect;
   
-  // Calculate base spotlight radius - smaller circle that tightly wraps the powerup
-  const baseSpotlightRadius = hasHighlight ? Math.max(highlightPosition.width, highlightPosition.height) * 0.8 : 0;
+  // Calculate scale ratios for game coords -> screen coords
+  const scaleX = canvasRect ? canvasRect.width / canvasWidth : 1;
+  const scaleY = canvasRect ? canvasRect.height / canvasHeight : 1;
+  
+  // Calculate base spotlight radius - smaller circle that tightly wraps the powerup (scaled)
+  const baseSpotlightRadius = hasHighlight ? Math.max(highlightPosition.width, highlightPosition.height) * 0.8 * Math.min(scaleX, scaleY) : 0;
   const spotlightRadius = baseSpotlightRadius * zoomScale;
   
-  // Calculate spotlight position - convert game coords to screen coords using canvasRect offset
+  // Calculate spotlight position - convert game coords to screen coords with proper scaling
   const spotlightX = hasHighlight 
-    ? canvasRect.left + highlightPosition.x + highlightPosition.width / 2 
+    ? canvasRect.left + (highlightPosition.x + highlightPosition.width / 2) * scaleX
     : 0;
   const spotlightY = hasHighlight 
-    ? canvasRect.top + highlightPosition.y + highlightPosition.height / 2 
+    ? canvasRect.top + (highlightPosition.y + highlightPosition.height / 2) * scaleY
     : 0;
 
 
