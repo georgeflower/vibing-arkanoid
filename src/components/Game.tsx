@@ -400,7 +400,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (!getReadyActive || getReadyStartTimeRef.current === null) return;
 
     const rampDuration = 2000; // 2 seconds
-    const startSpeed = baseSpeedMultiplierRef.current * 0.3;
+    const startSpeed = baseSpeedMultiplierRef.current * 0.1;
     const targetSpeed = baseSpeedMultiplierRef.current;
 
     const animate = () => {
@@ -6439,7 +6439,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       if (tutorialStep.pauseGame) {
                         // Store current speed multiplier and start "Get Ready" sequence
                         baseSpeedMultiplierRef.current = speedMultiplier;
-                        setSpeedMultiplier(speedMultiplier * 0.3); // Start at 30% speed
+                        setSpeedMultiplier(speedMultiplier * 0.1); // Start at 10% speed
                         getReadyStartTimeRef.current = Date.now();
                         setGetReadyActive(true);
                         
@@ -6463,7 +6463,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       if (gameState === "paused") {
                         // Also trigger "Get Ready" when skipping
                         baseSpeedMultiplierRef.current = speedMultiplier;
-                        setSpeedMultiplier(speedMultiplier * 0.3);
+                        setSpeedMultiplier(speedMultiplier * 0.1);
                         getReadyStartTimeRef.current = Date.now();
                         setGetReadyActive(true);
                         
@@ -6512,6 +6512,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             : null
                     }
                     canvasRect={canvasRef.current?.getBoundingClientRect() ?? null}
+                    canvasWidth={CANVAS_WIDTH}
+                    canvasHeight={CANVAS_HEIGHT}
                   />
                 )}
 
@@ -6520,6 +6522,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   <GetReadyOverlay
                     ballPosition={{ x: balls[0].x, y: balls[0].y }}
                     canvasRect={canvasRef.current?.getBoundingClientRect() ?? null}
+                    canvasWidth={CANVAS_WIDTH}
+                    canvasHeight={CANVAS_HEIGHT}
                     onComplete={() => {
                       setGetReadyActive(false);
                       setSpeedMultiplier(baseSpeedMultiplierRef.current);
