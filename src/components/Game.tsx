@@ -6298,6 +6298,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     {getReadyActive && balls.length > 0 && (
                       <GetReadyOverlay
                         ballPosition={{ x: balls[0].x, y: balls[0].y }}
+                        canvasWidth={SCALED_CANVAS_WIDTH}
+                        canvasHeight={SCALED_CANVAS_HEIGHT}
                         onComplete={() => {
                           setGetReadyActive(false);
                           setSpeedMultiplier(baseSpeedMultiplierRef.current);
