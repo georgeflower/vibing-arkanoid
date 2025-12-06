@@ -95,7 +95,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -405,16 +405,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     const animate = () => {
       if (!getReadyActive || getReadyStartTimeRef.current === null) return;
-      
+
       const elapsed = Date.now() - getReadyStartTimeRef.current;
       const progress = Math.min(elapsed / rampDuration, 1);
-      
+
       // Ease-out curve for smoother acceleration
       const easeProgress = 1 - Math.pow(1 - progress, 2);
       const newSpeed = startSpeed + (targetSpeed - startSpeed) * easeProgress;
-      
+
       setSpeedMultiplier(newSpeed);
-      
+
       if (progress < 1) {
         requestAnimationFrame(animate);
       }
@@ -989,7 +989,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         icon: "🎯",
       });
     },
-    [level, collectedLetters, bonusLetters, droppedLettersThisLevel, letterLevelAssignments, tutorialEnabled, triggerTutorial],
+    [
+      level,
+      collectedLetters,
+      bonusLetters,
+      droppedLettersThisLevel,
+      letterLevelAssignments,
+      tutorialEnabled,
+      triggerTutorial,
+    ],
   );
   const checkBonusLetterCollision = useCallback(() => {
     if (!paddle) return;
@@ -6161,7 +6169,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             style={{
                               left: isMobileDevice ? `${paddle.x - 10}px` : `${paddle.x + paddle.width / 2}px`,
                               top: isMobileDevice ? `${paddle.y - 22}px` : `${paddle.y - 45}px`,
-                              transform: isMobileDevice ? `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})` : `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              transform: isMobileDevice
+                                ? `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`
+                                : `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                               color: `hsl(${Math.max(0, 50 - (1 - (bossStunnerEndTime - Date.now()) / 5000) * 50)}, 100%, 50%)`,
                               textShadow: `0 0 10px currentColor`,
                               fontSize: isMobileDevice ? "10px" : "12px",
@@ -6177,7 +6187,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             style={{
                               left: isMobileDevice ? `${paddle.x - 10}px` : `${paddle.x + paddle.width / 2}px`,
                               top: isMobileDevice ? `${paddle.y - 34}px` : `${paddle.y - 60}px`,
-                              transform: isMobileDevice ? `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})` : `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              transform: isMobileDevice
+                                ? `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`
+                                : `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                               color: `hsl(${Math.max(0, 50 - (1 - (reflectShieldEndTime - Date.now()) / 15000) * 50)}, 100%, 50%)`,
                               textShadow: `0 0 10px currentColor`,
                               fontSize: isMobileDevice ? "10px" : "12px",
@@ -6193,7 +6205,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             style={{
                               left: isMobileDevice ? `${paddle.x - 10}px` : `${paddle.x + paddle.width / 2}px`,
                               top: isMobileDevice ? `${paddle.y - 46}px` : `${paddle.y - 75}px`,
-                              transform: isMobileDevice ? `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})` : `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              transform: isMobileDevice
+                                ? `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`
+                                : `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                               color: `hsl(${Math.max(0, 50 - (1 - (homingBallEndTime - Date.now()) / 8000) * 50)}, 100%, 50%)`,
                               textShadow: `0 0 10px currentColor`,
                               fontSize: isMobileDevice ? "10px" : "12px",
@@ -6209,7 +6223,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             style={{
                               left: isMobileDevice ? `${paddle.x - 10}px` : `${paddle.x + paddle.width / 2}px`,
                               top: isMobileDevice ? `${paddle.y - 58}px` : `${paddle.y - 90}px`,
-                              transform: isMobileDevice ? `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})` : `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              transform: isMobileDevice
+                                ? `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`
+                                : `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                               color: `hsl(${Math.max(0, 30 - (1 - (fireballEndTime - Date.now()) / FIREBALL_DURATION) * 30)}, 100%, 50%)`,
                               textShadow: `0 0 10px currentColor`,
                               fontSize: isMobileDevice ? "10px" : "12px",
@@ -6235,18 +6251,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           const letter = bonusLetters[0];
                           const elapsed = Date.now() - bonusLetterFloatingText.startTime;
                           const duration = 4000; // 4 seconds
-                          
+
                           // Auto-dismiss after duration
                           if (elapsed >= duration) {
                             setTimeout(() => setBonusLetterFloatingText(null), 0);
                             return null;
                           }
-                          
+
                           // Zoom in/out animation
                           const zoomPhase = (elapsed / 500) * Math.PI;
                           const zoomScale = 1 + Math.sin(zoomPhase) * 0.3;
-                          const opacity = elapsed < 500 ? elapsed / 500 : (elapsed > duration - 500 ? (duration - elapsed) / 500 : 1);
-                          
+                          const opacity =
+                            elapsed < 500 ? elapsed / 500 : elapsed > duration - 500 ? (duration - elapsed) / 500 : 1;
+
                           return (
                             <div
                               className="absolute retro-pixel-text text-center whitespace-nowrap"
@@ -6254,10 +6271,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                                 left: `${letter.x + letter.width / 2}px`,
                                 top: `${letter.y - 35}px`,
                                 transform: `translateX(-50%) scale(${zoomScale})`,
-                                color: 'hsl(48, 100%, 60%)',
-                                textShadow: '0 0 10px hsl(48, 100%, 60%), 0 0 20px hsl(48, 100%, 50%)',
-                                fontSize: isMobileDevice ? '10px' : '14px',
-                                fontWeight: 'bold',
+                                color: "hsl(48, 100%, 60%)",
+                                textShadow: "0 0 10px hsl(48, 100%, 60%), 0 0 20px hsl(48, 100%, 50%)",
+                                fontSize: isMobileDevice ? "10px" : "14px",
+                                fontWeight: "bold",
                                 opacity,
                               }}
                             >
@@ -6356,7 +6373,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             <span>Fire Turrets</span>
                           </div>
 
-                          <h3 className="text-cyan-400 font-bold text-sm md:text-base mt-2 md:mt-4 mb-1 md:mb-2">Game:</h3>
+                          <h3 className="text-cyan-400 font-bold text-sm md:text-base mt-2 md:mt-4 mb-1 md:mb-2">
+                            Game:
+                          </h3>
                           <div className="flex justify-between">
                             <span className="text-cyan-300">F</span>
                             <span>Fullscreen Toggle</span>
@@ -6458,7 +6477,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         setSpeedMultiplier(speedMultiplier * 0.1); // Start at 10% speed
                         getReadyStartTimeRef.current = Date.now();
                         setGetReadyActive(true);
-                        
+
                         setGameState("playing");
                         // Re-acquire pointer lock for mouse control (desktop only)
                         if (!isMobileDevice) {
@@ -6482,7 +6501,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         setSpeedMultiplier(speedMultiplier * 0.1);
                         getReadyStartTimeRef.current = Date.now();
                         setGetReadyActive(true);
-                        
+
                         setGameState("playing");
                         // Re-acquire pointer lock for mouse control (desktop only)
                         if (!isMobileDevice) {
@@ -6532,7 +6551,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     canvasHeight={SCALED_CANVAS_HEIGHT}
                   />
                 )}
-
 
                 {/* ═══════════════════════════════════════════════════════════════
                      ████████╗ DEBUG UI COMPONENTS - REMOVE BEFORE PRODUCTION ████████╗
