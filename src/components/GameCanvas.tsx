@@ -8,7 +8,8 @@ import paddleTurretsImg from "@/assets/paddle-turrets.png";
 import crackedBrick1 from "@/assets/brick-cracked-1.png";
 import crackedBrick2 from "@/assets/brick-cracked-2.png";
 import crackedBrick3 from "@/assets/brick-cracked-3.png";
-import backgroundTile from "@/assets/background-tile.png";
+import backgroundTile1 from "@/assets/background-tile.png";
+import backgroundTile2 from "@/assets/background-tile-2.png";
 
 interface GameCanvasProps {
   width: number;
@@ -55,8 +56,11 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const crackedBrick1Ref = useRef<HTMLImageElement | null>(null);
     const crackedBrick2Ref = useRef<HTMLImageElement | null>(null);
     const crackedBrick3Ref = useRef<HTMLImageElement | null>(null);
-    const backgroundImageRef = useRef<HTMLImageElement | null>(null);
-    const backgroundPatternRef = useRef<CanvasPattern | null>(null);
+    const backgroundImage1Ref = useRef<HTMLImageElement | null>(null);
+    const backgroundImage2Ref = useRef<HTMLImageElement | null>(null);
+    const backgroundPattern1Ref = useRef<CanvasPattern | null>(null);
+    const backgroundPattern2Ref = useRef<CanvasPattern | null>(null);
+    const currentBgLevelRangeRef = useRef<number>(0);
     const bgRotationRef = useRef(0);
     const bgZoomRef = useRef(1);
     const rotationSpeedRef = useRef(0.5);
@@ -133,11 +137,18 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       crackedBrick3Image.src = crackedBrick3;
       crackedBrick3Ref.current = crackedBrick3Image;
       
-      const backgroundImage = new Image();
-      backgroundImage.src = backgroundTile;
-      backgroundImage.onload = () => {
-        backgroundImageRef.current = backgroundImage;
-        backgroundPatternRef.current = null; // Reset pattern to recreate with new image
+      const backgroundImage1 = new Image();
+      backgroundImage1.src = backgroundTile1;
+      backgroundImage1.onload = () => {
+        backgroundImage1Ref.current = backgroundImage1;
+        backgroundPattern1Ref.current = null;
+      };
+      
+      const backgroundImage2 = new Image();
+      backgroundImage2.src = backgroundTile2;
+      backgroundImage2.onload = () => {
+        backgroundImage2Ref.current = backgroundImage2;
+        backgroundPattern2Ref.current = null;
       };
     }, []);
 
@@ -160,16 +171,18 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       ctx.fillStyle = 'hsl(220, 25%, 12%)'; // Fallback color while image loads
       ctx.fillRect(0, 0, width, height);
       
-      // Draw tiled background
-      const bgImg = backgroundImageRef.current;
+      // Draw tiled background based on level
+      const bgImg = level >= 6 && level <= 10 ? backgroundImage2Ref.current : backgroundImage1Ref.current;
+      const bgPatternRef = level >= 6 && level <= 10 ? backgroundPattern2Ref : backgroundPattern1Ref;
+      
       if (isImageValid(bgImg)) {
         // Create pattern if not already created
-        if (!backgroundPatternRef.current) {
-          backgroundPatternRef.current = ctx.createPattern(bgImg, 'repeat');
+        if (!bgPatternRef.current) {
+          bgPatternRef.current = ctx.createPattern(bgImg, 'repeat');
         }
         
-        if (backgroundPatternRef.current) {
-          ctx.fillStyle = backgroundPatternRef.current;
+        if (bgPatternRef.current) {
+          ctx.fillStyle = bgPatternRef.current;
           ctx.fillRect(0, 0, width, height);
         }
       }
