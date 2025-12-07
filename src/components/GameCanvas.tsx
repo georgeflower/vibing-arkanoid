@@ -10,6 +10,7 @@ import crackedBrick2 from "@/assets/brick-cracked-2.png";
 import crackedBrick3 from "@/assets/brick-cracked-3.png";
 import backgroundTile1 from "@/assets/background-tile.png";
 import backgroundTile2 from "@/assets/background-tile-2.png";
+// Background tile 3 will be dynamically loaded or use a fallback
 
 interface GameCanvasProps {
   width: number;
@@ -58,9 +59,12 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const crackedBrick3Ref = useRef<HTMLImageElement | null>(null);
     const backgroundImage1Ref = useRef<HTMLImageElement | null>(null);
     const backgroundImage2Ref = useRef<HTMLImageElement | null>(null);
+    const backgroundImage3Ref = useRef<HTMLImageElement | null>(null);
     const backgroundPattern1Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern2Ref = useRef<CanvasPattern | null>(null);
+    const backgroundPattern3Ref = useRef<CanvasPattern | null>(null);
     const currentBgLevelRangeRef = useRef<number>(0);
+    const generatedBg3UrlRef = useRef<string | null>(null);
     const bgRotationRef = useRef(0);
     const bgZoomRef = useRef(1);
     const rotationSpeedRef = useRef(0.5);
@@ -150,6 +154,17 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         backgroundImage2Ref.current = backgroundImage2;
         backgroundPattern2Ref.current = null;
       };
+      
+      // Background 3 for levels 11-15 - uses background 1 as fallback initially
+      // Can be replaced with a generated tile via setGeneratedBackground3
+      const backgroundImage3 = new Image();
+      backgroundImage3.src = backgroundTile1; // Default fallback
+      backgroundImage3.onload = () => {
+        if (!generatedBg3UrlRef.current) {
+          backgroundImage3Ref.current = backgroundImage3;
+          backgroundPattern3Ref.current = null;
+        }
+      };
     }, []);
 
     useEffect(() => {
@@ -172,8 +187,19 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       ctx.fillRect(0, 0, width, height);
       
       // Draw tiled background based on level
-      const bgImg = level >= 6 && level <= 10 ? backgroundImage2Ref.current : backgroundImage1Ref.current;
-      const bgPatternRef = level >= 6 && level <= 10 ? backgroundPattern2Ref : backgroundPattern1Ref;
+      let bgImg: HTMLImageElement | null;
+      let bgPatternRef: React.MutableRefObject<CanvasPattern | null>;
+      
+      if (level >= 11 && level <= 15) {
+        bgImg = backgroundImage3Ref.current;
+        bgPatternRef = backgroundPattern3Ref;
+      } else if (level >= 6 && level <= 10) {
+        bgImg = backgroundImage2Ref.current;
+        bgPatternRef = backgroundPattern2Ref;
+      } else {
+        bgImg = backgroundImage1Ref.current;
+        bgPatternRef = backgroundPattern1Ref;
+      }
       
       if (isImageValid(bgImg)) {
         // Create pattern if not already created
