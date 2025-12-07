@@ -267,6 +267,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const getReadyStartTimeRef = useRef<number | null>(null);
   const baseSpeedMultiplierRef = useRef(1);
 
+  // Mobile ball glow state for Get Ready sequence
+  const [getReadyGlow, setGetReadyGlow] = useState<{ opacity: number } | null>(null);
+  const getReadyGlowStartTimeRef = useRef<number | null>(null);
+
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG STATE - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
@@ -422,6 +426,41 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     requestAnimationFrame(animate);
   }, [getReadyActive]);
+
+  // Mobile ball glow animation - full intensity for 3s, fade out over 2s
+  useEffect(() => {
+    if (!isMobileDevice || !getReadyActive || getReadyGlowStartTimeRef.current === null) return;
+
+    const fullGlowDuration = 3000; // 3 seconds at full intensity
+    const fadeOutDuration = 2000; // 2 seconds fade out
+
+    const animateGlow = () => {
+      if (!getReadyActive || getReadyGlowStartTimeRef.current === null) {
+        setGetReadyGlow(null);
+        return;
+      }
+
+      const elapsed = Date.now() - getReadyGlowStartTimeRef.current;
+
+      if (elapsed < fullGlowDuration) {
+        // Full intensity phase
+        setGetReadyGlow({ opacity: 1 });
+        requestAnimationFrame(animateGlow);
+      } else if (elapsed < fullGlowDuration + fadeOutDuration) {
+        // Fade out phase
+        const fadeProgress = (elapsed - fullGlowDuration) / fadeOutDuration;
+        const opacity = 1 - fadeProgress;
+        setGetReadyGlow({ opacity: Math.max(0, opacity) });
+        requestAnimationFrame(animateGlow);
+      } else {
+        // Glow complete
+        setGetReadyGlow(null);
+        getReadyGlowStartTimeRef.current = null;
+      }
+    };
+
+    requestAnimationFrame(animateGlow);
+  }, [getReadyActive, isMobileDevice]);
 
   // Sound effect cooldowns (ms timestamps)
   const lastWallBounceSfxMs = useRef(0);
@@ -6155,6 +6194,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       bulletImpacts={bulletImpacts}
                       tutorialHighlight={tutorialStep?.highlight}
                       debugEnabled={ENABLE_DEBUG_FEATURES}
+                      getReadyGlow={isMobileDevice ? getReadyGlow : null}
                     />
 
                     {/* Boss Power-Up Duration Timers - Mobile responsive positioning */}
@@ -6317,10 +6357,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         ballPosition={{ x: balls[0].x, y: balls[0].y }}
                         canvasWidth={SCALED_CANVAS_WIDTH}
                         canvasHeight={SCALED_CANVAS_HEIGHT}
+                        isMobile={isMobileDevice}
                         onComplete={() => {
                           setGetReadyActive(false);
                           setSpeedMultiplier(baseSpeedMultiplierRef.current);
                           getReadyStartTimeRef.current = null;
+                          // Clear mobile glow
+                          setGetReadyGlow(null);
+                          getReadyGlowStartTimeRef.current = null;
                         }}
                       />
                     )}
@@ -6478,6 +6522,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         getReadyStartTimeRef.current = Date.now();
                         setGetReadyActive(true);
 
+                        // Start mobile glow effect
+                        if (isMobileDevice) {
+                          getReadyGlowStartTimeRef.current = Date.now();
+                          setGetReadyGlow({ opacity: 1 });
+                        }
+
                         setGameState("playing");
                         // Re-acquire pointer lock for mouse control (desktop only)
                         if (!isMobileDevice) {
@@ -6501,6 +6551,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         setSpeedMultiplier(speedMultiplier * 0.1);
                         getReadyStartTimeRef.current = Date.now();
                         setGetReadyActive(true);
+
+                        // Start mobile glow effect
+                        if (isMobileDevice) {
+                          getReadyGlowStartTimeRef.current = Date.now();
+                          setGetReadyGlow({ opacity: 1 });
+                        }
 
                         setGameState("playing");
                         // Re-acquire pointer lock for mouse control (desktop only)

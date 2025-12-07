@@ -42,10 +42,11 @@ interface GameCanvasProps {
   bulletImpacts?: Array<{ x: number; y: number; startTime: number; isSuper: boolean }>;
   tutorialHighlight?: { type: 'power_up' | 'boss' | 'enemy' | 'bonus_letter'; zoomScale?: number } | null;
   debugEnabled?: boolean; // DEBUG: Remove before production
+  getReadyGlow?: { opacity: number } | null; // Mobile ball glow during Get Ready sequence
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -368,6 +369,35 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       balls.forEach((ball) => {
         const ballColor = ball.isFireball ? "hsl(30, 85%, 55%)" : "hsl(0, 0%, 70%)";
         const ballRotation = ball.rotation || 0;
+        
+        // Get Ready glow effect (mobile) - draw BEFORE ball for proper layering
+        if (getReadyGlow && getReadyGlow.opacity > 0) {
+          ctx.save();
+          // Light blue glow around the ball
+          const glowRadius = ball.radius * 3;
+          const glowGradient = ctx.createRadialGradient(
+            ball.x, ball.y, ball.radius,
+            ball.x, ball.y, glowRadius
+          );
+          glowGradient.addColorStop(0, `rgba(100, 200, 255, ${getReadyGlow.opacity * 0.6})`);
+          glowGradient.addColorStop(0.5, `rgba(100, 200, 255, ${getReadyGlow.opacity * 0.3})`);
+          glowGradient.addColorStop(1, `rgba(100, 200, 255, 0)`);
+          
+          ctx.fillStyle = glowGradient;
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, glowRadius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Add extra glow ring
+          ctx.strokeStyle = `rgba(100, 200, 255, ${getReadyGlow.opacity * 0.8})`;
+          ctx.lineWidth = 2;
+          ctx.shadowColor = 'rgba(100, 200, 255, 1)';
+          ctx.shadowBlur = 15 * getReadyGlow.opacity;
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, ball.radius * 2, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
         
         ctx.save();
         ctx.translate(ball.x, ball.y);

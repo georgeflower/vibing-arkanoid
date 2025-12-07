@@ -5,6 +5,7 @@ interface GetReadyOverlayProps {
   canvasWidth: number;
   canvasHeight: number;
   onComplete: () => void;
+  isMobile?: boolean;
 }
 
 export const GetReadyOverlay = ({
@@ -12,6 +13,7 @@ export const GetReadyOverlay = ({
   canvasWidth,
   canvasHeight,
   onComplete,
+  isMobile = false,
 }: GetReadyOverlayProps) => {
   const [scale, setScale] = useState(0.5);
   const [opacity, setOpacity] = useState(0);
@@ -65,20 +67,54 @@ export const GetReadyOverlay = ({
     requestAnimationFrame(animate);
   }, [onComplete]);
 
-  // Scale ball position from canvas coordinates to container coordinates
+  // Scale ball position from canvas coordinates to container coordinates (desktop only)
   const scaleX = containerSize.width > 0 ? containerSize.width / canvasWidth : 1;
   const scaleY = containerSize.height > 0 ? containerSize.height / canvasHeight : 1;
   const ringX = ballPosition ? ballPosition.x * scaleX : 0;
   const ringY = ballPosition ? ballPosition.y * scaleY : 0;
 
-  // Text position above the ball
+  // Text position above the ball (desktop only)
   const textY = ringY - 60 * scaleY;
 
-  // Ring size - also scale based on container
+  // Ring size - also scale based on container (desktop only)
   const ringRadius = (30 + progress * 20) * Math.min(scaleX, scaleY);
 
   if (!ballPosition) return null;
 
+  // Mobile version: centered text only, no ring
+  if (isMobile) {
+    return (
+      <div 
+        ref={containerRef}
+        className="absolute inset-0 z-[150] pointer-events-none flex items-center justify-center"
+        style={{
+          opacity,
+          transition: 'opacity 0.3s ease-out',
+        }}
+      >
+        <div
+          className="retro-pixel-text"
+          style={{
+            transform: `scale(${scale})`,
+            transition: 'transform 0.3s ease-out',
+            fontSize: '32px',
+            color: 'hsl(48, 100%, 60%)',
+            textShadow: `
+              0 0 10px hsl(48, 100%, 60%),
+              0 0 20px hsl(48, 100%, 50%),
+              0 0 30px hsl(48, 100%, 40%),
+              0 0 40px hsl(48, 100%, 30%)
+            `,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          GET READY!
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop version: ring highlight + floating text
   return (
     <div 
       ref={containerRef}
