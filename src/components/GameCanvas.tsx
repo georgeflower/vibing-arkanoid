@@ -605,7 +605,47 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           return;
         }
         
-        // Draw the icon - 5% transparent (0.95 alpha), no background
+        // Yellow rectangle with blur effect (static, like low-quality shield)
+        const padding = 4;
+        const rectX = -padding;
+        const rectY = -padding;
+        const rectWidth = size + padding * 2;
+        const rectHeight = size + padding * 2;
+        const radius = 6;
+
+        // Draw blur effect between rectangle and logo - radial gradient fill
+        const blurGradient = ctx.createRadialGradient(
+          size / 2, size / 2, size * 0.35,  // Inner circle (clear)
+          size / 2, size / 2, size * 0.55   // Outer circle (blur)
+        );
+        blurGradient.addColorStop(0, 'rgba(255, 220, 0, 0)');     // Transparent center
+        blurGradient.addColorStop(1, 'rgba(255, 220, 0, 0.15)'); // Subtle yellow at edges
+
+        // Draw rounded rectangle path for blur fill
+        ctx.beginPath();
+        ctx.moveTo(rectX + radius, rectY);
+        ctx.lineTo(rectX + rectWidth - radius, rectY);
+        ctx.quadraticCurveTo(rectX + rectWidth, rectY, rectX + rectWidth, rectY + radius);
+        ctx.lineTo(rectX + rectWidth, rectY + rectHeight - radius);
+        ctx.quadraticCurveTo(rectX + rectWidth, rectY + rectHeight, rectX + rectWidth - radius, rectY + rectHeight);
+        ctx.lineTo(rectX + radius, rectY + rectHeight);
+        ctx.quadraticCurveTo(rectX, rectY + rectHeight, rectX, rectY + rectHeight - radius);
+        ctx.lineTo(rectX, rectY + radius);
+        ctx.quadraticCurveTo(rectX, rectY, rectX + radius, rectY);
+        ctx.closePath();
+        
+        ctx.fillStyle = blurGradient;
+        ctx.fill();
+
+        // Yellow outline with subtle glow
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = 'rgba(255, 220, 0, 0.6)';
+        ctx.strokeStyle = 'rgba(255, 220, 0, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Draw the icon - 5% transparent (0.95 alpha)
         if (isImageValid(img)) {
           ctx.globalAlpha = 0.95;
           ctx.drawImage(img, 0, 0, size, size);
