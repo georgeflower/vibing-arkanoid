@@ -10,7 +10,7 @@ import crackedBrick2 from "@/assets/brick-cracked-2.png";
 import crackedBrick3 from "@/assets/brick-cracked-3.png";
 import backgroundTile1 from "@/assets/background-tile.png";
 import backgroundTile2 from "@/assets/background-tile-2.png";
-// Background tile 3 will be dynamically loaded or use a fallback
+import backgroundTile3 from "@/assets/background-tile-3.png";
 
 interface GameCanvasProps {
   width: number;
@@ -64,7 +64,6 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const backgroundPattern2Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern3Ref = useRef<CanvasPattern | null>(null);
     const currentBgLevelRangeRef = useRef<number>(0);
-    const generatedBg3UrlRef = useRef<string | null>(null);
     const bgRotationRef = useRef(0);
     const bgZoomRef = useRef(1);
     const rotationSpeedRef = useRef(0.5);
@@ -155,15 +154,12 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         backgroundPattern2Ref.current = null;
       };
       
-      // Background 3 for levels 11-15 - uses background 1 as fallback initially
-      // Can be replaced with a generated tile via setGeneratedBackground3
+      // Background 3 for levels 11-15
       const backgroundImage3 = new Image();
-      backgroundImage3.src = backgroundTile1; // Default fallback
+      backgroundImage3.src = backgroundTile3;
       backgroundImage3.onload = () => {
-        if (!generatedBg3UrlRef.current) {
-          backgroundImage3Ref.current = backgroundImage3;
-          backgroundPattern3Ref.current = null;
-        }
+        backgroundImage3Ref.current = backgroundImage3;
+        backgroundPattern3Ref.current = null;
       };
     }, []);
 
