@@ -1,1 +1,4 @@
 project_id = "hndjtxesjymhmzfktpwk"
+
+[functions.generate-background-tile]
+verify_jwt = false
