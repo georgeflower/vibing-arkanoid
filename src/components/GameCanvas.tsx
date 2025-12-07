@@ -542,61 +542,17 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           return;
         }
         
-        // Draw background (light grey with rounded corners) - 50% transparent
-        ctx.globalAlpha = 0.5;
-        ctx.fillStyle = "hsl(0, 0%, 70%)";
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "hsl(280, 60%, 55%)";
-        ctx.beginPath();
-        ctx.roundRect(-size / 2, -size / 2, size, size, cornerRadius);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        
-        // 16-bit pixel texture (grey retro pattern) - also 50% transparent
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = 0.5;
-        ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
-        for (let py = -size / 2 + 2; py < size / 2 - 2; py += 3) {
-          for (let px = -size / 2 + 2; px < size / 2 - 2; px += 3) {
-            if ((px + py) % 6 === 0) {
-              ctx.fillRect(px, py, 2, 2);
-            }
-          }
-        }
-        
-        ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
-        for (let py = -size / 2 + 3; py < size / 2 - 3; py += 3) {
-          for (let px = -size / 2 + 3; px < size / 2 - 3; px += 3) {
-            if ((px - py) % 6 === 0) {
-              ctx.fillRect(px, py, 1, 1);
-            }
-          }
-        }
-        ctx.globalAlpha = 1;
-        
-        // Draw the icon - 10% transparent (0.9 alpha)
+        // Draw the icon - 5% transparent (0.95 alpha), no background
         if (isImageValid(img)) {
-          ctx.save();
-          ctx.beginPath();
-          ctx.roundRect(-size / 2, -size / 2, size, size, cornerRadius);
-          ctx.clip();
-          ctx.globalAlpha = 0.9;
-          ctx.drawImage(img, -size / 2, -size / 2, size, size);
-          ctx.restore();
+          ctx.globalAlpha = 0.95;
+          ctx.drawImage(img, 0, 0, size, size);
         } else if (debugEnabled) {
           // ═══════════════════════════════════════════════════════════════
           // DEBUG: Show magenta rectangle if image not loaded
           // ═══════════════════════════════════════════════════════════════
           ctx.fillStyle = "magenta";
-          ctx.fillRect(-size / 2, -size / 2, size, size);
+          ctx.fillRect(0, 0, size, size);
         }
-        
-        // Add subtle highlight
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
-        ctx.beginPath();
-        ctx.roundRect(-size / 2, -size / 2, size, size / 3, [cornerRadius, cornerRadius, 0, 0]);
-        ctx.fill();
         
         ctx.restore();
       });
