@@ -8,6 +8,7 @@ import paddleTurretsImg from "@/assets/paddle-turrets.png";
 import crackedBrick1 from "@/assets/brick-cracked-1.png";
 import crackedBrick2 from "@/assets/brick-cracked-2.png";
 import crackedBrick3 from "@/assets/brick-cracked-3.png";
+import backgroundTile from "@/assets/background-tile.png";
 
 interface GameCanvasProps {
   width: number;
@@ -54,6 +55,8 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const crackedBrick1Ref = useRef<HTMLImageElement | null>(null);
     const crackedBrick2Ref = useRef<HTMLImageElement | null>(null);
     const crackedBrick3Ref = useRef<HTMLImageElement | null>(null);
+    const backgroundImageRef = useRef<HTMLImageElement | null>(null);
+    const backgroundPatternRef = useRef<CanvasPattern | null>(null);
     const bgRotationRef = useRef(0);
     const bgZoomRef = useRef(1);
     const rotationSpeedRef = useRef(0.5);
@@ -129,6 +132,13 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       const crackedBrick3Image = new Image();
       crackedBrick3Image.src = crackedBrick3;
       crackedBrick3Ref.current = crackedBrick3Image;
+      
+      const backgroundImage = new Image();
+      backgroundImage.src = backgroundTile;
+      backgroundImage.onload = () => {
+        backgroundImageRef.current = backgroundImage;
+        backgroundPatternRef.current = null; // Reset pattern to recreate with new image
+      };
     }, []);
 
     useEffect(() => {
@@ -146,11 +156,29 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.translate(shakeX, shakeY);
       }
 
-      // Clear canvas - retro Amiga background with flash
-      const flashIntensity = backgroundFlash;
-      const bgLightness = 12 + (flashIntensity * 40); // Flash makes background brighter
-      ctx.fillStyle = `hsl(220, 25%, ${bgLightness}%)`;
+      // Clear canvas - tiled background with flash overlay
+      ctx.fillStyle = 'hsl(220, 25%, 12%)'; // Fallback color while image loads
       ctx.fillRect(0, 0, width, height);
+      
+      // Draw tiled background
+      const bgImg = backgroundImageRef.current;
+      if (isImageValid(bgImg)) {
+        // Create pattern if not already created
+        if (!backgroundPatternRef.current) {
+          backgroundPatternRef.current = ctx.createPattern(bgImg, 'repeat');
+        }
+        
+        if (backgroundPatternRef.current) {
+          ctx.fillStyle = backgroundPatternRef.current;
+          ctx.fillRect(0, 0, width, height);
+        }
+      }
+      
+      // Apply flash effect as overlay
+      if (backgroundFlash > 0) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${backgroundFlash * 0.4})`;
+        ctx.fillRect(0, 0, width, height);
+      }
 
       // Draw bricks with 16-bit Turrican 2 style texture
       bricks.forEach((brick) => {
