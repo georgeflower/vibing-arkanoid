@@ -108,37 +108,54 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     
     // Load power-up images, bonus letter images, and paddle image
     useEffect(() => {
+      // Power-up images - wait for onload before storing (iOS Safari compatibility)
       Object.entries(powerUpImages).forEach(([type, src]) => {
+        if (!src) return; // Skip empty sources (boss power-ups use emoji)
         const img = new Image();
+        img.onload = () => {
+          loadedImagesRef.current[type] = img;
+        };
         img.src = src;
-        loadedImagesRef.current[type] = img;
       });
       
+      // Bonus letter images - wait for onload before storing (iOS Safari compatibility)
       Object.entries(bonusLetterImages).forEach(([type, src]) => {
         const img = new Image();
+        img.onload = () => {
+          bonusLetterImagesRef.current[type] = img;
+        };
         img.src = src;
-        bonusLetterImagesRef.current[type] = img;
       });
       
       const paddleImage = new Image();
+      paddleImage.onload = () => {
+        paddleImageRef.current = paddleImage;
+      };
       paddleImage.src = paddleImg;
-      paddleImageRef.current = paddleImage;
       
       const paddleTurretsImage = new Image();
+      paddleTurretsImage.onload = () => {
+        paddleTurretsImageRef.current = paddleTurretsImage;
+      };
       paddleTurretsImage.src = paddleTurretsImg;
-      paddleTurretsImageRef.current = paddleTurretsImage;
       
       const crackedBrick1Image = new Image();
+      crackedBrick1Image.onload = () => {
+        crackedBrick1Ref.current = crackedBrick1Image;
+      };
       crackedBrick1Image.src = crackedBrick1;
-      crackedBrick1Ref.current = crackedBrick1Image;
       
       const crackedBrick2Image = new Image();
+      crackedBrick2Image.onload = () => {
+        crackedBrick2Ref.current = crackedBrick2Image;
+      };
       crackedBrick2Image.src = crackedBrick2;
-      crackedBrick2Ref.current = crackedBrick2Image;
       
       const crackedBrick3Image = new Image();
+      crackedBrick3Image.onload = () => {
+        crackedBrick3Ref.current = crackedBrick3Image;
+      };
       crackedBrick3Image.src = crackedBrick3;
-      crackedBrick3Ref.current = crackedBrick3Image;
       
       const backgroundImage1 = new Image();
       backgroundImage1.src = backgroundTile1;
