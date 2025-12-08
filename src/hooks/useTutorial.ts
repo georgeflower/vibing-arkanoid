@@ -15,6 +15,8 @@ export interface TutorialStep {
 
 const BOSS_LEVELS = [5, 10, 15, 20];
 
+// Tutorial steps - only pausable tutorials remain here
+// Power-ups, turrets, minions use floating text instead (see FloatingGameText.tsx)
 const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 'controls_intro',
@@ -35,48 +37,12 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     slowMotion: false,
   },
   {
-    id: 'power_up_intro',
-    trigger: 'power_up_drop',
-    title: 'POWER-UP!',
-    message: 'Catch it for special abilities!',
-    highlight: { type: 'power_up' },
-    pauseGame: true,
-    slowMotion: false,
-  },
-  {
-    id: 'turret_collected',
-    trigger: 'turret_collected',
-    title: 'TURRETS!',
-    message: '30 bullets - click to fire!\nCollect again for SUPER TURRETS',
-    pauseGame: true,
-    slowMotion: false,
-  },
-  {
     id: 'boss_intro',
     trigger: 'boss_spawn',
     level: 5,
     title: 'BOSS BATTLE!',
     message: 'Use ball or turret to kill boss\nAvoid its attacks!',
     highlight: { type: 'boss' },
-    pauseGame: true,
-    slowMotion: false,
-  },
-  {
-    id: 'minion_intro',
-    trigger: 'minion_spawn',
-    bossLevelOnly: true,
-    title: 'MINION!',
-    message: 'Kill minions to get\nspecial boss power-ups!',
-    highlight: { type: 'enemy' },
-    pauseGame: true,
-    slowMotion: false,
-  },
-  {
-    id: 'boss_power_ups',
-    trigger: 'boss_power_up_drop',
-    title: 'BOSS POWER-UP!',
-    message: '⚡STUNNER 🔄REFLECT 🎯HOMING',
-    highlight: { type: 'power_up' },
     pauseGame: true,
     slowMotion: false,
   },

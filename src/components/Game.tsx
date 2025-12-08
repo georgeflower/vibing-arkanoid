@@ -76,6 +76,7 @@ import {
 } from "@/constants/game";
 import { useTutorial } from "@/hooks/useTutorial";
 import { TutorialOverlay } from "./TutorialOverlay";
+import { FloatingGameText, FloatingText, getPowerUpDisplayText } from "./FloatingGameText";
 import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
@@ -244,12 +245,44 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   } = useTutorial();
 
   // Track if tutorials have been triggered this session
-  const powerUpTutorialTriggeredRef = useRef(false);
-  const turretTutorialTriggeredRef = useRef(false);
   const bossTutorialTriggeredRef = useRef(false);
-  const bossPowerUpTutorialTriggeredRef = useRef(false);
-  const minionTutorialTriggeredRef = useRef(false);
   const bonusLetterTutorialTriggeredRef = useRef(false);
+  
+  // Track if floating text has been shown for certain events (once per session)
+  const minionFloatingTextShownRef = useRef(false);
+  const powerUpFloatingTextShownRef = useRef(false);
+  const turretFloatingTextShownRef = useRef(false);
+
+  // Floating game text state (replaces pause-based tutorials for power-ups, minions, etc.)
+  const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([]);
+  const nextFloatingTextId = useRef(1);
+
+  // Helper to add floating text
+  const addFloatingText = useCallback((text: string, x: number, y: number, options?: { 
+    duration?: number; 
+    color?: string; 
+    isWarning?: boolean;
+    followTarget?: { x: number; y: number };
+  }) => {
+    const id = `floating-${nextFloatingTextId.current++}`;
+    setFloatingTexts(prev => [...prev, {
+      id,
+      text,
+      x,
+      y,
+      startTime: Date.now(),
+      duration: options?.duration ?? 2500,
+      color: options?.color,
+      isWarning: options?.isWarning,
+      followTarget: options?.followTarget,
+    }]);
+    return id;
+  }, []);
+
+  // Remove expired floating text
+  const removeFloatingText = useCallback((id: string) => {
+    setFloatingTexts(prev => prev.filter(t => t.id !== id));
+  }, []);
 
   // Bonus letter floating text state
   const [bonusLetterFloatingText, setBonusLetterFloatingText] = useState<{
@@ -612,13 +645,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       (type: string) => {
         setPowerUpsCollectedTypes((prev) => new Set(prev).add(type));
 
-        // Trigger turret tutorial when turret is collected (only once per session)
-        if (tutorialEnabled && type === "turrets" && !turretTutorialTriggeredRef.current) {
-          turretTutorialTriggeredRef.current = true;
-          const { shouldPause } = triggerTutorial("turret_collected", level);
-          if (shouldPause) {
-            setGameState("paused");
-            if (gameLoopRef.current) gameLoopRef.current.pause();
+        // Show turret floating text when turret is collected (only first time)
+        if (type === "turrets" && !turretFloatingTextShownRef.current) {
+          turretFloatingTextShownRef.current = true;
+          if (paddle) {
+            addFloatingText("TURRETS!", paddle.x + paddle.width / 2, paddle.y - 20, { duration: 2000 });
           }
         }
       },
@@ -3134,31 +3165,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           return next;
         });
 
-        // Trigger power-up drop tutorial when first power-up becomes visible (only once)
-        // 1-second delay before showing tutorial
-        if (tutorialEnabled && !powerUpTutorialTriggeredRef.current) {
-          powerUpTutorialTriggeredRef.current = true;
-          setTimeout(() => {
-            const { shouldPause } = triggerTutorial("power_up_drop", level);
-            if (shouldPause) {
-              setGameState("paused");
-              if (gameLoopRef.current) gameLoopRef.current.pause();
-            }
-          }, 1000);
-        }
-
-        // Trigger boss power-up tutorial when first boss power-up drops (only once)
-        const hasBossPowerUp = createdPowerUps.some((p) =>
-          ["bossStunner", "reflectShield", "homingBall"].includes(p.type),
-        );
-        if (tutorialEnabled && hasBossPowerUp && !bossPowerUpTutorialTriggeredRef.current) {
-          bossPowerUpTutorialTriggeredRef.current = true;
-          const { shouldPause } = triggerTutorial("boss_power_up_drop", level);
-          if (shouldPause) {
-            setGameState("paused");
-            if (gameLoopRef.current) gameLoopRef.current.pause();
-          }
-        }
+        // Show floating text for power-ups when they drop
+        createdPowerUps.forEach((powerUp) => {
+          const displayText = getPowerUpDisplayText(powerUp.type);
+          addFloatingText(displayText, powerUp.x + powerUp.width / 2, powerUp.y - 10, { 
+            duration: 2000,
+            color: ["bossStunner", "reflectShield", "homingBall"].includes(powerUp.type) 
+              ? "hsl(280, 100%, 60%)" // Purple for boss power-ups
+              : undefined
+          });
+        });
       }
 
       // Handle explosive bricks
@@ -3350,15 +3366,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               if (powerUp) {
                 setPowerUps((prev) => [...prev, powerUp]);
 
-                // Trigger boss power-up tutorial when boss minion drops a boss power-up
+                // Show floating text for boss power-up drops from minions
                 const isBossPowerUpType = ["bossStunner", "reflectShield", "homingBall"].includes(powerUp.type);
-                if (tutorialEnabled && isBossPowerUpType && !bossPowerUpTutorialTriggeredRef.current) {
-                  bossPowerUpTutorialTriggeredRef.current = true;
-                  const { shouldPause } = triggerTutorial("boss_power_up_drop", level);
-                  if (shouldPause) {
-                    setGameState("paused");
-                    if (gameLoopRef.current) gameLoopRef.current.pause();
-                  }
+                if (isBossPowerUpType) {
+                  const displayText = getPowerUpDisplayText(powerUp.type);
+                  addFloatingText(displayText, powerUp.x + powerUp.width / 2, powerUp.y - 10, { 
+                    duration: 2500,
+                    color: "hsl(280, 100%, 60%)" // Purple for boss power-ups
+                  });
                 }
 
                 if (isBossSpawned) {
@@ -3964,7 +3979,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             ),
           );
           soundManager.playReflectedAttackSound();
-          toast.success("Reflect shield reflected the shot!");
+          // Show warning floating text for reflected shot
+          addFloatingText("REFLECTED!", bomb.x + bomb.width / 2, bomb.y - 30, { 
+            duration: 1500,
+            isWarning: true
+          });
           return;
         }
 
@@ -4018,7 +4037,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               ),
             );
             soundManager.playBounce();
-            toast.success("Shot reflected!");
+            // Show warning floating text for reflected shot
+            addFloatingText("REFLECTED!", bomb.x + bomb.width / 2, bomb.y - 30, { 
+              duration: 1500,
+              isWarning: true
+            });
             return;
           }
           // Not on boss level - lose a life
@@ -4551,7 +4574,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             attack.isReflected = true;
             attack.dy = -Math.abs(attack.dy || attack.speed); // Always go upward
 
-            toast.success("Attack reflected!");
+            // Show warning floating text for reflected boss attack
+            addFloatingText("REFLECTED!", attack.x + attack.width / 2, attack.y - 30, { 
+              duration: 1500,
+              isWarning: true
+            });
             return true; // Keep attack in array, now moving upward
           }
 
@@ -5311,18 +5338,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const enemyName = enemyType === "sphere" ? "Sphere" : enemyType === "pyramid" ? "Pyramid" : "Cube";
         toast.warning(`${enemyName} enemy ${enemySpawnCount + 1} appeared! Speed: ${Math.round(speedIncrease * 100)}%`);
 
-        // Trigger minion tutorial on first enemy spawn (non-boss level enemies)
-        // Only set ref AFTER successful trigger to fix bug where tutorial wouldn't show
-        if (tutorialEnabled && !minionTutorialTriggeredRef.current) {
-          // Small delay to ensure enemy is rendered before showing tutorial
-          setTimeout(() => {
-            const { shouldPause } = triggerTutorial("minion_spawn", level);
-            if (shouldPause) {
-              minionTutorialTriggeredRef.current = true;
-              setGameState("paused");
-              if (gameLoopRef.current) gameLoopRef.current.pause();
-            }
-          }, 100);
+        // Show floating text for minion spawn (once per session)
+        if (!minionFloatingTextShownRef.current) {
+          minionFloatingTextShownRef.current = true;
+          addFloatingText("MINION!", newEnemy.x + newEnemy.width / 2, newEnemy.y - 20, { 
+            duration: 2000,
+            color: "hsl(30, 100%, 60%)" // Orange for enemies
+          });
         }
 
         // Start dropping projectiles for this enemy
@@ -5520,17 +5542,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setEnemies((prev) => [...prev, ...newEnemies]);
       setLastBossSpawnTime(timer);
 
-      // Trigger minion tutorial on first boss minion spawn
-      // Only set ref AFTER successful trigger to fix bug where tutorial wouldn't show
-      if (tutorialEnabled && !minionTutorialTriggeredRef.current) {
-        setTimeout(() => {
-          const { shouldPause } = triggerTutorial("minion_spawn", level);
-          if (shouldPause) {
-            minionTutorialTriggeredRef.current = true;
-            setGameState("paused");
-            if (gameLoopRef.current) gameLoopRef.current.pause();
-          }
-        }, 100);
+      // Show floating text for boss minion spawn (once per session)
+      if (!minionFloatingTextShownRef.current && newEnemies.length > 0) {
+        minionFloatingTextShownRef.current = true;
+        const firstEnemy = newEnemies[0];
+        addFloatingText("MINION!", firstEnemy.x + firstEnemy.width / 2, firstEnemy.y - 20, { 
+          duration: 2000,
+          color: "hsl(30, 100%, 60%)" // Orange for enemies
+        });
       }
 
       // Trigger spawn animation
@@ -6324,6 +6343,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         })()}
                       </div>
                     )}
+
+                    {/* Floating Game Text for power-ups, minions, reflected shots */}
+                    <FloatingGameText
+                      texts={floatingTexts}
+                      gameScale={gameScale}
+                      isMobile={isMobileDevice}
+                      onTextExpired={removeFloatingText}
+                    />
 
                     {/* ═══════════════════════════════════════════════════════════════
                          ████████╗ DEBUG OVERLAYS - REMOVE BEFORE PRODUCTION ████████╗
