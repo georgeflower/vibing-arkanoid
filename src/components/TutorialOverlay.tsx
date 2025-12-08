@@ -48,8 +48,8 @@ export const TutorialOverlay = ({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Target zoom scale - 200% for all devices
-  const targetZoomScale = 2;
+  // Target zoom scale - normal size (no zoom)
+  const targetZoomScale = 1;
 
   // Sway animation for the popup
   const [sway, setSway] = useState(0);
@@ -307,13 +307,7 @@ export const TutorialOverlay = ({
               />
             </mask>
           </defs>
-          {/* Dimmed background with spotlight cutout */}
-          <rect 
-            width="100%" 
-            height="100%" 
-            fill="rgba(0, 0, 0, 0.75)" 
-            mask="url(#spotlightMask)"
-          />
+          {/* No dimming - removed for better visibility */}
           {/* Glow ring around spotlight */}
           <circle 
             cx={spotlightX} 
