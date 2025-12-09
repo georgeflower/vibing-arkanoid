@@ -32,6 +32,7 @@ interface GameCanvasProps {
   collectedLetters: Set<BonusLetterType>;
   screenShake: number;
   backgroundFlash: number;
+  highlightFlash?: number; // New: Flash effect for explosions/kills/extra life (0-1.5)
   qualitySettings: QualitySettings;
   boss: Boss | null;
   resurrectedBosses: Boss[];
@@ -50,7 +51,7 @@ interface GameCanvasProps {
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -238,7 +239,42 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         if (bgPatternRef.current) {
           ctx.fillStyle = bgPatternRef.current;
           ctx.fillRect(0, 0, width, height);
+          
+          // Dim background for levels 1-4 (40% darker)
+          if (level >= 1 && level <= 4) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Subtle ambient flicker on brighter areas (only levels 1-4)
+            const ambientFlicker = Math.sin(Date.now() / 500) * 0.03 + 0.03;
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            ctx.fillStyle = `rgba(100, 150, 200, ${ambientFlicker})`;
+            ctx.fillRect(0, 0, width, height);
+            ctx.restore();
+          }
         }
+      }
+      
+      // Apply highlight flash effect for explosions/kills/extra life (levels 1-4 only)
+      if (highlightFlash > 0 && level >= 1 && level <= 4) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen'; // Only affects bright pixels
+        
+        // Determine flash color based on intensity
+        const isGolden = highlightFlash > 1.2; // Extra life = golden flash
+        const intensity = Math.min(highlightFlash, 1.0);
+        
+        if (isGolden) {
+          // Golden/warm flash for extra life
+          ctx.fillStyle = `rgba(255, 200, 100, ${intensity * 0.5})`;
+        } else {
+          // White/cyan flash for explosions and kills
+          ctx.fillStyle = `rgba(150, 220, 255, ${intensity * 0.4})`;
+        }
+        
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
       }
       
       // Apply flash effect as overlay

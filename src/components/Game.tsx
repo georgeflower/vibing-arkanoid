@@ -202,6 +202,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, [screenShake]);
 
   const [backgroundFlash, setBackgroundFlash] = useState(0);
+  const [highlightFlash, setHighlightFlash] = useState(0);
+  const highlightFlashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [lastBossSpawnTime, setLastBossSpawnTime] = useState(0);
   const [bossSpawnAnimation, setBossSpawnAnimation] = useState<{ active: boolean; startTime: number } | null>(null);
   const [shieldImpacts, setShieldImpacts] = useState<ShieldImpact[]>([]);
@@ -601,6 +603,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setFireballEndTime(null);
   }, []);
 
+  // Trigger highlight flash for background effects (levels 1-4)
+  const triggerHighlightFlash = useCallback((intensity: number, duration: number) => {
+    if (highlightFlashTimeoutRef.current) {
+      clearTimeout(highlightFlashTimeoutRef.current);
+    }
+    setHighlightFlash(intensity);
+    highlightFlashTimeoutRef.current = setTimeout(() => {
+      setHighlightFlash(0);
+      highlightFlashTimeoutRef.current = null;
+    }, duration);
+  }, []);
+
   const { isHighScore, addHighScore, getQualifiedLeaderboards } = useHighScores();
   const { powerUps, createPowerUp, updatePowerUps, checkPowerUpCollision, setPowerUps, extraLifeUsedLevels } =
     usePowerUps(
@@ -611,6 +625,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setBrickHitSpeedAccumulated,
       (type: string) => {
         setPowerUpsCollectedTypes((prev) => new Set(prev).add(type));
+
+        // Trigger golden highlight flash for extra life (levels 1-4)
+        if (type === "life") {
+          triggerHighlightFlash(1.5, 400);
+        }
 
         // Trigger turret tutorial when turret is collected (only once per session)
         if (tutorialEnabled && type === "turrets" && !turretTutorialTriggeredRef.current) {
@@ -3202,6 +3221,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         soundManager.playExplosiveBrickSound();
         setBackgroundFlash(10);
         setTimeout(() => setBackgroundFlash(0), 100);
+        // Trigger highlight flash for explosive brick (levels 1-4)
+        triggerHighlightFlash(1.0, 150);
       });
 
       // Update brick state
@@ -3287,6 +3308,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             particles: createExplosionParticles(exp.x, exp.y, exp.type),
           },
         ]);
+        // Trigger highlight flash for explosions (levels 1-4)
+        triggerHighlightFlash(1.0, 150);
       });
 
       // Handle bonus letter drops
@@ -4526,6 +4549,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 },
               ]);
 
+              // Trigger highlight flash for enemy kill (levels 1-4)
+              triggerHighlightFlash(0.7, 200);
+
               soundManager.playCrackedBrickBreakSound();
               toast.success("Reflected attack destroyed enemy!");
               return false; // Remove attack
@@ -4930,6 +4956,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               particles: particles,
             },
           ]);
+
+          // Trigger highlight flash for enemy kill (levels 1-4)
+          triggerHighlightFlash(0.7, 200);
 
           soundManager.playCrackedBrickBreakSound();
           toast.success("Reflected shot destroyed enemy!");
@@ -6180,6 +6209,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       collectedLetters={collectedLetters}
                       screenShake={screenShake}
                       backgroundFlash={backgroundFlash}
+                      highlightFlash={highlightFlash}
                       qualitySettings={qualitySettings}
                       boss={boss}
                       resurrectedBosses={resurrectedBosses}
