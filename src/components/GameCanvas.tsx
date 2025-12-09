@@ -705,10 +705,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.stroke();
         });
 
-        // Yellow outline with subtle glow
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = 'rgba(255, 220, 0, 0.6)';
-        ctx.strokeStyle = 'rgba(255, 220, 0, 0.8)';
+        // Dark grey outline with subtle shadow
+        ctx.shadowBlur = 4;
+        ctx.shadowColor = 'hsla(220, 10%, 10%, 0.5)';
+        ctx.strokeStyle = 'hsl(220, 10%, 25%)';
         ctx.lineWidth = 2;
         
         // Redraw the rounded rect outline over rivets
