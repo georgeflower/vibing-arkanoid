@@ -645,15 +645,15 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         const rectHeight = size + padding * 2;
         const radius = 6;
 
-        // Draw blur effect between rectangle and logo - radial gradient fill
-        const blurGradient = ctx.createRadialGradient(
-          size / 2, size / 2, size * 0.35,  // Inner circle (clear)
-          size / 2, size / 2, size * 0.55   // Outer circle (blur)
-        );
-        blurGradient.addColorStop(0, 'rgba(255, 220, 0, 0)');     // Transparent center
-        blurGradient.addColorStop(1, 'rgba(255, 220, 0, 0.15)'); // Subtle yellow at edges
+        // Draw metallic background
+        const metalGradient = ctx.createLinearGradient(rectX, rectY, rectX, rectY + rectHeight);
+        metalGradient.addColorStop(0, 'hsl(220, 10%, 65%)');    // Light steel top
+        metalGradient.addColorStop(0.3, 'hsl(220, 8%, 50%)');   // Mid steel
+        metalGradient.addColorStop(0.5, 'hsl(220, 10%, 60%)');  // Highlight band
+        metalGradient.addColorStop(0.7, 'hsl(220, 8%, 45%)');   // Dark steel
+        metalGradient.addColorStop(1, 'hsl(220, 10%, 35%)');    // Bottom shadow
 
-        // Draw rounded rectangle path for blur fill
+        // Draw rounded rectangle path
         ctx.beginPath();
         ctx.moveTo(rectX + radius, rectY);
         ctx.lineTo(rectX + rectWidth - radius, rectY);
@@ -666,8 +666,13 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.quadraticCurveTo(rectX, rectY, rectX + radius, rectY);
         ctx.closePath();
         
-        ctx.fillStyle = blurGradient;
+        ctx.fillStyle = metalGradient;
         ctx.fill();
+        
+        // Add subtle inner highlight for 3D effect
+        ctx.strokeStyle = 'hsla(220, 15%, 80%, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
 
         // Yellow outline with subtle glow
         ctx.shadowBlur = 8;
