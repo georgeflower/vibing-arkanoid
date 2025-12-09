@@ -257,7 +257,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       }
       
       // Apply highlight flash effect for explosions/kills/extra life (levels 1-4 only)
-      // Uses high-contrast blend modes to target only bright pixels (blue tech lines)
+      // Uses overlay/soft-light blend modes - dark areas stay dark, bright tech lines glow
       if (highlightFlash > 0 && level >= 1 && level <= 4) {
         ctx.save();
         
@@ -265,25 +265,25 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         const isGolden = highlightFlash > 1.2; // Extra life = golden flash
         const intensity = Math.min(highlightFlash, 1.0);
         
-        // First pass: 'lighten' mode - only affects pixels brighter than the fill color
-        // This targets the bright blue lightning/tech lines specifically
-        ctx.globalCompositeOperation = 'lighten';
+        // First pass: 'overlay' mode - multiplies dark areas (keeps them dark)
+        // and screens light areas (makes them glow)
+        ctx.globalCompositeOperation = 'overlay';
         
         if (isGolden) {
-          // Golden flash - brighten only the light areas with warm color
-          ctx.fillStyle = `rgba(255, 220, 100, ${intensity * 0.8})`;
+          // Golden flash - only bright areas will glow golden
+          ctx.fillStyle = `rgba(255, 200, 100, ${intensity * 0.6})`;
         } else {
-          // Cyan flash for explosions and kills - amplify the blue tech lines
-          ctx.fillStyle = `rgba(80, 180, 255, ${intensity * 0.7})`;
+          // Cyan flash for explosions and kills
+          ctx.fillStyle = `rgba(100, 200, 255, ${intensity * 0.5})`;
         }
         ctx.fillRect(0, 0, width, height);
         
-        // Second pass: 'color-dodge' for intense glow on bright spots
-        ctx.globalCompositeOperation = 'color-dodge';
+        // Second pass: 'soft-light' for additional glow on bright spots only
+        ctx.globalCompositeOperation = 'soft-light';
         if (isGolden) {
-          ctx.fillStyle = `rgba(255, 200, 50, ${intensity * 0.3})`;
+          ctx.fillStyle = `rgba(255, 220, 150, ${intensity * 0.7})`;
         } else {
-          ctx.fillStyle = `rgba(100, 200, 255, ${intensity * 0.25})`;
+          ctx.fillStyle = `rgba(150, 220, 255, ${intensity * 0.6})`;
         }
         ctx.fillRect(0, 0, width, height);
         
