@@ -744,11 +744,39 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fillStyle = "hsl(0, 85%, 55%)";
           ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
         } else {
-          ctx.shadowBlur = 8;
+        ctx.shadowBlur = 8;
           ctx.shadowColor = "hsl(200, 70%, 50%)";
           ctx.fillStyle = "hsl(200, 70%, 50%)";
           ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
         }
+      });
+
+      // Draw DANGER text for bounced bullets
+      bullets.filter(b => b.isBounced).forEach((bullet) => {
+        // Calculate how close to bottom (0 = top, 1 = at paddle)
+        const paddleY = paddle?.y ?? (height - 30);
+        const dangerProgress = Math.min(1, Math.max(0, bullet.y / paddleY));
+        
+        // Scale from 1.0 to 2.0 based on proximity to paddle
+        const textScale = 1 + dangerProgress * 1;
+        
+        // Opacity increases as it gets closer
+        const textOpacity = 0.5 + dangerProgress * 0.5;
+        
+        // Pulsing animation based on time
+        const pulse = 1 + Math.sin(Date.now() / 100) * 0.15;
+        const finalScale = textScale * pulse;
+        
+        ctx.save();
+        ctx.font = `bold ${Math.floor(14 * finalScale)}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = `rgba(255, 50, 0, ${textOpacity})`;
+        ctx.shadowBlur = 15 * finalScale;
+        ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
+        
+        // Position above the bullet
+        ctx.fillText('⚠ DANGER!', bullet.x + bullet.width / 2, bullet.y - 10 * finalScale);
+        ctx.restore();
       });
 
       // Draw bullet impact effects on boss hits
