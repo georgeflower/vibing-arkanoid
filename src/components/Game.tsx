@@ -257,6 +257,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     startTime: number;
   } | null>(null);
 
+  // Turret floating text state
+  const [turretFloatingText, setTurretFloatingText] = useState<{
+    active: boolean;
+    startTime: number;
+  } | null>(null);
+
   // Bullet impact effects for boss hits
   const [bulletImpacts, setBulletImpacts] = useState<
     Array<{ x: number; y: number; startTime: number; isSuper: boolean }>
@@ -427,9 +433,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     requestAnimationFrame(animate);
   }, [getReadyActive]);
 
-  // Mobile ball glow animation - full intensity for 3s, fade out over 2s
+  // Ball glow animation - full intensity for 3s, fade out over 2s (both desktop and mobile)
   useEffect(() => {
-    if (!isMobileDevice || !getReadyActive || getReadyGlowStartTimeRef.current === null) return;
+    if (!getReadyActive || getReadyGlowStartTimeRef.current === null) return;
 
     const fullGlowDuration = 3000; // 3 seconds at full intensity
     const fadeOutDuration = 2000; // 2 seconds fade out
@@ -612,14 +618,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       (type: string) => {
         setPowerUpsCollectedTypes((prev) => new Set(prev).add(type));
 
-        // Trigger turret tutorial when turret is collected (only once per session)
+        // Trigger turret floating text tutorial when turret is collected (only once per session)
         if (tutorialEnabled && type === "turrets" && !turretTutorialTriggeredRef.current) {
           turretTutorialTriggeredRef.current = true;
-          const { shouldPause } = triggerTutorial("turret_collected", level);
-          if (shouldPause) {
-            setGameState("paused");
-            if (gameLoopRef.current) gameLoopRef.current.pause();
-          }
+          triggerTutorial("turret_collected", level); // This marks it as completed
+          setTurretFloatingText({ active: true, startTime: Date.now() });
         }
       },
       powerUpAssignments,
@@ -6319,6 +6322,50 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                               }}
                             >
                               Catch all letters for megabonus!
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {/* Turret Floating Text Tutorial */}
+                    {turretFloatingText?.active && (
+                      <div
+                        className="absolute inset-0 pointer-events-none z-[150] flex items-center justify-center"
+                        style={{
+                          transform: `scale(${gameScale})`,
+                          transformOrigin: "top center",
+                        }}
+                      >
+                        {(() => {
+                          const elapsed = Date.now() - turretFloatingText.startTime;
+                          const duration = 4000; // 4 seconds
+
+                          // Auto-dismiss after duration
+                          if (elapsed >= duration) {
+                            setTimeout(() => setTurretFloatingText(null), 0);
+                            return null;
+                          }
+
+                          // Zoom in/out animation
+                          const zoomPhase = (elapsed / 500) * Math.PI;
+                          const zoomScale = 1 + Math.sin(zoomPhase) * 0.3;
+                          const opacity =
+                            elapsed < 500 ? elapsed / 500 : elapsed > duration - 500 ? (duration - elapsed) / 500 : 1;
+
+                          return (
+                            <div
+                              className="retro-pixel-text text-center whitespace-nowrap"
+                              style={{
+                                transform: `scale(${zoomScale})`,
+                                color: "hsl(48, 100%, 60%)",
+                                textShadow: "0 0 10px hsl(48, 100%, 60%), 0 0 20px hsl(48, 100%, 50%)",
+                                fontSize: isMobileDevice ? "12px" : "16px",
+                                fontWeight: "bold",
+                                opacity,
+                              }}
+                            >
+                              Click to fire! Collect again for SUPER bullets!
                             </div>
                           );
                         })()}

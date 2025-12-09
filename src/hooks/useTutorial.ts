@@ -46,10 +46,11 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 'turret_collected',
     trigger: 'turret_collected',
-    title: 'TURRETS!',
-    message: '30 bullets - click to fire!\nCollect again for SUPER TURRETS',
-    pauseGame: true,
+    title: '',
+    message: 'Click to fire! Collect again for SUPER bullets!',
+    pauseGame: false,
     slowMotion: false,
+    floatingText: true,
   },
   {
     id: 'boss_intro',
