@@ -11,6 +11,7 @@ import crackedBrick3 from "@/assets/brick-cracked-3.png";
 import backgroundTile1 from "@/assets/background-tile.png";
 import backgroundTile2 from "@/assets/background-tile-2.png";
 import backgroundTile3 from "@/assets/background-tile-3.png";
+import backgroundTile4 from "@/assets/background-tile-4.png";
 
 interface GameCanvasProps {
   width: number;
@@ -60,9 +61,11 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const backgroundImage1Ref = useRef<HTMLImageElement | null>(null);
     const backgroundImage2Ref = useRef<HTMLImageElement | null>(null);
     const backgroundImage3Ref = useRef<HTMLImageElement | null>(null);
+    const backgroundImage4Ref = useRef<HTMLImageElement | null>(null);
     const backgroundPattern1Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern2Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern3Ref = useRef<CanvasPattern | null>(null);
+    const backgroundPattern4Ref = useRef<CanvasPattern | null>(null);
     const currentBgLevelRangeRef = useRef<number>(0);
     const bgRotationRef = useRef(0);
     const bgZoomRef = useRef(1);
@@ -178,6 +181,14 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         backgroundImage3Ref.current = backgroundImage3;
         backgroundPattern3Ref.current = null;
       };
+      
+      // Background 4 for levels 1-4
+      const backgroundImage4 = new Image();
+      backgroundImage4.src = backgroundTile4;
+      backgroundImage4.onload = () => {
+        backgroundImage4Ref.current = backgroundImage4;
+        backgroundPattern4Ref.current = null;
+      };
     }, []);
 
     useEffect(() => {
@@ -209,9 +220,13 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       } else if (level >= 6 && level <= 10) {
         bgImg = backgroundImage2Ref.current;
         bgPatternRef = backgroundPattern2Ref;
-      } else {
+      } else if (level === 5) {
         bgImg = backgroundImage1Ref.current;
         bgPatternRef = backgroundPattern1Ref;
+      } else {
+        // Levels 1-4
+        bgImg = backgroundImage4Ref.current;
+        bgPatternRef = backgroundPattern4Ref;
       }
       
       if (isImageValid(bgImg)) {
