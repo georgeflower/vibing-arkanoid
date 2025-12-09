@@ -114,7 +114,9 @@ export const GetReadyOverlay = ({
     );
   }
 
-  // Desktop version: ring highlight + floating text
+  // Desktop version: glow effect (same as mobile) + floating text
+  const glowSize = ringRadius * 3;
+  
   return (
     <div 
       ref={containerRef}
@@ -124,20 +126,20 @@ export const GetReadyOverlay = ({
         transition: 'opacity 0.3s ease-out',
       }}
     >
-      {/* Ball highlight ring */}
+      {/* Ball glow effect - same style as mobile */}
       <div
         className="absolute rounded-full"
         style={{
           left: ringX,
           top: ringY,
-          width: ringRadius * 2,
-          height: ringRadius * 2,
+          width: glowSize,
+          height: glowSize,
           transform: 'translate(-50%, -50%)',
-          border: '3px solid rgba(0, 255, 255, 0.8)',
+          background: 'radial-gradient(circle, rgba(100, 200, 255, 0.6) 0%, rgba(100, 200, 255, 0.3) 40%, transparent 70%)',
           boxShadow: `
-            0 0 20px rgba(0, 255, 255, 0.6),
-            0 0 40px rgba(0, 255, 255, 0.4),
-            inset 0 0 20px rgba(0, 255, 255, 0.2)
+            0 0 30px rgba(100, 200, 255, 0.8),
+            0 0 60px rgba(100, 200, 255, 0.5),
+            0 0 90px rgba(100, 200, 255, 0.3)
           `,
           animation: 'pulse 0.5s ease-in-out infinite',
         }}

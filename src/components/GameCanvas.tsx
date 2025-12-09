@@ -257,23 +257,36 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       }
       
       // Apply highlight flash effect for explosions/kills/extra life (levels 1-4 only)
+      // Uses high-contrast blend modes to target only bright pixels (blue tech lines)
       if (highlightFlash > 0 && level >= 1 && level <= 4) {
         ctx.save();
-        ctx.globalCompositeOperation = 'screen'; // Only affects bright pixels
         
         // Determine flash color based on intensity
         const isGolden = highlightFlash > 1.2; // Extra life = golden flash
         const intensity = Math.min(highlightFlash, 1.0);
         
-        if (isGolden) {
-          // Golden/warm flash for extra life
-          ctx.fillStyle = `rgba(255, 200, 100, ${intensity * 0.5})`;
-        } else {
-          // White/cyan flash for explosions and kills
-          ctx.fillStyle = `rgba(150, 220, 255, ${intensity * 0.4})`;
-        }
+        // First pass: 'lighten' mode - only affects pixels brighter than the fill color
+        // This targets the bright blue lightning/tech lines specifically
+        ctx.globalCompositeOperation = 'lighten';
         
+        if (isGolden) {
+          // Golden flash - brighten only the light areas with warm color
+          ctx.fillStyle = `rgba(255, 220, 100, ${intensity * 0.8})`;
+        } else {
+          // Cyan flash for explosions and kills - amplify the blue tech lines
+          ctx.fillStyle = `rgba(80, 180, 255, ${intensity * 0.7})`;
+        }
         ctx.fillRect(0, 0, width, height);
+        
+        // Second pass: 'color-dodge' for intense glow on bright spots
+        ctx.globalCompositeOperation = 'color-dodge';
+        if (isGolden) {
+          ctx.fillStyle = `rgba(255, 200, 50, ${intensity * 0.3})`;
+        } else {
+          ctx.fillStyle = `rgba(100, 200, 255, ${intensity * 0.25})`;
+        }
+        ctx.fillRect(0, 0, width, height);
+        
         ctx.restore();
       }
       
