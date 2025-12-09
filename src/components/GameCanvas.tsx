@@ -674,11 +674,55 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.lineWidth = 1;
         ctx.stroke();
 
+        // Draw rivets in corners
+        const rivetRadius = 3;
+        const rivetOffset = 6;
+        const rivetPositions = [
+          { x: rectX + rivetOffset, y: rectY + rivetOffset },
+          { x: rectX + rectWidth - rivetOffset, y: rectY + rivetOffset },
+          { x: rectX + rivetOffset, y: rectY + rectHeight - rivetOffset },
+          { x: rectX + rectWidth - rivetOffset, y: rectY + rectHeight - rivetOffset }
+        ];
+        
+        rivetPositions.forEach(pos => {
+          // Rivet base (dark)
+          const rivetGradient = ctx.createRadialGradient(
+            pos.x - 0.5, pos.y - 0.5, 0,
+            pos.x, pos.y, rivetRadius
+          );
+          rivetGradient.addColorStop(0, 'hsl(220, 8%, 70%)');   // Highlight
+          rivetGradient.addColorStop(0.4, 'hsl(220, 8%, 50%)'); // Mid
+          rivetGradient.addColorStop(1, 'hsl(220, 10%, 30%)');  // Shadow edge
+          
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, rivetRadius, 0, Math.PI * 2);
+          ctx.fillStyle = rivetGradient;
+          ctx.fill();
+          
+          // Rivet rim shadow
+          ctx.strokeStyle = 'hsla(220, 10%, 20%, 0.5)';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        });
+
         // Yellow outline with subtle glow
         ctx.shadowBlur = 8;
         ctx.shadowColor = 'rgba(255, 220, 0, 0.6)';
         ctx.strokeStyle = 'rgba(255, 220, 0, 0.8)';
         ctx.lineWidth = 2;
+        
+        // Redraw the rounded rect outline over rivets
+        ctx.beginPath();
+        ctx.moveTo(rectX + radius, rectY);
+        ctx.lineTo(rectX + rectWidth - radius, rectY);
+        ctx.quadraticCurveTo(rectX + rectWidth, rectY, rectX + rectWidth, rectY + radius);
+        ctx.lineTo(rectX + rectWidth, rectY + rectHeight - radius);
+        ctx.quadraticCurveTo(rectX + rectWidth, rectY + rectHeight, rectX + rectWidth - radius, rectY + rectHeight);
+        ctx.lineTo(rectX + radius, rectY + rectHeight);
+        ctx.quadraticCurveTo(rectX, rectY + rectHeight, rectX, rectY + rectHeight - radius);
+        ctx.lineTo(rectX, rectY + radius);
+        ctx.quadraticCurveTo(rectX, rectY, rectX + radius, rectY);
+        ctx.closePath();
         ctx.stroke();
         ctx.shadowBlur = 0;
 
