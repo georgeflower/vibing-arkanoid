@@ -16,18 +16,43 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const prompt = `Design a seamless, tileable 64×64 pixel art game tile with a sci-fi / Turrican vibe. Keep a 5×5 block grid feel but sharpen pixels and clean up noise for crisp retro display. Palette: muted greys and dark greys with a desaturated Amiga blue accent and overall faded colors (limited 10–14 color palette). Medium texture level: clear panel edges, small tech details, subtle bevel highlights, and short neon conduit lines in Amiga blue. Make edges match exactly so the tile repeats seamlessly horizontally and vertically. Visual elements: angular metallic plates, tiny vent/grate pixels, short circuit traces, and a few small glowing nodes; avoid organic speckle. Strong, readable contrast at small sizes; no text or logos. Output as a PNG-ready tile with solid background (no transparency).
+    // Parse request body for color palette option
+    let colorPalette = 'blue'; // default
+    try {
+      const body = await req.json();
+      if (body.colorPalette) {
+        colorPalette = body.colorPalette;
+      }
+    } catch {
+      // Use default if no body
+    }
+
+    // Define color-specific prompt parts
+    const colorPrompts: Record<string, { accent: string; description: string }> = {
+      blue: {
+        accent: 'desaturated Amiga blue',
+        description: 'short neon conduit lines in Amiga blue'
+      },
+      red: {
+        accent: 'deep crimson red and dark maroon',
+        description: 'short neon conduit lines in crimson red, warning lights, and danger zone accents'
+      }
+    };
+
+    const colors = colorPrompts[colorPalette] || colorPrompts.blue;
+
+    const prompt = `Design a seamless, tileable 64×64 pixel art game tile with a sci-fi / Turrican vibe. Keep a 5×5 block grid feel but sharpen pixels and clean up noise for crisp retro display. Palette: muted greys and dark greys with a ${colors.accent} accent and overall faded colors (limited 10–14 color palette). Medium texture level: clear panel edges, small tech details, subtle bevel highlights, and ${colors.description}. Make edges match exactly so the tile repeats seamlessly horizontally and vertically. Visual elements: angular metallic plates, tiny vent/grate pixels, short circuit traces, and a few small glowing nodes; avoid organic speckle. Strong, readable contrast at small sizes; no text or logos. Output as a PNG-ready tile with solid background (no transparency).
 
 Critical requirements for seamless tiling:
 - Every pixel on the left edge must be identical to the corresponding pixel on the right edge
 - Every pixel on the top edge must be identical to the corresponding pixel on the bottom edge
-- Blue conduit lines touching an edge must continue at the exact same position on the opposite edge
+- ${colorPalette === 'red' ? 'Red' : 'Blue'} conduit lines touching an edge must continue at the exact same position on the opposite edge
 - Bevel highlights and shadows must match across edges
 - Panel borders reaching an edge should meet an identical border on the opposite edge
 - Keep glowing nodes 2-3 pixels inside edges to avoid seam issues
 - Use exact same color indices at matching edge pixels`;
 
-    console.log('Generating background tile with Lovable AI...');
+    console.log(`Generating ${colorPalette} background tile with Lovable AI...`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -80,6 +105,7 @@ Critical requirements for seamless tiling:
     return new Response(JSON.stringify({ 
       success: true,
       imageUrl: imageUrl,
+      colorPalette: colorPalette,
       message: data.choices?.[0]?.message?.content || 'Image generated successfully'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
