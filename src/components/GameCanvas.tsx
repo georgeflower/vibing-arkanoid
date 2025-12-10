@@ -13,6 +13,7 @@ import backgroundTile2 from "@/assets/background-tile-2.png";
 import backgroundTile3 from "@/assets/background-tile-3.png";
 import backgroundTile4 from "@/assets/background-tile-4.png";
 import backgroundTile5 from "@/assets/background-tile-5.png";
+import backgroundTile6 from "@/assets/background-tile-6.png";
 
 interface GameCanvasProps {
   width: number;
@@ -65,11 +66,13 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const backgroundImage3Ref = useRef<HTMLImageElement | null>(null);
     const backgroundImage4Ref = useRef<HTMLImageElement | null>(null);
     const backgroundImage5Ref = useRef<HTMLImageElement | null>(null);
+    const backgroundImage6Ref = useRef<HTMLImageElement | null>(null);
     const backgroundPattern1Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern2Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern3Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern4Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern5Ref = useRef<CanvasPattern | null>(null);
+    const backgroundPattern6Ref = useRef<CanvasPattern | null>(null);
     const currentBgLevelRangeRef = useRef<number>(0);
     const bgRotationRef = useRef(0);
     const bgZoomRef = useRef(1);
@@ -201,6 +204,14 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         backgroundImage5Ref.current = backgroundImage5;
         backgroundPattern5Ref.current = null;
       };
+      
+      // Background 6 for levels 11-14 (purple palette)
+      const backgroundImage6 = new Image();
+      backgroundImage6.src = backgroundTile6;
+      backgroundImage6.onload = () => {
+        backgroundImage6Ref.current = backgroundImage6;
+        backgroundPattern6Ref.current = null;
+      };
     }, []);
 
     useEffect(() => {
@@ -226,9 +237,14 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       let bgImg: HTMLImageElement | null;
       let bgPatternRef: React.MutableRefObject<CanvasPattern | null>;
       
-      if (level >= 11 && level <= 15) {
+      if (level === 15) {
+        // Level 15 boss - use existing texture 3
         bgImg = backgroundImage3Ref.current;
         bgPatternRef = backgroundPattern3Ref;
+      } else if (level >= 11 && level <= 14) {
+        // Levels 11-14 - purple palette
+        bgImg = backgroundImage6Ref.current;
+        bgPatternRef = backgroundPattern6Ref;
       } else if (level === 10) {
         // Level 10 boss - use blue texture
         bgImg = backgroundImage2Ref.current;
