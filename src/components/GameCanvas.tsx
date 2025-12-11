@@ -12,8 +12,6 @@ import backgroundTile1 from "@/assets/background-tile.png";
 import backgroundTile2 from "@/assets/background-tile-2.png";
 import backgroundTile3 from "@/assets/background-tile-3.png";
 import backgroundTile4 from "@/assets/background-tile-4.png";
-import backgroundTile5 from "@/assets/background-tile-5.png";
-import backgroundTile6 from "@/assets/background-tile-6.png";
 
 interface GameCanvasProps {
   width: number;
@@ -65,14 +63,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const backgroundImage2Ref = useRef<HTMLImageElement | null>(null);
     const backgroundImage3Ref = useRef<HTMLImageElement | null>(null);
     const backgroundImage4Ref = useRef<HTMLImageElement | null>(null);
-    const backgroundImage5Ref = useRef<HTMLImageElement | null>(null);
-    const backgroundImage6Ref = useRef<HTMLImageElement | null>(null);
     const backgroundPattern1Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern2Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern3Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern4Ref = useRef<CanvasPattern | null>(null);
-    const backgroundPattern5Ref = useRef<CanvasPattern | null>(null);
-    const backgroundPattern6Ref = useRef<CanvasPattern | null>(null);
     const currentBgLevelRangeRef = useRef<number>(0);
     const bgRotationRef = useRef(0);
     const bgZoomRef = useRef(1);
@@ -196,22 +190,6 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         backgroundImage4Ref.current = backgroundImage4;
         backgroundPattern4Ref.current = null;
       };
-      
-      // Background 5 for levels 6-9 (red palette)
-      const backgroundImage5 = new Image();
-      backgroundImage5.src = backgroundTile5;
-      backgroundImage5.onload = () => {
-        backgroundImage5Ref.current = backgroundImage5;
-        backgroundPattern5Ref.current = null;
-      };
-      
-      // Background 6 for levels 11-14 (purple palette)
-      const backgroundImage6 = new Image();
-      backgroundImage6.src = backgroundTile6;
-      backgroundImage6.onload = () => {
-        backgroundImage6Ref.current = backgroundImage6;
-        backgroundPattern6Ref.current = null;
-      };
     }, []);
 
     useEffect(() => {
@@ -237,22 +215,12 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       let bgImg: HTMLImageElement | null;
       let bgPatternRef: React.MutableRefObject<CanvasPattern | null>;
       
-      if (level === 15) {
-        // Level 15 boss - use existing texture 3
+      if (level >= 11 && level <= 15) {
         bgImg = backgroundImage3Ref.current;
         bgPatternRef = backgroundPattern3Ref;
-      } else if (level >= 11 && level <= 14) {
-        // Levels 11-14 - purple palette
-        bgImg = backgroundImage6Ref.current;
-        bgPatternRef = backgroundPattern6Ref;
-      } else if (level === 10) {
-        // Level 10 boss - use blue texture
+      } else if (level >= 6 && level <= 10) {
         bgImg = backgroundImage2Ref.current;
         bgPatternRef = backgroundPattern2Ref;
-      } else if (level >= 6 && level <= 9) {
-        // Levels 6-9 - red palette
-        bgImg = backgroundImage5Ref.current;
-        bgPatternRef = backgroundPattern5Ref;
       } else if (level === 5) {
         bgImg = backgroundImage1Ref.current;
         bgPatternRef = backgroundPattern1Ref;
@@ -707,7 +675,16 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.scale(pulseScale, pulseScale);
         ctx.translate(-size / 2, -size / 2);
 
-        // All power-ups now use image rendering (no special emoji case)
+        // Boss power-ups - render with emoji
+        if (powerUp.type === 'bossStunner' || powerUp.type === 'reflectShield' || powerUp.type === 'homingBall') {
+          ctx.font = '48px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const emoji = powerUp.type === 'bossStunner' ? '⚡' : powerUp.type === 'reflectShield' ? '🪞' : '🎯';
+          ctx.fillText(emoji, size / 2, size / 2);
+          ctx.restore();
+          return;
+        }
         
         // Yellow rectangle with blur effect (static, like low-quality shield)
         const padding = 4;
