@@ -6,6 +6,9 @@ import slowdownImg from "@/assets/powerup-slowdown.png";
 import extendImg from "@/assets/powerup-extend.png";
 import shrinkImg from "@/assets/powerup-shrink.png";
 import shieldImg from "@/assets/powerup-shield.png";
+import stunnerImg from "@/assets/powerup-stunner.png";
+import reflectImg from "@/assets/powerup-reflect.png";
+import homingImg from "@/assets/powerup-homing.png";
 import type { PowerUpType } from "@/types/game";
 
 export const powerUpImages: Record<PowerUpType, string> = {
@@ -17,9 +20,9 @@ export const powerUpImages: Record<PowerUpType, string> = {
   paddleExtend: extendImg,
   paddleShrink: shrinkImg,
   shield: shieldImg,
-  bossStunner: "", // Rendered with emoji
-  reflectShield: "", // Rendered with emoji
-  homingBall: "", // Rendered with emoji
+  bossStunner: stunnerImg,
+  reflectShield: reflectImg,
+  homingBall: homingImg,
 };
 
 export const powerUpColors: Record<PowerUpType, string> = {

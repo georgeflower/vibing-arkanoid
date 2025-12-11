@@ -246,7 +246,7 @@ export const usePowerUps = (
             case "bossStunner":
               soundManager.playBossStunnerSound();
               onBossStunner?.();
-              toast.success("Boss Stunner! Boss frozen for 5 seconds!");
+              toast.success("Boss Freeze! Boss frozen for 5 seconds!");
               break;
 
             case "reflectShield":
