@@ -291,7 +291,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         let bgImg: HTMLImageElement | null = null;
         let bgPatternRef: React.MutableRefObject<CanvasPattern | null> = backgroundPattern4Ref;
         
-        if (level >= 16 && level <= 20) {
+        if (level >= 16 && level <= 19) {
           bgImg = backgroundImage1620Ref.current;
           bgPatternRef = backgroundPattern1620Ref;
         } else if (level >= 11 && level <= 14) {
