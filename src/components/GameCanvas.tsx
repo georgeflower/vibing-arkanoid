@@ -12,6 +12,7 @@ import backgroundTile1 from "@/assets/background-tile.png";
 import backgroundTile2 from "@/assets/background-tile-2.png";
 import backgroundTile3 from "@/assets/background-tile-3.png";
 import backgroundTile4 from "@/assets/background-tile-4.png";
+import bossLevel10Bg from "@/assets/boss-level-10-bg.png";
 
 interface GameCanvasProps {
   width: number;
@@ -63,6 +64,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const backgroundImage2Ref = useRef<HTMLImageElement | null>(null);
     const backgroundImage3Ref = useRef<HTMLImageElement | null>(null);
     const backgroundImage4Ref = useRef<HTMLImageElement | null>(null);
+    const bossLevel10BgRef = useRef<HTMLImageElement | null>(null);
     const backgroundPattern1Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern2Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern3Ref = useRef<CanvasPattern | null>(null);
@@ -190,6 +192,13 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         backgroundImage4Ref.current = backgroundImage4;
         backgroundPattern4Ref.current = null;
       };
+      
+      // Boss level 10 background (fitted, not tiled)
+      const bossLevel10BgImage = new Image();
+      bossLevel10BgImage.src = bossLevel10Bg;
+      bossLevel10BgImage.onload = () => {
+        bossLevel10BgRef.current = bossLevel10BgImage;
+      };
     }, []);
 
     useEffect(() => {
@@ -214,46 +223,55 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       // Draw tiled background based on level
       let bgImg: HTMLImageElement | null;
       let bgPatternRef: React.MutableRefObject<CanvasPattern | null>;
+      let useFittedBackground = false;
       
-      if (level >= 11 && level <= 15) {
-        bgImg = backgroundImage3Ref.current;
-        bgPatternRef = backgroundPattern3Ref;
-      } else if (level >= 6 && level <= 10) {
-        bgImg = backgroundImage2Ref.current;
-        bgPatternRef = backgroundPattern2Ref;
-      } else if (level === 5) {
-        bgImg = backgroundImage1Ref.current;
-        bgPatternRef = backgroundPattern1Ref;
-      } else {
-        // Levels 1-4
-        bgImg = backgroundImage4Ref.current;
-        bgPatternRef = backgroundPattern4Ref;
+      // Boss level 10 uses a fitted background (not tiled)
+      if (level === 10 && isImageValid(bossLevel10BgRef.current)) {
+        ctx.drawImage(bossLevel10BgRef.current, 0, 0, width, height);
+        useFittedBackground = true;
       }
       
-      if (isImageValid(bgImg)) {
-        // Create pattern if not already created
-        if (!bgPatternRef.current) {
-          bgPatternRef.current = ctx.createPattern(bgImg, 'repeat');
+      if (!useFittedBackground) {
+        if (level >= 11 && level <= 15) {
+          bgImg = backgroundImage3Ref.current;
+          bgPatternRef = backgroundPattern3Ref;
+        } else if (level >= 6 && level <= 10) {
+          bgImg = backgroundImage2Ref.current;
+          bgPatternRef = backgroundPattern2Ref;
+        } else if (level === 5) {
+          bgImg = backgroundImage1Ref.current;
+          bgPatternRef = backgroundPattern1Ref;
+        } else {
+          // Levels 1-4
+          bgImg = backgroundImage4Ref.current;
+          bgPatternRef = backgroundPattern4Ref;
         }
         
-        if (bgPatternRef.current) {
-          ctx.fillStyle = bgPatternRef.current;
-          ctx.fillRect(0, 0, width, height);
+        if (isImageValid(bgImg)) {
+          // Create pattern if not already created
+          if (!bgPatternRef.current) {
+            bgPatternRef.current = ctx.createPattern(bgImg, 'repeat');
+          }
           
-          // Dim background for levels 1-4 (40% darker)
-          if (level >= 1 && level <= 4) {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+          if (bgPatternRef.current) {
+            ctx.fillStyle = bgPatternRef.current;
             ctx.fillRect(0, 0, width, height);
-            
-            // Subtle ambient flicker on brighter areas (only levels 1-4)
-            const ambientFlicker = Math.sin(Date.now() / 500) * 0.03 + 0.03;
-            ctx.save();
-            ctx.globalCompositeOperation = 'screen';
-            ctx.fillStyle = `rgba(100, 150, 200, ${ambientFlicker})`;
-            ctx.fillRect(0, 0, width, height);
-            ctx.restore();
           }
         }
+      }
+          
+      // Dim background for levels 1-4 (40% darker)
+      if (level >= 1 && level <= 4) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.fillRect(0, 0, width, height);
+        
+        // Subtle ambient flicker on brighter areas (only levels 1-4)
+        const ambientFlicker = Math.sin(Date.now() / 500) * 0.03 + 0.03;
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = `rgba(100, 150, 200, ${ambientFlicker})`;
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
       }
       
       // Apply highlight flash effect for explosions/kills/extra life (levels 1-4 only)
