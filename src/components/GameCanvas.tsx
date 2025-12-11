@@ -12,7 +12,12 @@ import backgroundTile1 from "@/assets/background-tile.png";
 import backgroundTile2 from "@/assets/background-tile-2.png";
 import backgroundTile3 from "@/assets/background-tile-3.png";
 import backgroundTile4 from "@/assets/background-tile-4.png";
+import backgroundTile69 from "@/assets/background-tile-6-9.png";
+import backgroundTile1114 from "@/assets/background-tile-11-14.png";
+import backgroundTile1620 from "@/assets/background-tile-16-20.png";
+import bossLevel5Bg from "@/assets/boss-level-5-bg.png";
 import bossLevel10Bg from "@/assets/boss-level-10-bg.png";
+import bossLevel15Bg from "@/assets/boss-level-15-bg.png";
 
 interface GameCanvasProps {
   width: number;
@@ -64,11 +69,19 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const backgroundImage2Ref = useRef<HTMLImageElement | null>(null);
     const backgroundImage3Ref = useRef<HTMLImageElement | null>(null);
     const backgroundImage4Ref = useRef<HTMLImageElement | null>(null);
+    const backgroundImage69Ref = useRef<HTMLImageElement | null>(null);
+    const backgroundImage1114Ref = useRef<HTMLImageElement | null>(null);
+    const backgroundImage1620Ref = useRef<HTMLImageElement | null>(null);
+    const bossLevel5BgRef = useRef<HTMLImageElement | null>(null);
     const bossLevel10BgRef = useRef<HTMLImageElement | null>(null);
+    const bossLevel15BgRef = useRef<HTMLImageElement | null>(null);
     const backgroundPattern1Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern2Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern3Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern4Ref = useRef<CanvasPattern | null>(null);
+    const backgroundPattern69Ref = useRef<CanvasPattern | null>(null);
+    const backgroundPattern1114Ref = useRef<CanvasPattern | null>(null);
+    const backgroundPattern1620Ref = useRef<CanvasPattern | null>(null);
     const currentBgLevelRangeRef = useRef<number>(0);
     const bgRotationRef = useRef(0);
     const bgZoomRef = useRef(1);
@@ -193,11 +206,49 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         backgroundPattern4Ref.current = null;
       };
       
+      // Background for levels 6-9 (tiled)
+      const backgroundImage69 = new Image();
+      backgroundImage69.src = backgroundTile69;
+      backgroundImage69.onload = () => {
+        backgroundImage69Ref.current = backgroundImage69;
+        backgroundPattern69Ref.current = null;
+      };
+      
+      // Background for levels 11-14 (tiled)
+      const backgroundImage1114 = new Image();
+      backgroundImage1114.src = backgroundTile1114;
+      backgroundImage1114.onload = () => {
+        backgroundImage1114Ref.current = backgroundImage1114;
+        backgroundPattern1114Ref.current = null;
+      };
+      
+      // Background for levels 16-20 (tiled)
+      const backgroundImage1620 = new Image();
+      backgroundImage1620.src = backgroundTile1620;
+      backgroundImage1620.onload = () => {
+        backgroundImage1620Ref.current = backgroundImage1620;
+        backgroundPattern1620Ref.current = null;
+      };
+      
+      // Boss level 5 background (fitted, not tiled)
+      const bossLevel5BgImage = new Image();
+      bossLevel5BgImage.src = bossLevel5Bg;
+      bossLevel5BgImage.onload = () => {
+        bossLevel5BgRef.current = bossLevel5BgImage;
+      };
+      
       // Boss level 10 background (fitted, not tiled)
       const bossLevel10BgImage = new Image();
       bossLevel10BgImage.src = bossLevel10Bg;
       bossLevel10BgImage.onload = () => {
         bossLevel10BgRef.current = bossLevel10BgImage;
+      };
+      
+      // Boss level 15 background (fitted, not tiled)
+      const bossLevel15BgImage = new Image();
+      bossLevel15BgImage.src = bossLevel15Bg;
+      bossLevel15BgImage.onload = () => {
+        bossLevel15BgRef.current = bossLevel15BgImage;
       };
     }, []);
 
@@ -225,22 +276,28 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       let bgPatternRef: React.MutableRefObject<CanvasPattern | null>;
       let useFittedBackground = false;
       
-      // Boss level 10 uses a fitted background (not tiled)
-      if (level === 10 && isImageValid(bossLevel10BgRef.current)) {
+      // Boss levels use fitted backgrounds (not tiled)
+      if (level === 5 && isImageValid(bossLevel5BgRef.current)) {
+        ctx.drawImage(bossLevel5BgRef.current, 0, 0, width, height);
+        useFittedBackground = true;
+      } else if (level === 10 && isImageValid(bossLevel10BgRef.current)) {
         ctx.drawImage(bossLevel10BgRef.current, 0, 0, width, height);
+        useFittedBackground = true;
+      } else if (level === 15 && isImageValid(bossLevel15BgRef.current)) {
+        ctx.drawImage(bossLevel15BgRef.current, 0, 0, width, height);
         useFittedBackground = true;
       }
       
       if (!useFittedBackground) {
-        if (level >= 11 && level <= 15) {
-          bgImg = backgroundImage3Ref.current;
-          bgPatternRef = backgroundPattern3Ref;
-        } else if (level >= 6 && level <= 10) {
-          bgImg = backgroundImage2Ref.current;
-          bgPatternRef = backgroundPattern2Ref;
-        } else if (level === 5) {
-          bgImg = backgroundImage1Ref.current;
-          bgPatternRef = backgroundPattern1Ref;
+        if (level >= 16 && level <= 20) {
+          bgImg = backgroundImage1620Ref.current;
+          bgPatternRef = backgroundPattern1620Ref;
+        } else if (level >= 11 && level <= 14) {
+          bgImg = backgroundImage1114Ref.current;
+          bgPatternRef = backgroundPattern1114Ref;
+        } else if (level >= 6 && level <= 9) {
+          bgImg = backgroundImage69Ref.current;
+          bgPatternRef = backgroundPattern69Ref;
         } else {
           // Levels 1-4
           bgImg = backgroundImage4Ref.current;
