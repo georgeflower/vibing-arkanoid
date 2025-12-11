@@ -707,16 +707,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.scale(pulseScale, pulseScale);
         ctx.translate(-size / 2, -size / 2);
 
-        // Boss power-ups - render with emoji
-        if (powerUp.type === 'bossStunner' || powerUp.type === 'reflectShield' || powerUp.type === 'homingBall') {
-          ctx.font = '48px Arial';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          const emoji = powerUp.type === 'bossStunner' ? '⚡' : powerUp.type === 'reflectShield' ? '🪞' : '🎯';
-          ctx.fillText(emoji, size / 2, size / 2);
-          ctx.restore();
-          return;
-        }
+        // All power-ups now use image rendering (no special emoji case)
         
         // Yellow rectangle with blur effect (static, like low-quality shield)
         const padding = 4;

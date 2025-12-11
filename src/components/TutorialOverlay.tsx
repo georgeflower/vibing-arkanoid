@@ -381,10 +381,6 @@ export const TutorialOverlay = ({
                 height: highlightPosition.height,
               }}
             />
-          ) : highlightPosition.type === 'bossStunner' || highlightPosition.type === 'reflectShield' || highlightPosition.type === 'homingBall' ? (
-            <span style={{ fontSize: `${highlightPosition.width}px` }}>
-              {highlightPosition.type === 'bossStunner' ? '⚡' : highlightPosition.type === 'reflectShield' ? '🪞' : '🎯'}
-            </span>
           ) : highlightPosition.type && powerUpImages[highlightPosition.type as PowerUpType] ? (
             <div
               style={{
