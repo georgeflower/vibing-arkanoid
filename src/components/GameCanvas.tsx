@@ -272,8 +272,6 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       ctx.fillRect(0, 0, width, height);
       
       // Draw tiled background based on level
-      let bgImg: HTMLImageElement | null;
-      let bgPatternRef: React.MutableRefObject<CanvasPattern | null>;
       let useFittedBackground = false;
       
       // Boss levels use fitted backgrounds (not tiled)
@@ -289,6 +287,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       }
       
       if (!useFittedBackground) {
+        // Determine which background tile to use based on level
+        let bgImg: HTMLImageElement | null = null;
+        let bgPatternRef: React.MutableRefObject<CanvasPattern | null> = backgroundPattern4Ref;
+        
         if (level >= 16 && level <= 20) {
           bgImg = backgroundImage1620Ref.current;
           bgPatternRef = backgroundPattern1620Ref;
