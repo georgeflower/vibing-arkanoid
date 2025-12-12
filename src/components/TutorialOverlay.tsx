@@ -280,7 +280,7 @@ export const TutorialOverlay = ({
         transition: 'opacity 0.3s ease-out',
       }}
     >
-      {/* SVG mask for flashlight effect - uses viewport dimensions */}
+      {/* Light dimming overlay with cutout for highlight */}
       {hasHighlight ? (
         <svg 
           width={viewportWidth}
@@ -289,128 +289,72 @@ export const TutorialOverlay = ({
           style={{ pointerEvents: 'none' }}
         >
           <defs>
-            <radialGradient id="spotlightGradient" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="black" stopOpacity="0" />
-              <stop offset="70%" stopColor="black" stopOpacity="0" />
-              <stop offset="100%" stopColor="black" stopOpacity="0.85" />
-            </radialGradient>
             <mask id="spotlightMask">
               <rect width="100%" height="100%" fill="white" />
               <circle 
-                cx={spotlightX} 
-                cy={spotlightY} 
-                r={spotlightRadius}
-                fill="url(#spotlightGradient)"
-                style={{
-                  transition: isDismissing ? 'r 0.4s ease-in-out' : 'r 0.5s ease-out',
-                }}
+                cx={spotlightX + wobble.x * 0.3} 
+                cy={spotlightY + wobble.y * 0.3} 
+                r={spotlightRadius + 8}
+                fill="black"
               />
             </mask>
           </defs>
-          {/* No dimming - removed for better visibility */}
-          {/* Glow ring around spotlight */}
-          <circle 
-            cx={spotlightX} 
-            cy={spotlightY} 
-            r={spotlightRadius * 1.1}
-            fill="none"
-            stroke="rgba(0, 255, 255, 0.3)"
-            strokeWidth="4"
+          {/* Light dim overlay - 30% opacity */}
+          <rect 
+            width="100%" 
+            height="100%" 
+            fill="rgba(0, 0, 0, 0.3)" 
+            mask="url(#spotlightMask)"
             style={{
-              transition: isDismissing ? 'r 0.4s ease-in-out, opacity 0.3s' : 'r 0.5s ease-out',
+              transition: 'opacity 0.3s',
+              opacity: isDismissing ? 0 : 1,
+            }}
+          />
+          {/* Animated circle around the actual game element */}
+          <circle 
+            cx={spotlightX + wobble.x * 0.3} 
+            cy={spotlightY + wobble.y * 0.3} 
+            r={spotlightRadius + 6}
+            fill="none"
+            stroke="rgba(0, 255, 255, 0.8)"
+            strokeWidth="3"
+            style={{
+              transition: isDismissing ? 'opacity 0.3s' : 'none',
               opacity: isDismissing ? 0 : 1,
             }}
           />
           <circle 
-            cx={spotlightX} 
-            cy={spotlightY} 
-            r={spotlightRadius * 1.05}
+            cx={spotlightX + wobble.x * 0.3} 
+            cy={spotlightY + wobble.y * 0.3} 
+            r={spotlightRadius + 12}
             fill="none"
-            stroke="rgba(255, 255, 0, 0.2)"
+            stroke="rgba(255, 255, 0, 0.4)"
             strokeWidth="2"
             style={{
-              transition: isDismissing ? 'r 0.4s ease-in-out, opacity 0.3s' : 'r 0.5s ease-out',
+              transition: isDismissing ? 'opacity 0.3s' : 'none',
               opacity: isDismissing ? 0 : 1,
             }}
           />
-          {/* Connecting line from TOP of highlight circle to popup frame bottom */}
+          {/* Connecting line from highlight to popup */}
           <line
-            x1={spotlightX + wobble.x * 0.5}
-            y1={spotlightY - spotlightRadius + wobble.y * 0.5}
+            x1={spotlightX + wobble.x * 0.3}
+            y1={spotlightY - spotlightRadius - 8 + wobble.y * 0.3}
             x2={viewportWidth / 2 + sway}
             y2={typeof popupPosition.top === 'number' ? popupPosition.top + 100 : viewportHeight * 0.4 + 100}
-            stroke="rgba(0, 255, 255, 0.6)"
+            stroke="rgba(0, 255, 255, 0.5)"
             strokeWidth="2"
             strokeDasharray="6,4"
             style={{
               transition: 'opacity 0.3s',
-              opacity: isDismissing ? 0 : 0.8,
+              opacity: isDismissing ? 0 : 0.7,
             }}
           />
         </svg>
       ) : (
         <div 
           className="absolute inset-0"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}
         />
-      )}
-
-      {/* Zoomed highlight rendering */}
-      {hasHighlight && highlightPosition && (
-        <div
-          className="absolute pointer-events-none flex items-center justify-center"
-          style={{
-            left: spotlightX,
-            top: spotlightY,
-            width: highlightPosition.width,
-            height: highlightPosition.height,
-            transform: `translate(-50%, -50%) scale(${zoomScale})`,
-            transition: isDismissing ? 'transform 0.4s ease-in-out, opacity 0.3s' : 'transform 0.5s ease-out',
-            opacity: isDismissing ? 0 : 1,
-            zIndex: 201,
-          }}
-        >
-          {/* Render based on highlight type */}
-          {(highlightPosition.type === 'boss' || highlightPosition.type === 'enemy') ? (
-            <canvas
-              ref={entityCanvasRef}
-              width={highlightPosition.width * 2}
-              height={highlightPosition.height * 2}
-              style={{
-                width: highlightPosition.width,
-                height: highlightPosition.height,
-              }}
-            />
-          ) : highlightPosition.type === 'bossStunner' || highlightPosition.type === 'reflectShield' || highlightPosition.type === 'homingBall' ? (
-            <span style={{ fontSize: `${highlightPosition.width}px` }}>
-              {highlightPosition.type === 'bossStunner' ? '⚡' : highlightPosition.type === 'reflectShield' ? '🪞' : '🎯'}
-            </span>
-          ) : highlightPosition.type && powerUpImages[highlightPosition.type as PowerUpType] ? (
-            <div
-              style={{
-                width: highlightPosition.width,
-                height: highlightPosition.height,
-                borderRadius: 4,
-                backgroundColor: 'hsl(0, 0%, 70%)',
-                boxShadow: '0 0 10px hsl(280, 60%, 55%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-              }}
-            >
-              <img
-                src={powerUpImages[highlightPosition.type as PowerUpType]}
-                alt="Power-up"
-                style={{
-                  width: '80%',
-                  height: '80%',
-                  objectFit: 'contain',
-                }}
-              />
-            </div>
-          ) : null}
-        </div>
       )}
 
       {/* Tutorial popup box - dynamically positioned with sway */}
