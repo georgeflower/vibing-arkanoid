@@ -1,6 +1,34 @@
-export const GAME_VERSION = "0.8.3";
+export const GAME_VERSION = "0.8.6";
 
 export const CHANGELOG = [
+  {
+    version: "0.8.6",
+    changes: [
+      "Added Starting Level selector to main menu - choose any level you've previously reached",
+      "Level progress is saved locally - your highest level is remembered between sessions",
+      "Locked levels show a floating warning message when selected",
+      "Project cleanup: removed documentation folder for streamlined codebase",
+    ],
+  },
+  {
+    version: "0.8.5",
+    changes: [
+      "Overhauled tutorial system with pulsating radial glow around game elements",
+      "Removed redundant tutorial overlays (turret/minion) for cleaner experience",
+      "Fixed tutorial highlight positioning on mobile devices",
+      "Tutorial overlays now positioned inside scaled game container for accuracy",
+    ],
+  },
+  {
+    version: "0.8.4",
+    changes: [
+      "Added darker sci-fi background for levels 1-4 with 40% dimming overlay",
+      "Dynamic high-contrast flash effects: cyan for explosions/kills, golden for extra lives",
+      "Flash effects use overlay/soft-light blend modes to highlight tech lines only",
+      "Updated tiled backgrounds for levels 6-9, 11-14, and 16-19",
+      "Added unique fitted backgrounds for boss levels 5, 10, 15, and 20",
+    ],
+  },
   {
     version: "0.8.3",
     changes: [
