@@ -18,8 +18,10 @@ import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { useAdaptiveQuality } from "@/hooks/useAdaptiveQuality";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { TopScoresDisplay } from "./TopScoresDisplay";
-import { X } from "lucide-react";
+import { X, ChevronUp, ChevronDown } from "lucide-react";
 import { useTutorial } from "@/hooks/useTutorial";
+import { useLevelProgress } from "@/hooks/useLevelProgress";
+import { FINAL_LEVEL } from "@/constants/game";
 
 interface MainMenuProps {
   onStartGame: (settings: GameSettings) => void;
@@ -35,6 +37,12 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [showPressToStart, setShowPressToStart] = useState(true);
   const [showChangelog, setShowChangelog] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
+  
+  // Starting level state
+  const [startingLevel, setStartingLevel] = useState(1);
+  const [showLockedMessage, setShowLockedMessage] = useState(false);
+  const lockedMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { maxLevelReached, isLevelUnlocked } = useLevelProgress();
   
   // Refs for swipe gesture detection
   const highScoresRef = useRef<HTMLDivElement>(null);
@@ -73,8 +81,30 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
     const settings: GameSettings = {
       startingLives: 3,
       difficulty,
+      startingLevel,
     };
     onStartGame(settings);
+  };
+
+  const handleLevelChange = (delta: number) => {
+    const newLevel = startingLevel + delta;
+    if (newLevel < 1 || newLevel > FINAL_LEVEL) return;
+    
+    soundManager.playMenuClick();
+    setStartingLevel(newLevel);
+    
+    if (!isLevelUnlocked(newLevel)) {
+      // Show locked message
+      if (lockedMessageTimeoutRef.current) {
+        clearTimeout(lockedMessageTimeoutRef.current);
+      }
+      setShowLockedMessage(true);
+      lockedMessageTimeoutRef.current = setTimeout(() => {
+        setShowLockedMessage(false);
+      }, 2000);
+    } else {
+      setShowLockedMessage(false);
+    }
   };
 
   // Swipe gesture handlers for all sub-screens
@@ -556,6 +586,46 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             </RadioGroup>
           </div>
 
+          {/* Starting Level Selector */}
+          <div className="space-y-2 pt-2 border-t border-[hsl(200,70%,50%)]/30 relative">
+            <Label className="text-white text-base">Starting Level</Label>
+            <div className="flex items-center justify-center gap-4">
+              <button
+                onClick={() => handleLevelChange(-1)}
+                onMouseEnter={() => soundManager.playMenuHover()}
+                disabled={startingLevel <= 1}
+                className="p-2 rounded-lg bg-[hsl(220,20%,20%)] hover:bg-[hsl(220,20%,30%)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronDown className="w-5 h-5 text-[hsl(200,70%,50%)]" />
+              </button>
+              <span 
+                className={`text-2xl font-mono min-w-[60px] text-center transition-colors ${
+                  isLevelUnlocked(startingLevel) 
+                    ? 'text-white' 
+                    : 'text-gray-500'
+                }`}
+                style={{ fontFamily: "'Press Start 2P', monospace" }}
+              >
+                {startingLevel.toString().padStart(2, '0')}
+              </span>
+              <button
+                onClick={() => handleLevelChange(1)}
+                onMouseEnter={() => soundManager.playMenuHover()}
+                disabled={startingLevel >= FINAL_LEVEL}
+                className="p-2 rounded-lg bg-[hsl(220,20%,20%)] hover:bg-[hsl(220,20%,30%)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronUp className="w-5 h-5 text-[hsl(200,70%,50%)]" />
+              </button>
+            </div>
+            
+            {/* Locked level floating message */}
+            {showLockedMessage && (
+              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-4 py-2 bg-[hsl(0,85%,45%)] text-white text-xs rounded-lg shadow-lg animate-pulse whitespace-nowrap z-10">
+                You have not made it to this level yet!
+              </div>
+            )}
+          </div>
+
           {/* Tutorial Toggle */}
           <div className="space-y-2 pt-2 border-t border-[hsl(200,70%,50%)]/30">
             <div className="flex justify-between items-center">
@@ -588,11 +658,26 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
         <div className="space-y-2 mt-6">
           <Button
             onClick={() => {
+              if (!isLevelUnlocked(startingLevel)) {
+                soundManager.playMenuClick();
+                if (lockedMessageTimeoutRef.current) {
+                  clearTimeout(lockedMessageTimeoutRef.current);
+                }
+                setShowLockedMessage(true);
+                lockedMessageTimeoutRef.current = setTimeout(() => {
+                  setShowLockedMessage(false);
+                }, 2000);
+                return;
+              }
               soundManager.playMenuClick();
               handleStart();
             }}
             onMouseEnter={() => soundManager.playMenuHover()}
-            className="w-full bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)] text-white text-lg py-4"
+            className={`w-full text-white text-lg py-4 ${
+              isLevelUnlocked(startingLevel)
+                ? 'bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)]'
+                : 'bg-gray-600 cursor-not-allowed'
+            }`}
           >
             Start Game
           </Button>

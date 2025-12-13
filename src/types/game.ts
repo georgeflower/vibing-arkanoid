@@ -214,4 +214,5 @@ export type Difficulty = "normal" | "godlike";
 export interface GameSettings {
   startingLives: number;
   difficulty: Difficulty;
+  startingLevel: number;
 }
