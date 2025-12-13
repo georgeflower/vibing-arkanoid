@@ -1288,9 +1288,35 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBossAttacks([]);
     setBossActive(false);
     setLaserWarnings([]);
+    setBossIntroActive(false);
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
-  }, [setPowerUps, initBricksForLevel, createRandomLetterAssignments, initPowerUpAssignments]);
+    
+    // If starting on a boss level, trigger boss intro sequence after state reset
+    if (BOSS_LEVELS.includes(startLevel)) {
+      setTimeout(() => {
+        // Reinitialize the boss after state is cleared
+        initBricksForLevel(startLevel);
+        
+        // Start intro sequence
+        setBossIntroActive(true);
+        soundManager.playBossIntroSound();
+        
+        // Show boss name and start boss music after 1 second
+        setTimeout(() => {
+          soundManager.playBossMusic(startLevel);
+          const bossName =
+            startLevel === 5 ? "CUBE GUARDIAN" : startLevel === 10 ? "SPHERE DESTROYER" : "PYRAMID LORD";
+          toast.error(`⚠️ BOSS APPROACHING: ${bossName} ⚠️`, { duration: 3000 });
+        }, 1000);
+        
+        // End intro after 3 seconds
+        setTimeout(() => {
+          setBossIntroActive(false);
+        }, 3000);
+      }, 100);
+    }
+  }, [setPowerUps, initBricksForLevel, createRandomLetterAssignments, initPowerUpAssignments, settings.startingLevel]);
   const nextLevel = useCallback(() => {
     // Stop game loop before starting new level
     if (gameLoopRef.current) {
