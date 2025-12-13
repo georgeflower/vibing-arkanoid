@@ -11,7 +11,6 @@ interface TutorialOverlayProps {
   isPaused: boolean;
   isSlowMotion: boolean;
   highlightPosition?: { x: number; y: number; width: number; height: number; type?: string; bossType?: BossType } | null;
-  canvasRect?: DOMRect | null;
   bonusLetterPosition?: { x: number; y: number } | null;
   canvasWidth?: number;
   canvasHeight?: number;
@@ -24,7 +23,6 @@ export const TutorialOverlay = ({
   isPaused,
   isSlowMotion,
   highlightPosition,
-  canvasRect,
   bonusLetterPosition,
   canvasWidth = 850,
   canvasHeight = 650,
@@ -37,6 +35,8 @@ export const TutorialOverlay = ({
   const [rotation, setRotation] = useState({ x: 0.3, y: 0, z: 0.1 });
   const [isMobile, setIsMobile] = useState(false);
   const entityCanvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
   // Check for mobile device
   useEffect(() => {
@@ -195,96 +195,90 @@ export const TutorialOverlay = ({
     return () => document.removeEventListener('touchstart', handleTouchStart, { capture: true });
   }, [handleDismiss]);
 
-  // Use viewport dimensions for fixed positioning - track as state for mobile updates
-  const [viewportDimensions, setViewportDimensions] = useState({
-    width: typeof window !== 'undefined' ? window.innerWidth : 800,
-    height: typeof window !== 'undefined' ? window.innerHeight : 600,
-  });
-
-  // Update viewport dimensions on resize/orientation change for mobile accuracy
+  // Measure overlay container size for coordinate mapping
   useEffect(() => {
-    const updateDimensions = () => {
-      setViewportDimensions({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
+    const measureContainer = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setContainerSize({ width: rect.width, height: rect.height });
+      }
     };
-    
-    window.addEventListener('resize', updateDimensions);
-    window.addEventListener('orientationchange', updateDimensions);
-    
-    // Also update after a short delay to catch any layout shifts
-    const initialTimeout = setTimeout(updateDimensions, 100);
-    
-    return () => {
-      window.removeEventListener('resize', updateDimensions);
-      window.removeEventListener('orientationchange', updateDimensions);
-      clearTimeout(initialTimeout);
-    };
+
+    measureContainer();
+    window.addEventListener("resize", measureContainer);
+    return () => window.removeEventListener("resize", measureContainer);
   }, []);
 
-  const viewportWidth = viewportDimensions.width;
-  const viewportHeight = viewportDimensions.height;
+  const containerWidth = containerSize.width;
+  const containerHeight = containerSize.height;
 
   // Calculate spotlight position relative to overlay with clamping
-  const hasHighlight = (step.highlight?.type === 'power_up' || step.highlight?.type === 'boss' || step.highlight?.type === 'enemy') && highlightPosition && canvasRect;
-  
-  // Calculate spotlight position using ratio-based mapping (works with CSS transform: scale)
-  // getBoundingClientRect() returns visually transformed bounds, so we map game coords as ratios
-  const spotlightX = hasHighlight && canvasRect
-    ? canvasRect.left + ((highlightPosition.x + highlightPosition.width / 2) / canvasWidth) * canvasRect.width
+  const hasHighlight =
+    (step.highlight?.type === "power_up" || step.highlight?.type === "boss" || step.highlight?.type === "enemy") &&
+    highlightPosition &&
+    containerWidth > 0 &&
+    containerHeight > 0;
+
+  // Scale from game coords -> container coords
+  const scaleX = hasHighlight ? containerWidth / canvasWidth : 1;
+  const scaleY = hasHighlight ? containerHeight / canvasHeight : 1;
+
+  const spotlightX = hasHighlight
+    ? (highlightPosition.x + highlightPosition.width / 2) * scaleX
     : 0;
-  const spotlightY = hasHighlight && canvasRect
-    ? canvasRect.top + ((highlightPosition.y + highlightPosition.height / 2) / canvasHeight) * canvasRect.height
+  const spotlightY = hasHighlight
+    ? (highlightPosition.y + highlightPosition.height / 2) * scaleY
     : 0;
-  
-  // Calculate spotlight radius using ratio-based scaling
-  const scaleRatio = canvasRect ? canvasRect.width / canvasWidth : 1;
-  const baseSpotlightRadius = hasHighlight ? Math.max(highlightPosition.width, highlightPosition.height) * 0.8 * scaleRatio : 0;
+
+  // Spotlight radius based on highlight size
+  const baseSpotlightRadius = hasHighlight
+    ? Math.max(highlightPosition.width, highlightPosition.height) * 0.8 * Math.min(scaleX, scaleY)
+    : 0;
   const spotlightRadius = baseSpotlightRadius * zoomScale;
 
 
   // Calculate popup position to avoid overlapping with highlight
   const calculatePopupPosition = () => {
-    if (!hasHighlight || !highlightPosition || !canvasRect) {
+    if (!hasHighlight || !highlightPosition) {
       // No highlight - center the popup vertically on mobile
-      return { top: isMobile ? viewportHeight * 0.4 : 100, bottom: 'auto' };
+      return { top: isMobile ? containerHeight * 0.4 : 100, bottom: "auto" };
     }
-    
+
     const highlightBottom = spotlightY + spotlightRadius;
     const highlightTop = spotlightY - spotlightRadius;
-    
+
     // Popup approximate height
     const popupHeight = isMobile ? 120 : 150;
-    
-    // If highlight is in top half of viewport, put popup below
-    if (spotlightY < viewportHeight * 0.45) {
-      const topPos = Math.min(highlightBottom + 40, viewportHeight - popupHeight - 50);
-      return { top: Math.max(topPos, viewportHeight * 0.5), bottom: 'auto' };
+
+    // If highlight is in top half of container, put popup below
+    if (spotlightY < containerHeight * 0.45) {
+      const topPos = Math.min(highlightBottom + 40, containerHeight - popupHeight - 50);
+      return { top: Math.max(topPos, containerHeight * 0.5), bottom: "auto" };
     } else {
       // Highlight is in bottom half - put popup at top
-      const topPos = Math.min(highlightTop - popupHeight - 40, viewportHeight * 0.25);
-      return { top: Math.max(80, topPos), bottom: 'auto' };
+      const topPos = Math.min(highlightTop - popupHeight - 40, containerHeight * 0.25);
+      return { top: Math.max(80, topPos), bottom: "auto" };
     }
   };
   
   const popupPosition = calculatePopupPosition();
 
   return (
-    <div 
-      className="fixed inset-0 z-[200] pointer-events-auto"
+    <div
+      ref={containerRef}
+      className="absolute inset-0 z-[200] pointer-events-auto"
       style={{
         opacity: isDismissing ? 0 : 1,
-        transition: 'opacity 0.3s ease-out',
+        transition: "opacity 0.3s ease-out",
       }}
     >
       {/* Light dimming overlay with cutout for highlight */}
       {hasHighlight ? (
-        <svg 
-          width={viewportWidth}
-          height={viewportHeight}
-          className="fixed inset-0"
-          style={{ pointerEvents: 'none' }}
+        <svg
+          width={containerWidth}
+          height={containerHeight}
+          className="absolute inset-0"
+          style={{ pointerEvents: "none" }}
         >
           <defs>
             <mask id="spotlightMask">
@@ -331,8 +325,8 @@ export const TutorialOverlay = ({
           <line
             x1={spotlightX + wobble.x * 0.3}
             y1={spotlightY - spotlightRadius - 8 + wobble.y * 0.3}
-            x2={viewportWidth / 2 + sway}
-            y2={typeof popupPosition.top === 'number' ? popupPosition.top + 100 : viewportHeight * 0.4 + 100}
+            x2={containerWidth / 2 + sway}
+            y2={typeof popupPosition.top === "number" ? popupPosition.top + 100 : containerHeight * 0.4 + 100}
             stroke="rgba(0, 255, 255, 0.5)"
             strokeWidth="2"
             strokeDasharray="6,4"
@@ -343,9 +337,9 @@ export const TutorialOverlay = ({
           />
         </svg>
       ) : (
-        <div 
+        <div
           className="absolute inset-0"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.3)" }}
         />
       )}
 

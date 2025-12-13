@@ -6398,6 +6398,104 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         }}
                       />
                     )}
+
+                    {/* Tutorial Overlay - INSIDE scaled container for correct positioning */}
+                    {tutorialStep && tutorialActive && (
+                      <TutorialOverlay
+                        step={tutorialStep}
+                        onDismiss={() => {
+                          // Resume game FIRST if it was paused for tutorial (before dismissTutorial sets tutorialActive=false)
+                          if (tutorialStep.pauseGame) {
+                            // Store current speed multiplier and start "Get Ready" sequence
+                            baseSpeedMultiplierRef.current = speedMultiplier;
+                            setSpeedMultiplier(speedMultiplier * 0.1); // Start at 10% speed
+                            getReadyStartTimeRef.current = Date.now();
+                            setGetReadyActive(true);
+
+                            // Start mobile glow effect
+                            if (isMobileDevice) {
+                              getReadyGlowStartTimeRef.current = Date.now();
+                              setGetReadyGlow({ opacity: 1 });
+                            }
+
+                            setGameState("playing");
+                            // Re-acquire pointer lock for mouse control (desktop only)
+                            if (!isMobileDevice) {
+                              const canvas = canvasRef.current;
+                              if (canvas && canvas.requestPointerLock) {
+                                canvas.requestPointerLock();
+                              }
+                            }
+                            if (gameLoopRef.current) {
+                              gameLoopRef.current.resume();
+                            }
+                          }
+                          // Then dismiss tutorial (sets tutorialActive = false)
+                          dismissTutorial();
+                        }}
+                        onSkipAll={() => {
+                          // Resume game FIRST before skipping tutorials
+                          if (gameState === "paused") {
+                            // Also trigger "Get Ready" when skipping
+                            baseSpeedMultiplierRef.current = speedMultiplier;
+                            setSpeedMultiplier(speedMultiplier * 0.1);
+                            getReadyStartTimeRef.current = Date.now();
+                            setGetReadyActive(true);
+
+                            // Start mobile glow effect
+                            if (isMobileDevice) {
+                              getReadyGlowStartTimeRef.current = Date.now();
+                              setGetReadyGlow({ opacity: 1 });
+                            }
+
+                            setGameState("playing");
+                            // Re-acquire pointer lock for mouse control (desktop only)
+                            if (!isMobileDevice) {
+                              const canvas = canvasRef.current;
+                              if (canvas && canvas.requestPointerLock) {
+                                canvas.requestPointerLock();
+                              }
+                            }
+                            if (gameLoopRef.current) {
+                              gameLoopRef.current.resume();
+                            }
+                          }
+                          skipAllTutorials();
+                        }}
+                        isPaused={tutorialStep.pauseGame}
+                        isSlowMotion={false}
+                        highlightPosition={
+                          tutorialStep.highlight?.type === "power_up" && powerUps.length > 0
+                            ? {
+                                x: powerUps[0].x,
+                                y: powerUps[0].y,
+                                width: powerUps[0].width,
+                                height: powerUps[0].height,
+                                type: powerUps[0].type,
+                              }
+                            : tutorialStep.highlight?.type === "boss" && boss
+                              ? {
+                                  x: boss.x,
+                                  y: boss.y,
+                                  width: boss.width,
+                                  height: boss.height,
+                                  type: "boss",
+                                  bossType: boss.type,
+                                }
+                              : tutorialStep.highlight?.type === "enemy" && enemies.length > 0
+                                ? {
+                                    x: enemies[0].x,
+                                    y: enemies[0].y,
+                                    width: enemies[0].width,
+                                    height: enemies[0].height,
+                                    type: "enemy",
+                                  }
+                                : null
+                        }
+                        canvasWidth={SCALED_CANVAS_WIDTH}
+                        canvasHeight={SCALED_CANVAS_HEIGHT}
+                      />
+                    )}
                   </div>
 
                   {/* Pause Overlay - only show when NOT in tutorial mode */}
@@ -6539,104 +6637,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   )}
                 </div>
 
-                {/* Tutorial Overlay */}
-                {tutorialStep && tutorialActive && (
-                  <TutorialOverlay
-                    step={tutorialStep}
-                    onDismiss={() => {
-                      // Resume game FIRST if it was paused for tutorial (before dismissTutorial sets tutorialActive=false)
-                      if (tutorialStep.pauseGame) {
-                        // Store current speed multiplier and start "Get Ready" sequence
-                        baseSpeedMultiplierRef.current = speedMultiplier;
-                        setSpeedMultiplier(speedMultiplier * 0.1); // Start at 10% speed
-                        getReadyStartTimeRef.current = Date.now();
-                        setGetReadyActive(true);
-
-                        // Start mobile glow effect
-                        if (isMobileDevice) {
-                          getReadyGlowStartTimeRef.current = Date.now();
-                          setGetReadyGlow({ opacity: 1 });
-                        }
-
-                        setGameState("playing");
-                        // Re-acquire pointer lock for mouse control (desktop only)
-                        if (!isMobileDevice) {
-                          const canvas = canvasRef.current;
-                          if (canvas && canvas.requestPointerLock) {
-                            canvas.requestPointerLock();
-                          }
-                        }
-                        if (gameLoopRef.current) {
-                          gameLoopRef.current.resume();
-                        }
-                      }
-                      // Then dismiss tutorial (sets tutorialActive = false)
-                      dismissTutorial();
-                    }}
-                    onSkipAll={() => {
-                      // Resume game FIRST before skipping tutorials
-                      if (gameState === "paused") {
-                        // Also trigger "Get Ready" when skipping
-                        baseSpeedMultiplierRef.current = speedMultiplier;
-                        setSpeedMultiplier(speedMultiplier * 0.1);
-                        getReadyStartTimeRef.current = Date.now();
-                        setGetReadyActive(true);
-
-                        // Start mobile glow effect
-                        if (isMobileDevice) {
-                          getReadyGlowStartTimeRef.current = Date.now();
-                          setGetReadyGlow({ opacity: 1 });
-                        }
-
-                        setGameState("playing");
-                        // Re-acquire pointer lock for mouse control (desktop only)
-                        if (!isMobileDevice) {
-                          const canvas = canvasRef.current;
-                          if (canvas && canvas.requestPointerLock) {
-                            canvas.requestPointerLock();
-                          }
-                        }
-                        if (gameLoopRef.current) {
-                          gameLoopRef.current.resume();
-                        }
-                      }
-                      skipAllTutorials();
-                    }}
-                    isPaused={tutorialStep.pauseGame}
-                    isSlowMotion={false}
-                    highlightPosition={
-                      tutorialStep.highlight?.type === "power_up" && powerUps.length > 0
-                        ? {
-                            x: powerUps[0].x,
-                            y: powerUps[0].y,
-                            width: powerUps[0].width,
-                            height: powerUps[0].height,
-                            type: powerUps[0].type,
-                          }
-                        : tutorialStep.highlight?.type === "boss" && boss
-                          ? {
-                              x: boss.x,
-                              y: boss.y,
-                              width: boss.width,
-                              height: boss.height,
-                              type: "boss",
-                              bossType: boss.type,
-                            }
-                          : tutorialStep.highlight?.type === "enemy" && enemies.length > 0
-                            ? {
-                                x: enemies[0].x,
-                                y: enemies[0].y,
-                                width: enemies[0].width,
-                                height: enemies[0].height,
-                                type: "enemy",
-                              }
-                            : null
-                    }
-                    canvasRect={canvasRef.current?.getBoundingClientRect() ?? null}
-                    canvasWidth={SCALED_CANVAS_WIDTH}
-                    canvasHeight={SCALED_CANVAS_HEIGHT}
-                  />
-                )}
+                {/* Tutorial Overlay moved inside scaled game-glow container above */}
 
                 {/* ═══════════════════════════════════════════════════════════════
                      ████████╗ DEBUG UI COMPONENTS - REMOVE BEFORE PRODUCTION ████████╗
