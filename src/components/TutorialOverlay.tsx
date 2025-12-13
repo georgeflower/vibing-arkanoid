@@ -274,68 +274,91 @@ export const TutorialOverlay = ({
     >
       {/* Light dimming overlay with cutout for highlight */}
       {hasHighlight ? (
-        <svg
-          width={containerWidth}
-          height={containerHeight}
-          className="absolute inset-0"
-          style={{ pointerEvents: "none" }}
-        >
-          <defs>
-            <mask id="spotlightMask">
-              <rect width="100%" height="100%" fill="white" />
-              <circle 
-                cx={spotlightX + wobble.x * 0.3} 
-                cy={spotlightY + wobble.y * 0.3} 
-                r={spotlightRadius + 8}
-                fill="black"
+        <>
+          <svg
+            width={containerWidth}
+            height={containerHeight}
+            className="absolute inset-0"
+            style={{ pointerEvents: "none" }}
+          >
+            <defs>
+              <mask id="spotlightMask">
+                <rect width="100%" height="100%" fill="white" />
+                <circle 
+                  cx={spotlightX + wobble.x * 0.3} 
+                  cy={spotlightY + wobble.y * 0.3} 
+                  r={spotlightRadius + 8}
+                  fill="black"
+                />
+              </mask>
+              <radialGradient id="glowGradient" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="rgba(0, 255, 255, 0.6)" />
+                <stop offset="50%" stopColor="rgba(0, 255, 255, 0.3)" />
+                <stop offset="80%" stopColor="rgba(255, 255, 0, 0.15)" />
+                <stop offset="100%" stopColor="rgba(255, 255, 0, 0)" />
+              </radialGradient>
+            </defs>
+            {/* Connecting line from highlight center to popup - drawn first (behind) */}
+            <line
+              x1={spotlightX + wobble.x * 0.3}
+              y1={spotlightY + wobble.y * 0.3}
+              x2={containerWidth / 2 + sway}
+              y2={typeof popupPosition.top === "number" ? popupPosition.top + 100 : containerHeight * 0.4 + 100}
+              stroke="rgba(0, 255, 255, 0.5)"
+              strokeWidth="2"
+              strokeDasharray="6,4"
+              style={{
+                transition: 'opacity 0.3s',
+                opacity: isDismissing ? 0 : 0.7,
+              }}
+            />
+            {/* Light dim overlay - 15% opacity */}
+            <rect 
+              width="100%" 
+              height="100%" 
+              fill="rgba(0, 0, 0, 0.15)"
+              mask="url(#spotlightMask)"
+              style={{
+                transition: 'opacity 0.3s',
+                opacity: isDismissing ? 0 : 1,
+              }}
+            />
+            {/* Radial glow effect around the game element */}
+            <circle 
+              cx={spotlightX + wobble.x * 0.3} 
+              cy={spotlightY + wobble.y * 0.3} 
+              r={spotlightRadius + 20}
+              fill="url(#glowGradient)"
+              style={{
+                transition: isDismissing ? 'opacity 0.3s' : 'none',
+                opacity: isDismissing ? 0 : 1,
+              }}
+            />
+          </svg>
+          {/* Power-up icon rendered on top of everything, not dimmed */}
+          {step.highlight?.type === "power_up" && highlightPosition && (
+            <div
+              className="absolute"
+              style={{
+                left: spotlightX + wobble.x * 0.3,
+                top: spotlightY + wobble.y * 0.3,
+                transform: 'translate(-50%, -50%)',
+                pointerEvents: 'none',
+                zIndex: 10,
+              }}
+            >
+              <img
+                src={powerUpImages[highlightPosition.type as PowerUpType]}
+                alt="Power-up"
+                style={{
+                  width: highlightPosition.width * scaleX,
+                  height: highlightPosition.height * scaleY,
+                  imageRendering: 'pixelated',
+                }}
               />
-            </mask>
-          </defs>
-          {/* Light dim overlay - 15% opacity */}
-          <rect 
-            width="100%" 
-            height="100%" 
-            fill="rgba(0, 0, 0, 0.15)"
-            mask="url(#spotlightMask)"
-            style={{
-              transition: 'opacity 0.3s',
-              opacity: isDismissing ? 0 : 1,
-            }}
-          />
-          {/* Radial glow effect around the game element */}
-          <defs>
-            <radialGradient id="glowGradient" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(0, 255, 255, 0.6)" />
-              <stop offset="50%" stopColor="rgba(0, 255, 255, 0.3)" />
-              <stop offset="80%" stopColor="rgba(255, 255, 0, 0.15)" />
-              <stop offset="100%" stopColor="rgba(255, 255, 0, 0)" />
-            </radialGradient>
-          </defs>
-          <circle 
-            cx={spotlightX + wobble.x * 0.3} 
-            cy={spotlightY + wobble.y * 0.3} 
-            r={spotlightRadius + 20}
-            fill="url(#glowGradient)"
-            style={{
-              transition: isDismissing ? 'opacity 0.3s' : 'none',
-              opacity: isDismissing ? 0 : 1,
-            }}
-          />
-          {/* Connecting line from highlight to popup */}
-          <line
-            x1={spotlightX + wobble.x * 0.3}
-            y1={spotlightY - spotlightRadius - 8 + wobble.y * 0.3}
-            x2={containerWidth / 2 + sway}
-            y2={typeof popupPosition.top === "number" ? popupPosition.top + 100 : containerHeight * 0.4 + 100}
-            stroke="rgba(0, 255, 255, 0.5)"
-            strokeWidth="2"
-            strokeDasharray="6,4"
-            style={{
-              transition: 'opacity 0.3s',
-              opacity: isDismissing ? 0 : 0.7,
-            }}
-          />
-        </svg>
+            </div>
+          )}
+        </>
       ) : (
         <div
           className="absolute inset-0"
