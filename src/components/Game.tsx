@@ -80,6 +80,7 @@ import { levelLayouts, getBrickHits } from "@/constants/levelLayouts";
 import { usePowerUps } from "@/hooks/usePowerUps";
 import { useBullets } from "@/hooks/useBullets";
 import { useAdaptiveQuality } from "@/hooks/useAdaptiveQuality";
+import { useLevelProgress } from "@/hooks/useLevelProgress";
 import { soundManager } from "@/utils/sounds";
 import { FixedStepGameLoop } from "@/utils/gameLoop";
 import { createBoss, createResurrectedPyramid } from "@/utils/bossUtils";
@@ -120,7 +121,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(settings.startingLives);
-  const [level, setLevel] = useState(1);
+  const [level, setLevel] = useState(settings.startingLevel);
+  
+  // Level progress tracking
+  const { updateMaxLevel } = useLevelProgress();
   const [gameState, setGameState] = useState<GameState>("ready");
   const [bricks, setBricks] = useState<Brick[]>([]);
   const [balls, setBalls] = useState<Ball[]>([]);
@@ -1246,15 +1250,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Create random letter assignments
     setLetterLevelAssignments(createRandomLetterAssignments());
 
-    // Initialize bricks for level 1
-    const initialBricks = initBricksForLevel(1);
+    // Initialize bricks for starting level
+    const startLevel = settings.startingLevel;
+    const initialBricks = initBricksForLevel(startLevel);
     setBricks(initialBricks);
     initPowerUpAssignments(initialBricks);
     setScore(0);
     setLives(3);
-    setLevel(1);
+    setLevel(startLevel);
+    // Calculate speed multiplier based on starting level
     const baseMultiplier = settings.difficulty === "godlike" ? 1.25 : 1.0;
-    setSpeedMultiplier(baseMultiplier);
+    const startingSpeedMultiplier = Math.min(
+      settings.difficulty === "godlike" ? 1.75 : 1.5,
+      baseMultiplier + (startLevel - 1) * 0.05
+    );
+    setSpeedMultiplier(startingSpeedMultiplier);
     setGameState("ready");
     setPowerUps([]);
     setTimer(0);
@@ -1303,8 +1313,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const newSpeedMultiplier = Math.min(maxSpeedMultiplier, baseMultiplier + (newLevel - 1) * 0.05);
     setLevel(newLevel);
     setSpeedMultiplier(newSpeedMultiplier);
-
-    // Reset paddle - preserve turrets and shield across levels
+    
+    // Update max level reached in localStorage
+    updateMaxLevel(newLevel);
     setPaddle((prev) => ({
       x: SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2,
       y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
@@ -1389,7 +1400,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     } else {
       toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
     }
-  }, [level, initBricksForLevel, setPowerUps, initPowerUpAssignments]);
+  }, [level, initBricksForLevel, setPowerUps, initPowerUpAssignments, updateMaxLevel]);
 
   // Update nextLevel ref whenever nextLevel function changes
   nextLevelRef.current = nextLevel;
