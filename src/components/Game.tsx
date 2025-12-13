@@ -96,7 +96,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -122,7 +122,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(settings.startingLives);
   const [level, setLevel] = useState(settings.startingLevel);
-  
+
   // Level progress tracking
   const { updateMaxLevel } = useLevelProgress();
   const [gameState, setGameState] = useState<GameState>("ready");
@@ -1262,7 +1262,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const baseMultiplier = settings.difficulty === "godlike" ? 1.25 : 1.0;
     const startingSpeedMultiplier = Math.min(
       settings.difficulty === "godlike" ? 1.75 : 1.5,
-      baseMultiplier + (startLevel - 1) * 0.05
+      baseMultiplier + (startLevel - 1) * 0.05,
     );
     setSpeedMultiplier(startingSpeedMultiplier);
     setGameState("ready");
@@ -1313,7 +1313,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const newSpeedMultiplier = Math.min(maxSpeedMultiplier, baseMultiplier + (newLevel - 1) * 0.05);
     setLevel(newLevel);
     setSpeedMultiplier(newSpeedMultiplier);
-    
+
     // Update max level reached in localStorage
     updateMaxLevel(newLevel);
     setPaddle((prev) => ({
