@@ -181,24 +181,23 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           <div className="space-y-2 sm:space-y-3 text-white">
             <div className="bg-gradient-to-r from-[hsl(45,100%,50%)]/20 to-[hsl(280,90%,60%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(45,100%,50%)]/50">
               <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(45,100%,50%)]">
-                ⚡ New Boss Power-Ups!
+                🎮 Starting Level Selector
               </h3>
               <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-xs">
-                <li><span className="text-[hsl(45,100%,50%)] font-bold">Boss Stunner</span> - Freezes boss for 5 seconds, stopping all movement and attacks</li>
-                <li><span className="text-[hsl(280,90%,60%)] font-bold">Reflect Shield</span> - Reflects boss attacks back for 15 seconds, damaging the boss</li>
-                <li><span className="text-[hsl(0,100%,50%)] font-bold">Homing Ball</span> - Ball curves toward boss for 8 seconds with red targeting trail</li>
-                <li>Boss minions have <span className="text-[hsl(330,100%,65%)] font-bold">50% drop rate</span> for these exclusive power-ups</li>
+                <li>Choose any level you've previously reached from the main menu</li>
+                <li>Your progress is <span className="text-[hsl(45,100%,50%)] font-bold">saved locally</span> between sessions</li>
+                <li>Locked levels display a warning when selected</li>
               </ul>
             </div>
 
             <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(120,60%,50%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(120,60%,50%)]/50">
               <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(120,60%,50%)]">
-                🐛 Bug Fixes
+                ✨ Visual Improvements
               </h3>
               <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-xs">
-                <li>F key now only toggles fullscreen and no longer pauses the game</li>
-                <li>Resume button checks if music is playing to prevent audio overlap</li>
-                <li>Replaced power-up icons: turtle for slowdown, red arrows for shrink</li>
+                <li>New darker sci-fi backgrounds for levels 1-4 with dynamic flash effects</li>
+                <li>Overhauled tutorial system with pulsating glow highlights</li>
+                <li>Unique fitted backgrounds for all boss levels</li>
               </ul>
             </div>
           </div>
