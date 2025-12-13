@@ -587,40 +587,42 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           </div>
 
           {/* Starting Level Selector */}
-          <div className="space-y-2 pt-2 border-t border-[hsl(200,70%,50%)]/30 relative">
-            <Label className="text-white text-base">Starting Level</Label>
-            <div className="flex items-center justify-center gap-4">
-              <button
-                onClick={() => handleLevelChange(-1)}
-                onMouseEnter={() => soundManager.playMenuHover()}
-                disabled={startingLevel <= 1}
-                className="p-2 rounded-lg bg-[hsl(220,20%,20%)] hover:bg-[hsl(220,20%,30%)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronDown className="w-5 h-5 text-[hsl(200,70%,50%)]" />
-              </button>
-              <span 
-                className={`text-2xl font-mono min-w-[60px] text-center transition-colors ${
-                  isLevelUnlocked(startingLevel) 
-                    ? 'text-white' 
-                    : 'text-gray-500'
-                }`}
-                style={{ fontFamily: "'Press Start 2P', monospace" }}
-              >
-                {startingLevel.toString().padStart(2, '0')}
-              </span>
-              <button
-                onClick={() => handleLevelChange(1)}
-                onMouseEnter={() => soundManager.playMenuHover()}
-                disabled={startingLevel >= FINAL_LEVEL}
-                className="p-2 rounded-lg bg-[hsl(220,20%,20%)] hover:bg-[hsl(220,20%,30%)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronUp className="w-5 h-5 text-[hsl(200,70%,50%)]" />
-              </button>
+          <div className="pt-2 border-t border-[hsl(200,70%,50%)]/30 relative">
+            <div className="flex items-center justify-between">
+              <Label className="text-white text-base">Starting Level</Label>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleLevelChange(-1)}
+                  onMouseEnter={() => soundManager.playMenuHover()}
+                  disabled={startingLevel <= 1}
+                  className="p-1 rounded bg-[hsl(220,20%,20%)] hover:bg-[hsl(220,20%,30%)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronDown className="w-4 h-4 text-[hsl(200,70%,50%)]" />
+                </button>
+                <span 
+                  className={`text-sm font-mono min-w-[28px] text-center transition-colors ${
+                    isLevelUnlocked(startingLevel) 
+                      ? 'text-white' 
+                      : 'text-gray-500'
+                  }`}
+                  style={{ fontFamily: "'Press Start 2P', monospace" }}
+                >
+                  {startingLevel.toString().padStart(2, '0')}
+                </span>
+                <button
+                  onClick={() => handleLevelChange(1)}
+                  onMouseEnter={() => soundManager.playMenuHover()}
+                  disabled={startingLevel >= FINAL_LEVEL}
+                  className="p-1 rounded bg-[hsl(220,20%,20%)] hover:bg-[hsl(220,20%,30%)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronUp className="w-4 h-4 text-[hsl(200,70%,50%)]" />
+                </button>
+              </div>
             </div>
             
             {/* Locked level floating message */}
             {showLockedMessage && (
-              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-4 py-2 bg-[hsl(0,85%,45%)] text-white text-xs rounded-lg shadow-lg animate-pulse whitespace-nowrap z-10">
+              <div className="absolute right-0 top-full mt-1 px-3 py-1.5 bg-[hsl(0,85%,45%)] text-white text-xs rounded-lg shadow-lg animate-pulse whitespace-nowrap z-10">
                 You have not made it to this level yet!
               </div>
             )}
