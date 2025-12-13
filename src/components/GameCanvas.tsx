@@ -54,10 +54,11 @@ interface GameCanvasProps {
   tutorialHighlight?: { type: 'power_up' | 'boss' | 'enemy' | 'bonus_letter'; zoomScale?: number } | null;
   debugEnabled?: boolean; // DEBUG: Remove before production
   getReadyGlow?: { opacity: number } | null; // Mobile ball glow during Get Ready sequence
+  isMobile?: boolean; // Mobile device flag for disabling certain effects
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null, isMobile = false }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -324,13 +325,15 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.fillRect(0, 0, width, height);
         
-        // Subtle ambient flicker on brighter areas (only levels 1-4)
-        const ambientFlicker = Math.sin(Date.now() / 500) * 0.03 + 0.03;
-        ctx.save();
-        ctx.globalCompositeOperation = 'screen';
-        ctx.fillStyle = `rgba(100, 150, 200, ${ambientFlicker})`;
-        ctx.fillRect(0, 0, width, height);
-        ctx.restore();
+        // Subtle ambient flicker on brighter areas (only levels 1-4, disabled on mobile)
+        if (!isMobile) {
+          const ambientFlicker = Math.sin(Date.now() / 500) * 0.03 + 0.03;
+          ctx.save();
+          ctx.globalCompositeOperation = 'screen';
+          ctx.fillStyle = `rgba(100, 150, 200, ${ambientFlicker})`;
+          ctx.fillRect(0, 0, width, height);
+          ctx.restore();
+        }
       }
       
       // Apply highlight flash effect for explosions/kills/extra life (levels 1-4 only)
@@ -872,21 +875,27 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw bullets
       bullets.forEach((bullet) => {
+        const enableGlow = qualitySettings.glowEnabled;
+        
         if (bullet.isSuper && bullet.isBounced) {
           // Super bullets reflected from minion - RED with particle trail (dangerous!)
-          ctx.shadowBlur = 20;
-          ctx.shadowColor = "hsl(0, 100%, 50%)";
+          if (enableGlow) {
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = "hsl(0, 100%, 50%)";
+          }
           ctx.fillStyle = "hsl(0, 90%, 55%)";
           
           // Draw bullet
           ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
           
-          // Extra red glow effect
-          ctx.fillStyle = "hsla(0, 100%, 60%, 0.6)";
-          ctx.fillRect(bullet.x - 3, bullet.y, bullet.width + 6, bullet.height + 10);
+          // Extra red glow effect (only on high quality)
+          if (enableGlow) {
+            ctx.fillStyle = "hsla(0, 100%, 60%, 0.6)";
+            ctx.fillRect(bullet.x - 3, bullet.y, bullet.width + 6, bullet.height + 10);
+          }
           
-          // Particle trail effect for reflected super bullets
-          if (qualitySettings.level !== 'low') {
+          // Particle trail effect for reflected super bullets (only on high quality)
+          if (qualitySettings.level === 'high') {
             const particleCount = 4;
             for (let i = 0; i < particleCount; i++) {
               const offset = i * 8;
@@ -906,27 +915,36 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           }
         } else if (bullet.isSuper) {
           // Super bullets - golden/yellow glow
-          ctx.shadowBlur = 15;
-          ctx.shadowColor = "hsl(45, 100%, 50%)";
+          if (enableGlow) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "hsl(45, 100%, 50%)";
+          }
           ctx.fillStyle = "hsl(45, 90%, 55%)";
           
           // Draw bullet with glow trail
           ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
           
-          // Extra glow effect
-          ctx.fillStyle = "hsla(45, 100%, 70%, 0.5)";
-          ctx.fillRect(bullet.x - 2, bullet.y, bullet.width + 4, bullet.height + 8);
+          // Extra glow effect (only on high quality)
+          if (enableGlow) {
+            ctx.fillStyle = "hsla(45, 100%, 70%, 0.5)";
+            ctx.fillRect(bullet.x - 2, bullet.y, bullet.width + 4, bullet.height + 8);
+          }
         } else if (bullet.isBounced) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "hsl(0, 85%, 55%)";
+          if (enableGlow) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "hsl(0, 85%, 55%)";
+          }
           ctx.fillStyle = "hsl(0, 85%, 55%)";
           ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
         } else {
-        ctx.shadowBlur = 8;
-          ctx.shadowColor = "hsl(200, 70%, 50%)";
+          if (enableGlow) {
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "hsl(200, 70%, 50%)";
+          }
           ctx.fillStyle = "hsl(200, 70%, 50%)";
           ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
         }
+        ctx.shadowBlur = 0; // Reset shadow after each bullet
       });
 
       // Draw DANGER text for bounced bullets
@@ -1341,12 +1359,15 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           gradient.addColorStop(0.7, `hsl(${singleEnemy.isAngry ? 0 : 200}, 60%, 30%)`);
           gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
           
-          ctx.shadowBlur = 20;
-          ctx.shadowColor = baseColor;
+          if (qualitySettings.glowEnabled) {
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = baseColor;
+          }
           ctx.fillStyle = gradient;
           ctx.beginPath();
           ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
           ctx.fill();
+          ctx.shadowBlur = 0;
           
           // Draw rotating latitude/longitude lines for spinning effect
           ctx.shadowBlur = 0;
@@ -1479,8 +1500,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           
           // Draw each face
           sortedFaces.forEach(face => {
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = `hsl(${baseHue}, ${colorIntensity}%, 55%)`;
+            if (qualitySettings.glowEnabled) {
+              ctx.shadowBlur = 15;
+              ctx.shadowColor = `hsl(${baseHue}, ${colorIntensity}%, 55%)`;
+            }
             ctx.fillStyle = face.color;
             ctx.beginPath();
             ctx.moveTo(projected[face.indices[0]][0], projected[face.indices[0]][1]);
@@ -1489,6 +1512,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             });
             ctx.closePath();
             ctx.fill();
+            ctx.shadowBlur = 0;
             
             // Add edge lines with retro style
             ctx.shadowBlur = 0;
@@ -1588,8 +1612,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           
           // Draw each face
           sortedFaces.forEach(face => {
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = "hsl(0, 85%, 55%)";
+            if (qualitySettings.glowEnabled) {
+              ctx.shadowBlur = 15;
+              ctx.shadowColor = "hsl(0, 85%, 55%)";
+            }
             ctx.fillStyle = face.color;
             ctx.beginPath();
             ctx.moveTo(projected[face.indices[0]][0], projected[face.indices[0]][1]);
@@ -1598,6 +1624,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             });
             ctx.closePath();
             ctx.fill();
+            ctx.shadowBlur = 0;
             
             // Add edge lines
             ctx.shadowBlur = 0;
@@ -1701,10 +1728,14 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.translate(bombCenterX, bombCenterY);
         ctx.rotate((bombRotation * Math.PI) / 180);
         
+        const enableGlow = qualitySettings.glowEnabled;
+        
         if (bomb.type === "pyramidBullet") {
           // Draw pyramid bullet - elongated diamond shape
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = "hsl(280, 70%, 55%)";
+          if (enableGlow) {
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "hsl(280, 70%, 55%)";
+          }
           ctx.fillStyle = "hsl(280, 70%, 55%)";
           ctx.beginPath();
           ctx.moveTo(0, -bomb.height / 2); // top
@@ -1722,8 +1753,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fill();
         } else if (bomb.type === "rocket") {
           // Draw yellow rocket (from sphere)
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = "hsl(50, 85%, 55%)";
+          if (enableGlow) {
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "hsl(50, 85%, 55%)";
+          }
           ctx.fillStyle = "hsl(50, 85%, 55%)";
           ctx.beginPath();
           ctx.arc(0, 0, bomb.width / 2, 0, Math.PI * 2);
@@ -1737,8 +1770,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fill();
         } else {
           // Draw regular bomb (red)
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = "hsl(0, 85%, 55%)";
+          if (enableGlow) {
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "hsl(0, 85%, 55%)";
+          }
           ctx.fillStyle = "hsl(0, 85%, 55%)";
           ctx.beginPath();
           ctx.arc(0, 0, bomb.width / 2, 0, Math.PI * 2);
@@ -1804,22 +1839,28 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       });
 
       // Draw boss attacks
+      const enableBossGlow = qualitySettings.glowEnabled;
       bossAttacks.forEach(attack => {
         if (attack.type === 'laser') {
-          ctx.shadowBlur = 15;
-          ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
+          if (enableBossGlow) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
+          }
           ctx.fillStyle = 'rgba(255, 50, 50, 0.9)';
           ctx.fillRect(attack.x, attack.y, attack.width, attack.height);
           
           ctx.fillStyle = 'rgba(255, 200, 200, 0.6)';
           ctx.fillRect(attack.x + attack.width * 0.2, attack.y, attack.width * 0.6, attack.height);
+          ctx.shadowBlur = 0;
         } else {
           ctx.save();
           ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
           ctx.rotate((Date.now() / 30) * Math.PI / 180);
           
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = attack.type === 'super' ? 'hsl(280, 100%, 60%)' : 'hsl(0, 100%, 60%)';
+          if (enableBossGlow) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = attack.type === 'super' ? 'hsl(280, 100%, 60%)' : 'hsl(0, 100%, 60%)';
+          }
           ctx.fillStyle = attack.type === 'super' ? 'hsl(280, 80%, 60%)' : 'hsl(0, 80%, 60%)';
           ctx.beginPath();
           ctx.arc(0, 0, attack.width / 2, 0, Math.PI * 2);
@@ -2083,12 +2124,15 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           gradient.addColorStop(0.7, `hsl(${baseHue}, 90%, ${intensity}%)`);
           gradient.addColorStop(1, `hsl(${baseHue}, 70%, ${intensity - 20}%)`);
           
-          ctx.shadowBlur = 25;
-          ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
+          if (qualitySettings.glowEnabled) {
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
+          }
           ctx.fillStyle = gradient;
           ctx.beginPath();
           ctx.arc(0, 0, radius, 0, Math.PI * 2);
           ctx.fill();
+          ctx.shadowBlur = 0;
           
           if (boss.isAngry) {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
@@ -2105,8 +2149,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           const intensity = boss.isSuperAngry ? 75 : (boss.isAngry ? 65 : 60);
           
           ctx.rotate(boss.rotationY);
-          ctx.shadowBlur = 25;
-          ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
+          if (qualitySettings.glowEnabled) {
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
+          }
           
           ctx.fillStyle = `hsl(${baseHue}, 80%, ${intensity}%)`;
           ctx.beginPath();
@@ -2214,8 +2260,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         const baseHue = resBoss.isSuperAngry ? 0 : 280;
         const intensity = resBoss.isSuperAngry ? 75 : 65;
         
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
+        if (qualitySettings.glowEnabled) {
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
+        }
         ctx.fillStyle = `hsl(${baseHue}, 80%, ${intensity}%)`;
         ctx.beginPath();
         ctx.moveTo(0, -size);

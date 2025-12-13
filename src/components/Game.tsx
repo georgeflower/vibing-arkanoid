@@ -6236,6 +6236,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       tutorialHighlight={tutorialStep?.highlight}
                       debugEnabled={ENABLE_DEBUG_FEATURES}
                       getReadyGlow={isMobileDevice ? getReadyGlow : null}
+                      isMobile={isMobileDevice}
                     />
 
                     {/* Boss Power-Up Duration Timers - Mobile responsive positioning */}
