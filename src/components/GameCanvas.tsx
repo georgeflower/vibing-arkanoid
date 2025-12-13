@@ -735,13 +735,8 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         const size = powerUp.width; // Square power-up
         const cornerRadius = 4;
         
-        // Tutorial highlight - power-up is rendered with zoom in TutorialOverlay
-        // Skip normal rendering if this power-up is being highlighted (first power-up)
+        // Tutorial highlight - render power-up with glow effect
         const isHighlighted = tutorialHighlight?.type === 'power_up' && powerUps.indexOf(powerUp) === 0;
-        if (isHighlighted) {
-          // Don't render here - TutorialOverlay handles the zoomed spotlight view
-          return;
-        }
         
         // Pulse animation: zoom in 5% and out 5% on 1 second interval
         const pulsePhase = (Date.now() % 1000) / 1000; // 0 to 1 over 1 second
@@ -751,6 +746,14 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.translate(powerUp.x + size / 2, powerUp.y + size / 2);
         ctx.scale(pulseScale, pulseScale);
         ctx.translate(-size / 2, -size / 2);
+        
+        // Apply glow effect when highlighted in tutorial
+        if (isHighlighted) {
+          const glowPulse = (Date.now() % 800) / 800;
+          const glowIntensity = 20 + Math.sin(glowPulse * Math.PI * 2) * 10;
+          ctx.shadowColor = 'rgba(0, 255, 255, 0.9)';
+          ctx.shadowBlur = glowIntensity;
+        }
 
         // Boss power-ups - render with emoji
         if (powerUp.type === 'bossStunner' || powerUp.type === 'reflectShield' || powerUp.type === 'homingBall') {

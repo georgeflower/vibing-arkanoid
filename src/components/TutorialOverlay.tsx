@@ -310,26 +310,20 @@ export const TutorialOverlay = ({
               opacity: isDismissing ? 0 : 1,
             }}
           />
-          {/* Animated circle around the actual game element */}
+          {/* Radial glow effect around the game element */}
+          <defs>
+            <radialGradient id="glowGradient" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="rgba(0, 255, 255, 0.6)" />
+              <stop offset="50%" stopColor="rgba(0, 255, 255, 0.3)" />
+              <stop offset="80%" stopColor="rgba(255, 255, 0, 0.15)" />
+              <stop offset="100%" stopColor="rgba(255, 255, 0, 0)" />
+            </radialGradient>
+          </defs>
           <circle 
             cx={spotlightX + wobble.x * 0.3} 
             cy={spotlightY + wobble.y * 0.3} 
-            r={spotlightRadius + 6}
-            fill="none"
-            stroke="rgba(0, 255, 255, 0.8)"
-            strokeWidth="3"
-            style={{
-              transition: isDismissing ? 'opacity 0.3s' : 'none',
-              opacity: isDismissing ? 0 : 1,
-            }}
-          />
-          <circle 
-            cx={spotlightX + wobble.x * 0.3} 
-            cy={spotlightY + wobble.y * 0.3} 
-            r={spotlightRadius + 12}
-            fill="none"
-            stroke="rgba(255, 255, 0, 0.4)"
-            strokeWidth="2"
+            r={spotlightRadius + 20}
+            fill="url(#glowGradient)"
             style={{
               transition: isDismissing ? 'opacity 0.3s' : 'none',
               opacity: isDismissing ? 0 : 1,
