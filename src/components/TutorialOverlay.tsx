@@ -291,11 +291,11 @@ export const TutorialOverlay = ({
               />
             </mask>
           </defs>
-          {/* Light dim overlay - 30% opacity */}
+          {/* Light dim overlay - 15% opacity */}
           <rect 
             width="100%" 
             height="100%" 
-            fill="rgba(0, 0, 0, 0.3)" 
+            fill="rgba(0, 0, 0, 0.15)"
             mask="url(#spotlightMask)"
             style={{
               transition: 'opacity 0.3s',
