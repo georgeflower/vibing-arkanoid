@@ -229,21 +229,19 @@ export const TutorialOverlay = ({
   // Calculate spotlight position relative to overlay with clamping
   const hasHighlight = (step.highlight?.type === 'power_up' || step.highlight?.type === 'boss' || step.highlight?.type === 'enemy') && highlightPosition && canvasRect;
   
-  // Calculate scale ratios for game coords -> screen coords
-  const scaleX = canvasRect ? canvasRect.width / canvasWidth : 1;
-  const scaleY = canvasRect ? canvasRect.height / canvasHeight : 1;
+  // Calculate spotlight position using ratio-based mapping (works with CSS transform: scale)
+  // getBoundingClientRect() returns visually transformed bounds, so we map game coords as ratios
+  const spotlightX = hasHighlight && canvasRect
+    ? canvasRect.left + ((highlightPosition.x + highlightPosition.width / 2) / canvasWidth) * canvasRect.width
+    : 0;
+  const spotlightY = hasHighlight && canvasRect
+    ? canvasRect.top + ((highlightPosition.y + highlightPosition.height / 2) / canvasHeight) * canvasRect.height
+    : 0;
   
-  // Calculate base spotlight radius - smaller circle that tightly wraps the powerup (scaled)
-  const baseSpotlightRadius = hasHighlight ? Math.max(highlightPosition.width, highlightPosition.height) * 0.8 * Math.min(scaleX, scaleY) : 0;
+  // Calculate spotlight radius using ratio-based scaling
+  const scaleRatio = canvasRect ? canvasRect.width / canvasWidth : 1;
+  const baseSpotlightRadius = hasHighlight ? Math.max(highlightPosition.width, highlightPosition.height) * 0.8 * scaleRatio : 0;
   const spotlightRadius = baseSpotlightRadius * zoomScale;
-  
-  // Calculate spotlight position - convert game coords to screen coords with proper scaling
-  const spotlightX = hasHighlight 
-    ? canvasRect.left + (highlightPosition.x + highlightPosition.width / 2) * scaleX
-    : 0;
-  const spotlightY = hasHighlight 
-    ? canvasRect.top + (highlightPosition.y + highlightPosition.height / 2) * scaleY
-    : 0;
 
 
   // Calculate popup position to avoid overlapping with highlight
