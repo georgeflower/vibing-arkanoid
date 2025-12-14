@@ -1,5 +1,5 @@
 // processBallCCD.ts
-// Ready-to-paste TypeScript: swept-circle (CCD) per substep for Arkanoid-style ball
+// Swept-circle (CCD) per substep for Arkanoid-style ball
 // Exports: processBallCCD, types
 //
 // UNITS EXPECTED:
@@ -23,22 +23,23 @@ export type Ball = {
   [k: string]: any;
 };
 
-export type Brick = { 
-  id: number; 
-  x: number; 
-  y: number; 
-  width: number; 
-  height: number; 
+export type Brick = {
+  id: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
   visible: boolean;
   isIndestructible?: boolean; // For metal bricks
+  [k: string]: any;
 };
 
-export type Paddle = { id?: number; x: number; y: number; width: number; height: number; };
+export type Paddle = { id?: number; x: number; y: number; width: number; height: number };
 
 export type CollisionEvent = {
   t: number; // fraction of substep [0,1]
   normal: Vec2;
-  objectType: 'wall' | 'brick' | 'paddle' | 'corner';
+  objectType: "wall" | "brick" | "paddle" | "corner";
   objectId?: number | string;
   point: Vec2;
   brickMeta?: Brick; // Store brick metadata for reflection logic
@@ -56,6 +57,7 @@ export type CCDConfig = {
   canvasSize?: { w: number; h: number }; // for walls
   currentTick?: number; // integer tick for cooldowns
   maxSubstepTravelFactor?: number; // fraction of minBrickDimension allowed per substep (default 0.9)
+  debug?: boolean; // optional debug gating
 };
 
 const vAdd = (a: Vec2, b: Vec2): Vec2 => ({ x: a.x + b.x, y: a.y + b.y });
@@ -63,7 +65,10 @@ const vSub = (a: Vec2, b: Vec2): Vec2 => ({ x: a.x - b.x, y: a.y - b.y });
 const vScale = (a: Vec2, s: number): Vec2 => ({ x: a.x * s, y: a.y * s });
 const vDot = (a: Vec2, b: Vec2): number => a.x * b.x + a.y * b.y;
 const vLen = (a: Vec2): number => Math.hypot(a.x, a.y);
-const normalize = (a: Vec2): Vec2 => { const L = vLen(a) || 1; return { x: a.x / L, y: a.y / L }; };
+const normalize = (a: Vec2): Vec2 => {
+  const L = vLen(a) || 1;
+  return { x: a.x / L, y: a.y / L };
+};
 const reflect = (vel: Vec2, normal: Vec2): Vec2 => {
   const n = normalize(normal);
   const vn = vDot(vel, n);
@@ -79,7 +84,7 @@ normal: the collision normal at entry (approx axis-aligned)
 function rayAABB(
   r0: Vec2,
   r1: Vec2,
-  aabb: { x: number; y: number; w: number; h: number }
+  aabb: { x: number; y: number; w: number; h: number },
 ): { tEntry: number; tExit: number; normal: Vec2 } | null {
   const EPS = 1e-9;
   const dir = vSub(r1, r0);
@@ -87,10 +92,18 @@ function rayAABB(
   const invDirY = dir.y === 0 ? 1e12 : 1 / dir.y;
   let tmin = (aabb.x - r0.x) * invDirX;
   let tmax = (aabb.x + aabb.w - r0.x) * invDirX;
-  if (tmin > tmax) { const tmp = tmin; tmin = tmax; tmax = tmp; }
+  if (tmin > tmax) {
+    const tmp = tmin;
+    tmin = tmax;
+    tmax = tmp;
+  }
   let tymin = (aabb.y - r0.y) * invDirY;
   let tymax = (aabb.y + aabb.h - r0.y) * invDirY;
-  if (tymin > tymax) { const tmp = tymin; tymin = tymax; tymax = tmp; }
+  if (tymin > tymax) {
+    const tmp = tymin;
+    tymin = tymax;
+    tymax = tmp;
+  }
   const entry = Math.max(tmin, tymin);
   const exit = Math.min(tmax, tymax);
   if (entry > exit || exit < 0 || entry > 1) return null;
@@ -116,7 +129,7 @@ function segmentCircleTOI(a: Vec2, b: Vec2, center: Vec2, r: number): { t: numbe
   const d = vSub(b, a);
   const f = vSub(a, center);
   const A = vDot(d, d);
-  
+
   // Guard against zero-length segment (A === 0)
   if (A < 1e-12) {
     // Zero-length segment - treat as point-circle distance check
@@ -127,11 +140,11 @@ function segmentCircleTOI(a: Vec2, b: Vec2, center: Vec2, r: number): { t: numbe
     }
     return null;
   }
-  
+
   const B = 2 * vDot(f, d);
   const C = vDot(f, f) - r * r;
   const disc = B * B - 4 * A * C;
-  
+
   // Clamp small negative discriminant to zero (numerical precision)
   if (disc < 0) {
     if (disc > -1e-9) {
@@ -145,18 +158,16 @@ function segmentCircleTOI(a: Vec2, b: Vec2, center: Vec2, r: number): { t: numbe
     }
     return null;
   }
-  
+
   const sqrtD = Math.sqrt(disc);
   const t1 = (-B - sqrtD) / (2 * A);
   const t2 = (-B + sqrtD) / (2 * A);
-  const t = (t1 >= 0 && t1 <= 1) ? t1 : (t2 >= 0 && t2 <= 1 ? t2 : NaN);
+  const t = t1 >= 0 && t1 <= 1 ? t1 : t2 >= 0 && t2 <= 1 ? t2 : NaN;
   if (isNaN(t)) return null;
   const point = vAdd(a, vScale(d, t));
   // Normal should point from corner to collision point (away from brick)
   const toCollision = vSub(point, center);
-  const normal = vLen(toCollision) > 1e-6 
-    ? normalize(toCollision) 
-    : { x: 0, y: -1 }; // fallback to upward normal
+  const normal = vLen(toCollision) > 1e-6 ? normalize(toCollision) : { x: 0, y: -1 }; // fallback to upward normal
   return { t, point, normal };
 }
 
@@ -176,7 +187,8 @@ function defaultTilemapQuery(bricks: Brick[] | undefined, swept: { x: number; y:
   const res: Brick[] = [];
   for (const b of bricks) {
     if (!b.visible) continue;
-    if (b.x + b.width < swept.x || b.x > swept.x + swept.w || b.y + b.height < swept.y || b.y > swept.y + swept.h) continue;
+    if (b.x + b.width < swept.x || b.x > swept.x + swept.w || b.y + b.height < swept.y || b.y > swept.y + swept.h)
+      continue;
     res.push(b);
   }
   return res;
@@ -189,7 +201,7 @@ processBallCCD(ball, dt, state, config) -> { ball: Ball | null, events: Collisio
 */
 export function processBallCCD(
   ballIn: Ball,
-  cfg: CCDConfig
+  cfg: CCDConfig,
 ): { ball: Ball | null; events: CollisionEvent[]; debug?: any } {
   const {
     dt,
@@ -202,7 +214,8 @@ export function processBallCCD(
     bricks,
     canvasSize,
     currentTick,
-    maxSubstepTravelFactor = cfg.maxSubstepTravelFactor ?? 0.9
+    maxSubstepTravelFactor = cfg.maxSubstepTravelFactor ?? 0.9,
+    debug = false,
   } = cfg;
 
   if (!ballIn) return { ball: null, events: [] };
@@ -210,7 +223,7 @@ export function processBallCCD(
   // clone to avoid mutating external object until commit
   const ball: Ball = { ...ballIn };
   const events: CollisionEvent[] = [];
-  const debug: any[] = [];
+  const debugArr: any[] = [];
 
   // velocities are px/sec; per-substep movement fraction
   const subDt = dt / Math.max(1, substeps);
@@ -223,6 +236,8 @@ export function processBallCCD(
     ball.dx *= scale;
     ball.dy *= scale;
   }
+
+  const perfStart = debug ? performance.now() : 0;
 
   // For each substep: perform TOI loop
   for (let s = 0; s < substeps; s++) {
@@ -249,7 +264,7 @@ export function processBallCCD(
         x: Math.min(pos0.x, pos1.x) - ball.radius,
         y: Math.min(pos0.y, pos1.y) - ball.radius,
         w: Math.abs(pos1.x - pos0.x) + 2 * ball.radius,
-        h: Math.abs(pos1.y - pos0.y) + 2 * ball.radius
+        h: Math.abs(pos1.y - pos0.y) + 2 * ball.radius,
       };
 
       const candidates = tilemapQuery ? tilemapQuery(sweptAabb) : defaultTilemapQuery(bricks, sweptAabb);
@@ -267,14 +282,26 @@ export function processBallCCD(
           if (txLeft >= 0 && txLeft <= 1) {
             const tAbs = txLeft;
             if (!earliest || tAbs < earliest.t) {
-              earliest = { t: tAbs, normal: { x: 1, y: 0 }, objectType: 'wall', objectId: 'left', point: { x: pos0.x + moveDir.x * tAbs, y: pos0.y + moveDir.y * tAbs } };
+              earliest = {
+                t: tAbs,
+                normal: { x: 1, y: 0 },
+                objectType: "wall",
+                objectId: "left",
+                point: { x: pos0.x + moveDir.x * tAbs, y: pos0.y + moveDir.y * tAbs },
+              };
             }
           }
-          const txRight = ((canvasSize.w - ball.radius) - pos0.x) / moveDir.x;
+          const txRight = (canvasSize.w - ball.radius - pos0.x) / moveDir.x;
           if (txRight >= 0 && txRight <= 1) {
             const tAbs = txRight;
             if (!earliest || tAbs < earliest.t) {
-              earliest = { t: tAbs, normal: { x: -1, y: 0 }, objectType: 'wall', objectId: 'right', point: { x: pos0.x + moveDir.x * tAbs, y: pos0.y + moveDir.y * tAbs } };
+              earliest = {
+                t: tAbs,
+                normal: { x: -1, y: 0 },
+                objectType: "wall",
+                objectId: "right",
+                point: { x: pos0.x + moveDir.x * tAbs, y: pos0.y + moveDir.y * tAbs },
+              };
             }
           }
         }
@@ -283,7 +310,13 @@ export function processBallCCD(
           if (tyTop >= 0 && tyTop <= 1) {
             const tAbs = tyTop;
             if (!earliest || tAbs < earliest.t) {
-              earliest = { t: tAbs, normal: { x: 0, y: 1 }, objectType: 'wall', objectId: 'top', point: { x: pos0.x + moveDir.x * tAbs, y: pos0.y + moveDir.y * tAbs } };
+              earliest = {
+                t: tAbs,
+                normal: { x: 0, y: 1 },
+                objectType: "wall",
+                objectId: "top",
+                point: { x: pos0.x + moveDir.x * tAbs, y: pos0.y + moveDir.y * tAbs },
+              };
             }
           }
           // bottom is allowed (ball falling out) — we do not reflect bottom here; caller may treat y>canvas.h as lost ball
@@ -292,37 +325,59 @@ export function processBallCCD(
 
       // 2) Paddle collision - with strict top-surface and direction checks
       if (paddle) {
-        const exp = expandAABB({ 
-          x: paddle.x, 
-          y: paddle.y, 
-          width: paddle.width, 
-          height: paddle.height, 
-          visible: true, 
-          id: paddle.id ?? 0 
-        }, ball.radius);
+        const exp = expandAABB(
+          {
+            x: paddle.x,
+            y: paddle.y,
+            width: paddle.width,
+            height: paddle.height,
+            visible: true,
+            id: paddle.id ?? 0,
+          },
+          ball.radius,
+        );
         const rayHit = rayAABB(pos0, pos1, exp);
         if (rayHit) {
           const hitPoint = vAdd(pos0, vScale(vSub(pos1, pos0), rayHit.tEntry));
-          const normal = rayHit.normal;
-          const moveDir = vSub(pos1, pos0);
-          const dot = moveDir.x * normal.x + moveDir.y * normal.y;
-          
-          // Only accept paddle candidate if:
-          // 1. Normal points strongly upward (top-surface hit)
-          // 2. Ball is moving into the paddle (dot < 0)
-          const TOP_NORMAL_THRESHOLD = -0.5;
-          if (normal.y <= TOP_NORMAL_THRESHOLD && dot < 0) {
-            if (!earliest || rayHit.tEntry < earliest.t) {
-              earliest = { 
-                t: rayHit.tEntry, 
-                normal: normal, 
-                objectType: 'paddle', 
-                objectId: paddle.id ?? 0, 
-                point: hitPoint 
-              };
-            }
+
+          // Defensive normalization of the returned normal
+          let n = rayHit.normal;
+          const nLen = Math.hypot(n.x, n.y);
+          if (nLen > 1e-6) {
+            n = { x: n.x / nLen, y: n.y / nLen };
+          } else {
+            // fallback: compute from pos0 -> hitPoint
+            const fallbackDir = vSub(pos0, hitPoint);
+            const fallbackLen = Math.hypot(fallbackDir.x, fallbackDir.y) || 1;
+            n = { x: fallbackDir.x / fallbackLen, y: fallbackDir.y / fallbackLen };
           }
-          // else: ignore (underside or side contact - prevents rescue from below)
+
+          // Movement vector for this substep (pos1 - pos0)
+          const moveDir = vSub(pos1, pos0);
+          const moveLen = Math.hypot(moveDir.x, moveDir.y);
+
+          // If no movement this substep, skip paddle candidate
+          if (moveLen >= 1e-6) {
+            // Dot of movement into surface: negative means moving into the surface
+            const dot = moveDir.x * n.x + moveDir.y * n.y;
+
+            // Thresholds (tune in playtests)
+            const TOP_NORMAL_THRESHOLD = -0.5; // require normal to point sufficiently upward
+
+            // Accept candidate only if normal points upward and movement is into the surface
+            if (n.y <= TOP_NORMAL_THRESHOLD && dot < 0) {
+              if (!earliest || rayHit.tEntry < earliest.t) {
+                earliest = {
+                  t: rayHit.tEntry,
+                  normal: n, // normalized normal
+                  objectType: "paddle",
+                  objectId: paddle.id ?? 0,
+                  point: hitPoint,
+                };
+              }
+            }
+            // else: ignore underside/side contact (prevents rescue from below)
+          }
         }
       }
 
@@ -330,28 +385,53 @@ export function processBallCCD(
       for (const b of candidates) {
         // Store brick metadata for later use in reflection logic
         const brickMeta = b;
-        
+
         // expanded AABB
         const exp = expandAABB(b, ball.radius);
         const rayHit = rayAABB(pos0, pos1, exp);
         if (rayHit) {
           const hitPoint = vAdd(pos0, vScale(vSub(pos1, pos0), rayHit.tEntry));
           if (!earliest || rayHit.tEntry < earliest.t) {
-            earliest = { t: rayHit.tEntry, normal: rayHit.normal, objectType: 'brick', objectId: b.id, point: hitPoint, brickMeta };
+            // normalize brick normal defensively
+            let bn = rayHit.normal;
+            const bnLen = Math.hypot(bn.x, bn.y);
+            if (bnLen > 1e-6) {
+              bn = { x: bn.x / bnLen, y: bn.y / bnLen };
+            }
+            earliest = {
+              t: rayHit.tEntry,
+              normal: bn,
+              objectType: "brick",
+              objectId: b.id,
+              point: hitPoint,
+              brickMeta,
+            };
           }
         } else {
           // corner tests: check rectangle corners
-          const corners = [{ x: b.x, y: b.y }, { x: b.x + b.width, y: b.y }, { x: b.x, y: b.y + b.height }, { x: b.x + b.width, y: b.y + b.height }];
+          const corners = [
+            { x: b.x, y: b.y },
+            { x: b.x + b.width, y: b.y },
+            { x: b.x, y: b.y + b.height },
+            { x: b.x + b.width, y: b.y + b.height },
+          ];
           for (const c of corners) {
             const sc = segmentCircleTOI(pos0, pos1, c, ball.radius);
             if (sc && (!earliest || sc.t < earliest.t)) {
-              earliest = { t: sc.t, normal: sc.normal, objectType: 'corner', objectId: b.id, point: sc.point, brickMeta: b };
+              earliest = {
+                t: sc.t,
+                normal: sc.normal,
+                objectType: "corner",
+                objectId: b.id,
+                point: sc.point,
+                brickMeta: b,
+              };
             }
           }
         }
       }
 
-      debug.push({ sweptAabb, candidates: candidates.map(b => b.id), earliest, iter });
+      if (debug) debugArr.push({ sweptAabb, candidates: candidates.map((b) => b.id), earliest, iter });
 
       if (!earliest) {
         // no collision this iteration: commit full remaining move
@@ -364,7 +444,7 @@ export function processBallCCD(
       const tHit = Math.max(0, Math.min(1, earliest.t));
       // move to contact point
       pos0 = vAdd(pos0, vScale(vSub(pos1, pos0), tHit));
-      
+
       // Robust normal validation and fallback
       let n = earliest.normal;
       const nLen = Math.hypot(n.x, n.y);
@@ -378,41 +458,40 @@ export function processBallCCD(
         // Normalize if not already unit length
         n = { x: n.x / nLen, y: n.y / nLen };
       }
-      
+
       // Determine if reflection should apply
       // Walls/paddle/corners: always reflect
-      // Bricks: 
+      // Bricks:
       //   - Fireballs pass through destructible bricks (no reflection)
       //   - Fireballs bounce off metal bricks (reflect)
       //   - Normal balls always reflect off all bricks
-      const isIndestructibleBrick = earliest.objectType === 'brick' && 
-        earliest.brickMeta?.isIndestructible === true;
-      
-      const shouldReflect = 
-        earliest.objectType === 'wall' || 
-        earliest.objectType === 'corner' ||
-        (earliest.objectType === 'brick' && (!ball.isFireball || isIndestructibleBrick));
+      const isIndestructibleBrick = earliest.objectType === "brick" && earliest.brickMeta?.isIndestructible === true;
+
+      const shouldReflect =
+        earliest.objectType === "wall" ||
+        earliest.objectType === "corner" ||
+        (earliest.objectType === "brick" && (!ball.isFireball || isIndestructibleBrick));
 
       // Special handling for paddle: linear position-to-angle mapping
-      if (earliest.objectType === 'paddle' && paddle) {
+      if (earliest.objectType === "paddle" && paddle) {
         // Calculate incoming speed (to preserve it)
         const incomingSpeed = Math.hypot(ball.dx, ball.dy);
-        
+
         // Calculate impact position relative to paddle center
         const paddleCenterX = paddle.x + paddle.width / 2;
         const impactX = earliest.point.x; // Where the ball hit
         const halfWidth = paddle.width / 2;
-        
+
         // LINEAR mapping: -1 (left edge) to +1 (right edge)
         const normalizedOffset = Math.max(-1, Math.min(1, (impactX - paddleCenterX) / halfWidth));
-        
+
         // Linear angle calculation (no power curve)
         const MAX_ANGLE_RADIANS = (80 * Math.PI) / 180; // 80 degrees max
         const launchAngle = normalizedOffset * MAX_ANGLE_RADIANS;
-        
+
         // Final angle: -90° (straight up) + launch offset
         const finalAngle = -Math.PI / 2 + launchAngle;
-        
+
         // Set velocity from angle, PRESERVING incoming speed
         ball.dx = Math.cos(finalAngle) * incomingSpeed;
         ball.dy = Math.sin(finalAngle) * incomingSpeed;
@@ -420,7 +499,7 @@ export function processBallCCD(
         // Standard reflection for walls, bricks, corners
         const vel = { x: ball.dx, y: ball.dy };
         const dot = vel.x * n.x + vel.y * n.y;
-        
+
         // Only reflect if moving towards surface (dot < 0)
         if (dot < 0) {
           ball.dx = vel.x - 2 * dot * n.x;
@@ -433,13 +512,14 @@ export function processBallCCD(
       pos0 = vAdd(pos0, vScale(n, proportionalEpsilon));
 
       // record event (time is fraction of this substep: (1 - remaining) + remaining * tHit)
-      const eventT = (1 - remaining) + remaining * tHit;
+      const eventT = 1 - remaining + remaining * tHit;
       events.push({
         t: eventT,
-        normal: earliest.normal,
+        normal: n, // normalized normal
         objectType: earliest.objectType,
         objectId: earliest.objectId,
-        point: earliest.point
+        point: earliest.point,
+        brickMeta: earliest.brickMeta,
       });
 
       // reduce remaining fraction and continue
@@ -458,5 +538,10 @@ export function processBallCCD(
     // after substep continue to next substep (ball.dx/dy already updated)
   } // end substeps loop
 
-  return { ball, events, debug };
+  if (debug) {
+    const perfEnd = performance.now();
+    return { ball, events, debug: { debugSteps: debugArr, perfMs: perfEnd - perfStart } };
+  }
+
+  return { ball, events, debug: debug ? debugArr : undefined };
 }
