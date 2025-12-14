@@ -3,10 +3,11 @@ import { toast } from 'sonner';
 
 interface UseServiceWorkerUpdateOptions {
   shouldApplyUpdate?: boolean;
+  isMainMenu?: boolean;
 }
 
 export const useServiceWorkerUpdate = (options: UseServiceWorkerUpdateOptions = {}) => {
-  const { shouldApplyUpdate = false } = options;
+  const { shouldApplyUpdate = false, isMainMenu = false } = options;
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -61,12 +62,14 @@ export const useServiceWorkerUpdate = (options: UseServiceWorkerUpdateOptions = 
       }
     };
 
-    // Force check immediately when component mounts
-    checkForUpdate();
+    // Only force check on main menu, not when game is paused or in other states
+    if (isMainMenu) {
+      checkForUpdate();
+    }
 
-    // Also check when page becomes visible again (tab switching)
+    // Also check when page becomes visible again (tab switching) - only on main menu
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
+      if (!document.hidden && isMainMenu) {
         checkForUpdate();
       }
     };
@@ -76,7 +79,7 @@ export const useServiceWorkerUpdate = (options: UseServiceWorkerUpdateOptions = 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [shouldApplyUpdate]);
+  }, [shouldApplyUpdate, isMainMenu]);
 
   return { updateAvailable, isDownloading };
 };
