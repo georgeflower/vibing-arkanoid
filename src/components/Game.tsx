@@ -1283,39 +1283,36 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setEnemiesKilled(0);
     setLastBossSpawnTime(0);
     setBossSpawnAnimation(null);
-    setBoss(null);
-    setResurrectedBosses([]);
-    setBossAttacks([]);
-    setBossActive(false);
-    setLaserWarnings([]);
-    setBossIntroActive(false);
+    // Only clear boss state if starting level is NOT a boss level
+    if (!BOSS_LEVELS.includes(startLevel)) {
+      setBoss(null);
+      setResurrectedBosses([]);
+      setBossAttacks([]);
+      setBossActive(false);
+      setLaserWarnings([]);
+      setBossIntroActive(false);
+    } else {
+      // Boss starting level - trigger intro sequence
+      setBossIntroActive(true);
+      soundManager.playBossIntroSound();
+
+      // Reset first boss minion tracking for this boss level
+      firstBossMinionKilledRef.current = false;
+
+      // Show boss name and start boss music after 1 second
+      setTimeout(() => {
+        soundManager.playBossMusic(startLevel);
+        const bossName = startLevel === 5 ? "CUBE GUARDIAN" : startLevel === 10 ? "SPHERE DESTROYER" : "PYRAMID LORD";
+        toast.error(`⚠️ BOSS APPROACHING: ${bossName} ⚠️`, { duration: 3000 });
+      }, 1000);
+
+      // End intro after 3 seconds
+      setTimeout(() => {
+        setBossIntroActive(false);
+      }, 3000);
+    }
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
-    
-    // If starting on a boss level, trigger boss intro sequence after state reset
-    if (BOSS_LEVELS.includes(startLevel)) {
-      setTimeout(() => {
-        // Reinitialize the boss after state is cleared
-        initBricksForLevel(startLevel);
-        
-        // Start intro sequence
-        setBossIntroActive(true);
-        soundManager.playBossIntroSound();
-        
-        // Show boss name and start boss music after 1 second
-        setTimeout(() => {
-          soundManager.playBossMusic(startLevel);
-          const bossName =
-            startLevel === 5 ? "CUBE GUARDIAN" : startLevel === 10 ? "SPHERE DESTROYER" : "PYRAMID LORD";
-          toast.error(`⚠️ BOSS APPROACHING: ${bossName} ⚠️`, { duration: 3000 });
-        }, 1000);
-        
-        // End intro after 3 seconds
-        setTimeout(() => {
-          setBossIntroActive(false);
-        }, 3000);
-      }, 100);
-    }
   }, [setPowerUps, initBricksForLevel, createRandomLetterAssignments, initPowerUpAssignments, settings.startingLevel]);
   const nextLevel = useCallback(() => {
     // Stop game loop before starting new level
