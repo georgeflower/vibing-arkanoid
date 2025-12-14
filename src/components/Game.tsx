@@ -2551,9 +2551,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     setBalls((prevBalls) => {
       // ========== Phase 0: Boss-First Swept Collision ==========
-      // CRITICAL: Clear stale per-ball flags at start of collision pass
+      // CRITICAL: Clear stale per-ball flags and track previousY for anti-rescue check
       prevBalls.forEach((ball) => {
         delete (ball as any)._hitBossThisFrame;
+        // Store Y position before CCD for paddle anti-rescue validation
+        ball.previousY = ball.y;
       });
 
       // Time the actual boss-first sweep phase
@@ -2737,15 +2739,52 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               }
               break;
 
-            case "paddle":
-              // Adjust angle based on hit position (always apply physics)
+            case "paddle": {
+              // Anti-rescue paddle collision validation
+              const PADDLE_HIT_COOLDOWN_TICKS = 3;
+              const TOP_NORMAL_THRESHOLD = -0.5;
+              const normalY = event.normal.y ?? 0;
+              
+              // Check 1: Normal must point strongly upward (top-surface hit)
+              if (normalY > TOP_NORMAL_THRESHOLD) {
+                // Not a top-surface hit, skip paddle physics
+                break;
+              }
+              
+              // Check 2: Contact point must be above paddle top
+              if (event.point.y > paddle.y + 1) {
+                // Contact below paddle top, skip
+                break;
+              }
+              
+              // Check 3: Ball was above paddle before collision (anti-rescue)
+              const previousBallY = result.ball.previousY ?? result.ball.y;
+              if (previousBallY >= paddle.y) {
+                // Ball was NOT above paddle before collision, skip (ball from below)
+                break;
+              }
+              
+              // Check 4: Ball must be moving into the paddle (dot < 0)
+              const dot = result.ball.dx * event.normal.x + result.ball.dy * event.normal.y;
+              if (dot >= 0) {
+                // Ball moving away from paddle, skip
+                break;
+              }
+              
+              // Check 5: Cooldown - prevent repeated hits
+              if (result.ball.lastHitTick !== undefined && frameTick - result.ball.lastHitTick < PADDLE_HIT_COOLDOWN_TICKS) {
+                // Still in cooldown, skip
+                break;
+              }
+              
+              // All checks passed - apply paddle physics
               const hitPos = (event.point.x - paddle.x) / paddle.width;
               const angle = (hitPos - 0.5) * Math.PI * 0.6;
               const speedBefore = Math.sqrt(result.ball.dx * result.ball.dx + result.ball.dy * result.ball.dy);
-              const dxBefore = result.ball.dx;
-              const dyBefore = result.ball.dy;
               result.ball.dx = speedBefore * Math.sin(angle);
               result.ball.dy = -Math.abs(speedBefore * Math.cos(angle));
+              result.ball.lastHitTick = frameTick; // Set cooldown
+              
               if (!isDuplicate) {
                 if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
                   const timestamp = performance.now().toFixed(2);
@@ -2785,6 +2824,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 setLastPaddleHitTime(now);
               }
               break;
+            }
 
             case "brick":
             case "corner":

@@ -290,7 +290,7 @@ export function processBallCCD(
         }
       }
 
-      // 2) Paddle collision
+      // 2) Paddle collision - with strict top-surface and direction checks
       if (paddle) {
         const exp = expandAABB({ 
           x: paddle.x, 
@@ -303,15 +303,26 @@ export function processBallCCD(
         const rayHit = rayAABB(pos0, pos1, exp);
         if (rayHit) {
           const hitPoint = vAdd(pos0, vScale(vSub(pos1, pos0), rayHit.tEntry));
-          if (!earliest || rayHit.tEntry < earliest.t) {
-            earliest = { 
-              t: rayHit.tEntry, 
-              normal: rayHit.normal, 
-              objectType: 'paddle', 
-              objectId: paddle.id ?? 0, 
-              point: hitPoint 
-            };
+          const normal = rayHit.normal;
+          const moveDir = vSub(pos1, pos0);
+          const dot = moveDir.x * normal.x + moveDir.y * normal.y;
+          
+          // Only accept paddle candidate if:
+          // 1. Normal points strongly upward (top-surface hit)
+          // 2. Ball is moving into the paddle (dot < 0)
+          const TOP_NORMAL_THRESHOLD = -0.5;
+          if (normal.y <= TOP_NORMAL_THRESHOLD && dot < 0) {
+            if (!earliest || rayHit.tEntry < earliest.t) {
+              earliest = { 
+                t: rayHit.tEntry, 
+                normal: normal, 
+                objectType: 'paddle', 
+                objectId: paddle.id ?? 0, 
+                point: hitPoint 
+              };
+            }
           }
+          // else: ignore (underside or side contact - prevents rescue from below)
         }
       }
 
