@@ -31,6 +31,8 @@ export interface Ball {
   lastWallHitTime?: number; // Timestamp of last wall hit (for cooldown)
   skipRemainingSubsteps?: boolean; // Exit substep loop after brick hit to prevent tunneling
   isHoming?: boolean; // Ball curves toward boss
+  previousY?: number; // Y position before CCD pass (for anti-rescue check)
+  lastHitTick?: number; // Frame tick of last paddle hit (for cooldown)
 }
 
 export interface Paddle {

@@ -139,19 +139,29 @@ export function checkCircleVsRoundedPaddle(
       }
     }
 
-    // Emergency fallback: if the ball is horizontally over the paddle and has any penetration,
-    // force it above the paddle to avoid getting stuck, even if the normal points sideways.
+    // Emergency fallback: only force the ball above paddle when penetration is large AND either:
+    // - the normal indicates an upward push (legitimate top-surface hit)
+    // - OR the previous ball center was above the paddle (ball coming from above)
+    // This prevents rescuing balls that entered from below.
     const withinPaddleX = result.newX >= paddle.x && result.newX <= paddle.x + paddle.width;
-    if (withinPaddleX && result.newY >= paddle.y && result.penetration > 0.5) {
-      const targetY = paddle.y - ball.radius - SAFETY_MARGIN;
-      if (result.newY > targetY) {
-        result.newY = targetY;
+    const MIN_PENETRATION_FOR_FORCE = 0.5;
+    if (withinPaddleX && result.penetration > MIN_PENETRATION_FOR_FORCE) {
+      const normalIsUpward = result.normal.y <= -0.7;
+      const previousBallY = (ball as any).previousY ?? ball.y;
+      
+      // Only apply emergency rescue if normal is upward OR ball was previously above paddle
+      if (normalIsUpward || previousBallY < paddle.y) {
+        const targetY = paddle.y - ball.radius - SAFETY_MARGIN;
+        if (result.newY > targetY) {
+          result.newY = targetY;
+        }
+        // Enforce minimum upward speed and damp horizontal velocity
+        const minUpwardSpeed = 2.0; // Minimum px/frame upward
+        result.newVelocityY = -Math.max(minUpwardSpeed, Math.abs(result.newVelocityY || ball.dy || minUpwardSpeed));
+        result.newVelocityX *= 0.95; // Slight horizontal damping
+        result.normal = { x: 0, y: -1 };
       }
-      // Enforce minimum upward speed and damp horizontal velocity
-      const minUpwardSpeed = 2.0; // Minimum px/frame upward
-      result.newVelocityY = -Math.max(minUpwardSpeed, Math.abs(result.newVelocityY || ball.dy || minUpwardSpeed));
-      result.newVelocityX *= 0.95; // Slight horizontal damping
-      result.normal = { x: 0, y: -1 };
+      // else: ball came from below - do NOT rescue it
     }
   }
 
