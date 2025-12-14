@@ -61,7 +61,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
   // Force service worker update check and apply when at main menu
-  useServiceWorkerUpdate({ shouldApplyUpdate: true });
+  useServiceWorkerUpdate({ shouldApplyUpdate: true, isMainMenu: true });
 
   // Hidden developer feature: Press TAB to open level editor
   useEffect(() => {
