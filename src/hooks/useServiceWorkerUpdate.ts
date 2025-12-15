@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
 
 interface UseServiceWorkerUpdateOptions {
   shouldApplyUpdate?: boolean;
   isMainMenu?: boolean;
+  isStartingGame?: boolean;
 }
 
 export const useServiceWorkerUpdate = (options: UseServiceWorkerUpdateOptions = {}) => {
-  const { shouldApplyUpdate = false, isMainMenu = false } = options;
+  const { shouldApplyUpdate = false, isMainMenu = false, isStartingGame = false } = options;
+  const hasCheckedOnGameStart = useRef(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -62,8 +64,12 @@ export const useServiceWorkerUpdate = (options: UseServiceWorkerUpdateOptions = 
       }
     };
 
-    // Only force check on main menu, not when game is paused or in other states
+    // Check on main menu or when starting a new game (but only once per game start)
     if (isMainMenu) {
+      hasCheckedOnGameStart.current = false; // Reset when returning to menu
+      checkForUpdate();
+    } else if (isStartingGame && !hasCheckedOnGameStart.current) {
+      hasCheckedOnGameStart.current = true;
       checkForUpdate();
     }
 
@@ -79,7 +85,7 @@ export const useServiceWorkerUpdate = (options: UseServiceWorkerUpdateOptions = 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [shouldApplyUpdate, isMainMenu]);
+  }, [shouldApplyUpdate, isMainMenu, isStartingGame]);
 
   return { updateAvailable, isDownloading };
 };
