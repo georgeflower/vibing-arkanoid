@@ -1,6 +1,18 @@
-export const GAME_VERSION = "0.8.6";
+export const GAME_VERSION = "0.8.7";
 
 export const CHANGELOG = [
+  {
+    version: "0.8.7",
+    changes: [
+      "Fixed paddle collision bug: velocity now calculated in pixels-per-frame (was 60x overestimated)",
+      "Anti-rescue paddle collision: prevents false rescues when ball approaches from below",
+      "Unified cleanup on unmount: all timers, intervals, and animation frames properly cleared",
+      "Game loop pause/resume synchronized with game state and tutorial",
+      "Centralized scaled constants into useScaledConstants hook for cleaner code",
+      "Service worker checks now run on main menu AND when starting new game (never during gameplay)",
+      "Fixed stale closures in timeout callbacks using functional state updates",
+    ],
+  },
   {
     version: "0.8.6",
     changes: [
