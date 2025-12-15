@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
+import { useScaledConstants } from "@/hooks/useScaledConstants";
 import CRTOverlay from "./CRTOverlay";
 
 // ═══════════════════════════════════════════════════════════════
@@ -102,22 +103,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Detect updates but don't apply during gameplay - defer until back at menu
   useServiceWorkerUpdate({ shouldApplyUpdate: false });
 
-  // Detect Mac and apply 10% scale reduction
-  const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform) || /Macintosh/.test(navigator.userAgent);
-  const scaleFactor = isMac ? 0.9 : 1;
-
-  // Scale all game constants for Mac
-  const SCALED_CANVAS_WIDTH = CANVAS_WIDTH * scaleFactor;
-  const SCALED_CANVAS_HEIGHT = CANVAS_HEIGHT * scaleFactor;
-  const SCALED_PADDLE_WIDTH = PADDLE_WIDTH * scaleFactor;
-  const SCALED_PADDLE_HEIGHT = PADDLE_HEIGHT * scaleFactor;
-  const SCALED_BALL_RADIUS = BALL_RADIUS * scaleFactor;
-  const SCALED_BRICK_WIDTH = BRICK_WIDTH * scaleFactor;
-  const SCALED_BRICK_HEIGHT = BRICK_HEIGHT * scaleFactor;
-  const SCALED_BRICK_PADDING = BRICK_PADDING * scaleFactor;
-  const SCALED_BRICK_OFFSET_TOP = BRICK_OFFSET_TOP * scaleFactor;
-  const SCALED_BRICK_OFFSET_LEFT =
-    (SCALED_CANVAS_WIDTH - (BRICK_COLS * SCALED_BRICK_WIDTH + (BRICK_COLS - 1) * SCALED_BRICK_PADDING)) / 2;
+  // Centralized scaled constants
+  const {
+    isMac,
+    scaleFactor,
+    canvasWidth: SCALED_CANVAS_WIDTH,
+    canvasHeight: SCALED_CANVAS_HEIGHT,
+    paddleWidth: SCALED_PADDLE_WIDTH,
+    paddleHeight: SCALED_PADDLE_HEIGHT,
+    paddleStartY: SCALED_PADDLE_START_Y,
+    ballRadius: SCALED_BALL_RADIUS,
+    brickWidth: SCALED_BRICK_WIDTH,
+    brickHeight: SCALED_BRICK_HEIGHT,
+    brickPadding: SCALED_BRICK_PADDING,
+    brickOffsetTop: SCALED_BRICK_OFFSET_TOP,
+    brickOffsetLeft: SCALED_BRICK_OFFSET_LEFT,
+  } = useScaledConstants();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(settings.startingLives);
@@ -217,6 +218,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Boss power-up states
   const [reflectShieldActive, setReflectShieldActive] = useState(false);
   const [homingBallActive, setHomingBallActive] = useState(false);
+  const bossStunnerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reflectShieldTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const homingBallTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -516,43 +518,100 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         mode: "fixedStep",
       });
     }
+  }, []);
 
+  // ═══════════════════════════════════════════════════════════════
+  // UNIFIED CLEANUP - Clear ALL timers, intervals, and listeners on unmount
+  // ═══════════════════════════════════════════════════════════════
+  useEffect(() => {
     return () => {
+      // Stop fixed-step game loop
       if (gameLoopRef.current) {
         gameLoopRef.current.stop();
+      }
+
+      // Clear named timeout refs
+      if (bossStunnerTimeoutRef.current) {
+        clearTimeout(bossStunnerTimeoutRef.current);
+      }
+      if (reflectShieldTimeoutRef.current) {
+        clearTimeout(reflectShieldTimeoutRef.current);
+      }
+      if (homingBallTimeoutRef.current) {
+        clearTimeout(homingBallTimeoutRef.current);
+      }
+      if (highlightFlashTimeoutRef.current) {
+        clearTimeout(highlightFlashTimeoutRef.current);
+      }
+
+      // Clear interval refs
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+      if (totalPlayTimeIntervalRef.current) {
+        clearInterval(totalPlayTimeIntervalRef.current);
+      }
+      if (launchAngleIntervalRef.current) {
+        clearInterval(launchAngleIntervalRef.current);
+      }
+
+      // Clear bomb intervals map
+      bombIntervalsRef.current.forEach((t) => clearTimeout(t));
+      bombIntervalsRef.current.clear();
+
+      // Cancel animation frame
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
     };
   }, []);
 
+  // Sync game loop pause/resume with game state
+  useEffect(() => {
+    if (!gameLoopRef.current) return;
+
+    if (gameState === "playing" && !tutorialActive) {
+      gameLoopRef.current.resume();
+    } else if (gameState === "paused" || tutorialActive) {
+      gameLoopRef.current.pause();
+    }
+  }, [gameState, tutorialActive]);
+
   // Boss power-up effect handlers
   const handleBossStunner = useCallback(() => {
-    const endTime = Date.now() + 5000;
+    const duration = 5000;
+    const endTime = Date.now() + duration;
     setBossStunnerEndTime(endTime);
 
-    if (boss) {
-      setBoss((prev) =>
-        prev
-          ? {
-              ...prev,
-              isStunned: true,
-              stunnedUntil: endTime,
-            }
-          : null,
-      );
+    // Use functional updates to avoid stale closures
+    setBoss((prev) =>
+      prev
+        ? {
+            ...prev,
+            isStunned: true,
+            stunnedUntil: endTime,
+          }
+        : null,
+    );
 
-      // Also stun resurrected bosses
-      setResurrectedBosses((prev) =>
-        prev.map((rb) => ({
-          ...rb,
-          isStunned: true,
-          stunnedUntil: endTime,
-        })),
-      );
+    // Also stun resurrected bosses
+    setResurrectedBosses((prev) =>
+      prev.map((rb) => ({
+        ...rb,
+        isStunned: true,
+        stunnedUntil: endTime,
+      })),
+    );
+
+    // Clear existing timeout before setting new one
+    if (bossStunnerTimeoutRef.current) {
+      clearTimeout(bossStunnerTimeoutRef.current);
     }
 
-    // Clear end time when stun expires
-    setTimeout(() => setBossStunnerEndTime(null), 5000);
-  }, [boss]);
+    bossStunnerTimeoutRef.current = setTimeout(() => {
+      setBossStunnerEndTime(null);
+    }, duration);
+  }, []);
 
   const handleReflectShield = useCallback(() => {
     const endTime = Date.now() + 15000;
@@ -1219,7 +1278,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const initialPaddleX = SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2;
     setPaddle({
       x: initialPaddleX,
-      y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+      y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
       width: SCALED_PADDLE_WIDTH,
       height: SCALED_PADDLE_HEIGHT,
       hasTurrets: false,
@@ -1232,7 +1291,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const initialAngle = (-20 * Math.PI) / 180; // Start from left side
     const initialBall: Ball = {
       x: SCALED_CANVAS_WIDTH / 2,
-      y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+      y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
       dx: baseSpeed * Math.sin(initialAngle), // Calculate from angle
       dy: -baseSpeed * Math.cos(initialAngle), // Calculate from angle
       radius: SCALED_BALL_RADIUS,
@@ -1341,7 +1400,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     updateMaxLevel(newLevel);
     setPaddle((prev) => ({
       x: SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2,
-      y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+      y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
       width: SCALED_PADDLE_WIDTH,
       height: SCALED_PADDLE_HEIGHT,
       hasTurrets: prev?.hasTurrets || false,
@@ -1354,7 +1413,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const baseSpeed = 5.175 * Math.min(newSpeedMultiplier, 1.75); // 50% faster base speed
     const initialBall: Ball = {
       x: SCALED_CANVAS_WIDTH / 2,
-      y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+      y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
       dx: baseSpeed,
       dy: -baseSpeed,
       radius: SCALED_BALL_RADIUS,
@@ -3583,7 +3642,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             const initialAngle = (-20 * Math.PI) / 180;
             const resetBall: Ball = {
               x: SCALED_CANVAS_WIDTH / 2,
-              y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+              y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
               dx: baseSpeed * Math.sin(initialAngle),
               dy: -baseSpeed * Math.cos(initialAngle),
               radius: SCALED_BALL_RADIUS,
@@ -4146,7 +4205,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               const baseSpeed = 5.175; // 50% faster base speed
               const resetBall: Ball = {
                 x: SCALED_CANVAS_WIDTH / 2,
-                y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+                y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
                 dx: baseSpeed,
                 dy: -baseSpeed,
                 radius: SCALED_BALL_RADIUS,
@@ -4289,7 +4348,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               const baseSpeed = 5.175; // 50% faster base speed
               const resetBall: Ball = {
                 x: SCALED_CANVAS_WIDTH / 2,
-                y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+                y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
                 dx: baseSpeed,
                 dy: -baseSpeed,
                 radius: SCALED_BALL_RADIUS,
@@ -4704,7 +4763,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 {
                   id: nextBallId.current++,
                   x: SCALED_CANVAS_WIDTH / 2,
-                  y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+                  y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
                   dx: baseSpeed,
                   dy: -baseSpeed,
                   radius: SCALED_BALL_RADIUS,
@@ -5102,7 +5161,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 {
                   id: nextBallId.current++,
                   x: SCALED_CANVAS_WIDTH / 2,
-                  y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+                  y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
                   dx: baseSpeed,
                   dy: -baseSpeed,
                   radius: SCALED_BALL_RADIUS,
@@ -5799,7 +5858,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const initialPaddleX = SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2;
     setPaddle({
       x: initialPaddleX,
-      y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+      y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
       width: SCALED_PADDLE_WIDTH,
       height: SCALED_PADDLE_HEIGHT,
       hasTurrets: false,
@@ -5811,7 +5870,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const baseSpeed = 5.175 * Math.min(levelSpeedMultiplier, 1.75);
     const initialBall: Ball = {
       x: SCALED_CANVAS_WIDTH / 2,
-      y: SCALED_CANVAS_HEIGHT - 60 * scaleFactor,
+      y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
       dx: baseSpeed,
       dy: -baseSpeed,
       radius: SCALED_BALL_RADIUS,
