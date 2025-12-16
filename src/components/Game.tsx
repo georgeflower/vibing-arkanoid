@@ -132,9 +132,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   // Helper function to calculate speed multiplier for any level
   const calculateSpeedForLevel = useCallback((levelNum: number, difficulty: string) => {
-    // Option B: 110% base for normal, 137.5% for godlike
-    const baseMultiplier = difficulty === "godlike" ? 1.375 : 1.1;
-    // Option B caps: 155% godlike, 140% normal
+    // 105% base for normal, 137.5% for godlike
+    const baseMultiplier = difficulty === "godlike" ? 1.375 : 1.05;
+    // Caps: 155% godlike, 140% normal
     const maxSpeedMultiplier = difficulty === "godlike" ? 1.55 : 1.4;
     
     let speedMult: number;
@@ -142,34 +142,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Godlike: always +5% per level
       speedMult = baseMultiplier + (levelNum - 1) * 0.05;
     } else {
-      // Normal: +5% for levels 1-5, +3% for levels 6+
-      if (levelNum <= 5) {
-        speedMult = baseMultiplier + (levelNum - 1) * 0.05;
-      } else {
-        // Levels 6+: base + 4 levels at 5% + remaining levels at 3%
-        const level5Speed = baseMultiplier + 4 * 0.05; // 130% at level 5
-        speedMult = level5Speed + (levelNum - 5) * 0.03;
-      }
+      // Normal: always +3% per level
+      speedMult = baseMultiplier + (levelNum - 1) * 0.03;
     }
     return Math.min(maxSpeedMultiplier, speedMult);
   }, []);
 
   const [speedMultiplier, setSpeedMultiplier] = useState(() => {
-    // Calculate speed for starting level using Option B formula
+    // Calculate speed for starting level
     const startLevel = settings.startingLevel;
-    const baseMultiplier = settings.difficulty === "godlike" ? 1.375 : 1.1;
+    // 105% base for normal, 137.5% for godlike
+    const baseMultiplier = settings.difficulty === "godlike" ? 1.375 : 1.05;
     const maxSpeedMultiplier = settings.difficulty === "godlike" ? 1.55 : 1.4;
     
     let speedMult: number;
     if (settings.difficulty === "godlike") {
       speedMult = baseMultiplier + (startLevel - 1) * 0.05;
     } else {
-      if (startLevel <= 5) {
-        speedMult = baseMultiplier + (startLevel - 1) * 0.05;
-      } else {
-        const level5Speed = baseMultiplier + 4 * 0.05;
-        speedMult = level5Speed + (startLevel - 5) * 0.03;
-      }
+      // Normal: always +3% per level
+      speedMult = baseMultiplier + (startLevel - 1) * 0.03;
     }
     return Math.min(maxSpeedMultiplier, speedMult);
   });
