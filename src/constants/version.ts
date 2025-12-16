@@ -1,6 +1,16 @@
-export const GAME_VERSION = "0.8.8";
+export const GAME_VERSION = "0.8.9";
 
 export const CHANGELOG = [
+  {
+    version: "0.8.9",
+    changes: [
+      "Integrated particle pool system for explosion effects",
+      "Particles now recycled from pool instead of creating new objects",
+      "Quality-aware particle limits enforced during allocation",
+      "In-place particle mutation reduces garbage collection pressure",
+      "Proper particle cleanup on game reset and component unmount",
+    ],
+  },
   {
     version: "0.8.8",
     changes: [
