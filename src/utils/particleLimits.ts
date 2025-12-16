@@ -6,8 +6,6 @@
 
 import type { QualityLevel } from '@/hooks/useAdaptiveQuality';
 
-export type { QualityLevel };
-
 export interface ParticleLimits {
   maxTotal: number;
   maxPerExplosion: number;

@@ -28,7 +28,6 @@ import { performanceProfiler } from "@/utils/performanceProfiler";
 import { frameProfiler } from "@/utils/frameProfiler";
 
 import { getParticleLimits, shouldCreateParticle, calculateParticleCount } from "@/utils/particleLimits";
-import { particlePool } from "@/utils/particlePool";
 import { FrameProfilerOverlay } from "./FrameProfilerOverlay";
 import { CCDPerformanceTracker } from "@/utils/rollingStats";
 // ═══════════════════════════════════════════════════════════════
@@ -564,9 +563,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
-      
-      // Release all pooled particles
-      particlePool.releaseAll();
     };
   }, []);
 
@@ -941,40 +937,54 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Helper function to create explosion particles based on enemy type
   const createExplosionParticles = useCallback(
     (x: number, y: number, enemyType: EnemyType): Particle[] => {
-      const particleCount = Math.round(qualitySettings.explosionParticles);
+      const particles: Particle[] = [];
+      const particleCount = Math.round(qualitySettings.explosionParticles); // Adjust based on quality
 
       // Determine colors based on enemy type
       let colors: string[] = [];
       if (enemyType === "cube") {
         colors = [
           "hsl(200, 100%, 60%)",
+          // Cyan
           "hsl(180, 100%, 50%)",
-          "hsl(220, 100%, 70%)",
+          // Light cyan
+          "hsl(220, 100%, 70%)", // Light blue
         ];
       } else if (enemyType === "sphere") {
         colors = [
           "hsl(330, 100%, 60%)",
+          // Pink
           "hsl(350, 100%, 65%)",
-          "hsl(310, 100%, 55%)",
+          // Light pink
+          "hsl(310, 100%, 55%)", // Magenta
         ];
       } else if (enemyType === "pyramid") {
         colors = [
           "hsl(280, 100%, 60%)",
+          // Purple
           "hsl(260, 100%, 65%)",
-          "hsl(300, 100%, 55%)",
+          // Light purple
+          "hsl(300, 100%, 55%)", // Violet
         ];
       }
-      
-      // Use particle pool for efficient allocation
-      return particlePool.acquireForExplosion(
-        x,
-        y,
-        particleCount,
-        colors,
-        qualitySettings.level
-      );
+      for (let i = 0; i < particleCount; i++) {
+        const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.3;
+        const speed = 2 + Math.random() * 3;
+        const size = 3 + Math.random() * 4;
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          life: 30,
+          maxLife: 30,
+        });
+      }
+      return particles;
     },
-    [qualitySettings.explosionParticles, qualitySettings.level],
+    [qualitySettings.explosionParticles],
   );
 
   const createHighScoreParticles = useCallback((): Particle[] => {
@@ -1323,7 +1333,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setEnemies([]);
     setBombs([]);
     setBackgroundPhase(0);
-    particlePool.releaseAll(); // Return particles to pool before clearing
     setExplosions([]);
     setEnemySpawnCount(0);
     setLastEnemySpawnTime(0);
@@ -1427,7 +1436,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setTimer(0);
     setEnemies([]);
     setBombs([]);
-    particlePool.releaseAll(); // Return particles to pool before clearing
     setExplosions([]);
     setEnemySpawnCount(0);
     setLastEnemySpawnTime(0);
@@ -3916,45 +3924,27 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const shouldUpdateParticles = qualitySettings.level !== "low" || currentFrameTick % 2 === 0;
 
       if (shouldUpdateParticles) {
-        setExplosions((prev) => {
-          const updatedExplosions: Explosion[] = [];
-          
-          for (const exp of prev) {
-            if (exp.frame >= exp.maxFrames) {
-              // Explosion finished - release all particles back to pool
-              particlePool.releaseMany(exp.particles);
-              continue;
-            }
-            
-            // Update particles in-place (mutate to avoid GC)
-            const expiredParticles = particlePool.updateParticles(exp.particles);
-            
-            // Release expired particles and keep living ones
-            if (expiredParticles.length > 0) {
-              particlePool.releaseMany(expiredParticles);
-            }
-            
-            // Filter to living particles only
-            const livingParticles = exp.particles.filter(p => p.life > 0);
-            
-            updatedExplosions.push({
+        setExplosions((prev) =>
+          prev
+            .map((exp) => ({
               ...exp,
               frame: exp.frame + 1,
-              particles: livingParticles,
-            });
-          }
-          
-          return updatedExplosions;
-        });
+              particles: exp.particles
+                .map((p) => ({
+                  ...p,
+                  x: p.x + p.vx,
+                  y: p.y + p.vy,
+                  vy: p.vy + 0.2,
+                  // Add gravity
+                  life: p.life - 1,
+                }))
+                .filter((p) => p.life > 0),
+            }))
+            .filter((exp) => exp.frame < exp.maxFrames),
+        );
       }
     } else {
-      // Release all particles when explosions disabled
-      setExplosions((prev) => {
-        for (const exp of prev) {
-          particlePool.releaseMany(exp.particles);
-        }
-        return [];
-      });
+      setExplosions([]);
     }
 
     // Update game over particles (Phase 4: Particle Limits)
@@ -5919,7 +5909,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     totalPlayTimeStartedRef.current = false;
     setEnemies([]);
     setBombs([]);
-    particlePool.releaseAll(); // Return particles to pool before clearing
     setExplosions([]);
     setEnemySpawnCount(0);
     setLastEnemySpawnTime(0);
