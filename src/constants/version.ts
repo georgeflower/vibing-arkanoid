@@ -1,6 +1,16 @@
-export const GAME_VERSION = "0.8.7";
+export const GAME_VERSION = "0.8.8";
 
 export const CHANGELOG = [
+  {
+    version: "0.8.8",
+    changes: [
+      "Codebase cleanup: removed 34 unused UI components (~3,500 lines)",
+      "Removed 22 unused npm dependencies for faster installs",
+      "Removed duplicate audio file (Pixel_Frenzy.mp3)",
+      "Removed unused eventQueue utility",
+      "Bundle size reduced by ~150-200KB",
+    ],
+  },
   {
     version: "0.8.7",
     changes: [

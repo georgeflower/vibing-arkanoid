@@ -26,7 +26,7 @@ import { DebugModeIndicator } from "./DebugModeIndicator";
 import { useDebugSettings } from "@/hooks/useDebugSettings";
 import { performanceProfiler } from "@/utils/performanceProfiler";
 import { frameProfiler } from "@/utils/frameProfiler";
-import { eventQueue } from "@/utils/eventQueue";
+
 import { getParticleLimits, shouldCreateParticle, calculateParticleCount } from "@/utils/particleLimits";
 import { FrameProfilerOverlay } from "./FrameProfilerOverlay";
 import { CCDPerformanceTracker } from "@/utils/rollingStats";
