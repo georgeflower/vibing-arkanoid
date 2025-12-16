@@ -130,9 +130,48 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bricks, setBricks] = useState<Brick[]>([]);
   const [balls, setBalls] = useState<Ball[]>([]);
   const [paddle, setPaddle] = useState<Paddle | null>(null);
+  // Helper function to calculate speed multiplier for any level
+  const calculateSpeedForLevel = useCallback((levelNum: number, difficulty: string) => {
+    // Option B: 110% base for normal, 137.5% for godlike
+    const baseMultiplier = difficulty === "godlike" ? 1.375 : 1.1;
+    // Option B caps: 155% godlike, 140% normal
+    const maxSpeedMultiplier = difficulty === "godlike" ? 1.55 : 1.4;
+    
+    let speedMult: number;
+    if (difficulty === "godlike") {
+      // Godlike: always +5% per level
+      speedMult = baseMultiplier + (levelNum - 1) * 0.05;
+    } else {
+      // Normal: +5% for levels 1-5, +3% for levels 6+
+      if (levelNum <= 5) {
+        speedMult = baseMultiplier + (levelNum - 1) * 0.05;
+      } else {
+        // Levels 6+: base + 4 levels at 5% + remaining levels at 3%
+        const level5Speed = baseMultiplier + 4 * 0.05; // 130% at level 5
+        speedMult = level5Speed + (levelNum - 5) * 0.03;
+      }
+    }
+    return Math.min(maxSpeedMultiplier, speedMult);
+  }, []);
+
   const [speedMultiplier, setSpeedMultiplier] = useState(() => {
-    const baseMultiplier = settings.difficulty === "godlike" ? 1.25 : 1.0;
-    return baseMultiplier; // Level 1 starts at base multiplier
+    // Calculate speed for starting level using Option B formula
+    const startLevel = settings.startingLevel;
+    const baseMultiplier = settings.difficulty === "godlike" ? 1.375 : 1.1;
+    const maxSpeedMultiplier = settings.difficulty === "godlike" ? 1.55 : 1.4;
+    
+    let speedMult: number;
+    if (settings.difficulty === "godlike") {
+      speedMult = baseMultiplier + (startLevel - 1) * 0.05;
+    } else {
+      if (startLevel <= 5) {
+        speedMult = baseMultiplier + (startLevel - 1) * 0.05;
+      } else {
+        const level5Speed = baseMultiplier + 4 * 0.05;
+        speedMult = level5Speed + (startLevel - 5) * 0.03;
+      }
+    }
+    return Math.min(maxSpeedMultiplier, speedMult);
   });
   // High-priority paddle position ref for immediate input response during low FPS
   const paddleXRef = useRef(0);
@@ -1286,8 +1325,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Initialize high-priority paddle position ref
     paddleXRef.current = initialPaddleX;
 
-    // Initialize ball with speed multiplier - waiting to launch
-    const baseSpeed = 4.5 * speedMultiplier; // Scale base speed by current difficulty multiplier
+    // Calculate speed for starting level BEFORE creating ball
+    const startLevel = settings.startingLevel;
+    const startingSpeedMultiplier = calculateSpeedForLevel(startLevel, settings.difficulty);
+    
+    // Initialize ball with correct speed multiplier for starting level
+    const baseSpeed = 4.5 * startingSpeedMultiplier;
     const initialAngle = (-20 * Math.PI) / 180; // Start from left side
     const initialBall: Ball = {
       x: SCALED_CANVAS_WIDTH / 2,
@@ -1309,20 +1352,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Create random letter assignments
     setLetterLevelAssignments(createRandomLetterAssignments());
 
-    // Initialize bricks for starting level
-    const startLevel = settings.startingLevel;
+    // Initialize bricks for starting level (startLevel already declared above)
     const initialBricks = initBricksForLevel(startLevel);
     setBricks(initialBricks);
     initPowerUpAssignments(initialBricks);
     setScore(0);
     setLives(3);
     setLevel(startLevel);
-    // Calculate speed multiplier based on starting level
-    const baseMultiplier = settings.difficulty === "godlike" ? 1.25 : 1.0;
-    const startingSpeedMultiplier = Math.min(
-      settings.difficulty === "godlike" ? 1.75 : 1.5,
-      baseMultiplier + (startLevel - 1) * 0.05,
-    );
+    // Set speed multiplier (already calculated above)
     setSpeedMultiplier(startingSpeedMultiplier);
     setGameState("ready");
     setPowerUps([]);
@@ -1389,10 +1426,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBonusLetters([]);
     setDroppedLettersThisLevel(new Set());
     const newLevel = level + 1;
-    const maxSpeedMultiplier = settings.difficulty === "godlike" ? 1.75 : 1.5; // 175% godlike, 150% normal
-    // Godlike starts at 125%, normal at 100%, both increase 5% per level
-    const baseMultiplier = settings.difficulty === "godlike" ? 1.25 : 1.0;
-    const newSpeedMultiplier = Math.min(maxSpeedMultiplier, baseMultiplier + (newLevel - 1) * 0.05);
+    const newSpeedMultiplier = calculateSpeedForLevel(newLevel, settings.difficulty);
     setLevel(newLevel);
     setSpeedMultiplier(newSpeedMultiplier);
 
@@ -1409,8 +1443,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       hasShield: prev?.hasShield || false,
     }));
 
-    // Initialize ball with new speed - waiting to launch (capped at 175%)
-    const baseSpeed = 5.175 * Math.min(newSpeedMultiplier, 1.75); // 50% faster base speed
+    // Initialize ball with new speed - waiting to launch (capped at 155%)
+    const baseSpeed = 5.175 * Math.min(newSpeedMultiplier, 1.55); // 50% faster base speed
     const initialBall: Ball = {
       x: SCALED_CANVAS_WIDTH / 2,
       y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,

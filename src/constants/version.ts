@@ -1,6 +1,16 @@
-export const GAME_VERSION = "0.8.8";
+export const GAME_VERSION = "0.8.9";
 
 export const CHANGELOG = [
+  {
+    version: "0.8.9",
+    changes: [
+      "Speed system rebalanced (Option B): 110% base speed for easier start",
+      "Normal mode: +5%/level for levels 1-5, then +3%/level for levels 6+",
+      "Godlike mode: 137.5% base, +5%/level always",
+      "Speed caps lowered: 140% normal, 155% godlike for easier late-game",
+      "Starting level now correctly applies speed for selected level",
+    ],
+  },
   {
     version: "0.8.8",
     changes: [
