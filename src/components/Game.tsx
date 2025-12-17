@@ -523,6 +523,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
+  
+  // Performance optimization refs
+  const screenShakeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastToastTimeRef = useRef<Record<string, number>>({});
+  const TOAST_THROTTLE_MS = 500;
   const nextEnemyId = useRef(1);
   const timerIntervalRef = useRef<NodeJS.Timeout>();
   const totalPlayTimeIntervalRef = useRef<NodeJS.Timeout>();
@@ -584,6 +589,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
       if (highlightFlashTimeoutRef.current) {
         clearTimeout(highlightFlashTimeoutRef.current);
+      }
+      if (screenShakeTimeoutRef.current) {
+        clearTimeout(screenShakeTimeoutRef.current);
       }
 
       // Clear interval refs
@@ -718,6 +726,30 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setHighlightFlash(0);
       highlightFlashTimeoutRef.current = null;
     }, duration);
+  }, []);
+
+  // Consolidated screen shake with single timeout (performance optimization)
+  const triggerScreenShake = useCallback((intensity: number, duration: number) => {
+    if (screenShakeTimeoutRef.current) {
+      clearTimeout(screenShakeTimeoutRef.current);
+    }
+    setScreenShake(intensity);
+    screenShakeTimeoutRef.current = setTimeout(() => {
+      setScreenShake(0);
+      screenShakeTimeoutRef.current = null;
+    }, duration);
+  }, []);
+
+  // Throttled toast to prevent rapid-fire notifications (performance optimization)
+  const throttledToast = useCallback((type: 'success' | 'warning' | 'info' | 'error', message: string, key?: string) => {
+    const toastKey = key || message;
+    const now = Date.now();
+    const lastTime = lastToastTimeRef.current[toastKey] || 0;
+    
+    if (now - lastTime > TOAST_THROTTLE_MS) {
+      lastToastTimeRef.current[toastKey] = now;
+      toast[type](message);
+    }
   }, []);
 
   const { isHighScore, addHighScore, getQualifiedLeaderboards } = useHighScores();
@@ -1189,9 +1221,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               });
               // Long flash and screen shake for all letters
               setBackgroundFlash(1);
-              setScreenShake(10);
+              triggerScreenShake(10, 800);
               setTimeout(() => setBackgroundFlash(0), 800);
-              setTimeout(() => setScreenShake(0), 800);
             } else {
               soundManager.playBonusLetterPickup();
               toast.success(`Letter ${letter.type} collected!`);
@@ -2636,8 +2667,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             // Audio/visual feedback
             soundManager.playBossHitSound();
-            setScreenShake(8);
-            setTimeout(() => setScreenShake(0), 400);
+            triggerScreenShake(8, 400);
             setBossHitCooldown(1000); // Visual cooldown indicator (still uses ms for UI)
           }
 
@@ -2990,12 +3020,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         dy: currentHits === 1 ? enemy.dy * 1.5 : enemy.dy,
                       });
                       if (currentHits === 0) {
-                        toast.warning("Pyramid hit! 2 more hits needed");
+                        throttledToast('warning', "Pyramid hit! 2 more hits needed", 'pyramid_hit');
                       } else {
-                        toast.warning("Pyramid is angry! 1 more hit!");
+                        throttledToast('warning', "Pyramid is angry! 1 more hit!", 'pyramid_hit');
                       }
-                      setScreenShake(5);
-                      setTimeout(() => setScreenShake(0), 500);
+                      triggerScreenShake(5, 500);
                     } else {
                       // Third hit - destroy pyramid
                       enemiesToDestroy.add(enemyIndex);
@@ -3005,7 +3034,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         type: enemy.type,
                       });
                       scoreIncrease += 300;
-                      toast.success("Pyramid destroyed! +300 points");
+                      throttledToast('success', "Pyramid destroyed! +300 points", 'enemy_destroyed');
                       soundManager.playExplosion();
                       enemiesKilledIncrease++;
                       bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
@@ -3027,9 +3056,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         dx: enemy.dx * 1.3,
                         dy: enemy.dy * 1.3,
                       });
-                      toast.warning("Sphere enemy is angry!");
-                      setScreenShake(5);
-                      setTimeout(() => setScreenShake(0), 500);
+                      throttledToast('warning', "Sphere enemy is angry!", 'sphere_hit');
+                      triggerScreenShake(5, 500);
                     } else {
                       // Second hit - destroy sphere
                       enemiesToDestroy.add(enemyIndex);
@@ -3039,7 +3067,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         type: enemy.type,
                       });
                       scoreIncrease += 200;
-                      toast.success("Sphere enemy destroyed! +200 points");
+                      throttledToast('success', "Sphere enemy destroyed! +200 points", 'enemy_destroyed');
                       soundManager.playExplosion();
                       enemiesKilledIncrease++;
                       bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
@@ -3057,11 +3085,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       type: enemy.type,
                     });
                     scoreIncrease += 100;
-                    toast.success("Cube enemy destroyed! +100 points");
+                    throttledToast('success', "Cube enemy destroyed! +100 points", 'enemy_destroyed');
                     soundManager.playExplosion();
                     enemiesKilledIncrease++;
-                    setScreenShake(3);
-                    setTimeout(() => setScreenShake(0), 300);
+                    triggerScreenShake(3, 300);
                     bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
 
                     if (enemy.id !== undefined) {
@@ -3470,21 +3497,29 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       });
 
       // Create explosions with particles
-      explosionsToCreate.forEach((exp) => {
-        setExplosions((prev) => [
-          ...prev,
-          {
-            x: exp.x,
-            y: exp.y,
-            frame: 0,
-            maxFrames: 20,
-            enemyType: exp.type,
-            particles: createExplosionParticles(exp.x, exp.y, exp.type),
-          },
-        ]);
-        // Trigger highlight flash for explosions (levels 1-4)
-        triggerHighlightFlash(1.0, 150);
-      });
+      // Create explosions with particles (with slow operation logging)
+      if (explosionsToCreate.length > 0) {
+        const explosionStart = performance.now();
+        explosionsToCreate.forEach((exp) => {
+          setExplosions((prev) => [
+            ...prev,
+            {
+              x: exp.x,
+              y: exp.y,
+              frame: 0,
+              maxFrames: 20,
+              enemyType: exp.type,
+              particles: createExplosionParticles(exp.x, exp.y, exp.type),
+            },
+          ]);
+          // Trigger highlight flash for explosions (levels 1-4)
+          triggerHighlightFlash(1.0, 150);
+        });
+        const explosionDuration = performance.now() - explosionStart;
+        if (explosionDuration > 8) {
+          debugLogger.warn(`[SLOW OP] Explosion creation took ${explosionDuration.toFixed(1)}ms for ${explosionsToCreate.length} explosions`);
+        }
+      }
 
       // Handle bonus letter drops
       bonusLetterDrops.forEach((drop) => {
@@ -4748,9 +4783,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 : null,
             );
             soundManager.playBossHitSound();
-            setScreenShake(8);
-            setTimeout(() => setScreenShake(0), 400);
-            toast.success("Reflected attack hit the boss!");
+            triggerScreenShake(8, 400);
+            throttledToast('success', "Reflected attack hit the boss!", 'reflected_hit');
             return false; // Remove attack
           }
 
@@ -4766,9 +4800,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 prev.map((b) => (b === rb ? { ...b, currentHealth: b.currentHealth - 1 } : b)),
               );
               soundManager.playBossHitSound();
-              setScreenShake(6);
-              setTimeout(() => setScreenShake(0), 400);
-              toast.success("Reflected attack hit resurrected boss!");
+              triggerScreenShake(6, 400);
+              throttledToast('success', "Reflected attack hit resurrected boss!", 'reflected_hit');
               return false; // Remove attack
             }
           }
@@ -4958,9 +4991,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const newHealth = prev.currentHealth - 1;
 
           soundManager.playBossHitSound();
-          setScreenShake(8);
-          setTimeout(() => setScreenShake(0), 400);
-          toast.success("Reflected shot hit the boss!");
+          triggerScreenShake(8, 400);
+          throttledToast('success', "Reflected shot hit the boss!", 'reflected_hit');
 
           // Check for defeat
           if (newHealth <= 0) {
@@ -5117,9 +5149,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const newHealth = rb.currentHealth - 1;
 
           soundManager.playBossHitSound();
-          setScreenShake(6);
-          setTimeout(() => setScreenShake(0), 400);
-          toast.success("Reflected shot hit resurrected boss!");
+          triggerScreenShake(6, 400);
+          throttledToast('success', "Reflected shot hit resurrected boss!", 'reflected_hit');
 
           if (newHealth <= 0) {
             // Defeat this resurrected boss
