@@ -91,6 +91,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const zoomDirectionRef = useRef(1);
     const dashOffsetRef = useRef(0);
     
+    // Pre-allocated cube face definitions to avoid per-frame allocations
+    const cubeFacesRef = useRef<Array<{ indices: number[]; name: string; lightness: number; avgZ: number }> | null>(null);
+    
     // Helper function to check if image is valid and loaded
     const isImageValid = (img: HTMLImageElement | null): img is HTMLImageElement => {
       return !!(img && img.complete && img.naturalHeight !== 0);
@@ -1998,24 +2001,31 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             return [x3 * scale, y3 * scale, z2];
           });
           
-          // Define faces with indices and colors
-          const faces = [
-            { indices: [0, 1, 2, 3], name: 'back', lightness: 40 },
-            { indices: [4, 5, 6, 7], name: 'front', lightness: 60 },
-            { indices: [0, 3, 7, 4], name: 'left', lightness: 48 },
-            { indices: [1, 2, 6, 5], name: 'right', lightness: 52 },
-            { indices: [3, 2, 6, 7], name: 'top', lightness: 55 },
-            { indices: [0, 1, 5, 4], name: 'bottom', lightness: 45 }
-          ];
+          // Define faces with indices and colors - reuse same objects, just update avgZ
+          // Static face definitions (allocated once, reused)
+          if (!cubeFacesRef.current) {
+            cubeFacesRef.current = [
+              { indices: [0, 1, 2, 3], name: 'back', lightness: 40, avgZ: 0 },
+              { indices: [4, 5, 6, 7], name: 'front', lightness: 60, avgZ: 0 },
+              { indices: [0, 3, 7, 4], name: 'left', lightness: 48, avgZ: 0 },
+              { indices: [1, 2, 6, 5], name: 'right', lightness: 52, avgZ: 0 },
+              { indices: [3, 2, 6, 7], name: 'top', lightness: 55, avgZ: 0 },
+              { indices: [0, 1, 5, 4], name: 'bottom', lightness: 45, avgZ: 0 }
+            ];
+          }
+          const faces = cubeFacesRef.current;
           
-          // Sort faces by depth (back to front)
-          const sortedFaces = faces.map(face => {
-            const avgZ = face.indices.reduce((sum, i) => sum + projected[i][2], 0) / 4;
-            return { ...face, avgZ };
-          }).sort((a, b) => a.avgZ - b.avgZ);
+          // Update avgZ in-place and sort (avoids creating new objects)
+          for (let f = 0; f < faces.length; f++) {
+            const face = faces[f];
+            face.avgZ = (projected[face.indices[0]][2] + projected[face.indices[1]][2] + 
+                        projected[face.indices[2]][2] + projected[face.indices[3]][2]) / 4;
+          }
+          // In-place sort by avgZ
+          faces.sort((a, b) => a.avgZ - b.avgZ);
           
           // Draw each face
-          sortedFaces.forEach(face => {
+          faces.forEach(face => {
             const points = face.indices.map(i => projected[i]);
             
             // Only draw if face is visible (front-facing)
@@ -2095,7 +2105,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
             
             // Redraw outer edges with glow
-            sortedFaces.forEach(face => {
+            faces.forEach(face => {
               const points = face.indices.map(i => projected[i]);
               const [p0, p1, p2] = points;
               const cross = (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
