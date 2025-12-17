@@ -3823,6 +3823,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setHighScoreParticles,
     bombIntervalsRef,
     createExplosionParticles,
+    debugSettings,
   ]);
 
   // FPS tracking for adaptive quality
@@ -5001,11 +5002,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           });
         }
         
+        // Remove the bomb that hit the boss
+        setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
+        
         soundManager.playBossHitSound();
         triggerScreenShake(8, 400);
         throttledToast('success', "Reflected shot hit the boss!", 'reflected_hit');
 
-        // Check for defeat - handle outside setBoss callback
+        // Check for defeat BEFORE updating boss state
         if (newHealth <= 0) {
           if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
             console.log('[DEBUG] [REFLECTED BOMB] Boss DEFEAT triggered!', { bossType: boss.type, stage: boss.currentStage });
@@ -5139,9 +5143,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Not defeated, just update health
           setBoss((prev) => prev ? { ...prev, currentHealth: newHealth, lastHitAt: reflectedBombNow } : null);
         }
-
-        // Remove bomb by ID
-        setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
         return;
       }
 
@@ -5480,6 +5481,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     lastPaddleHitTime,
     lastScoreMilestone,
     updateFps,
+    debugSettings,
   ]);
 
   useEffect(() => {
