@@ -785,8 +785,28 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       handleFireballStart,
       handleFireballEnd,
     );
-  const handleMainBossDefeat = useCallback(
-    (bossType: BossType, defeatedBoss: Boss) => {
+  const { bullets, setBullets, fireBullets, updateBullets } = useBullets(
+    setScore,
+    setBricks,
+    bricks,
+    enemies,
+    setPaddle,
+    () => setBricksDestroyedByTurrets((prev) => prev + 1),
+    boss,
+    resurrectedBosses,
+    setBoss,
+    setResurrectedBosses,
+    () => nextLevelRef.current?.(),
+    () => {
+      // Turret depleted callback with cooldown
+      const now = Date.now();
+      if (now - lastTurretDepleteSfxMs.current >= 200) {
+        lastTurretDepleteSfxMs.current = now;
+        toast.info("Turrets depleted!");
+      }
+    },
+    // Boss defeat callback
+    (bossType, defeatedBoss) => {
       if (bossType === "cube") {
         // Cube boss defeat
         soundManager.playExplosion();
@@ -857,11 +877,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setTimeout(() => nextLevel(), 3000);
       }
     },
-    [createExplosionParticles, nextLevel, setBullets, setEnemies],
-  );
-
-  const handleResurrectedBossDefeat = useCallback(
-    (defeatedBoss: Boss) => {
+    // Resurrected boss defeat callback
+    (defeatedBoss, bossIdx) => {
       const config = BOSS_CONFIG.pyramid;
       setScore((s) => s + config.resurrectedPoints);
       toast.success(`PYRAMID DESTROYED! +${config.resurrectedPoints} points`);
@@ -919,11 +936,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         return remaining;
       });
     },
-    [createExplosionParticles, nextLevel, setBullets, setEnemies],
-  );
-
-  const handleSpherePhaseChange = useCallback(
-    (sphereBoss: Boss) => {
+    // Sphere phase change callback
+    (sphereBoss) => {
       soundManager.playExplosion();
       toast.error("SPHERE PHASE 2: DESTROYER MODE!");
       setExplosions((e) => [
@@ -951,11 +965,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         lastHitAt: Date.now(),
       };
     },
-    [createExplosionParticles],
-  );
-
-  const handlePyramidSplit = useCallback(
-    (pyramidBoss: Boss) => {
+    // Pyramid split callback
+    (pyramidBoss) => {
       soundManager.playExplosion();
       toast.error("PYRAMID LORD SPLITS INTO 3!");
       setExplosions((e) => [
@@ -981,33 +992,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
       setResurrectedBosses(resurrected);
     },
-    [createExplosionParticles],
-  );
-
-  const { bullets, setBullets, fireBullets, updateBullets } = useBullets(
-    setScore,
-    setBricks,
-    bricks,
-    enemies,
-    setPaddle,
-    () => setBricksDestroyedByTurrets((prev) => prev + 1),
-    boss,
-    resurrectedBosses,
-    setBoss,
-    setResurrectedBosses,
-    () => nextLevelRef.current?.(),
-    () => {
-      // Turret depleted callback with cooldown
-      const now = Date.now();
-      if (now - lastTurretDepleteSfxMs.current >= 200) {
-        lastTurretDepleteSfxMs.current = now;
-        toast.info("Turrets depleted!");
-      }
-    },
-    handleMainBossDefeat,
-    (defeatedBoss) => handleResurrectedBossDefeat(defeatedBoss),
-    handleSpherePhaseChange,
-    handlePyramidSplit,
     // Boss hit visual effect callback
     handleBossHit,
   );
@@ -4991,13 +4975,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         const newHealth = boss.currentHealth - 1;
         
+        console.log('[REFLECTED BOMB] Boss hit!', {
+          bossType: boss.type,
+          currentHealth: boss.currentHealth,
+          newHealth,
+          willDefeat: newHealth <= 0,
+          bossStage: boss.currentStage,
+        });
+        
         soundManager.playBossHitSound();
         triggerScreenShake(8, 400);
         throttledToast('success', "Reflected shot hit the boss!", 'reflected_hit');
 
         // Check for defeat - handle outside setBoss callback
         if (newHealth <= 0) {
+          console.log('[REFLECTED BOMB] Boss DEFEAT triggered!', { bossType: boss.type, stage: boss.currentStage });
           if (boss.type === "cube") {
+            console.log('[REFLECTED BOMB] Cube boss defeat path entered');
             // Cube boss defeat
             soundManager.playExplosion();
             soundManager.playBossDefeatSound();
