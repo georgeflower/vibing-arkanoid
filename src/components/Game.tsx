@@ -4975,13 +4975,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         const newHealth = boss.currentHealth - 1;
         
+        console.log('[REFLECTED BOMB] Boss hit!', {
+          bossType: boss.type,
+          currentHealth: boss.currentHealth,
+          newHealth,
+          willDefeat: newHealth <= 0,
+          bossStage: boss.currentStage,
+        });
+        
         soundManager.playBossHitSound();
         triggerScreenShake(8, 400);
         throttledToast('success', "Reflected shot hit the boss!", 'reflected_hit');
 
         // Check for defeat - handle outside setBoss callback
         if (newHealth <= 0) {
+          console.log('[REFLECTED BOMB] Boss DEFEAT triggered!', { bossType: boss.type, stage: boss.currentStage });
           if (boss.type === "cube") {
+            console.log('[REFLECTED BOMB] Cube boss defeat path entered');
             // Cube boss defeat
             soundManager.playExplosion();
             soundManager.playBossDefeatSound();
