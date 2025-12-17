@@ -93,8 +93,6 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     
     // Pre-allocated cube face definitions to avoid per-frame allocations
     const cubeFacesRef = useRef<Array<{ indices: number[]; name: string; lightness: number; avgZ: number }> | null>(null);
-    // Pre-allocated pyramid face definitions to avoid per-frame allocations
-    const pyramidFacesRef = useRef<Array<{ indices: number[]; name: string; lightness: number; avgZ: number }> | null>(null);
     
     // Helper function to check if image is valid and loaded
     const isImageValid = (img: HTMLImageElement | null): img is HTMLImageElement => {
@@ -2160,70 +2158,36 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           const baseHue = boss.isAngry ? 0 : (boss.isSuperAngry ? 280 : 280);
           const intensity = boss.isSuperAngry ? 75 : (boss.isAngry ? 65 : 60);
           
-          // Define pyramid vertices: apex at top, 4 corners at base
-          const apex: [number, number, number] = [0, -size, 0];
-          const baseVertices: [number, number, number][] = [
-            [-size * 0.7, size * 0.5, -size * 0.7],
-            [size * 0.7, size * 0.5, -size * 0.7],
-            [size * 0.7, size * 0.5, size * 0.7],
-            [-size * 0.7, size * 0.5, size * 0.7],
-          ];
-          
-          // Apply Y-axis rotation and project to 2D
-          const cosY = Math.cos(boss.rotationY);
-          const sinY = Math.sin(boss.rotationY);
-          
-          const projectVertex = (v: [number, number, number]): [number, number, number] => {
-            const rx = v[0] * cosY + v[2] * sinY;
-            const rz = -v[0] * sinY + v[2] * cosY;
-            const scale = 300 / (300 + rz);
-            return [rx * scale, v[1] * scale, rz];
-          };
-          
-          const projectedApex = projectVertex(apex);
-          const projectedBase = baseVertices.map(projectVertex);
-          
-          // Initialize pyramid faces once (4 triangular faces)
-          if (!pyramidFacesRef.current) {
-            pyramidFacesRef.current = [
-              { indices: [0, 1], name: 'front', lightness: 60, avgZ: 0 },
-              { indices: [1, 2], name: 'right', lightness: 50, avgZ: 0 },
-              { indices: [2, 3], name: 'back', lightness: 40, avgZ: 0 },
-              { indices: [3, 0], name: 'left', lightness: 55, avgZ: 0 },
-            ];
-          }
-          const faces = pyramidFacesRef.current;
-          
-          // Update avgZ in-place and sort by depth (back-to-front)
-          for (const face of faces) {
-            const b1 = projectedBase[face.indices[0]];
-            const b2 = projectedBase[face.indices[1]];
-            face.avgZ = (projectedApex[2] + b1[2] + b2[2]) / 3;
-          }
-          faces.sort((a, b) => a.avgZ - b.avgZ);
-          
-          // Draw sorted faces with glow
+          ctx.rotate(boss.rotationY);
           if (qualitySettings.glowEnabled) {
             ctx.shadowBlur = 25;
             ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
           }
           
-          for (const face of faces) {
-            const b1 = projectedBase[face.indices[0]];
-            const b2 = projectedBase[face.indices[1]];
-            
-            ctx.fillStyle = `hsl(${baseHue}, 80%, ${face.lightness + (intensity - 60)}%)`;
-            ctx.beginPath();
-            ctx.moveTo(projectedApex[0], projectedApex[1]);
-            ctx.lineTo(b1[0], b1[1]);
-            ctx.lineTo(b2[0], b2[1]);
-            ctx.closePath();
-            ctx.fill();
-            
-            ctx.strokeStyle = `hsl(${baseHue}, 90%, 70%)`;
-            ctx.lineWidth = 3;
-            ctx.stroke();
-          }
+          ctx.fillStyle = `hsl(${baseHue}, 80%, ${intensity}%)`;
+          ctx.beginPath();
+          ctx.moveTo(0, -size);
+          ctx.lineTo(size, size);
+          ctx.lineTo(-size, size);
+          ctx.closePath();
+          ctx.fill();
+          
+          ctx.fillStyle = `hsl(${baseHue}, 70%, ${intensity + 10}%)`;
+          ctx.beginPath();
+          ctx.moveTo(0, -size);
+          ctx.lineTo(0, 0);
+          ctx.lineTo(-size, size);
+          ctx.closePath();
+          ctx.fill();
+          
+          ctx.strokeStyle = `hsl(${baseHue}, 90%, 70%)`;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(0, -size);
+          ctx.lineTo(size, size);
+          ctx.lineTo(-size, size);
+          ctx.closePath();
+          ctx.stroke();
         }
         
         ctx.restore();
