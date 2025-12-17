@@ -4322,26 +4322,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           bomb.y + bomb.height > paddle.y &&
           bomb.y < paddle.y + paddle.height
         ) {
-          // Check if on boss level - reflect instead of taking damage
-          if (BOSS_LEVELS.includes(level)) {
-            // Mark bomb as reflected and reverse direction
-            setBombs((prev) =>
-              prev.map((b) =>
-                b.enemyId === bomb.enemyId
-                  ? {
-                      ...b,
-                      isReflected: true,
-                      dy: -b.speed, // Move upward
-                      dx: 0, // Start with no horizontal movement
-                    }
-                  : b,
-              ),
-            );
-            soundManager.playBounce();
-            toast.success("Shot reflected!");
-            return;
-          }
-          // Not on boss level - lose a life
+          // Bomb hits paddle - lose a life (reflect shield already checked above)
           soundManager.playLoseLife();
           setBombs((prev) => prev.filter((b) => b.enemyId !== bomb.enemyId));
           setLives((prev) => {
