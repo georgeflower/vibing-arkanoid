@@ -13,7 +13,15 @@ interface DebugDashboardProps {
 }
 
 export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }: DebugDashboardProps) => {
-  const [logStats, setLogStats] = useState({ total: 0, lagEvents: 0, errors: 0 });
+  const [logStats, setLogStats] = useState({ 
+    total: 0, 
+    lagEvents: 0, 
+    errors: 0, 
+    gcEvents: 0, 
+    avgLagGap: '0', 
+    maxLagGap: '0',
+    maxCapacity: 500,
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -171,8 +179,11 @@ export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }:
         <section className="mb-6">
           <h3 className="text-lg font-semibold text-foreground mb-3">Debug Logs</h3>
           <div className="bg-muted/30 rounded-lg p-4">
-            <div className="text-sm text-muted-foreground mb-3">
-              {logStats.total} logs stored ({logStats.lagEvents} lag events, {logStats.errors} errors)
+            <div className="text-sm text-muted-foreground space-y-1 mb-3">
+              <p>{logStats.total} logs stored (max {logStats.maxCapacity})</p>
+              <p className="text-yellow-400">{logStats.lagEvents} lag events | {logStats.gcEvents} GC events</p>
+              <p>Avg lag: {logStats.avgLagGap}ms | Max lag: {logStats.maxLagGap}ms</p>
+              <p className="text-red-400">{logStats.errors} errors</p>
             </div>
             <div className="flex gap-2">
               <Button onClick={handleDownloadLogs} variant="outline" className="flex-1" size="sm">

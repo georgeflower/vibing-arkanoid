@@ -3783,22 +3783,67 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const lastFrameTimeRef = useRef(performance.now());
   const targetFrameTime = 1000 / 60; // 60 FPS cap
 
-  // Lag detection ref for tracking frame timing
-  const lagDetectionRef = useRef({ lastFrameEnd: 0, lagCount: 0 });
+  // Lag detection ref for tracking frame timing with GC detection
+  const lagDetectionRef = useRef({ 
+    lastFrameEnd: 0, 
+    lagCount: 0,
+    lastLagLogTime: 0,      // Throttle lag logging
+    lastMemoryCheck: 0,     // GC detection timing
+    lastUsedHeap: 0,        // Track heap size for GC detection
+  });
 
   const gameLoop = useCallback(() => {
     if (gameState !== "playing") return;
 
-    // ═══ LAG DETECTION: Track frame-to-frame time ═══
+    // ═══ LAG DETECTION: Track frame-to-frame time with GC detection ═══
     const frameStart = performance.now();
     const frameGap = lagDetectionRef.current.lastFrameEnd > 0 
       ? frameStart - lagDetectionRef.current.lastFrameEnd 
       : 0;
     
-    // Log if frame gap exceeds 50ms (indicates lag between frames)
+    // GC Detection: Check for significant heap drops (Chrome-only API)
+    if (ENABLE_DEBUG_FEATURES && (performance as any).memory) {
+      const currentHeap = (performance as any).memory.usedJSHeapSize;
+      const heapDrop = lagDetectionRef.current.lastUsedHeap - currentHeap;
+      
+      // If heap dropped significantly (>1MB), likely GC occurred
+      if (lagDetectionRef.current.lastUsedHeap > 0 && heapDrop > 1_000_000) {
+        const gcContext = {
+          heapDropMB: (heapDrop / 1_000_000).toFixed(2),
+          heapUsedMB: (currentHeap / 1_000_000).toFixed(1),
+          frameGapMs: frameGap.toFixed(1),
+          level,
+          ballCount: balls.length,
+          enemyCount: enemies.length,
+        };
+        console.warn(`[DEBUG][GC DETECTED] Heap dropped by ${gcContext.heapDropMB}MB`, gcContext);
+        debugLogger.warn(`[GC DETECTED] Heap dropped by ${gcContext.heapDropMB}MB`, gcContext);
+      }
+      lagDetectionRef.current.lastUsedHeap = currentHeap;
+    }
+    
+    // Log if frame gap exceeds 50ms (indicates lag between frames) - throttled to 1/sec
     if (frameGap > 50) {
-      console.error(`[LAG DETECTED] Frame gap: ${frameGap.toFixed(1)}ms (expected ~16.67ms)`);
       lagDetectionRef.current.lagCount++;
+      
+      // Only log once per second max to avoid spam
+      if (frameStart - lagDetectionRef.current.lastLagLogTime > 1000) {
+        const context = {
+          level,
+          ballCount: balls.length,
+          enemyCount: enemies.length,
+          particleCount: explosions.reduce((sum, exp) => sum + exp.particles.length, 0),
+          powerUpCount: powerUps.length,
+          bossActive: !!boss,
+          quality: quality || 'unknown',
+          heapUsedMB: (performance as any).memory?.usedJSHeapSize 
+            ? ((performance as any).memory.usedJSHeapSize / 1_000_000).toFixed(1) 
+            : 'N/A',
+        };
+        console.error(`[LAG DETECTED] Frame gap: ${frameGap.toFixed(1)}ms (expected ~16.67ms)`, context);
+        debugLogger.error(`[LAG DETECTED] Frame gap: ${frameGap.toFixed(1)}ms`, context);
+        lagDetectionRef.current.lastLagLogTime = frameStart;
+      }
     }
 
     // ═══ PHASE 1: Frame Profiler Start ═══
