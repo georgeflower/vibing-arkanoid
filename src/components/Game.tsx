@@ -97,7 +97,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = true; // Set to false for production - ENABLED FOR LAG DEBUGGING
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -3767,8 +3767,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const lastFrameTimeRef = useRef(performance.now());
   const targetFrameTime = 1000 / 60; // 60 FPS cap
 
+  // Lag detection ref for tracking frame timing
+  const lagDetectionRef = useRef({ lastFrameEnd: 0, lagCount: 0 });
+
   const gameLoop = useCallback(() => {
     if (gameState !== "playing") return;
+
+    // ═══ LAG DETECTION: Track frame-to-frame time ═══
+    const frameStart = performance.now();
+    const frameGap = lagDetectionRef.current.lastFrameEnd > 0 
+      ? frameStart - lagDetectionRef.current.lastFrameEnd 
+      : 0;
+    
+    // Log if frame gap exceeds 50ms (indicates lag between frames)
+    if (frameGap > 50) {
+      console.error(`[LAG DETECTED] Frame gap: ${frameGap.toFixed(1)}ms (expected ~16.67ms)`);
+      lagDetectionRef.current.lagCount++;
+    }
 
     // ═══ PHASE 1: Frame Profiler Start ═══
     frameProfiler.startFrame();
@@ -3779,6 +3794,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     if (elapsed < targetFrameTime) {
       animationFrameRef.current = requestAnimationFrame(gameLoop);
+      lagDetectionRef.current.lastFrameEnd = performance.now();
       return;
     }
 
@@ -5302,6 +5318,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     frameProfiler.endFrame();
     if (debugSettings.enableFrameProfilerLogging && frameProfiler.isEnabled()) {
       frameProfiler.logStats();
+    }
+
+    // ═══ LAG DETECTION: Log frame duration spikes ═══
+    const frameEnd = performance.now();
+    const frameDuration = frameEnd - frameStart;
+    lagDetectionRef.current.lastFrameEnd = frameEnd;
+    
+    if (frameDuration > 50) {
+      const stats = frameProfiler.getStats();
+      console.error(`[LAG DETECTED] Frame took ${frameDuration.toFixed(1)}ms`, {
+        fps: stats?.fps || 'N/A',
+        physics: stats?.timings?.physics || 0,
+        rendering: stats?.timings?.rendering || 0,
+        particles: stats?.timings?.particles || 0,
+        enemies: stats?.timings?.enemies || 0,
+        collisionCount: stats?.counters?.collisions || 0,
+        particleCount: stats?.counters?.particles || 0,
+      });
     }
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
