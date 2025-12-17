@@ -69,22 +69,30 @@ export const useBullets = (
   const updateBullets = useCallback((currentBricks: Brick[]) => {
     // Move bullets and collect collision information
     setBullets(prev => {
-      const movedBullets = prev
-        .map(b => ({ 
-          ...b, 
-          y: b.isBounced ? b.y + b.speed : b.y - b.speed 
-        }))
-        .filter(b => b.y > 0 && b.y < CANVAS_HEIGHT);
+      // In-place mutation: update positions without creating new objects
+      for (let i = 0; i < prev.length; i++) {
+        const b = prev[i];
+        b.y = b.isBounced ? b.y + b.speed : b.y - b.speed;
+      }
+      
+      // Filter out-of-bounds bullets (only creates new array if needed)
+      let movedBullets = prev;
+      const inBoundsCount = prev.filter(b => b.y > 0 && b.y < CANVAS_HEIGHT).length;
+      if (inBoundsCount !== prev.length) {
+        movedBullets = prev.filter(b => b.y > 0 && b.y < CANVAS_HEIGHT);
+      }
       
       const bulletIndicesHit = new Set<number>();
       const bulletIndicesToBounce = new Set<number>();
       const brickIndicesToDestroy = new Set<number>();
       
       // Check enemy collisions first (only for bullets going up)
-      movedBullets.forEach((bullet, bulletIdx) => {
-        if (bulletIndicesHit.has(bulletIdx) || bullet.isBounced) return;
+      for (let bulletIdx = 0; bulletIdx < movedBullets.length; bulletIdx++) {
+        const bullet = movedBullets[bulletIdx];
+        if (bulletIndicesHit.has(bulletIdx) || bullet.isBounced) continue;
         
-        enemies.forEach((enemy) => {
+        for (let i = 0; i < enemies.length; i++) {
+          const enemy = enemies[i];
           if (
             bulletIndicesHit.has(bulletIdx) ||
             bullet.x + bullet.width <= enemy.x ||
@@ -92,22 +100,23 @@ export const useBullets = (
             bullet.y >= enemy.y + enemy.height ||
             bullet.y + bullet.height <= enemy.y
           ) {
-            return;
+            continue;
           }
           
           // Collision with enemy - bounce bullet back
           bulletIndicesToBounce.add(bulletIdx);
           soundManager.playBounce();
-        });
-      });
+        }
+      }
       
       // Check boss collisions (only for bullets going up, not bounced)
       const bossDamageMap = new Map<number, number>();
       const bossHitEffects: Array<{ x: number; y: number; isSuper: boolean }> = [];
       
       if (boss || (resurrectedBosses && resurrectedBosses.length > 0)) {
-        movedBullets.forEach((bullet, bulletIdx) => {
-          if (bulletIndicesHit.has(bulletIdx) || bulletIndicesToBounce.has(bulletIdx) || bullet.isBounced) return;
+        for (let bulletIdx = 0; bulletIdx < movedBullets.length; bulletIdx++) {
+          const bullet = movedBullets[bulletIdx];
+          if (bulletIndicesHit.has(bulletIdx) || bulletIndicesToBounce.has(bulletIdx) || bullet.isBounced) continue;
           
           // Check main boss
           if (boss) {
@@ -126,8 +135,9 @@ export const useBullets = (
           
           // Check resurrected bosses
           if (resurrectedBosses) {
-            resurrectedBosses.forEach((resBoss) => {
-              if (bulletIndicesHit.has(bulletIdx)) return;
+            for (let i = 0; i < resurrectedBosses.length; i++) {
+              const resBoss = resurrectedBosses[i];
+              if (bulletIndicesHit.has(bulletIdx)) break;
               
               if (
                 bullet.x + bullet.width > resBoss.x &&
@@ -140,14 +150,15 @@ export const useBullets = (
                 bossHitEffects.push({ x: bullet.x + bullet.width / 2, y: bullet.y, isSuper: bullet.isSuper || false });
                 soundManager.playBounce();
               }
-            });
+            }
           }
-        });
+        }
         
         // Trigger boss hit visual effects
-        bossHitEffects.forEach(effect => {
+        for (let i = 0; i < bossHitEffects.length; i++) {
+          const effect = bossHitEffects[i];
           onBossHit?.(effect.x, effect.y, effect.isSuper);
-        });
+        }
         
         // Apply boss damage
         if (bossDamageMap.size > 0 && setBoss && setResurrectedBosses) {
@@ -191,6 +202,16 @@ export const useBullets = (
           
           // Damage resurrected bosses
           setResurrectedBosses(prev => {
+            let hasChanges = false;
+            for (let i = 0; i < prev.length; i++) {
+              const resBoss = prev[i];
+              if (bossDamageMap.has(resBoss.id)) {
+                hasChanges = true;
+                break;
+              }
+            }
+            if (!hasChanges) return prev;
+            
             return prev.map((resBoss, idx) => {
               if (bossDamageMap.has(resBoss.id)) {
                 const damage = bossDamageMap.get(resBoss.id)!;
@@ -212,10 +233,12 @@ export const useBullets = (
       }
       
       // Check brick collisions (only for bullets going up)
-      movedBullets.forEach((bullet, bulletIdx) => {
-        if (bulletIndicesHit.has(bulletIdx) || bulletIndicesToBounce.has(bulletIdx) || bullet.isBounced) return;
+      for (let bulletIdx = 0; bulletIdx < movedBullets.length; bulletIdx++) {
+        const bullet = movedBullets[bulletIdx];
+        if (bulletIndicesHit.has(bulletIdx) || bulletIndicesToBounce.has(bulletIdx) || bullet.isBounced) continue;
         
-        currentBricks.forEach((brick, brickIdx) => {
+        for (let brickIdx = 0; brickIdx < currentBricks.length; brickIdx++) {
+          const brick = currentBricks[brickIdx];
           // Expand collision box to cover padding gaps
           const collisionX = brick.x - BRICK_PADDING / 2;
           const collisionY = brick.y - BRICK_PADDING / 2;
@@ -231,7 +254,7 @@ export const useBullets = (
             bullet.y >= collisionY + collisionHeight ||
             bullet.y + bullet.height <= collisionY
           ) {
-            return;
+            continue;
           }
           
           // Collision detected
@@ -249,8 +272,8 @@ export const useBullets = (
             bulletIndicesHit.add(bulletIdx);
             brickIndicesToDestroy.add(brickIdx);
           }
-        });
-      });
+        }
+      }
       
       // Update bricks if any collisions occurred
       if (brickIndicesToDestroy.size > 0) {
@@ -284,15 +307,23 @@ export const useBullets = (
         });
       }
       
-      // Return bullets: bounce the ones that hit enemies, remove ones that hit bricks
-      return movedBullets
-        .filter((_, idx) => !bulletIndicesHit.has(idx))
-        .map((bullet, idx) => {
-          if (bulletIndicesToBounce.has(idx)) {
-            return { ...bullet, isBounced: true };
-          }
-      return bullet;
-        });
+      // Return bullets: bounce the ones that hit enemies, remove ones that hit bricks/bosses
+      // Only create new array if there are changes
+      if (bulletIndicesHit.size === 0 && bulletIndicesToBounce.size === 0) {
+        return movedBullets;
+      }
+      
+      // Filter hit bullets and mutate bounced ones in-place
+      const result: Bullet[] = [];
+      for (let i = 0; i < movedBullets.length; i++) {
+        if (bulletIndicesHit.has(i)) continue;
+        const bullet = movedBullets[i];
+        if (bulletIndicesToBounce.has(i)) {
+          bullet.isBounced = true; // Mutate in-place
+        }
+        result.push(bullet);
+      }
+      return result;
     });
   }, [setBricks, setScore, enemies, boss, resurrectedBosses, setBoss, setResurrectedBosses, onLevelComplete]);
 
