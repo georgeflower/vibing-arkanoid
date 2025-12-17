@@ -30,6 +30,7 @@ import { frameProfiler } from "@/utils/frameProfiler";
 import { getParticleLimits, shouldCreateParticle, calculateParticleCount } from "@/utils/particleLimits";
 import { FrameProfilerOverlay } from "./FrameProfilerOverlay";
 import { CCDPerformanceTracker } from "@/utils/rollingStats";
+import { debugLogger } from "@/utils/debugLogger";
 // ═══════════════════════════════════════════════════════════════
 import { Maximize2, Minimize2, Home, X } from "lucide-react";
 import { QualityIndicator } from "./QualityIndicator";
@@ -547,6 +548,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         timeScale: 1.0,
         mode: "fixedStep",
       });
+    }
+  }, []);
+
+  // Initialize debug logger when debug features are enabled
+  useEffect(() => {
+    if (ENABLE_DEBUG_FEATURES) {
+      debugLogger.intercept();
+      debugLogger.log('Debug logging initialized', { maxLogs: 500 });
+      return () => {
+        debugLogger.restore();
+      };
     }
   }, []);
 
@@ -2035,6 +2047,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
           toast.success("Collision history exported to JSON");
+        } else if (e.key === "z" || e.key === "Z") {
+          // Download debug logs
+          const stats = debugLogger.getStats();
+          debugLogger.downloadLogs();
+          toast.success(`Debug logs downloaded (${stats.total} entries, ${stats.lagEvents} lag events)`);
         } else if (e.key === "§") {
           // Toggle debug dashboard (pauses/resumes game automatically)
           setShowDebugDashboard((prev) => !prev);
