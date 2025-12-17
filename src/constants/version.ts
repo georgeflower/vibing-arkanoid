@@ -1,6 +1,16 @@
-export const GAME_VERSION = "0.8.9";
+export const GAME_VERSION = "0.9.0";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.0",
+    changes: [
+      "Fixed boss defeat by reflected attacks: now triggers full explosion effects",
+      "Reflected attack boss defeat now plays explosion sound and visual particles",
+      "Entity cleanup (balls, enemies, attacks) on boss defeat via reflected attacks",
+      "Music transitions correctly when boss defeated by reflected attacks",
+      "Debug toasts and logs properly gated behind debug flag for production",
+    ],
+  },
   {
     version: "0.8.9",
     changes: [
