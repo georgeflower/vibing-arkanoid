@@ -12,6 +12,7 @@ export interface DebugLogEntry {
 
 const MAX_LOGS = 500;
 const STORAGE_KEY = 'vibing_arkanoid_debug_logs';
+const SAVE_DEBOUNCE_MS = 2000; // Debounce localStorage saves to 2 seconds
 
 class DebugLogger {
   private logs: DebugLogEntry[] = [];
@@ -21,6 +22,8 @@ class DebugLogger {
     warn: typeof console.warn;
     error: typeof console.error;
   };
+  private saveTimeout: ReturnType<typeof setTimeout> | null = null;
+  private pendingSave: boolean = false;
 
   constructor() {
     // Store original console methods
@@ -180,14 +183,41 @@ class DebugLogger {
   }
 
   /**
-   * Save logs to localStorage
+   * Save logs to localStorage (debounced to reduce I/O overhead)
    */
   private saveToStorage() {
+    this.pendingSave = true;
+    
+    // Debounce: save at most once every 2 seconds
+    if (this.saveTimeout) return;
+    
+    this.saveTimeout = setTimeout(() => {
+      if (this.pendingSave) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.logs));
+        } catch (e) {
+          // localStorage might be full or unavailable
+          this.originalConsole.warn('[DebugLogger] Failed to save to localStorage', e);
+        }
+        this.pendingSave = false;
+      }
+      this.saveTimeout = null;
+    }, SAVE_DEBOUNCE_MS);
+  }
+
+  /**
+   * Force immediate save (for critical events or before page unload)
+   */
+  flushToStorage() {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.logs));
+      this.pendingSave = false;
     } catch (e) {
-      // localStorage might be full or unavailable
-      this.originalConsole.warn('[DebugLogger] Failed to save to localStorage', e);
+      this.originalConsole.warn('[DebugLogger] Failed to flush to localStorage', e);
     }
   }
 
@@ -234,6 +264,19 @@ class DebugLogger {
     const warns = this.logs.filter(l => l.level === 'warn').length;
     const lagEvents = this.logs.filter(l => l.message.includes('[LAG')).length;
     const ccdEvents = this.logs.filter(l => l.message.includes('[CCD')).length;
+    const gcEvents = this.logs.filter(l => l.message.includes('[GC')).length;
+    
+    // Calculate average and max lag gap from lag logs
+    const lagLogs = this.logs.filter(l => l.message.includes('[LAG DETECTED]'));
+    const lagGaps = lagLogs.map(l => {
+      const match = l.message.match(/Frame gap: ([\d.]+)ms/);
+      return match ? parseFloat(match[1]) : 0;
+    }).filter(g => g > 0);
+    
+    const avgLagGap = lagGaps.length > 0 
+      ? lagGaps.reduce((a, b) => a + b, 0) / lagGaps.length 
+      : 0;
+    const maxLagGap = lagGaps.length > 0 ? Math.max(...lagGaps) : 0;
     
     return {
       total: this.logs.length,
@@ -242,6 +285,9 @@ class DebugLogger {
       logs: this.logs.length - errors - warns,
       lagEvents,
       ccdEvents,
+      gcEvents,
+      avgLagGap: avgLagGap.toFixed(1),
+      maxLagGap: maxLagGap.toFixed(1),
       maxCapacity: MAX_LOGS,
     };
   }
