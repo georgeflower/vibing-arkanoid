@@ -1,6 +1,8 @@
-import { X } from "lucide-react";
+import { X, Download, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DebugSettings } from "@/hooks/useDebugSettings";
+import { debugLogger } from "@/utils/debugLogger";
+import { useState, useEffect } from "react";
 
 interface DebugDashboardProps {
   isOpen: boolean;
@@ -11,6 +13,25 @@ interface DebugDashboardProps {
 }
 
 export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }: DebugDashboardProps) => {
+  const [logStats, setLogStats] = useState({ total: 0, lagEvents: 0, errors: 0 });
+
+  useEffect(() => {
+    if (isOpen) {
+      const stats = debugLogger.getStats();
+      setLogStats(stats);
+    }
+  }, [isOpen]);
+
+  const handleDownloadLogs = () => {
+    debugLogger.downloadLogs();
+    setLogStats(debugLogger.getStats());
+  };
+
+  const handleClearLogs = () => {
+    debugLogger.clear();
+    setLogStats(debugLogger.getStats());
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -143,6 +164,26 @@ export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }:
               checked={settings.enableCRTEffects}
               onChange={() => onToggle("enableCRTEffects")}
             />
+          </div>
+        </section>
+
+        {/* Debug Logs Section */}
+        <section className="mb-6">
+          <h3 className="text-lg font-semibold text-foreground mb-3">Debug Logs</h3>
+          <div className="bg-muted/30 rounded-lg p-4">
+            <div className="text-sm text-muted-foreground mb-3">
+              {logStats.total} logs stored ({logStats.lagEvents} lag events, {logStats.errors} errors)
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleDownloadLogs} variant="outline" className="flex-1" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Download Logs
+              </Button>
+              <Button onClick={handleClearLogs} variant="destructive" className="flex-1" size="sm">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear Logs
+              </Button>
+            </div>
           </div>
         </section>
 
