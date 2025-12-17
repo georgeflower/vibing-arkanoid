@@ -3866,7 +3866,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           ballCount: balls.length,
           enemyCount: enemies.length,
         };
-        console.warn(`[DEBUG][GC DETECTED] Heap dropped by ${gcContext.heapDropMB}MB`, gcContext);
         debugLogger.warn(`[GC DETECTED] Heap dropped by ${gcContext.heapDropMB}MB`, gcContext);
       }
       lagDetectionRef.current.lastUsedHeap = currentHeap;
