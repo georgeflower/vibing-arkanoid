@@ -3823,6 +3823,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     lastFrameEnd: 0, 
     lagCount: 0,
     lastLagLogTime: 0,      // Throttle lag logging
+    lastGCLogTime: 0,       // Throttle GC detection logging
     lastMemoryCheck: 0,     // GC detection timing
     lastUsedHeap: 0,        // Track heap size for GC detection
     tabWasHidden: false,    // Track if tab was backgrounded
@@ -3857,16 +3858,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const heapDrop = lagDetectionRef.current.lastUsedHeap - currentHeap;
       
       // If heap dropped significantly (>1MB), likely GC occurred
-      if (lagDetectionRef.current.lastUsedHeap > 0 && heapDrop > 1_000_000) {
-        const gcContext = {
-          heapDropMB: (heapDrop / 1_000_000).toFixed(2),
-          heapUsedMB: (currentHeap / 1_000_000).toFixed(1),
-          frameGapMs: frameGap.toFixed(1),
-          level,
-          ballCount: balls.length,
-          enemyCount: enemies.length,
-        };
-        debugLogger.warn(`[GC DETECTED] Heap dropped by ${gcContext.heapDropMB}MB`, gcContext);
+    // Throttle GC logging to max once per second to reduce debug overhead
+    const GC_LOG_THROTTLE_MS = 1000;
+    if (lagDetectionRef.current.lastUsedHeap > 0 && heapDrop > 3_000_000) {
+        // Only log if enough time has passed since last GC log
+        if (!lagDetectionRef.current.lastGCLogTime || 
+            (frameStart - lagDetectionRef.current.lastGCLogTime > GC_LOG_THROTTLE_MS)) {
+          const gcContext = {
+            heapDropMB: (heapDrop / 1_000_000).toFixed(2),
+            heapUsedMB: (currentHeap / 1_000_000).toFixed(1),
+            frameGapMs: frameGap.toFixed(1),
+            level,
+            ballCount: balls.length,
+            enemyCount: enemies.length,
+          };
+          debugLogger.warn(`[GC DETECTED] Heap dropped by ${gcContext.heapDropMB}MB`, gcContext);
+          lagDetectionRef.current.lastGCLogTime = frameStart;
+        }
       }
       lagDetectionRef.current.lastUsedHeap = currentHeap;
     }
