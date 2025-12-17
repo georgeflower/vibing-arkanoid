@@ -200,6 +200,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [laserWarnings, setLaserWarnings] = useState<Array<{ x: number; startTime: number }>>([]);
   const bossSpawnedEnemiesRef = useRef<Set<number>>(new Set());
   const firstBossMinionKilledRef = useRef(false);
+  // Track newly reflected bombs synchronously to avoid stale closure issues
+  const newlyReflectedBombIdsRef = useRef<Set<number>>(new Set());
   const [isMobileDevice] = useState(() => {
     return (
       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
@@ -3869,6 +3871,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const gameLoop = useCallback(() => {
     if (gameState !== "playing") return;
 
+    // Clear newly reflected bombs ref at start of each frame
+    newlyReflectedBombIdsRef.current.clear();
+
     // ═══ LAG DETECTION: Track frame-to-frame time with GC detection ═══
     const frameStart = performance.now();
     const frameGap = lagDetectionRef.current.lastFrameEnd > 0 
@@ -4244,15 +4249,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 const steeringStrength = 0.15;
                 const currentSpeed = Math.sqrt((bomb.dx || 0) ** 2 + (bomb.dy || 0) ** 2);
 
-                bomb.dx = (bomb.dx || 0) * (1 - steeringStrength) + normDirX * currentSpeed * steeringStrength;
-                bomb.dy = (bomb.dy || 0) * (1 - steeringStrength) + normDirY * currentSpeed * steeringStrength;
+                // Calculate new velocities WITHOUT mutating the original bomb
+                const newDx = (bomb.dx || 0) * (1 - steeringStrength) + normDirX * currentSpeed * steeringStrength;
+                const newDy = (bomb.dy || 0) * (1 - steeringStrength) + normDirY * currentSpeed * steeringStrength;
 
                 // Normalize to maintain speed
-                const newSpeed = Math.sqrt(bomb.dx * bomb.dx + bomb.dy * bomb.dy);
-                if (newSpeed > 0) {
-                  bomb.dx = (bomb.dx / newSpeed) * currentSpeed;
-                  bomb.dy = (bomb.dy / newSpeed) * currentSpeed;
-                }
+                const newSpeed = Math.sqrt(newDx * newDx + newDy * newDy);
+                const finalDx = newSpeed > 0 ? (newDx / newSpeed) * currentSpeed : newDx;
+                const finalDy = newSpeed > 0 ? (newDy / newSpeed) * currentSpeed : newDy;
+
+                return {
+                  ...bomb,
+                  dx: finalDx,
+                  dy: finalDy,
+                  x: bomb.x + finalDx,
+                  y: bomb.y + finalDy,
+                };
               }
             }
 
@@ -4279,7 +4291,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         .filter((bomb) => {
           // Reflected bombs: remove if off any edge
           if (bomb.isReflected) {
-            return bomb.y > 0 && bomb.y < SCALED_CANVAS_HEIGHT && bomb.x > 0 && bomb.x < SCALED_CANVAS_WIDTH;
+            const isOnScreen = bomb.y > 0 && bomb.y < SCALED_CANVAS_HEIGHT && bomb.x > 0 && bomb.x < SCALED_CANVAS_WIDTH;
+            if (!isOnScreen && ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+              console.log(`[Collision Debug] REFLECTED BOMB#${bomb.id} filtered OFF-SCREEN at (${bomb.x.toFixed(1)}, ${bomb.y.toFixed(1)})`);
+            }
+            return isOnScreen;
           }
           // Non-reflected: remove if below screen
           return bomb.y < SCALED_CANVAS_HEIGHT;
@@ -4307,6 +4323,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             );
           }
 
+          // Add to synchronous ref for immediate collision detection
+          newlyReflectedBombIdsRef.current.add(bomb.id);
+          
           setBombs((prev) =>
             prev.map((b) =>
               b.id === bomb.id
@@ -4999,8 +5018,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const reflectedBombNow = Date.now();
     const REFLECTED_BOMB_COOLDOWN = 200; // 200ms cooldown between reflected bomb hits
 
+    // Log bomb state for debugging
+    if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && bombs.length > 0) {
+      const reflectedCount = bombs.filter(b => b.isReflected).length;
+      const newlyReflectedCount = newlyReflectedBombIdsRef.current.size;
+      if (reflectedCount > 0 || newlyReflectedCount > 0) {
+        console.log(`[Collision Debug] BOMB CHECK: total=${bombs.length} reflected=${reflectedCount} newlyReflected=${newlyReflectedCount}`);
+      }
+    }
+
     bombs.forEach((bomb) => {
-      if (!bomb.isReflected) return;
+      // Check both state AND ref for newly reflected bombs (handles stale closure)
+      const isReflectedNow = bomb.isReflected || newlyReflectedBombIdsRef.current.has(bomb.id);
+      if (!isReflectedNow) return;
 
       // Check collision with main boss
       if (
