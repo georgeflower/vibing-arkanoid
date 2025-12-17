@@ -6873,9 +6873,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     {/* Mobile Debug Button - floating icon for touch devices */}
                     {ENABLE_DEBUG_FEATURES && isMobileDevice && !showDebugDashboard && (
                       <button
+                        onTouchStart={(e) => {
+                          e.stopPropagation();
+                        }}
+                        onTouchEnd={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setShowDebugDashboard(true);
+                        }}
                         onClick={() => setShowDebugDashboard(true)}
-                        className="fixed bottom-4 left-4 z-50 w-10 h-10 rounded-full bg-yellow-500/80 flex items-center justify-center text-xl shadow-lg active:scale-95 transition-transform"
+                        className="fixed right-4 top-1/2 -translate-y-1/2 z-[100] w-12 h-12 rounded-full bg-yellow-500/90 flex items-center justify-center text-2xl shadow-lg active:scale-95 transition-transform touch-manipulation"
                         aria-label="Open Debug Dashboard"
+                        style={{ touchAction: 'manipulation' }}
                       >
                         🐛
                       </button>
