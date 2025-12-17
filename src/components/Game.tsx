@@ -3790,7 +3790,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     lastLagLogTime: 0,      // Throttle lag logging
     lastMemoryCheck: 0,     // GC detection timing
     lastUsedHeap: 0,        // Track heap size for GC detection
+    tabWasHidden: false,    // Track if tab was backgrounded
   });
+
+  // Tab visibility detection for explaining large frame gaps
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        lagDetectionRef.current.tabWasHidden = true;
+        debugLogger.log('[TAB] Browser tab hidden');
+      } else {
+        debugLogger.log('[TAB] Browser tab visible again');
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   const gameLoop = useCallback(() => {
     if (gameState !== "playing") return;
@@ -3828,20 +3843,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       
       // Only log once per second max to avoid spam
       if (frameStart - lagDetectionRef.current.lastLagLogTime > 1000) {
-        const context = {
-          level,
-          ballCount: balls.length,
-          enemyCount: enemies.length,
-          particleCount: explosions.reduce((sum, exp) => sum + exp.particles.length, 0),
-          powerUpCount: powerUps.length,
-          bossActive: !!boss,
-          quality: quality || 'unknown',
-          heapUsedMB: (performance as any).memory?.usedJSHeapSize 
-            ? ((performance as any).memory.usedJSHeapSize / 1_000_000).toFixed(1) 
-            : 'N/A',
-        };
-        console.error(`[LAG DETECTED] Frame gap: ${frameGap.toFixed(1)}ms (expected ~16.67ms)`, context);
-        debugLogger.error(`[LAG DETECTED] Frame gap: ${frameGap.toFixed(1)}ms`, context);
+        // Check if this was due to tab being backgrounded
+        if (lagDetectionRef.current.tabWasHidden && frameGap > 500) {
+          debugLogger.log(`[TAB RESUME] Resumed after ${frameGap.toFixed(0)}ms (tab was backgrounded)`);
+          lagDetectionRef.current.tabWasHidden = false;
+        } else {
+          const context = {
+            level,
+            ballCount: balls.length,
+            enemyCount: enemies.length,
+            particleCount: explosions.reduce((sum, exp) => sum + exp.particles.length, 0),
+            powerUpCount: powerUps.length,
+            bossActive: !!boss,
+            quality: quality || 'unknown',
+            heapUsedMB: (performance as any).memory?.usedJSHeapSize 
+              ? ((performance as any).memory.usedJSHeapSize / 1_000_000).toFixed(1) 
+              : 'N/A',
+          };
+          debugLogger.error(`[LAG DETECTED] Frame gap: ${frameGap.toFixed(1)}ms (expected ~16.67ms)`, context);
+        }
         lagDetectionRef.current.lastLagLogTime = frameStart;
       }
     }
@@ -5388,7 +5408,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     
     if (frameDuration > 50) {
       const stats = frameProfiler.getStats();
-      console.error(`[LAG DETECTED] Frame took ${frameDuration.toFixed(1)}ms`, {
+      debugLogger.warn(`[SLOW FRAME] Duration: ${frameDuration.toFixed(1)}ms`, {
         fps: stats?.fps || 'N/A',
         physics: stats?.timings?.physics || 0,
         rendering: stats?.timings?.rendering || 0,
