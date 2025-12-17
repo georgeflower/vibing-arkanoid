@@ -145,6 +145,18 @@ export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }:
               onChange={() => onToggle("enableDetailedFrameLogging")}
               description="Log per-frame event counts on FPS drops"
             />
+            <DebugToggle
+              label="GC Detection Logging"
+              checked={settings.enableGCLogging}
+              onChange={() => onToggle("enableGCLogging")}
+              description="Log garbage collection events"
+            />
+            <DebugToggle
+              label="Lag Detection Logging"
+              checked={settings.enableLagLogging}
+              onChange={() => onToggle("enableLagLogging")}
+              description="Log frame gap lag events (>50ms)"
+            />
           </div>
         </section>
 

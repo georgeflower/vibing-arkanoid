@@ -2405,6 +2405,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (collision) {
           // FOUND boss collision at this sample point
 
+          // Log boss collision with [Collision Debug] prefix
+          if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+            const timestamp = performance.now().toFixed(2);
+            const speedBefore = Math.hypot(ball.dx, ball.dy);
+            const speedAfter = Math.hypot(collision.newVelocityX, collision.newVelocityY);
+            console.log(
+              `[${timestamp}ms] [Collision Debug] BOSS (${bossTarget.type}) - ` +
+              `Before: dx=${ball.dx.toFixed(2)}, dy=${ball.dy.toFixed(2)}, speed=${speedBefore.toFixed(2)} | ` +
+              `After: dx=${collision.newVelocityX.toFixed(2)}, dy=${collision.newVelocityY.toFixed(2)}, speed=${speedAfter.toFixed(2)} | Status: reflected`
+            );
+          }
+
           // 1. Apply position & velocity corrections to REAL ball
           ball.x = collision.newX;
           ball.y = collision.newY;
@@ -3864,15 +3876,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Only log if enough time has passed since last GC log
         if (!lagDetectionRef.current.lastGCLogTime || 
             (frameStart - lagDetectionRef.current.lastGCLogTime > GC_LOG_THROTTLE_MS)) {
-          const gcContext = {
-            heapDropMB: (heapDrop / 1_000_000).toFixed(2),
-            heapUsedMB: (currentHeap / 1_000_000).toFixed(1),
-            frameGapMs: frameGap.toFixed(1),
-            level,
-            ballCount: balls.length,
-            enemyCount: enemies.length,
-          };
-          debugLogger.warn(`[GC DETECTED] Heap dropped by ${gcContext.heapDropMB}MB`, gcContext);
+          if (debugSettings.enableGCLogging) {
+            const gcContext = {
+              heapDropMB: (heapDrop / 1_000_000).toFixed(2),
+              heapUsedMB: (currentHeap / 1_000_000).toFixed(1),
+              frameGapMs: frameGap.toFixed(1),
+              level,
+              ballCount: balls.length,
+              enemyCount: enemies.length,
+            };
+            debugLogger.warn(`[DEBUG] [GC DETECTED] Heap dropped by ${gcContext.heapDropMB}MB`, gcContext);
+          }
           lagDetectionRef.current.lastGCLogTime = frameStart;
         }
       }
@@ -3887,9 +3901,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (frameStart - lagDetectionRef.current.lastLagLogTime > 1000) {
         // Check if this was due to tab being backgrounded
         if (lagDetectionRef.current.tabWasHidden && frameGap > 500) {
-          debugLogger.log(`[TAB RESUME] Resumed after ${frameGap.toFixed(0)}ms (tab was backgrounded)`);
+          if (debugSettings.enableLagLogging) {
+            debugLogger.log(`[DEBUG] [TAB RESUME] Resumed after ${frameGap.toFixed(0)}ms (tab was backgrounded)`);
+          }
           lagDetectionRef.current.tabWasHidden = false;
-        } else {
+        } else if (debugSettings.enableLagLogging) {
           const context = {
             level,
             ballCount: balls.length,
@@ -3902,7 +3918,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               ? ((performance as any).memory.usedJSHeapSize / 1_000_000).toFixed(1) 
               : 'N/A',
           };
-          debugLogger.error(`[LAG DETECTED] Frame gap: ${frameGap.toFixed(1)}ms (expected ~16.67ms)`, context);
+          debugLogger.error(`[DEBUG] [LAG DETECTED] Frame gap: ${frameGap.toFixed(1)}ms (expected ~16.67ms)`, context);
         }
         lagDetectionRef.current.lastLagLogTime = frameStart;
       }
@@ -4975,13 +4991,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         const newHealth = boss.currentHealth - 1;
         
-        console.log('[REFLECTED BOMB] Boss hit!', {
-          bossType: boss.type,
-          currentHealth: boss.currentHealth,
-          newHealth,
-          willDefeat: newHealth <= 0,
-          bossStage: boss.currentStage,
-        });
+        if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+          console.log('[DEBUG] [REFLECTED BOMB] Boss hit!', {
+            bossType: boss.type,
+            currentHealth: boss.currentHealth,
+            newHealth,
+            willDefeat: newHealth <= 0,
+            bossStage: boss.currentStage,
+          });
+        }
         
         soundManager.playBossHitSound();
         triggerScreenShake(8, 400);
@@ -4989,9 +5007,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         // Check for defeat - handle outside setBoss callback
         if (newHealth <= 0) {
-          console.log('[REFLECTED BOMB] Boss DEFEAT triggered!', { bossType: boss.type, stage: boss.currentStage });
+          if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+            console.log('[DEBUG] [REFLECTED BOMB] Boss DEFEAT triggered!', { bossType: boss.type, stage: boss.currentStage });
+          }
           if (boss.type === "cube") {
-            console.log('[REFLECTED BOMB] Cube boss defeat path entered');
+            // Cube boss defeat
             // Cube boss defeat
             soundManager.playExplosion();
             soundManager.playBossDefeatSound();
