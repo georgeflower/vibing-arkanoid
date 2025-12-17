@@ -4298,9 +4298,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Check for reflect shield FIRST (on boss levels) - preserves regular shield
         if (paddle.hasReflectShield && BOSS_LEVELS.includes(level) && bombHitsShieldZone) {
           // Reflect the bomb back, DON'T consume regular shield
+          if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+            const ts = performance.now().toFixed(2);
+            console.log(
+              `[${ts}ms] [Collision Debug] REFLECT SHIELD (bomb) - ` +
+                `Bomb#${bomb.id} reflected at paddle | ` +
+                `pos=(${bomb.x.toFixed(1)},${bomb.y.toFixed(1)}) speed=${bomb.speed.toFixed(2)}`,
+            );
+          }
+
           setBombs((prev) =>
             prev.map((b) =>
-              b.enemyId === bomb.enemyId
+              b.id === bomb.id
                 ? {
                     ...b,
                     isReflected: true,
@@ -4441,6 +4450,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Check for reflect shield FIRST (on boss levels) - preserves regular shield
         if (paddle.hasReflectShield && BOSS_LEVELS.includes(level) && bulletHitsPaddle) {
           // Reflect the bullet back, DON'T consume regular shield
+          if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+            const ts = performance.now().toFixed(2);
+            console.log(
+              `[${ts}ms] [Collision Debug] REFLECT SHIELD (bullet) - ` +
+                `Bullet reflected at paddle | ` +
+                `pos=(${bullet.x.toFixed(1)},${bullet.y.toFixed(1)}) speed=${bullet.speed.toFixed(2)}`,
+            );
+          }
+
           setBullets((prev) =>
             prev.map((b) =>
               b === bullet
@@ -4992,47 +5010,49 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         bomb.y + bomb.height > boss.y &&
         bomb.y < boss.y + boss.height
       ) {
-        // Check cooldown to prevent rapid-fire damage
-        const lastHit = boss.lastHitAt || 0;
-        if (reflectedBombNow - lastHit < REFLECTED_BOMB_COOLDOWN) {
-          if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
-            console.log('[DEBUG] [REFLECTED BOMB] Cooldown skip', { elapsed: reflectedBombNow - lastHit, cooldown: REFLECTED_BOMB_COOLDOWN });
-          }
-          setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
-          return;
-        }
+        const nowMs = Date.now();
 
         // Remove the bomb that hit the boss first
         setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
-        
-        soundManager.playBossHitSound();
-        triggerScreenShake(8, 400);
-        throttledToast('success', "Reflected shot hit the boss!", 'reflected_hit');
 
-        // Use functional state update to get CURRENT health and handle defeat
+        // Apply damage with boss-local cooldown using CURRENT boss state
         setBoss((prevBoss) => {
           if (!prevBoss) return null;
-          
-          const newHealth = prevBoss.currentHealth - 1;
-          
+
+          const lastHit = prevBoss.lastHitAt || 0;
+          const canDamage = nowMs - lastHit >= REFLECTED_BOMB_COOLDOWN;
+
           if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
-            console.log('[DEBUG] [REFLECTED BOMB] Boss hit!', {
+            const ts = performance.now().toFixed(2);
+            console.log(
+              `[${ts}ms] [Collision Debug] REFLECTED BOMB → BOSS (${prevBoss.type}) - ` +
+                `canDamage=${canDamage} lastHitMs=${lastHit} nowMs=${nowMs} ` +
+                `bossHP=${prevBoss.currentHealth}`,
+            );
+          }
+
+          if (!canDamage) {
+            return prevBoss;
+          }
+
+          soundManager.playBossHitSound();
+          triggerScreenShake(8, 400);
+          throttledToast("success", "Reflected shot hit the boss!", "reflected_hit");
+
+          const newHealth = prevBoss.currentHealth - 1;
+
+          if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+            console.log("[BossSweep] Reflected bomb damage:", {
               bossType: prevBoss.type,
               currentHealth: prevBoss.currentHealth,
               newHealth,
               willDefeat: newHealth <= 0,
-              bossStage: prevBoss.currentStage,
             });
           }
-          
+
           // Check for defeat
           if (newHealth <= 0) {
-            if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
-              console.log('[DEBUG] [REFLECTED BOMB] Boss DEFEAT triggered!', { bossType: prevBoss.type, stage: prevBoss.currentStage });
-            }
-            
             if (prevBoss.type === "cube") {
-              // Cube boss defeat - schedule side effects
               setTimeout(() => {
                 soundManager.playExplosion();
                 soundManager.playBossDefeatSound();
@@ -5065,10 +5085,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 soundManager.resumeBackgroundMusic();
                 setTimeout(() => nextLevel(), 3000);
               }, 0);
-              return null; // Remove boss
-            } else if (prevBoss.type === "sphere") {
+              return null;
+            }
+
+            if (prevBoss.type === "sphere") {
               if (prevBoss.currentStage === 1) {
-                // Sphere phase 1 -> phase 2
                 setTimeout(() => {
                   soundManager.playExplosion();
                   toast.error("SPHERE PHASE 2: DESTROYER MODE!");
@@ -5094,47 +5115,47 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   currentStage: 2,
                   isAngry: true,
                   speed: BOSS_CONFIG.sphere.angryMoveSpeed,
-                  lastHitAt: reflectedBombNow,
+                  lastHitAt: nowMs,
                 };
-              } else {
-                // Sphere phase 2 defeat
-                setTimeout(() => {
-                  soundManager.playExplosion();
-                  soundManager.playBossDefeatSound();
-                  setScore((s) => s + BOSS_CONFIG.sphere.points);
-                  toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points`);
-                  setExplosions((e) => [
-                    ...e,
-                    {
-                      x: prevBoss.x + prevBoss.width / 2,
-                      y: prevBoss.y + prevBoss.height / 2,
-                      frame: 0,
-                      maxFrames: 30,
-                      enemyType: "sphere" as EnemyType,
-                      particles: createExplosionParticles(
-                        prevBoss.x + prevBoss.width / 2,
-                        prevBoss.y + prevBoss.height / 2,
-                        "sphere" as EnemyType,
-                      ),
-                    },
-                  ]);
-                  setBossesKilled((k) => k + 1);
-                  setBossActive(false);
-                  setBossDefeatedTransitioning(true);
-                  setBalls([]);
-                  setEnemies([]);
-                  setBossAttacks([]);
-                  setBombs([]);
-                  setBullets([]);
-                  soundManager.stopBossMusic();
-                  soundManager.resumeBackgroundMusic();
-                  setTimeout(() => nextLevel(), 3000);
-                }, 0);
-                return null; // Remove boss
               }
-            } else if (prevBoss.type === "pyramid") {
+
+              setTimeout(() => {
+                soundManager.playExplosion();
+                soundManager.playBossDefeatSound();
+                setScore((s) => s + BOSS_CONFIG.sphere.points);
+                toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points`);
+                setExplosions((e) => [
+                  ...e,
+                  {
+                    x: prevBoss.x + prevBoss.width / 2,
+                    y: prevBoss.y + prevBoss.height / 2,
+                    frame: 0,
+                    maxFrames: 30,
+                    enemyType: "sphere" as EnemyType,
+                    particles: createExplosionParticles(
+                      prevBoss.x + prevBoss.width / 2,
+                      prevBoss.y + prevBoss.height / 2,
+                      "sphere" as EnemyType,
+                    ),
+                  },
+                ]);
+                setBossesKilled((k) => k + 1);
+                setBossActive(false);
+                setBossDefeatedTransitioning(true);
+                setBalls([]);
+                setEnemies([]);
+                setBossAttacks([]);
+                setBombs([]);
+                setBullets([]);
+                soundManager.stopBossMusic();
+                soundManager.resumeBackgroundMusic();
+                setTimeout(() => nextLevel(), 3000);
+              }, 0);
+              return null;
+            }
+
+            if (prevBoss.type === "pyramid") {
               if (prevBoss.currentStage === 1) {
-                // Pyramid splits into 3
                 setTimeout(() => {
                   soundManager.playExplosion();
                   toast.error("PYRAMID LORD SPLITS INTO 3!");
@@ -5153,21 +5174,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       ),
                     },
                   ]);
-                  // Create 3 smaller resurrected pyramids
                   const resurrected: Boss[] = [];
                   for (let i = 0; i < 3; i++) {
                     resurrected.push(createResurrectedPyramid(prevBoss, i, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT));
                   }
                   setResurrectedBosses(resurrected);
                 }, 0);
-                return null; // Remove main boss
+                return null;
               }
             }
           }
-          
-          // Not defeated, return updated boss with reduced health
-          return { ...prevBoss, currentHealth: newHealth, lastHitAt: reflectedBombNow };
+
+          // Not defeated
+          return { ...prevBoss, currentHealth: newHealth, lastHitAt: nowMs };
         });
+
         return;
       }
 
