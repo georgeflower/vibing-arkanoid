@@ -4825,18 +4825,54 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             attack.y + attack.height > boss.y &&
             attack.y < boss.y + boss.height
           ) {
-            // Damage the boss
-            setBoss((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    currentHealth: prev.currentHealth - 1,
-                  }
-                : null,
-            );
+            // Damage the boss with proper cooldown, defeat detection, and logging
+            const REFLECTED_ATTACK_COOLDOWN_MS = 1000;
+            const nowMs = Date.now();
+            const lastHitMs = boss.lastHitAt || 0;
+            const canDamage = nowMs - lastHitMs >= REFLECTED_ATTACK_COOLDOWN_MS;
+            
+            if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+              console.log(`[Collision Debug] REFLECTED ATTACK → BOSS (${boss.type}) - Cooldown check: canDamage=${canDamage}, diff=${nowMs - lastHitMs}ms`);
+            }
+            
+            if (!canDamage) {
+              return false; // Remove attack but don't damage (on cooldown)
+            }
+            
+            setBoss((prevBoss) => {
+              if (!prevBoss) return null;
+              
+              const newHealth = prevBoss.currentHealth - 1;
+              
+              if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+                console.log(`[Collision Debug] REFLECTED ATTACK → BOSS (${prevBoss.type}) - HP: ${prevBoss.currentHealth} → ${newHealth}`);
+              }
+              
+              // Check for defeat
+              if (newHealth <= 0) {
+                // Boss defeated
+                soundManager.playBossDefeatSound();
+                const bossPoints = prevBoss.type === 'cube' ? 5000 : prevBoss.type === 'sphere' ? 7500 : 10000;
+                setScore((prev) => prev + bossPoints);
+                setBossesKilled((prev) => prev + 1);
+                triggerScreenShake(15, 800);
+                triggerHighlightFlash(1.0, 400);
+                toast.success(`🎉 ${prevBoss.type.toUpperCase()} BOSS DEFEATED!`, { duration: 3000 });
+                setBossDefeatedTransitioning(true);
+                setTimeout(() => {
+                  setBossActive(false);
+                  nextLevel();
+                }, 3000);
+                return { ...prevBoss, currentHealth: 0, phase: 'defeated' as const, lastHitAt: nowMs };
+              }
+              
+              // Not defeated - show HP toast
+              toast.info(`BOSS: ${newHealth} HP`, { duration: 1000 });
+              return { ...prevBoss, currentHealth: newHealth, lastHitAt: nowMs };
+            });
+            
             soundManager.playBossHitSound();
             triggerScreenShake(8, 400);
-            throttledToast('success', "Reflected attack hit the boss!", 'reflected_hit');
             return false; // Remove attack
           }
 
@@ -4848,12 +4884,60 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               attack.y + attack.height > rb.y &&
               attack.y < rb.y + rb.height
             ) {
-              setResurrectedBosses((prev) =>
-                prev.map((b) => (b === rb ? { ...b, currentHealth: b.currentHealth - 1 } : b)),
-              );
+              const REFLECTED_ATTACK_COOLDOWN_MS = 1000;
+              const nowMs = Date.now();
+              const lastHitMs = (rb as any).lastHitAt || 0;
+              const canDamage = nowMs - lastHitMs >= REFLECTED_ATTACK_COOLDOWN_MS;
+              
+              if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+                console.log(`[Collision Debug] REFLECTED ATTACK → RESURRECTED BOSS - Cooldown: canDamage=${canDamage}`);
+              }
+              
+              if (!canDamage) {
+                return false; // Remove attack but don't damage
+              }
+              
+              setResurrectedBosses((prev) => {
+                const updated = prev.map((b) => {
+                  if (b.id !== rb.id) return b;
+                  
+                  const newHealth = b.currentHealth - 1;
+                  
+                  if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+                    console.log(`[Collision Debug] REFLECTED ATTACK → RESURRECTED BOSS - HP: ${b.currentHealth} → ${newHealth}`);
+                  }
+                  
+                  if (newHealth <= 0) {
+                    // Resurrected boss defeated
+                    soundManager.playBossDefeatSound();
+                    setScore((s) => s + 2500);
+                    triggerScreenShake(10, 600);
+                    toast.success("Mini-boss destroyed!", { duration: 1500 });
+                    return null as any; // Mark for removal
+                  }
+                  
+                  toast.info(`Mini-boss: ${newHealth} HP`, { duration: 1000 });
+                  return { ...b, currentHealth: newHealth, lastHitAt: nowMs };
+                });
+                
+                const filtered = updated.filter((b) => b !== null);
+                
+                // Check if all resurrected bosses are defeated
+                if (filtered.length === 0 && boss === null) {
+                  setBossesKilled((p) => p + 1);
+                  toast.success("🎉 ALL MINI-BOSSES DEFEATED!", { duration: 3000 });
+                  setBossDefeatedTransitioning(true);
+                  setTimeout(() => {
+                    setBossActive(false);
+                    nextLevel();
+                  }, 3000);
+                }
+                
+                return filtered;
+              });
+              
               soundManager.playBossHitSound();
               triggerScreenShake(6, 400);
-              throttledToast('success', "Reflected attack hit resurrected boss!", 'reflected_hit');
               return false; // Remove attack
             }
           }
