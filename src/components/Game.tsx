@@ -6870,6 +6870,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       onReset={resetDebugSettings}
                     />
 
+                    {/* Mobile Debug Button - floating icon for touch devices */}
+                    {ENABLE_DEBUG_FEATURES && isMobileDevice && !showDebugDashboard && (
+                      <button
+                        onClick={() => setShowDebugDashboard(true)}
+                        className="fixed bottom-4 left-4 z-50 w-10 h-10 rounded-full bg-yellow-500/80 flex items-center justify-center text-xl shadow-lg active:scale-95 transition-transform"
+                        aria-label="Open Debug Dashboard"
+                      >
+                        🐛
+                      </button>
+                    )}
+
                     {/* Quality Indicator - Always visible */}
                     <QualityIndicator quality={quality} autoAdjustEnabled={autoAdjustEnabled} fps={currentFps} />
 
