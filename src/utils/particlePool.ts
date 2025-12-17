@@ -57,10 +57,16 @@ class ParticlePool {
     return particle;
   }
 
+  // Optimized: swap-and-pop pattern (O(1) instead of O(n) splice)
   release(particle: Particle): void {
     const index = this.activeParticles.indexOf(particle);
     if (index !== -1) {
-      this.activeParticles.splice(index, 1);
+      const lastIndex = this.activeParticles.length - 1;
+      if (index !== lastIndex) {
+        // Swap with last element
+        this.activeParticles[index] = this.activeParticles[lastIndex];
+      }
+      this.activeParticles.pop();
       this.pool.push(particle);
     }
   }
@@ -69,19 +75,20 @@ class ParticlePool {
     return this.activeParticles;
   }
 
+  // Optimized: iterate backwards and swap-and-pop to avoid array reallocation
   releaseExpired(): void {
-    const expired: Particle[] = [];
-    
     for (let i = this.activeParticles.length - 1; i >= 0; i--) {
       const particle = this.activeParticles[i];
       if (particle.life <= 0) {
-        expired.push(particle);
-        this.activeParticles.splice(i, 1);
+        const lastIndex = this.activeParticles.length - 1;
+        if (i !== lastIndex) {
+          // Swap with last element
+          this.activeParticles[i] = this.activeParticles[lastIndex];
+        }
+        this.activeParticles.pop();
+        this.pool.push(particle);
       }
     }
-    
-    // Return expired particles to pool
-    this.pool.push(...expired);
   }
 
   update(): void {
@@ -96,8 +103,11 @@ class ParticlePool {
   }
 
   releaseAll(): void {
-    this.pool.push(...this.activeParticles);
-    this.activeParticles = [];
+    // Push all active back to pool without creating new arrays
+    for (let i = this.activeParticles.length - 1; i >= 0; i--) {
+      this.pool.push(this.activeParticles[i]);
+    }
+    this.activeParticles.length = 0; // Clear without deallocation
   }
 
   getStats(): { active: number; pooled: number; total: number } {
