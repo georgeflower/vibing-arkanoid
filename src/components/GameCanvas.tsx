@@ -91,8 +91,6 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const zoomDirectionRef = useRef(1);
     const dashOffsetRef = useRef(0);
     
-    // Pre-allocated cube face definitions to avoid per-frame allocations
-    const cubeFacesRef = useRef<Array<{ indices: number[]; name: string; lightness: number; avgZ: number }> | null>(null);
     
     // Helper function to check if image is valid and loaded
     const isImageValid = (img: HTMLImageElement | null): img is HTMLImageElement => {
@@ -1958,170 +1956,108 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.translate(centerX, centerY);
         
         if (boss.type === 'cube') {
-          // 3D retro pixel cube with depth-sorted faces
+          // 2D isometric cube that emulates 3D
           const size = boss.width / 2;
           const baseHue = boss.isAngry ? 0 : 180;
+          const offset = size * 0.5; // Isometric offset for depth
           
-          // Define 3D cube vertices
-          const vertices = [
-            [-size, -size, -size], // 0: back-bottom-left
-            [size, -size, -size],  // 1: back-bottom-right
-            [size, size, -size],   // 2: back-top-right
-            [-size, size, -size],  // 3: back-top-left
-            [-size, -size, size],  // 4: front-bottom-left
-            [size, -size, size],   // 5: front-bottom-right
-            [size, size, size],    // 6: front-top-right
-            [-size, size, size]    // 7: front-top-left
-          ];
+          ctx.rotate(boss.rotationY);
           
-          // Apply 3D rotation
-          const cosX = Math.cos(boss.rotationX);
-          const sinX = Math.sin(boss.rotationX);
-          const cosY = Math.cos(boss.rotationY);
-          const sinY = Math.sin(boss.rotationY);
-          const cosZ = Math.cos(boss.rotationZ);
-          const sinZ = Math.sin(boss.rotationZ);
-          
-          // Project vertices to 2D
-          const projected = vertices.map(([x, y, z]) => {
-            // Rotate around X axis
-            let y1 = y * cosX - z * sinX;
-            let z1 = y * sinX + z * cosX;
-            
-            // Rotate around Y axis
-            let x2 = x * cosY + z1 * sinY;
-            let z2 = -x * sinY + z1 * cosY;
-            
-            // Rotate around Z axis
-            let x3 = x2 * cosZ - y1 * sinZ;
-            let y3 = x2 * sinZ + y1 * cosZ;
-            
-            // Project to 2D with perspective
-            const scale = 300 / (300 + z2);
-            return [x3 * scale, y3 * scale, z2];
-          });
-          
-          // Define faces with indices and colors - reuse same objects, just update avgZ
-          // Static face definitions (allocated once, reused)
-          if (!cubeFacesRef.current) {
-            cubeFacesRef.current = [
-              { indices: [0, 1, 2, 3], name: 'back', lightness: 40, avgZ: 0 },
-              { indices: [4, 5, 6, 7], name: 'front', lightness: 60, avgZ: 0 },
-              { indices: [0, 3, 7, 4], name: 'left', lightness: 48, avgZ: 0 },
-              { indices: [1, 2, 6, 5], name: 'right', lightness: 52, avgZ: 0 },
-              { indices: [3, 2, 6, 7], name: 'top', lightness: 55, avgZ: 0 },
-              { indices: [0, 1, 5, 4], name: 'bottom', lightness: 45, avgZ: 0 }
-            ];
+          if (qualitySettings.glowEnabled) {
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
           }
-          const faces = cubeFacesRef.current;
           
-          // Update avgZ in-place and sort (avoids creating new objects)
-          for (let f = 0; f < faces.length; f++) {
-            const face = faces[f];
-            face.avgZ = (projected[face.indices[0]][2] + projected[face.indices[1]][2] + 
-                        projected[face.indices[2]][2] + projected[face.indices[3]][2]) / 4;
+          // Front face (square)
+          ctx.fillStyle = `hsl(${baseHue}, 80%, 55%)`;
+          ctx.fillRect(-size, -size, size * 2, size * 2);
+          
+          // Top face (parallelogram) - lighter
+          ctx.fillStyle = `hsl(${baseHue}, 80%, 70%)`;
+          ctx.beginPath();
+          ctx.moveTo(-size, -size);
+          ctx.lineTo(-size + offset, -size - offset);
+          ctx.lineTo(size + offset, -size - offset);
+          ctx.lineTo(size, -size);
+          ctx.closePath();
+          ctx.fill();
+          
+          // Right face (parallelogram) - darker
+          ctx.fillStyle = `hsl(${baseHue}, 80%, 40%)`;
+          ctx.beginPath();
+          ctx.moveTo(size, -size);
+          ctx.lineTo(size + offset, -size - offset);
+          ctx.lineTo(size + offset, size - offset);
+          ctx.lineTo(size, size);
+          ctx.closePath();
+          ctx.fill();
+          
+          // Draw retro pixel grid on front face (quality-dependent)
+          if (qualitySettings.particleMultiplier > 0.5) {
+            const gridSize = qualitySettings.glowEnabled ? 6 : 4;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${boss.isAngry ? 0.25 : 0.15})`;
+            ctx.lineWidth = 1;
+            const step = (size * 2) / gridSize;
+            
+            for (let i = 1; i < gridSize; i++) {
+              // Horizontal lines
+              ctx.beginPath();
+              ctx.moveTo(-size, -size + i * step);
+              ctx.lineTo(size, -size + i * step);
+              ctx.stroke();
+              // Vertical lines
+              ctx.beginPath();
+              ctx.moveTo(-size + i * step, -size);
+              ctx.lineTo(-size + i * step, size);
+              ctx.stroke();
+            }
           }
-          // In-place sort by avgZ
-          faces.sort((a, b) => a.avgZ - b.avgZ);
           
-          // Draw each face
-          faces.forEach(face => {
-            const points = face.indices.map(i => projected[i]);
-            
-            // Only draw if face is visible (front-facing)
-            const [p0, p1, p2] = points;
-            const cross = (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
-            // Render all faces for solid retro aesthetic
-            
-            // Fill base color
-            ctx.fillStyle = `hsl(${baseHue}, 80%, ${face.lightness}%)`;
-            ctx.beginPath();
-            ctx.moveTo(points[0][0], points[0][1]);
-            for (let i = 1; i < points.length; i++) {
-              ctx.lineTo(points[i][0], points[i][1]);
-            }
-            ctx.closePath();
-            ctx.fill();
-            
-            // Draw retro pixel grid (quality-dependent)
-            if (qualitySettings.particleMultiplier > 0.5) {
-              const gridSize = qualitySettings.glowEnabled ? 8 : 6;
-              ctx.strokeStyle = `rgba(255, 255, 255, ${boss.isAngry ? 0.25 : 0.15})`;
-              ctx.lineWidth = 1;
-              
-              // Horizontal grid lines
-              for (let i = 1; i < gridSize; i++) {
-                const t = i / gridSize;
-                const x1 = points[0][0] + (points[3][0] - points[0][0]) * t;
-                const y1 = points[0][1] + (points[3][1] - points[0][1]) * t;
-                const x2 = points[1][0] + (points[2][0] - points[1][0]) * t;
-                const y2 = points[1][1] + (points[2][1] - points[1][1]) * t;
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-              }
-              
-              // Vertical grid lines
-              for (let i = 1; i < gridSize; i++) {
-                const t = i / gridSize;
-                const x1 = points[0][0] + (points[1][0] - points[0][0]) * t;
-                const y1 = points[0][1] + (points[1][1] - points[0][1]) * t;
-                const x2 = points[3][0] + (points[2][0] - points[3][0]) * t;
-                const y2 = points[3][1] + (points[2][1] - points[3][1]) * t;
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-              }
-            }
-            
-            // Draw edge lines
-            ctx.strokeStyle = `hsl(${baseHue}, 90%, 70%)`;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(points[0][0], points[0][1]);
-            for (let i = 1; i < points.length; i++) {
-              ctx.lineTo(points[i][0], points[i][1]);
-            }
-            ctx.closePath();
-            ctx.stroke();
-            
-            // Add corner highlights (16-bit style)
-            if (qualitySettings.shadowsEnabled) {
-              points.forEach(([x, y, z]) => {
-                if (z > 0) {
-                  ctx.fillStyle = `rgba(255, 255, 255, ${boss.isAngry ? 0.7 : 0.5})`;
-                  ctx.fillRect(x - 2, y - 2, 4, 4);
-                }
-              });
-            }
-          });
+          // Draw all edges
+          ctx.strokeStyle = `hsl(${baseHue}, 90%, 70%)`;
+          ctx.lineWidth = 2;
+          
+          // Front face edges
+          ctx.strokeRect(-size, -size, size * 2, size * 2);
+          
+          // Top face edges
+          ctx.beginPath();
+          ctx.moveTo(-size, -size);
+          ctx.lineTo(-size + offset, -size - offset);
+          ctx.lineTo(size + offset, -size - offset);
+          ctx.lineTo(size, -size);
+          ctx.stroke();
+          
+          // Right face edges
+          ctx.beginPath();
+          ctx.moveTo(size, -size);
+          ctx.lineTo(size + offset, -size - offset);
+          ctx.lineTo(size + offset, size - offset);
+          ctx.lineTo(size, size);
+          ctx.stroke();
+          
+          // Add corner highlights (16-bit style)
+          if (qualitySettings.shadowsEnabled) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${boss.isAngry ? 0.7 : 0.5})`;
+            // Front corners
+            ctx.fillRect(-size - 2, -size - 2, 4, 4);
+            ctx.fillRect(size - 2, -size - 2, 4, 4);
+            ctx.fillRect(-size - 2, size - 2, 4, 4);
+            ctx.fillRect(size - 2, size - 2, 4, 4);
+            // Back corners
+            ctx.fillRect(-size + offset - 2, -size - offset - 2, 4, 4);
+            ctx.fillRect(size + offset - 2, -size - offset - 2, 4, 4);
+            ctx.fillRect(size + offset - 2, size - offset - 2, 4, 4);
+          }
           
           // Angry state: pulsing edge glow
           if (boss.isAngry && qualitySettings.glowEnabled) {
             const pulse = Math.sin(Date.now() / 150) * 0.5 + 0.5;
-            ctx.shadowBlur = 20 * pulse;
+            ctx.shadowBlur = 25 * pulse;
             ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
-            
-            // Redraw outer edges with glow
-            faces.forEach(face => {
-              const points = face.indices.map(i => projected[i]);
-              const [p0, p1, p2] = points;
-              const cross = (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
-              if (cross < 0) return;
-              
-              ctx.strokeStyle = `hsl(${baseHue}, 100%, 75%)`;
-              ctx.lineWidth = 3;
-              ctx.beginPath();
-              ctx.moveTo(points[0][0], points[0][1]);
-              for (let i = 1; i < points.length; i++) {
-                ctx.lineTo(points[i][0], points[i][1]);
-              }
-              ctx.closePath();
-              ctx.stroke();
-            });
-            
+            ctx.strokeStyle = `hsl(${baseHue}, 100%, 75%)`;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(-size, -size, size * 2, size * 2);
             ctx.shadowBlur = 0;
           }
         } else if (boss.type === 'sphere') {
@@ -2130,29 +2066,34 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           const intensity = boss.isAngry ? 70 : 60;
           
           const gradient = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, 0, 0, 0, radius);
-          gradient.addColorStop(0, `hsl(${baseHue}, 100%, ${intensity + 20}%)`);
-          gradient.addColorStop(0.7, `hsl(${baseHue}, 90%, ${intensity}%)`);
-          gradient.addColorStop(1, `hsl(${baseHue}, 70%, ${intensity - 20}%)`);
+          gradient.addColorStop(0, `hsl(${baseHue}, 90%, ${intensity + 25}%)`);
+          gradient.addColorStop(0.5, `hsl(${baseHue}, 85%, ${intensity}%)`);
+          gradient.addColorStop(1, `hsl(${baseHue}, 80%, ${intensity - 20}%)`);
           
           if (qualitySettings.glowEnabled) {
-            ctx.shadowBlur = 25;
+            ctx.shadowBlur = 30;
             ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
           }
+          
           ctx.fillStyle = gradient;
           ctx.beginPath();
           ctx.arc(0, 0, radius, 0, Math.PI * 2);
           ctx.fill();
-          ctx.shadowBlur = 0;
           
-          if (boss.isAngry) {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-            ctx.beginPath();
-            ctx.moveTo(-8, -5);
-            ctx.lineTo(-5, 0);
-            ctx.moveTo(8, -5);
-            ctx.lineTo(5, 0);
-            ctx.stroke();
-          }
+          // Specular highlight
+          ctx.fillStyle = `rgba(255, 255, 255, ${boss.isAngry ? 0.5 : 0.3})`;
+          ctx.beginPath();
+          ctx.ellipse(-radius * 0.3, -radius * 0.3, radius * 0.25, radius * 0.15, -Math.PI / 4, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Rotating ring
+          ctx.strokeStyle = `hsl(${baseHue}, 100%, 70%)`;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          const ringRadius = radius * 1.2;
+          ctx.ellipse(0, 0, ringRadius, ringRadius * 0.3, boss.rotationY, 0, Math.PI * 2);
+          ctx.stroke();
+          
         } else if (boss.type === 'pyramid') {
           const size = boss.width / 2;
           const baseHue = boss.isAngry ? 0 : (boss.isSuperAngry ? 280 : 280);
@@ -2193,71 +2134,25 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.restore();
         
         // Draw boss health bar
-        const healthBarWidth = boss.width;
-        const healthBarHeight = 8;
-        const healthBarX = boss.x;
-        const healthBarY = boss.y - 25;
+        const hbWidth = boss.width + 40;
+        const hbHeight = 10;
+        const hbX = boss.x + boss.width / 2 - hbWidth / 2;
+        const hbY = boss.y - 25;
         
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(hbX, hbY, hbWidth, hbHeight);
         
-        const healthPercent = boss.currentHealth / boss.maxHealth;
-        const fillColor = healthPercent > 0.5 ? 'hsl(120, 80%, 50%)' : 
-                          healthPercent > 0.25 ? 'hsl(50, 80%, 50%)' : 'hsl(0, 80%, 50%)';
-        ctx.fillStyle = fillColor;
-        ctx.fillRect(healthBarX, healthBarY, healthBarWidth * healthPercent, healthBarHeight);
+        const hpPercent = boss.currentHealth / boss.maxHealth;
+        const hpHue = hpPercent > 0.5 ? 120 : (hpPercent > 0.25 ? 60 : 0);
+        ctx.fillStyle = `hsl(${hpHue}, 80%, 50%)`;
+        ctx.fillRect(hbX, hbY, hbWidth * hpPercent, hbHeight);
         
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
         ctx.lineWidth = 2;
-        ctx.strokeRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
-        
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.font = 'bold 12px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${boss.type.toUpperCase()} BOSS`, boss.x + boss.width / 2, healthBarY - 8);
-        
-        // Boss spawn animation overlay
-        if (bossSpawnAnimation?.active) {
-          const elapsed = Date.now() - bossSpawnAnimation.startTime;
-          const progress = Math.min(elapsed / 500, 1); // 500ms animation
-          
-          // Pulsing glow effect
-          const glowIntensity = Math.sin(progress * Math.PI * 4) * (1 - progress);
-          ctx.shadowBlur = 30 * glowIntensity;
-          ctx.shadowColor = '#00ffff';
-          
-          // Draw hatch opening lines (expanding from center)
-          ctx.strokeStyle = `rgba(0, 255, 255, ${1 - progress})`;
-          ctx.lineWidth = 3;
-          const hatchSize = boss.width * 0.35 * progress;
-          
-          ctx.beginPath();
-          ctx.moveTo(boss.x + boss.width / 2 - hatchSize, boss.y + boss.height / 2);
-          ctx.lineTo(boss.x + boss.width / 2 + hatchSize, boss.y + boss.height / 2);
-          ctx.stroke();
-          
-          ctx.beginPath();
-          ctx.moveTo(boss.x + boss.width / 2, boss.y + boss.height / 2 - hatchSize);
-          ctx.lineTo(boss.x + boss.width / 2, boss.y + boss.height / 2 + hatchSize);
-          ctx.stroke();
-          
-          // Particle burst effect
-          for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
-            const dist = 35 * progress;
-            const px = boss.x + boss.width / 2 + Math.cos(angle) * dist;
-            const py = boss.y + boss.height / 2 + Math.sin(angle) * dist;
-            const size = 4 * (1 - progress);
-            
-            ctx.fillStyle = `rgba(0, 255, 255, ${1 - progress})`;
-            ctx.fillRect(px - size/2, py - size/2, size, size);
-          }
-          
-          ctx.shadowBlur = 0;
-        }
+        ctx.strokeRect(hbX, hbY, hbWidth, hbHeight);
       }
 
-      // Draw resurrected bosses
+
       resurrectedBosses.forEach(resBoss => {
         const centerX = resBoss.x + resBoss.width / 2;
         const centerY = resBoss.y + resBoss.height / 2;
