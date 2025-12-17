@@ -4850,13 +4850,43 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               
               // Check for defeat
               if (newHealth <= 0) {
-                // Boss defeated
+                // Boss defeated - play explosion effects
+                soundManager.playExplosion();
                 soundManager.playBossDefeatSound();
                 const bossPoints = prevBoss.type === 'cube' ? 5000 : prevBoss.type === 'sphere' ? 7500 : 10000;
                 setScore((prev) => prev + bossPoints);
                 setBossesKilled((prev) => prev + 1);
                 triggerScreenShake(15, 800);
                 triggerHighlightFlash(1.0, 400);
+                
+                // Create explosion visual effect
+                setExplosions((e) => [
+                  ...e,
+                  {
+                    x: prevBoss.x + prevBoss.width / 2,
+                    y: prevBoss.y + prevBoss.height / 2,
+                    frame: 0,
+                    maxFrames: 30,
+                    enemyType: prevBoss.type as EnemyType,
+                    particles: createExplosionParticles(
+                      prevBoss.x + prevBoss.width / 2,
+                      prevBoss.y + prevBoss.height / 2,
+                      prevBoss.type as EnemyType,
+                    ),
+                  },
+                ]);
+                
+                // Clean up game entities
+                setBalls([]);
+                setEnemies([]);
+                setBossAttacks([]);
+                setBombs([]);
+                setBullets([]);
+                
+                // Stop boss music and resume background music
+                soundManager.stopBossMusic();
+                soundManager.resumeBackgroundMusic();
+                
                 toast.success(`🎉 ${prevBoss.type.toUpperCase()} BOSS DEFEATED!`, { duration: 3000 });
                 setBossDefeatedTransitioning(true);
                 setTimeout(() => {
@@ -4908,10 +4938,29 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   }
                   
                   if (newHealth <= 0) {
-                    // Resurrected boss defeated
+                    // Resurrected boss defeated - play explosion effects
+                    soundManager.playExplosion();
                     soundManager.playBossDefeatSound();
                     setScore((s) => s + 2500);
                     triggerScreenShake(10, 600);
+                    
+                    // Create explosion visual effect
+                    setExplosions((e) => [
+                      ...e,
+                      {
+                        x: b.x + b.width / 2,
+                        y: b.y + b.height / 2,
+                        frame: 0,
+                        maxFrames: 30,
+                        enemyType: 'pyramid' as EnemyType,
+                        particles: createExplosionParticles(
+                          b.x + b.width / 2,
+                          b.y + b.height / 2,
+                          'pyramid' as EnemyType,
+                        ),
+                      },
+                    ]);
+                    
                     toast.success("Mini-boss destroyed!", { duration: 1500 });
                     return null as any; // Mark for removal
                   }
