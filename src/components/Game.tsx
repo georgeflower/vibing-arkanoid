@@ -757,7 +757,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Turret depleted callback with cooldown
       const now = Date.now();
       if (now - lastTurretDepleteSfxMs.current >= 200) {
-        soundManager.playCrackedBrickBreakSound();
         lastTurretDepleteSfxMs.current = now;
         toast.info("Turrets depleted!");
       }

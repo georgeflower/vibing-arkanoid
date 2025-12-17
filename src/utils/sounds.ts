@@ -392,8 +392,7 @@ class SoundManager {
     '/slower.mp3',
     '/wider.mp3',
     '/smaller.mp3',
-    '/shield.mp3',
-    '/glass-breaking.ogg'
+    '/shield.mp3'
   ];
 
   async preloadSounds(): Promise<void> {
@@ -463,11 +462,7 @@ class SoundManager {
   }
 
   playCrackedBrickBreakSound() {
-    if (!this.sfxEnabled) return;
-    const buffer = this.audioBuffers['/glass-breaking.ogg'];
-    if (buffer) {
-      this.playAudioBuffer(buffer, 0.588); // 0.7 * 1.2 * 0.7 (30% reduction)
-    }
+    // Sound removed - function kept for compatibility
   }
 
   playBombDropSound() {
