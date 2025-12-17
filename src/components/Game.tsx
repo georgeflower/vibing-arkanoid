@@ -98,7 +98,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production - ENABLED FOR LAG DEBUGGING
+  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -4897,7 +4897,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               }
               
               // Not defeated - show HP toast
-              toast.info(`BOSS: ${newHealth} HP`, { duration: 1000 });
+              if (ENABLE_DEBUG_FEATURES) {
+                toast.info(`BOSS: ${newHealth} HP`, { duration: 1000 });
+              }
               return { ...prevBoss, currentHealth: newHealth, lastHitAt: nowMs };
             });
             
@@ -4965,7 +4967,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     return null as any; // Mark for removal
                   }
                   
-                  toast.info(`Mini-boss: ${newHealth} HP`, { duration: 1000 });
+                  if (ENABLE_DEBUG_FEATURES) {
+                    toast.info(`Mini-boss: ${newHealth} HP`, { duration: 1000 });
+                  }
                   return { ...b, currentHealth: newHealth, lastHitAt: nowMs };
                 });
                 
@@ -5026,7 +5030,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               triggerHighlightFlash(0.7, 200);
 
               soundManager.playCrackedBrickBreakSound();
-              toast.success("Reflected attack destroyed enemy!");
+              if (ENABLE_DEBUG_FEATURES) {
+                toast.success("Reflected attack destroyed enemy!");
+              }
               return false; // Remove attack
             }
           }
@@ -5200,7 +5206,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           soundManager.playBossHitSound();
           triggerScreenShake(8, 400);
-          throttledToast("success", "Reflected shot hit the boss!", "reflected_hit");
+          if (ENABLE_DEBUG_FEATURES) {
+            throttledToast("success", "Reflected shot hit the boss!", "reflected_hit");
+          }
 
           const newHealth = prevBoss.currentHealth - 1;
 
