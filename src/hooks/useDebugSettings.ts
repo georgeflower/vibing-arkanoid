@@ -17,6 +17,8 @@ export interface DebugSettings {
   enableFrameProfilerLogging: boolean;
   enableScreenShakeLogging: boolean;
   enablePointerLockLogging: boolean;
+  enableGCLogging: boolean;
+  enableLagLogging: boolean;
   enableScreenShake: boolean;
   enableParticles: boolean;
   enableExplosions: boolean;
@@ -40,6 +42,8 @@ const DEFAULT_SETTINGS: DebugSettings = {
   enableFrameProfilerLogging: false,
   enableScreenShakeLogging: false, // Screen shake logging off by default
   enablePointerLockLogging: false, // Pointer lock logging off by default
+  enableGCLogging: true, // GC detection logging enabled by default
+  enableLagLogging: true, // Lag detection logging enabled by default
   enableScreenShake: true, // Screen shake enabled by default
   enableParticles: true, // Particles enabled by default
   enableExplosions: true, // Explosions enabled by default
