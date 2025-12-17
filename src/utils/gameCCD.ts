@@ -17,6 +17,23 @@ export interface CCDResult {
   };
 }
 
+// Pre-allocated brick pool to avoid per-frame allocations
+const BRICK_POOL_SIZE = 250;
+const reusableCCDBricks: CCDBrick[] = [];
+
+// Initialize pool once
+for (let i = 0; i < BRICK_POOL_SIZE; i++) {
+  reusableCCDBricks.push({
+    id: 0,
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    visible: false,
+    isIndestructible: false
+  });
+}
+
 export function processBallWithCCD(
   ball: Ball,
   dtSeconds: number, // Changed from dt (ms) to dtSeconds
@@ -72,18 +89,26 @@ export function processBallWithCCD(
     isFireball: !!ball.isFireball // Propagate fireball flag to CCD system
   };
 
-  // Convert bricks to CCD format, using actual brick IDs and metadata
-  const ccdBricks: CCDBrick[] = gameState.bricks
-    .map((b) => ({
-      id: b.id, // Use actual brick ID instead of array index
-      x: b.x,
-      y: b.y,
-      width: b.width,
-      height: b.height,
-      visible: b.visible,
-      isIndestructible: b.isIndestructible // Pass indestructible flag for fireball logic
-    }))
-    .filter(b => b.visible);
+  // Populate reusable brick pool in-place (no new object creation)
+  let brickIndex = 0;
+  const gameBricks = gameState.bricks;
+  for (let i = 0; i < gameBricks.length && brickIndex < BRICK_POOL_SIZE; i++) {
+    const b = gameBricks[i];
+    if (!b.visible) continue;
+    
+    const ccdBrick = reusableCCDBricks[brickIndex];
+    ccdBrick.id = b.id;
+    ccdBrick.x = b.x;
+    ccdBrick.y = b.y;
+    ccdBrick.width = b.width;
+    ccdBrick.height = b.height;
+    ccdBrick.visible = true;
+    ccdBrick.isIndestructible = b.isIndestructible;
+    brickIndex++;
+  }
+  
+  // Create a view of active bricks (reuses pool objects)
+  const ccdBricks = reusableCCDBricks.slice(0, brickIndex);
 
   // Boss collision is now handled by explicit shape-specific collision checks in Game.tsx
   // (CCD cannot handle rotating shapes like cube and pyramid)
