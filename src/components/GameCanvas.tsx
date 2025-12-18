@@ -2449,10 +2449,12 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillText(text3, width / 2, instructionY3);
       }
     
-      // Draw game over particles
-      if (gameOverParticles.length > 0) {
+      // Draw all pooled particles (includes gameOver and highScore particles)
+      const activeParticles = particlePool.getActive();
+      if (activeParticles.length > 0) {
         ctx.save();
-        gameOverParticles.forEach((particle: Particle) => {
+        for (let i = 0; i < activeParticles.length; i++) {
+          const particle = activeParticles[i];
           const particleAlpha = particle.life / particle.maxLife;
           ctx.globalAlpha = particleAlpha;
           
@@ -2468,32 +2470,15 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
           ctx.fill();
           
-          // Add a bright center
-          ctx.shadowBlur = 0;
-          ctx.fillStyle = `rgba(255, 255, 255, ${particleAlpha * 0.9})`;
-          ctx.beginPath();
-          ctx.arc(particle.x, particle.y, particle.size / 2, 0, Math.PI * 2);
-          ctx.fill();
-        });
-        ctx.restore();
-      }
-      
-      // Draw high score celebration particles
-      if (showHighScoreEntry && highScoreParticles.length > 0) {
-        ctx.save();
-        highScoreParticles.forEach((particle: Particle) => {
-          const alpha = particle.life / particle.maxLife;
-          ctx.globalAlpha = alpha;
-          ctx.fillStyle = particle.color;
-          
-          // Draw as confetti rectangles with rotation
-          ctx.save();
-          ctx.translate(particle.x, particle.y);
-          ctx.rotate(particle.life * 0.1);
-          ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size * 2);
-          ctx.restore();
-        });
-        ctx.globalAlpha = 1;
+          // Add a bright center for larger particles (game over / high score effects)
+          if (particle.size > 3) {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = `rgba(255, 255, 255, ${particleAlpha * 0.9})`;
+            ctx.beginPath();
+            ctx.arc(particle.x, particle.y, particle.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
         ctx.restore();
       }
       

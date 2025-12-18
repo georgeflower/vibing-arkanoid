@@ -163,8 +163,7 @@ export function processBallWithCCD(
   const ccdCoreStart = performance.now();
   
   // Run CCD with paddle included
-  // Pass only valid bricks (slice creates minimal overhead vs creating new brick objects)
-  const activeBricks = ccdBricks.slice(0, totalBrickCount);
+  // Pass brickCount directly to avoid .slice() allocation
   const result = processBallCCD(ccdBall, {
     dt: dtSeconds, // Pass seconds, not milliseconds
     substeps: PHYSICS_SUBSTEPS,
@@ -172,7 +171,8 @@ export function processBallWithCCD(
     epsilon: 0.5, // Small separation after collision
     minBrickDimension: gameState.minBrickDimension,
     paddle: ccdPaddle, // Re-included in CCD
-    bricks: activeBricks,
+    bricks: ccdBricks, // Pass full pool
+    brickCount: totalBrickCount, // Limit to valid bricks only
     canvasSize: gameState.canvasSize,
     currentTick: frameTick, // Pass deterministic frame tick
     maxSubstepTravelFactor: 0.9

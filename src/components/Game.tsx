@@ -515,8 +515,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [currentCombo, setCurrentCombo] = useState(0);
   const [levelSkipped, setLevelSkipped] = useState(false);
   const [bossIntroActive, setBossIntroActive] = useState(false);
-  const [gameOverParticles, setGameOverParticles] = useState<Particle[]>([]);
-  const [highScoreParticles, setHighScoreParticles] = useState<Particle[]>([]);
+  // Use refs for particles to avoid state churn - render trigger via counter
+  const gameOverParticlesRef = useRef<Particle[]>([]);
+  const highScoreParticlesRef = useRef<Particle[]>([]);
+  const [particleRenderTick, setParticleRenderTick] = useState(0);
   const [retryLevelData, setRetryLevelData] = useState<{ level: number; layout: any } | null>(null);
   const [powerUpsCollectedTypes, setPowerUpsCollectedTypes] = useState<Set<string>>(new Set());
   const [bricksDestroyedByTurrets, setBricksDestroyedByTurrets] = useState(0);
@@ -3756,30 +3758,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             soundManager.stopBackgroundMusic();
             setBossAttacks([]);
 
-            // Create game over particles
-            const particles: Particle[] = [];
-            for (let i = 0; i < 100; i++) {
-              const angle = Math.random() * Math.PI * 2;
-              const speed = 2 + Math.random() * 4;
-              particles.push({
-                x: SCALED_CANVAS_WIDTH / 2,
-                y: SCALED_CANVAS_HEIGHT / 2,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed,
-                size: 2 + Math.random() * 4,
-                color: `hsl(${Math.random() * 360}, 70%, 60%)`,
-                life: 60,
-                maxLife: 60,
-              });
-            }
-            setGameOverParticles(particles);
+            // Create game over particles using pool method
+            particlePool.acquireForGameOver(SCALED_CANVAS_WIDTH / 2, SCALED_CANVAS_HEIGHT / 2, 100);
+            setParticleRenderTick(t => t + 1);
 
             // Check for high score
             getQualifiedLeaderboards(score).then((qualification) => {
               if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
                 setQualifiedLeaderboards(qualification);
                 setShowHighScoreEntry(true);
-                setHighScoreParticles(createHighScoreParticles());
+                // Create high score particles using pool
+                const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
+                particlePool.acquireForHighScore(SCALED_CANVAS_WIDTH / 2, SCALED_CANVAS_HEIGHT / 2, particleCount);
+                setParticleRenderTick(t => t + 1);
                 soundManager.playHighScoreMusic();
                 toast.error("Game Over - New High Score!");
               } else {
@@ -3882,8 +3873,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     levelSkipped,
     score,
     isHighScore,
-    createHighScoreParticles,
-    setHighScoreParticles,
+    qualitySettings,
     bombIntervalsRef,
     createExplosionParticles,
     debugSettings,
@@ -4022,11 +4012,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // ========== Performance Profiling (Debug) ==========
       if (ENABLE_DEBUG_FEATURES && debugSettings.enableDetailedFrameLogging) {
-        // Count total particles (from particle pool + special particles)
-        const totalParticles =
-          particlePool.getStats().active +
-          gameOverParticles.length +
-          highScoreParticles.length;
+        // Count total particles (from particle pool only - special particles now use pool)
+        const totalParticles = particlePool.getStats().active;
 
         // Record frame metrics
         performanceProfiler.recordFrame({
@@ -4183,49 +4170,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       particlePool.releaseAll();
     }
 
-    // Update game over particles - OPTIMIZED: In-place mutation
-    if (debugSettings.enableParticles) {
-      setGameOverParticles((prev) => {
-        for (let i = prev.length - 1; i >= 0; i--) {
-          const p = prev[i];
-          p.x += p.vx;
-          p.y += p.vy;
-          p.vy += 0.15; // Gravity
-          p.vx *= 0.98; // Air resistance
-          p.life -= 1;
-          if (p.life <= 0) {
-            prev.splice(i, 1);
-          }
-        }
-        return prev.length > 0 ? [...prev] : [];
-      });
-
-      // Update high score celebration particles - OPTIMIZED: In-place mutation
-      setHighScoreParticles((prev) => {
-        for (let i = prev.length - 1; i >= 0; i--) {
-          const p = prev[i];
-          p.x += p.vx;
-          p.y += p.vy;
-          p.vy += 0.2; // Gravity effect
-          p.life -= 1;
-          if (p.life <= 0) {
-            prev.splice(i, 1);
-          }
-        }
-        return prev.length > 0 ? [...prev] : [];
-      });
-    } else {
-      setGameOverParticles([]);
-      setHighScoreParticles([]);
-    }
+    // Particles are now entirely in the pool - no separate state updates needed
+    // The pool's updateParticles handles gameOver and highScore particles automatically
     frameProfiler.endTiming("particles");
 
-    // Count particles for profiler - use pool stats
+    // Count particles for profiler - use pool stats only
     const poolStats = particlePool.getStats();
-    frameProfiler.incrementCounter(
-      "particles",
-      poolStats.active + gameOverParticles.length + highScoreParticles.length,
-    );
+    frameProfiler.incrementCounter("particles", poolStats.active);
 
     // Update bombs and rockets - OPTIMIZED: In-place mutation with backwards iteration
     setBombs((prev) => {
@@ -6333,8 +6284,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, [initGame]);
   const handleHighScoreSubmit = async (name: string) => {
     try {
-      // Create a burst of particles on submission
-      setHighScoreParticles(createHighScoreParticles());
+      // Create a burst of particles on submission using pool
+      const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
+      particlePool.acquireForHighScore(SCALED_CANVAS_WIDTH / 2, SCALED_CANVAS_HEIGHT / 2, particleCount);
+      setParticleRenderTick(t => t + 1);
 
       // Flash the screen
       setBackgroundFlash(1);
@@ -6367,8 +6320,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     soundManager.stopBossMusic();
     soundManager.stopBackgroundMusic();
     setShowEndScreen(false);
-    setHighScoreParticles([]);
-    setGameOverParticles([]);
+    particlePool.releaseAll(); // Clear all particles
     onReturnToMenu();
   };
 
@@ -6453,8 +6405,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setPowerUpsCollectedTypes(new Set());
     setBricksDestroyedByTurrets(0);
     setBossesKilled(0);
-    setHighScoreParticles([]);
-    setGameOverParticles([]);
+    particlePool.releaseAll(); // Clear all particles
     setLives(settings.startingLives);
 
     // Clear all entities
@@ -6904,8 +6855,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       resurrectedBosses={resurrectedBosses}
                       bossAttacks={bossAttacks}
                       laserWarnings={laserWarnings}
-                      gameOverParticles={gameOverParticles}
-                      highScoreParticles={highScoreParticles}
+                      gameOverParticles={[]}
+                      highScoreParticles={[]}
                       showHighScoreEntry={showHighScoreEntry}
                       bossIntroActive={bossIntroActive}
                       bossSpawnAnimation={bossSpawnAnimation}

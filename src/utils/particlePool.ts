@@ -1,6 +1,6 @@
 import type { Particle, EnemyType } from "@/types/game";
 
-const DEFAULT_POOL_SIZE = 300;
+const DEFAULT_POOL_SIZE = 500;
 
 // Pre-defined color palettes to avoid string creation
 const COLOR_PALETTES: Record<EnemyType | 'brick' | 'default', string[]> = {
@@ -95,6 +95,68 @@ class ParticlePool {
       particle.color = colors[i % colorCount];
       particle.life = 30;
       particle.maxLife = 30;
+      
+      this.activeParticles.push(particle);
+    }
+  }
+
+  // Acquire particles for game over effect
+  acquireForGameOver(centerX: number, centerY: number, count: number): void {
+    for (let i = 0; i < count; i++) {
+      let particle: Particle;
+      
+      if (this.pool.length > 0) {
+        particle = this.pool.pop()!;
+      } else if (this.activeParticles.length < this.maxPoolSize) {
+        particle = this.createEmptyParticle();
+      } else {
+        return;
+      }
+      
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2 + Math.random() * 4;
+      const hue = Math.floor(Math.random() * 360);
+      
+      particle.x = centerX;
+      particle.y = centerY;
+      particle.vx = Math.cos(angle) * speed;
+      particle.vy = Math.sin(angle) * speed;
+      particle.size = 2 + Math.random() * 4;
+      particle.color = `hsl(${hue}, 70%, 60%)`;
+      particle.life = 60;
+      particle.maxLife = 60;
+      
+      this.activeParticles.push(particle);
+    }
+  }
+
+  // Acquire particles for high score celebration
+  acquireForHighScore(centerX: number, centerY: number, count: number): void {
+    const colors = ["#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F", "#BB8FCE"];
+    const colorCount = colors.length;
+    
+    for (let i = 0; i < count; i++) {
+      let particle: Particle;
+      
+      if (this.pool.length > 0) {
+        particle = this.pool.pop()!;
+      } else if (this.activeParticles.length < this.maxPoolSize) {
+        particle = this.createEmptyParticle();
+      } else {
+        return;
+      }
+      
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+      const speed = 3 + Math.random() * 5;
+      
+      particle.x = centerX + (Math.random() - 0.5) * 200;
+      particle.y = centerY + (Math.random() - 0.5) * 100;
+      particle.vx = Math.cos(angle) * speed;
+      particle.vy = Math.sin(angle) * speed - 2;
+      particle.size = 4 + Math.random() * 6;
+      particle.color = colors[i % colorCount];
+      particle.life = 120;
+      particle.maxLife = 120;
       
       this.activeParticles.push(particle);
     }
