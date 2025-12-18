@@ -1,6 +1,15 @@
-export const GAME_VERSION = "0.9.2";
+export const GAME_VERSION = "0.9.3";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.3",
+    changes: [
+      "Paddle corner collision: rounded corners (60% of paddle height) now reflect the ball",
+      "Corner hits use natural reflection based on curved surface normal",
+      "Top surface still uses linear position-to-angle mapping (±80°)",
+      "Side hits below 60% height are ignored (ball lost) to prevent rescue from below",
+    ],
+  },
   {
     version: "0.9.2",
     changes: [

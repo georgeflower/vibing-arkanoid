@@ -2797,6 +2797,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const isDuplicate =
             event.objectType !== "wall" &&
             event.objectType !== "paddle" &&
+            event.objectType !== "paddleCorner" &&
             lastTOI !== undefined &&
             Math.abs(event.t - lastTOI) < EPS_TOI;
 
@@ -2931,6 +2932,78 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     frameNumber: frameCountRef.current,
                     objectType: "paddle",
                     objectId: "paddle",
+                    ballBefore,
+                    ballAfter: {
+                      x: result.ball.x,
+                      y: result.ball.y,
+                      dx: result.ball.dx,
+                      dy: result.ball.dy,
+                      speed: speedAfter,
+                    },
+                    collisionPoint: event.point,
+                    collisionNormal: event.normal,
+                    reflectionApplied: true,
+                    isDuplicate: false,
+                    soundPlayed: "bounce",
+                  });
+                }
+                const now = Date.now();
+                if (now - lastWallBounceSfxMs.current >= 50) {
+                  soundManager.playBounce();
+                  lastWallBounceSfxMs.current = now;
+                }
+                setLastPaddleHitTime(now);
+              }
+              break;
+            }
+
+            case "paddleCorner": {
+              // Paddle corner collision - natural reflection already applied by CCD
+              // Just need to validate and play sound
+              const PADDLE_HIT_COOLDOWN_TICKS = 3;
+              
+              // Check: Ball must be moving into the paddle corner (dot < 0)
+              const dotCorner = result.ball.dx * event.normal.x + result.ball.dy * event.normal.y;
+              if (dotCorner >= 0) {
+                if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+                  console.log(`[Collision Debug] PADDLE CORNER REJECTED: dot=${dotCorner.toFixed(2)} >= 0 (ball moving away)`);
+                }
+                break;
+              }
+
+              // Check: Cooldown - prevent repeated hits
+              if (
+                result.ball.lastHitTick !== undefined &&
+                frameTick - result.ball.lastHitTick < PADDLE_HIT_COOLDOWN_TICKS
+              ) {
+                if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+                  console.log(
+                    `[Collision Debug] PADDLE CORNER REJECTED: cooldown (${frameTick - result.ball.lastHitTick} < ${PADDLE_HIT_COOLDOWN_TICKS} ticks)`,
+                  );
+                }
+                break;
+              }
+
+              // CCD already applied natural reflection - just set cooldown
+              result.ball.lastHitTick = frameTick;
+
+              if (!isDuplicate) {
+                if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
+                  const timestamp = performance.now().toFixed(2);
+                  const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
+                  console.log(
+                    `[${timestamp}ms] [Collision Debug] PADDLE CORNER - ` +
+                      `Before: dx=${ballBefore.dx.toFixed(2)}, dy=${ballBefore.dy.toFixed(2)}, speed=${ballBefore.speed.toFixed(2)} | ` +
+                      `After: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${speedAfter.toFixed(2)} | ` +
+                      `Normal: (${event.normal.x.toFixed(2)}, ${event.normal.y.toFixed(2)})`,
+                  );
+
+                  // Record in collision history
+                  collisionHistory.addEntry({
+                    timestamp: performance.now(),
+                    frameNumber: frameCountRef.current,
+                    objectType: "paddle",
+                    objectId: "paddleCorner",
                     ballBefore,
                     ballAfter: {
                       x: result.ball.x,

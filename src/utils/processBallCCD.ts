@@ -39,7 +39,7 @@ export type Paddle = { id?: number; x: number; y: number; width: number; height:
 export type CollisionEvent = {
   t: number; // fraction of substep [0,1]
   normal: Vec2;
-  objectType: "wall" | "brick" | "paddle" | "corner";
+  objectType: "wall" | "brick" | "paddle" | "paddleCorner" | "corner";
   objectId?: number | string;
   point: Vec2;
   brickMeta?: Brick; // Store brick metadata for reflection logic
@@ -323,60 +323,132 @@ export function processBallCCD(
         }
       }
 
-      // 2) Paddle collision - with strict top-surface and direction checks
+      // 2) Paddle collision - with top-surface and rounded corner checks
       if (paddle) {
-        const exp = expandAABB(
-          {
-            x: paddle.x,
-            y: paddle.y,
-            width: paddle.width,
-            height: paddle.height,
-            visible: true,
-            id: paddle.id ?? 0,
-          },
-          ball.radius,
-        );
-        const rayHit = rayAABB(pos0, pos1, exp);
-        if (rayHit) {
-          const hitPoint = vAdd(pos0, vScale(vSub(pos1, pos0), rayHit.tEntry));
-
-          // Defensive normalization of the returned normal
-          let n = rayHit.normal;
-          const nLen = Math.hypot(n.x, n.y);
-          if (nLen > 1e-6) {
-            n = { x: n.x / nLen, y: n.y / nLen };
-          } else {
-            // fallback: compute from pos0 -> hitPoint
-            const fallbackDir = vSub(pos0, hitPoint);
-            const fallbackLen = Math.hypot(fallbackDir.x, fallbackDir.y) || 1;
-            n = { x: fallbackDir.x / fallbackLen, y: fallbackDir.y / fallbackLen };
-          }
-
-          // Movement vector for this substep (pos1 - pos0)
-          const moveDir = vSub(pos1, pos0);
-          const moveLen = Math.hypot(moveDir.x, moveDir.y);
-
-          // If no movement this substep, skip paddle candidate
-          if (moveLen >= 1e-6) {
-            // Dot of movement into surface: negative means moving into the surface
-            const dot = moveDir.x * n.x + moveDir.y * n.y;
-
-            // Thresholds (tune in playtests)
-            const TOP_NORMAL_THRESHOLD = -0.5; // require normal to point sufficiently upward
-
-            // Accept candidate only if normal points upward and movement is into the surface
-            if (n.y <= TOP_NORMAL_THRESHOLD && dot < 0) {
-              if (!earliest || rayHit.tEntry < earliest.t) {
-                earliest = {
-                  t: rayHit.tEntry,
-                  normal: n, // normalized normal
-                  objectType: "paddle",
-                  objectId: paddle.id ?? 0,
-                  point: hitPoint,
-                };
+        // Corner radius is 60% of paddle height for rounded corners
+        const PADDLE_CORNER_RATIO = 0.6;
+        const cornerRadius = paddle.height * PADDLE_CORNER_RATIO;
+        
+        // Corner centers (positioned so the arc covers the top 60% of each side)
+        const leftCornerCenter: Vec2 = { 
+          x: paddle.x + cornerRadius, 
+          y: paddle.y + cornerRadius 
+        };
+        const rightCornerCenter: Vec2 = { 
+          x: paddle.x + paddle.width - cornerRadius, 
+          y: paddle.y + cornerRadius 
+        };
+        
+        // First check rounded corners (before AABB to get more accurate corner hits)
+        const moveDir = vSub(pos1, pos0);
+        const moveLen = Math.hypot(moveDir.x, moveDir.y);
+        
+        if (moveLen >= 1e-6) {
+          // Check left corner
+          const leftCornerHit = segmentCircleTOI(pos0, pos1, leftCornerCenter, ball.radius + cornerRadius);
+          if (leftCornerHit) {
+            // Only accept if ball is hitting from above/side (not from below paddle)
+            // and hitting the exposed arc (not the part inside the paddle)
+            const hitY = leftCornerHit.point.y;
+            const hitX = leftCornerHit.point.x;
+            const isAbovePaddleBottom = hitY < paddle.y + paddle.height * PADDLE_CORNER_RATIO;
+            const isLeftOfCornerCenter = hitX <= leftCornerCenter.x;
+            const isAboveCornerCenter = hitY <= leftCornerCenter.y;
+            
+            // Accept corner hit if it's on the exposed arc (left or top portion)
+            if (isAbovePaddleBottom && (isLeftOfCornerCenter || isAboveCornerCenter)) {
+              // Ensure ball is moving towards the corner
+              const dot = moveDir.x * leftCornerHit.normal.x + moveDir.y * leftCornerHit.normal.y;
+              if (dot < 0) {
+                if (!earliest || leftCornerHit.t < earliest.t) {
+                  earliest = {
+                    t: leftCornerHit.t,
+                    normal: leftCornerHit.normal,
+                    objectType: "paddleCorner",
+                    objectId: paddle.id ?? 0,
+                    point: leftCornerHit.point,
+                  };
+                }
               }
             }
-            // else: ignore underside/side contact (prevents rescue from below)
+          }
+          
+          // Check right corner
+          const rightCornerHit = segmentCircleTOI(pos0, pos1, rightCornerCenter, ball.radius + cornerRadius);
+          if (rightCornerHit) {
+            const hitY = rightCornerHit.point.y;
+            const hitX = rightCornerHit.point.x;
+            const isAbovePaddleBottom = hitY < paddle.y + paddle.height * PADDLE_CORNER_RATIO;
+            const isRightOfCornerCenter = hitX >= rightCornerCenter.x;
+            const isAboveCornerCenter = hitY <= rightCornerCenter.y;
+            
+            // Accept corner hit if it's on the exposed arc (right or top portion)
+            if (isAbovePaddleBottom && (isRightOfCornerCenter || isAboveCornerCenter)) {
+              const dot = moveDir.x * rightCornerHit.normal.x + moveDir.y * rightCornerHit.normal.y;
+              if (dot < 0) {
+                if (!earliest || rightCornerHit.t < earliest.t) {
+                  earliest = {
+                    t: rightCornerHit.t,
+                    normal: rightCornerHit.normal,
+                    objectType: "paddleCorner",
+                    objectId: paddle.id ?? 0,
+                    point: rightCornerHit.point,
+                  };
+                }
+              }
+            }
+          }
+        }
+        
+        // Then check top surface AABB (between the two corners)
+        // Create a narrower AABB for just the flat top portion
+        const topSurfaceX = paddle.x + cornerRadius;
+        const topSurfaceWidth = paddle.width - 2 * cornerRadius;
+        
+        if (topSurfaceWidth > 0) {
+          const exp = expandAABB(
+            {
+              x: topSurfaceX,
+              y: paddle.y,
+              width: topSurfaceWidth,
+              height: paddle.height,
+              visible: true,
+              id: paddle.id ?? 0,
+            },
+            ball.radius,
+          );
+          const rayHit = rayAABB(pos0, pos1, exp);
+          if (rayHit) {
+            const hitPoint = vAdd(pos0, vScale(vSub(pos1, pos0), rayHit.tEntry));
+
+            // Defensive normalization of the returned normal
+            let n = rayHit.normal;
+            const nLen = Math.hypot(n.x, n.y);
+            if (nLen > 1e-6) {
+              n = { x: n.x / nLen, y: n.y / nLen };
+            } else {
+              const fallbackDir = vSub(pos0, hitPoint);
+              const fallbackLen = Math.hypot(fallbackDir.x, fallbackDir.y) || 1;
+              n = { x: fallbackDir.x / fallbackLen, y: fallbackDir.y / fallbackLen };
+            }
+
+            if (moveLen >= 1e-6) {
+              const dot = moveDir.x * n.x + moveDir.y * n.y;
+              const TOP_NORMAL_THRESHOLD = -0.5;
+
+              // Accept candidate only if normal points upward and movement is into the surface
+              if (n.y <= TOP_NORMAL_THRESHOLD && dot < 0) {
+                if (!earliest || rayHit.tEntry < earliest.t) {
+                  earliest = {
+                    t: rayHit.tEntry,
+                    normal: n,
+                    objectType: "paddle",
+                    objectId: paddle.id ?? 0,
+                    point: hitPoint,
+                  };
+                }
+              }
+            }
           }
         }
       }
@@ -460,7 +532,7 @@ export function processBallCCD(
       }
 
       // Determine if reflection should apply
-      // Walls/paddle/corners: always reflect
+      // Walls/paddle/paddleCorner/corners: always reflect
       // Bricks:
       //   - Fireballs pass through destructible bricks (no reflection)
       //   - Fireballs bounce off metal bricks (reflect)
@@ -470,10 +542,27 @@ export function processBallCCD(
       const shouldReflect =
         earliest.objectType === "wall" ||
         earliest.objectType === "corner" ||
+        earliest.objectType === "paddleCorner" ||
         (earliest.objectType === "brick" && (!ball.isFireball || isIndestructibleBrick));
 
-      // Special handling for paddle: linear position-to-angle mapping
-      if (earliest.objectType === "paddle" && paddle) {
+      // Special handling for paddle corners: natural reflection based on curved surface
+      if (earliest.objectType === "paddleCorner") {
+        const vel = { x: ball.dx, y: ball.dy };
+        const dot = vel.x * n.x + vel.y * n.y;
+        
+        // Natural reflection off curved surface
+        if (dot < 0) {
+          ball.dx = vel.x - 2 * dot * n.x;
+          ball.dy = vel.y - 2 * dot * n.y;
+          
+          // Ensure ball always goes upward after corner hit
+          if (ball.dy > 0) {
+            ball.dy = -Math.abs(ball.dy);
+          }
+        }
+      }
+      // Special handling for paddle top surface: linear position-to-angle mapping
+      else if (earliest.objectType === "paddle" && paddle) {
         // Calculate incoming speed (to preserve it)
         const incomingSpeed = Math.hypot(ball.dx, ball.dy);
 
