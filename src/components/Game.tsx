@@ -6118,33 +6118,81 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     return () => clearInterval(interval);
   }, [bossHitCooldown]);
 
-  // Keyboard controls for launch angle
+  // Auto-swaying launch angle (2 seconds for full left-right-left cycle)
   useEffect(() => {
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (gameState !== "playing" || !waitingBall) return;
+    
+    let animationId: number;
+    const startTime = Date.now();
+    
+    const updateSway = () => {
+      // 2 second cycle: sin wave oscillates from -80 to +80
+      const elapsed = Date.now() - startTime;
+      const swayAngle = 80 * Math.sin((elapsed / 2000) * Math.PI * 2);
+      setLaunchAngle(swayAngle);
+      animationId = requestAnimationFrame(updateSway);
+    };
+    
+    animationId = requestAnimationFrame(updateSway);
+    
+    return () => cancelAnimationFrame(animationId);
+  }, [gameState, balls]);
+
+  // Launch ball with A/D/arrows/mousewheel click
+  useEffect(() => {
+    const waitingBall = balls.find((ball) => ball.waitingToLaunch);
+    if (gameState !== "playing" || !waitingBall) return;
+    
+    const launchBallAtCurrentAngle = () => {
+      setBalls((prev) =>
+        prev.map((ball) => {
+          if (ball.waitingToLaunch) {
+            const speed = ball.speed;
+            const angle = (launchAngle * Math.PI) / 180;
+            setTotalShots((prev) => prev + 1);
+            return {
+              ...ball,
+              dx: speed * Math.sin(angle),
+              dy: -speed * Math.cos(angle),
+              waitingToLaunch: false,
+            };
+          }
+          return ball;
+        })
+      );
+      setShowInstructions(false);
+      // Start timer if not started
+      if (!timerStartedRef.current) {
+        timerStartedRef.current = true;
+        timerIntervalRef.current = setInterval(() => {
+          setTimer((prev) => prev + 1);
+        }, 1000);
+      }
+    };
+    
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") {
-        setLaunchAngle((prev) => Math.max(prev - 3, -80));
-      } else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") {
-        setLaunchAngle((prev) => Math.min(prev + 3, 80));
+      if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A" ||
+          e.key === "ArrowRight" || e.key === "d" || e.key === "D") {
+        launchBallAtCurrentAngle();
       }
     };
-    const handleWheel = (e: WheelEvent) => {
-      if (e.deltaY < 0) {
-        // Scroll up = left
-        setLaunchAngle((prev) => Math.max(prev - 3, -80));
-      } else if (e.deltaY > 0) {
-        // Scroll down = right
-        setLaunchAngle((prev) => Math.min(prev + 3, 80));
+    
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button === 1) { // Middle mouse button (mousewheel click)
+        e.preventDefault();
+        launchBallAtCurrentAngle();
       }
     };
+    
     window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("wheel", handleWheel);
+    window.addEventListener("mousedown", handleMouseDown);
+    
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("mousedown", handleMouseDown);
     };
-  }, [gameState, balls]);
+  }, [gameState, balls, launchAngle]);
   const handleStart = () => {
     if (gameState === "ready") {
       // Check if this is level completion (all bricks destroyed)
