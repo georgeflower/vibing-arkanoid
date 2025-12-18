@@ -6156,7 +6156,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   useEffect(() => {
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (waitingBall && gameState === "playing") {
-      // Only reset to auto-sway if we just started waiting
       if (launchSwayStartRef.current === null) {
         setIsManualAimMode(false);
       }
@@ -6166,7 +6165,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   useEffect(() => {
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (gameState !== "playing" || !waitingBall || isManualAimMode) {
-      // Clean up animation when not needed or in manual mode
       if (launchSwayAnimationRef.current) {
         cancelAnimationFrame(launchSwayAnimationRef.current);
         launchSwayAnimationRef.current = null;
@@ -6177,36 +6175,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       return;
     }
     
-    // Log when oscillation starts
-    const isNewLevel = launchSwayStartRef.current === null;
-    if (isNewLevel) {
-      console.log("[Launch Sway] Oscillation STARTED - ball waiting to launch", {
-        level,
-        lives,
-        reason: "new level or after losing life"
-      });
-    }
-    
     const updateSway = (timestamp: number) => {
       if (launchSwayStartRef.current === null) {
         launchSwayStartRef.current = timestamp;
       }
       
       const elapsed = timestamp - launchSwayStartRef.current;
-      // 4000ms for full cycle (left -> right -> left)
       const swayAngle = 80 * Math.sin((elapsed / 4000) * Math.PI * 2);
-      
-      // Log angle and speed periodically (every 500ms)
-      if (Math.floor(elapsed / 500) !== Math.floor((elapsed - 16) / 500)) {
-        const cycleProgress = ((elapsed % 4000) / 4000) * 100;
-        console.log("[Launch Sway] Angle update", {
-          angle: swayAngle.toFixed(1),
-          cycleTimeMs: 4000,
-          elapsedMs: elapsed.toFixed(0),
-          cycleProgress: `${cycleProgress.toFixed(1)}%`
-        });
-      }
-      
       setLaunchAngle(swayAngle);
       launchSwayAnimationRef.current = requestAnimationFrame(updateSway);
     };
@@ -6219,22 +6194,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         launchSwayAnimationRef.current = null;
       }
     };
-  }, [gameState, balls, level, lives, isManualAimMode]);
+  }, [gameState, balls, isManualAimMode]);
 
   // Launch ball function
   const launchBallAtCurrentAngle = useCallback(() => {
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (!waitingBall || gameState !== "playing") return;
     
-    console.log("[Launch Sway] Ball LAUNCHED", {
-      finalAngle: launchAngle.toFixed(1),
-      speed: waitingBall.speed,
-      wasManualMode: isManualAimMode
-    });
-    
     setShowInstructions(false);
     
-    // Start timer on first ball launch
     if (!timerStartedRef.current) {
       timerStartedRef.current = true;
       if (timerIntervalRef.current) {
@@ -6245,7 +6213,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }, 1000);
     }
     
-    // Start total play time on first ball launch
     if (!totalPlayTimeStartedRef.current) {
       totalPlayTimeStartedRef.current = true;
       if (totalPlayTimeIntervalRef.current) {
@@ -6271,7 +6238,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         return ball;
       }),
     );
-  }, [balls, gameState, launchAngle, isManualAimMode]);
+  }, [balls, gameState, launchAngle]);
 
   // Keyboard controls: A/D/LEFT/RIGHT stop oscillation and switch to manual aim mode
   // Mousewheel scroll also stops oscillation and adjusts angle
@@ -6285,43 +6252,31 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const isRightKey = e.key === "ArrowRight" || e.key === "d" || e.key === "D";
       
       if (isLeftKey || isRightKey) {
-        // Stop oscillation and switch to manual mode
         if (!isManualAimMode) {
-          console.log("[Launch Sway] Oscillation STOPPED - switched to MANUAL mode via KEY:", e.key);
           setIsManualAimMode(true);
         }
-        
-        // Adjust angle manually
         if (isLeftKey) {
           setLaunchAngle((prev) => Math.max(prev - 3, -80));
         } else {
           setLaunchAngle((prev) => Math.min(prev + 3, 80));
         }
-        console.log("[Launch Sway] Manual angle adjust via KEY:", e.key);
       }
     };
     
     const handleWheel = (e: WheelEvent) => {
-      // Stop oscillation and switch to manual mode
       if (!isManualAimMode) {
-        console.log("[Launch Sway] Oscillation STOPPED - switched to MANUAL mode via MOUSEWHEEL");
         setIsManualAimMode(true);
       }
-      
-      // Adjust angle based on scroll direction
       if (e.deltaY < 0) {
         setLaunchAngle((prev) => Math.max(prev - 3, -80));
-        console.log("[Launch Sway] Manual angle adjust via MOUSEWHEEL: left");
       } else if (e.deltaY > 0) {
         setLaunchAngle((prev) => Math.min(prev + 3, 80));
-        console.log("[Launch Sway] Manual angle adjust via MOUSEWHEEL: right");
       }
     };
     
     const handleMouseDown = (e: MouseEvent) => {
-      if (e.button === 1) { // Middle mouse button (mousewheel click)
+      if (e.button === 1) {
         e.preventDefault();
-        console.log("[Launch Sway] Launch triggered by MOUSEWHEEL CLICK");
         launchBallAtCurrentAngle();
       }
     };
