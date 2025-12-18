@@ -99,7 +99,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -4071,7 +4071,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           enemy.dy = -enemy.dy;
           newY = Math.max(0, Math.min(maxY - enemy.height, newY));
         }
-        
+
         // Update in place
         enemy.x = newX;
         enemy.y = newY;
@@ -4093,7 +4093,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (shouldUpdateParticles) {
         // Update pooled particles in place (no new objects created)
         particlePool.updateParticles(0.2);
-        
+
         // Update legacy explosion state for frame tracking only
         setExplosions((prev) => {
           for (let i = prev.length - 1; i >= 0; i--) {
@@ -4158,23 +4158,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBombs((prev) => {
       for (let i = prev.length - 1; i >= 0; i--) {
         const bomb = prev[i];
-        
+
         // Check if should be removed first
         let shouldRemove = false;
         if (bomb.isReflected) {
           shouldRemove = bomb.y <= 0 || bomb.y >= SCALED_CANVAS_HEIGHT || bomb.x <= 0 || bomb.x >= SCALED_CANVAS_WIDTH;
           if (shouldRemove && ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
-            console.log(`[Collision Debug] REFLECTED BOMB#${bomb.id} filtered OFF-SCREEN at (${bomb.x.toFixed(1)}, ${bomb.y.toFixed(1)})`);
+            console.log(
+              `[Collision Debug] REFLECTED BOMB#${bomb.id} filtered OFF-SCREEN at (${bomb.x.toFixed(1)}, ${bomb.y.toFixed(1)})`,
+            );
           }
         } else {
           shouldRemove = bomb.y >= SCALED_CANVAS_HEIGHT;
         }
-        
+
         if (shouldRemove) {
           prev.splice(i, 1);
           continue;
         }
-        
+
         // Apply homing behavior to reflected bombs
         if (bomb.isReflected) {
           // Find closest target (boss or enemy)
@@ -6085,7 +6087,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const launchSwayStartRef = useRef<number | null>(null);
   const launchSwayAnimationRef = useRef<number | null>(null);
   const [isManualAimMode, setIsManualAimMode] = useState(false);
-  
+
   // Reset manual aim mode when ball starts waiting (new level or after life loss)
   useEffect(() => {
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
@@ -6095,7 +6097,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     }
   }, [balls, gameState]);
-  
+
   useEffect(() => {
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (gameState !== "playing" || !waitingBall || isManualAimMode) {
@@ -6108,20 +6110,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
       return;
     }
-    
+
     const updateSway = (timestamp: number) => {
       if (launchSwayStartRef.current === null) {
         launchSwayStartRef.current = timestamp;
       }
-      
+
       const elapsed = timestamp - launchSwayStartRef.current;
       const swayAngle = 80 * Math.sin((elapsed / 4000) * Math.PI * 2);
       setLaunchAngle(swayAngle);
       launchSwayAnimationRef.current = requestAnimationFrame(updateSway);
     };
-    
+
     launchSwayAnimationRef.current = requestAnimationFrame(updateSway);
-    
+
     return () => {
       if (launchSwayAnimationRef.current) {
         cancelAnimationFrame(launchSwayAnimationRef.current);
@@ -6134,9 +6136,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const launchBallAtCurrentAngle = useCallback(() => {
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (!waitingBall || gameState !== "playing") return;
-    
+
     setShowInstructions(false);
-    
+
     if (!timerStartedRef.current) {
       timerStartedRef.current = true;
       if (timerIntervalRef.current) {
@@ -6146,7 +6148,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setTimer((prev) => prev + 1);
       }, 1000);
     }
-    
+
     if (!totalPlayTimeStartedRef.current) {
       totalPlayTimeStartedRef.current = true;
       if (totalPlayTimeIntervalRef.current) {
@@ -6156,7 +6158,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setTotalPlayTime((prev) => prev + 1);
       }, 1000);
     }
-    
+
     setBalls((prev) =>
       prev.map((ball) => {
         if (ball.waitingToLaunch) {
@@ -6180,11 +6182,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   useEffect(() => {
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (gameState !== "playing" || !waitingBall) return;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       const isLeftKey = e.key === "ArrowLeft" || e.key === "a" || e.key === "A";
       const isRightKey = e.key === "ArrowRight" || e.key === "d" || e.key === "D";
-      
+
       if (isLeftKey || isRightKey) {
         if (!isManualAimMode) {
           setIsManualAimMode(true);
@@ -6196,7 +6198,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
       }
     };
-    
+
     const handleWheel = (e: WheelEvent) => {
       if (!isManualAimMode) {
         setIsManualAimMode(true);
@@ -6207,18 +6209,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setLaunchAngle((prev) => Math.min(prev + 3, 80));
       }
     };
-    
+
     const handleMouseDown = (e: MouseEvent) => {
       if (e.button === 1) {
         e.preventDefault();
         launchBallAtCurrentAngle();
       }
     };
-    
+
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("wheel", handleWheel);
     window.addEventListener("mousedown", handleMouseDown);
-    
+
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("wheel", handleWheel);
