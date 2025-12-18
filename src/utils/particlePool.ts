@@ -1,6 +1,15 @@
-import type { Particle } from "@/types/game";
+import type { Particle, EnemyType } from "@/types/game";
 
 const DEFAULT_POOL_SIZE = 300;
+
+// Pre-defined color palettes to avoid string creation
+const COLOR_PALETTES: Record<EnemyType | 'brick' | 'default', string[]> = {
+  cube: ["hsl(200, 100%, 60%)", "hsl(180, 100%, 50%)", "hsl(220, 100%, 70%)"],
+  sphere: ["hsl(330, 100%, 60%)", "hsl(350, 100%, 65%)", "hsl(310, 100%, 55%)"],
+  pyramid: ["hsl(280, 100%, 60%)", "hsl(260, 100%, 65%)", "hsl(300, 100%, 55%)"],
+  brick: ["hsl(40, 100%, 60%)", "hsl(30, 100%, 55%)", "hsl(50, 100%, 65%)"],
+  default: ["hsl(0, 0%, 100%)", "hsl(0, 0%, 80%)", "hsl(0, 0%, 90%)"]
+};
 
 class ParticlePool {
   private pool: Particle[] = [];
@@ -57,6 +66,40 @@ class ParticlePool {
     return particle;
   }
 
+  // Acquire multiple particles for an explosion - optimized batch acquisition
+  acquireForExplosion(x: number, y: number, count: number, enemyType?: EnemyType): void {
+    const colors = COLOR_PALETTES[enemyType || 'default'];
+    const colorCount = colors.length;
+    
+    for (let i = 0; i < count; i++) {
+      let particle: Particle;
+      
+      if (this.pool.length > 0) {
+        particle = this.pool.pop()!;
+      } else if (this.activeParticles.length < this.maxPoolSize) {
+        particle = this.createEmptyParticle();
+      } else {
+        // Pool exhausted
+        return;
+      }
+      
+      // Initialize particle in-place
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+      const speed = 2 + Math.random() * 3;
+      
+      particle.x = x;
+      particle.y = y;
+      particle.vx = Math.cos(angle) * speed;
+      particle.vy = Math.sin(angle) * speed;
+      particle.size = 3 + Math.random() * 4;
+      particle.color = colors[i % colorCount];
+      particle.life = 30;
+      particle.maxLife = 30;
+      
+      this.activeParticles.push(particle);
+    }
+  }
+
   // Optimized: swap-and-pop pattern (O(1) instead of O(n) splice)
   release(particle: Particle): void {
     const index = this.activeParticles.indexOf(particle);
@@ -71,8 +114,46 @@ class ParticlePool {
     }
   }
 
+  // Release multiple particles efficiently
+  releaseMany(particles: Particle[]): void {
+    for (const particle of particles) {
+      const index = this.activeParticles.indexOf(particle);
+      if (index !== -1) {
+        const lastIndex = this.activeParticles.length - 1;
+        if (index !== lastIndex) {
+          this.activeParticles[index] = this.activeParticles[lastIndex];
+        }
+        this.activeParticles.pop();
+        this.pool.push(particle);
+      }
+    }
+  }
+
   getActive(): Particle[] {
     return this.activeParticles;
+  }
+
+  // Optimized update: mutate in place, no new object creation
+  updateParticles(gravity: number = 0.2): void {
+    for (let i = this.activeParticles.length - 1; i >= 0; i--) {
+      const particle = this.activeParticles[i];
+      
+      // Update position and velocity in place
+      particle.x += particle.vx;
+      particle.y += particle.vy;
+      particle.vy += gravity;
+      particle.life -= 1;
+      
+      // Release expired particles using swap-and-pop
+      if (particle.life <= 0) {
+        const lastIndex = this.activeParticles.length - 1;
+        if (i !== lastIndex) {
+          this.activeParticles[i] = this.activeParticles[lastIndex];
+        }
+        this.activeParticles.pop();
+        this.pool.push(particle);
+      }
+    }
   }
 
   // Optimized: iterate backwards and swap-and-pop to avoid array reallocation

@@ -107,8 +107,10 @@ export function processBallWithCCD(
     brickIndex++;
   }
   
-  // Create a view of active bricks (reuses pool objects)
-  const ccdBricks = reusableCCDBricks.slice(0, brickIndex);
+  // Use the pool directly - resurrected bosses and enemies will be added after the brick index
+  // This avoids creating a new array with slice()
+  const ccdBricks = reusableCCDBricks;
+  let totalBrickCount = brickIndex;
 
   // Boss collision is now handled by explicit shape-specific collision checks in Game.tsx
   // (CCD cannot handle rotating shapes like cube and pyramid)
@@ -116,32 +118,36 @@ export function processBallWithCCD(
 
   // Add resurrected bosses as bricks (use negative IDs)
   // Resurrected bosses also use TOP-LEFT coordinates
-  if (gameState.resurrectedBosses) {
+  if (gameState.resurrectedBosses && totalBrickCount < BRICK_POOL_SIZE) {
     const HITBOX_MARGIN = 2;
-    gameState.resurrectedBosses.forEach((resBoss, idx) => {
-      ccdBricks.push({
-        id: -(idx + 2), // Resurrected boss IDs: -2, -3, -4
-        x: resBoss.x + HITBOX_MARGIN,
-        y: resBoss.y + HITBOX_MARGIN,
-        width: resBoss.width - 2 * HITBOX_MARGIN,
-        height: resBoss.height - 2 * HITBOX_MARGIN,
-        visible: true
-      });
-    });
+    for (let idx = 0; idx < gameState.resurrectedBosses.length && totalBrickCount < BRICK_POOL_SIZE; idx++) {
+      const resBoss = gameState.resurrectedBosses[idx];
+      const ccdBrick = reusableCCDBricks[totalBrickCount];
+      ccdBrick.id = -(idx + 2); // Resurrected boss IDs: -2, -3, -4
+      ccdBrick.x = resBoss.x + HITBOX_MARGIN;
+      ccdBrick.y = resBoss.y + HITBOX_MARGIN;
+      ccdBrick.width = resBoss.width - 2 * HITBOX_MARGIN;
+      ccdBrick.height = resBoss.height - 2 * HITBOX_MARGIN;
+      ccdBrick.visible = true;
+      ccdBrick.isIndestructible = false;
+      totalBrickCount++;
+    }
   }
 
   // Add enemies as small bricks (use large positive IDs to avoid collision with brick indices)
-  if (gameState.enemies) {
-    gameState.enemies.forEach((enemy, idx) => {
-      ccdBricks.push({
-        id: 100000 + idx, // Enemy IDs: 100000+
-        x: enemy.x,
-        y: enemy.y,
-        width: enemy.width,
-        height: enemy.height,
-        visible: true
-      });
-    });
+  if (gameState.enemies && totalBrickCount < BRICK_POOL_SIZE) {
+    for (let idx = 0; idx < gameState.enemies.length && totalBrickCount < BRICK_POOL_SIZE; idx++) {
+      const enemy = gameState.enemies[idx];
+      const ccdBrick = reusableCCDBricks[totalBrickCount];
+      ccdBrick.id = 100000 + idx; // Enemy IDs: 100000+
+      ccdBrick.x = enemy.x;
+      ccdBrick.y = enemy.y;
+      ccdBrick.width = enemy.width;
+      ccdBrick.height = enemy.height;
+      ccdBrick.visible = true;
+      ccdBrick.isIndestructible = false;
+      totalBrickCount++;
+    }
   }
 
   // Convert paddle to CCD format
@@ -157,6 +163,8 @@ export function processBallWithCCD(
   const ccdCoreStart = performance.now();
   
   // Run CCD with paddle included
+  // Pass only valid bricks (slice creates minimal overhead vs creating new brick objects)
+  const activeBricks = ccdBricks.slice(0, totalBrickCount);
   const result = processBallCCD(ccdBall, {
     dt: dtSeconds, // Pass seconds, not milliseconds
     substeps: PHYSICS_SUBSTEPS,
@@ -164,7 +172,7 @@ export function processBallWithCCD(
     epsilon: 0.5, // Small separation after collision
     minBrickDimension: gameState.minBrickDimension,
     paddle: ccdPaddle, // Re-included in CCD
-    bricks: ccdBricks,
+    bricks: activeBricks,
     canvasSize: gameState.canvasSize,
     currentTick: frameTick, // Pass deterministic frame tick
     maxSubstepTravelFactor: 0.9
