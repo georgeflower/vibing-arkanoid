@@ -99,7 +99,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -2963,12 +2963,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               // Paddle corner collision - natural reflection already applied by CCD
               // Just need to validate and play sound
               const PADDLE_HIT_COOLDOWN_TICKS = 3;
-              
+
               // Check: Ball must be moving into the paddle corner (dot < 0)
               const dotCorner = result.ball.dx * event.normal.x + result.ball.dy * event.normal.y;
               if (dotCorner >= 0) {
                 if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
-                  console.log(`[Collision Debug] PADDLE CORNER REJECTED: dot=${dotCorner.toFixed(2)} >= 0 (ball moving away)`);
+                  console.log(
+                    `[Collision Debug] PADDLE CORNER REJECTED: dot=${dotCorner.toFixed(2)} >= 0 (ball moving away)`,
+                  );
                 }
                 break;
               }
@@ -3760,7 +3762,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             // Create game over particles using pool method
             particlePool.acquireForGameOver(SCALED_CANVAS_WIDTH / 2, SCALED_CANVAS_HEIGHT / 2, 100);
-            setParticleRenderTick(t => t + 1);
+            setParticleRenderTick((t) => t + 1);
 
             // Check for high score
             getQualifiedLeaderboards(score).then((qualification) => {
@@ -3770,7 +3772,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 // Create high score particles using pool
                 const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
                 particlePool.acquireForHighScore(SCALED_CANVAS_WIDTH / 2, SCALED_CANVAS_HEIGHT / 2, particleCount);
-                setParticleRenderTick(t => t + 1);
+                setParticleRenderTick((t) => t + 1);
                 soundManager.playHighScoreMusic();
                 toast.error("Game Over - New High Score!");
               } else {
@@ -6287,7 +6289,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Create a burst of particles on submission using pool
       const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
       particlePool.acquireForHighScore(SCALED_CANVAS_WIDTH / 2, SCALED_CANVAS_HEIGHT / 2, particleCount);
-      setParticleRenderTick(t => t + 1);
+      setParticleRenderTick((t) => t + 1);
 
       // Flash the screen
       setBackgroundFlash(1);
