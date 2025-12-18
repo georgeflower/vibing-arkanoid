@@ -6127,9 +6127,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const startTime = Date.now();
     
     const updateSway = () => {
-      // 2 second cycle: sin wave oscillates from -80 to +80
+      // 4 second cycle: sin wave oscillates from -80 to +80
       const elapsed = Date.now() - startTime;
-      const swayAngle = 80 * Math.sin((elapsed / 2000) * Math.PI * 2);
+      const swayAngle = 80 * Math.sin((elapsed / 4000) * Math.PI * 2);
       setLaunchAngle(swayAngle);
       animationId = requestAnimationFrame(updateSway);
     };
