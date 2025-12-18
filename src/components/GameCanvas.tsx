@@ -1746,6 +1746,12 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.closePath();
           ctx.fill();
           
+          // Pulsing white border
+          const pyramidPulse = Math.abs(Math.sin(Date.now() / 150));
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + pyramidPulse * 0.5})`;
+          ctx.lineWidth = 1.5 + pyramidPulse * 1.5;
+          ctx.stroke();
+          
           // Bullet highlight
           ctx.shadowBlur = 0;
           ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
@@ -1763,6 +1769,12 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.arc(0, 0, bomb.width / 2, 0, Math.PI * 2);
           ctx.fill();
           
+          // Pulsing white border
+          const rocketPulse = Math.abs(Math.sin(Date.now() / 120));
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + rocketPulse * 0.5})`;
+          ctx.lineWidth = 1.5 + rocketPulse * 1.5;
+          ctx.stroke();
+          
           // Rocket highlight
           ctx.shadowBlur = 0;
           ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
@@ -1779,6 +1791,12 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.beginPath();
           ctx.arc(0, 0, bomb.width / 2, 0, Math.PI * 2);
           ctx.fill();
+          
+          // Pulsing white border
+          const bombPulse = Math.abs(Math.sin(Date.now() / 100));
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + bombPulse * 0.5})`;
+          ctx.lineWidth = 1.5 + bombPulse * 1.5;
+          ctx.stroke();
           
           // Bomb highlight
           ctx.shadowBlur = 0;
@@ -1852,6 +1870,12 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           
           ctx.fillStyle = 'rgba(255, 200, 200, 0.6)';
           ctx.fillRect(attack.x + attack.width * 0.2, attack.y, attack.width * 0.6, attack.height);
+          
+          // Pulsing white border around laser
+          const laserPulse = Math.abs(Math.sin(Date.now() / 80));
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 + laserPulse * 0.4})`;
+          ctx.lineWidth = 2 + laserPulse * 2;
+          ctx.strokeRect(attack.x, attack.y, attack.width, attack.height);
           ctx.shadowBlur = 0;
         } else {
           ctx.save();
@@ -1866,6 +1890,12 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.beginPath();
           ctx.arc(0, 0, attack.width / 2, 0, Math.PI * 2);
           ctx.fill();
+          
+          // Pulsing white border
+          const projectilePulse = Math.abs(Math.sin(Date.now() / 100));
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + projectilePulse * 0.5})`;
+          ctx.lineWidth = 1.5 + projectilePulse * 1.5;
+          ctx.stroke();
           
           ctx.shadowBlur = 0;
           ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
