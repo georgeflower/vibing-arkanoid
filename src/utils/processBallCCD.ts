@@ -54,6 +54,7 @@ export type CCDConfig = {
   tilemapQuery?: (aabb: { x: number; y: number; w: number; h: number }) => Brick[]; // broadphase provider
   paddle?: Paddle;
   bricks?: Brick[];
+  brickCount?: number; // Number of valid bricks in the bricks array (avoids .slice())
   canvasSize?: { w: number; h: number }; // for walls
   currentTick?: number; // integer tick for cooldowns
   maxSubstepTravelFactor?: number; // fraction of minBrickDimension allowed per substep (default 0.9)
@@ -180,12 +181,15 @@ const expandAABB = (b: Brick, r: number) => ({ x: b.x - r, y: b.y - r, w: b.widt
 Default tilemap broadphase fallback:
 Assumes uniform bricks array on grid with known BRICK_WIDTH/HEIGHT; compute candidate bricks overlapping swept aabb.
 If user supplies tilemapQuery in config, it will be used instead.
+brickCount: optional limit on how many bricks to check (avoids .slice() overhead)
 */
-function defaultTilemapQuery(bricks: Brick[] | undefined, swept: { x: number; y: number; w: number; h: number }) {
+function defaultTilemapQuery(bricks: Brick[] | undefined, swept: { x: number; y: number; w: number; h: number }, brickCount?: number) {
   if (!bricks) return [];
   // simple filter by AABB overlap
   const res: Brick[] = [];
-  for (const b of bricks) {
+  const limit = brickCount ?? bricks.length;
+  for (let i = 0; i < limit; i++) {
+    const b = bricks[i];
     if (!b.visible) continue;
     if (b.x + b.width < swept.x || b.x > swept.x + swept.w || b.y + b.height < swept.y || b.y > swept.y + swept.h)
       continue;
@@ -212,6 +216,7 @@ export function processBallCCD(
     tilemapQuery,
     paddle,
     bricks,
+    brickCount,
     canvasSize,
     currentTick,
     maxSubstepTravelFactor = cfg.maxSubstepTravelFactor ?? 0.9,
@@ -267,7 +272,7 @@ export function processBallCCD(
         h: Math.abs(pos1.y - pos0.y) + 2 * ball.radius,
       };
 
-      const candidates = tilemapQuery ? tilemapQuery(sweptAabb) : defaultTilemapQuery(bricks, sweptAabb);
+      const candidates = tilemapQuery ? tilemapQuery(sweptAabb) : defaultTilemapQuery(bricks, sweptAabb, brickCount);
       // Collect earliest hit among walls, paddle, bricks, corners
       let earliest: CollisionEvent | null = null;
 
