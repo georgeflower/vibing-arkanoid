@@ -24,21 +24,22 @@ interface AdaptiveQualityOptions {
   enableLogging?: boolean; // Toggle for FPS performance logs
 }
 
+// Reduced particle counts for better mobile performance
 const QUALITY_PRESETS: Record<QualityLevel, Omit<QualitySettings, 'level' | 'autoAdjust'>> = {
   low: {
-    particleMultiplier: 0.3,
+    particleMultiplier: 0.25,
     shadowsEnabled: false,
     glowEnabled: false,
     screenShakeMultiplier: 0.5,
-    explosionParticles: 8,
+    explosionParticles: 5, // Reduced from 8
     backgroundEffects: false
   },
   medium: {
-    particleMultiplier: 0.6,
+    particleMultiplier: 0.5,
     shadowsEnabled: true,
     glowEnabled: false,
     screenShakeMultiplier: 0.75,
-    explosionParticles: 15,
+    explosionParticles: 10, // Reduced from 15
     backgroundEffects: true
   },
   high: {
@@ -46,7 +47,7 @@ const QUALITY_PRESETS: Record<QualityLevel, Omit<QualitySettings, 'level' | 'aut
     shadowsEnabled: true,
     glowEnabled: true,
     screenShakeMultiplier: 1.0,
-    explosionParticles: 20,
+    explosionParticles: 15, // Reduced from 20
     backgroundEffects: true
   }
 };

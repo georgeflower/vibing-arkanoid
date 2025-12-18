@@ -1,6 +1,16 @@
-export const GAME_VERSION = "0.9.1";
+export const GAME_VERSION = "0.9.2";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.2",
+    changes: [
+      "CRITICAL FIX: Particle rendering moved outside explosion loop (was 5x+ redundant draws)",
+      "Explosion ring/glow rendering separated from particle drawing for efficiency",
+      "Particle counts reduced: low=5, medium=10, high=15 (was 8/15/20)",
+      "particleMultiplier tuned: low=0.25, medium=0.5, high=1.0 (was 0.3/0.6/1.0)",
+      "Debug logs now correctly count particles from pool instead of empty explosion arrays",
+    ],
+  },
   {
     version: "0.9.1",
     changes: [

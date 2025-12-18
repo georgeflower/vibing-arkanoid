@@ -1640,6 +1640,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       });
 
       // Draw explosions with debris particles
+      // Step 1: Draw explosion rings/glows only (fast)
       explosions.forEach((explosion) => {
         const progress = explosion.frame / explosion.maxFrames;
         const radius = 15 * (1 + progress * 2);
@@ -1681,17 +1682,23 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.arc(explosion.x, explosion.y, radius * 0.6, 0, Math.PI * 2);
         ctx.fill();
         
-        // Draw debris particles from pool (with quality-based sampling)
-        const pooledParticles = particlePool.getActive();
+        ctx.restore();
+      });
+      
+      // Step 2: Draw ALL pooled particles ONCE (outside explosion loop - critical fix!)
+      const pooledParticles = particlePool.getActive();
+      if (pooledParticles.length > 0) {
+        ctx.save();
         const particleStep = Math.ceil(1 / qualitySettings.particleMultiplier);
+        const enableGlow = qualitySettings.glowEnabled;
+        
         for (let index = 0; index < pooledParticles.length; index += particleStep) {
           const particle = pooledParticles[index];
-          
           const particleAlpha = particle.life / particle.maxLife;
           ctx.globalAlpha = particleAlpha;
           
-          // Draw particle with glow
-          if (qualitySettings.glowEnabled) {
+          // Draw particle with glow (only if enabled)
+          if (enableGlow) {
             ctx.shadowBlur = 8;
             ctx.shadowColor = particle.color;
           }
@@ -1706,6 +1713,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           );
           
           // Add a bright center
+          ctx.shadowBlur = 0;
           ctx.fillStyle = `rgba(255, 255, 255, ${particleAlpha * 0.8})`;
           ctx.fillRect(
             particle.x - particle.size / 4,
@@ -1714,9 +1722,8 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             particle.size / 2
           );
         }
-        
         ctx.restore();
-      });
+      }
 
       // Draw bombs and rockets
       bombs.forEach((bomb) => {
