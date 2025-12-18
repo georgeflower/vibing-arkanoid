@@ -2092,29 +2092,125 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           }
         } else if (boss.type === 'sphere') {
           const radius = boss.width / 2;
-          const baseHue = boss.isAngry ? 330 : 330;
+          const baseHue = boss.isAngry ? 0 : 330; // Red when angry, pink otherwise
           const intensity = boss.isAngry ? 70 : 60;
           
-          const gradient = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, 0, 0, 0, radius);
-          gradient.addColorStop(0, `hsl(${baseHue}, 90%, ${intensity + 25}%)`);
-          gradient.addColorStop(0.5, `hsl(${baseHue}, 85%, ${intensity}%)`);
-          gradient.addColorStop(1, `hsl(${baseHue}, 80%, ${intensity - 20}%)`);
+          // Oscillating rotation: -90 to +90 degrees over time
+          const oscillation = Math.sin(Date.now() / 1500) * (Math.PI / 2); // 90 degrees
           
+          // Enhanced glow when angry
           if (qualitySettings.glowEnabled) {
-            ctx.shadowBlur = 30;
-            ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
+            const glowIntensity = boss.isAngry ? 50 + Math.sin(Date.now() / 100) * 20 : 30;
+            ctx.shadowBlur = glowIntensity;
+            ctx.shadowColor = boss.isAngry 
+              ? `hsl(0, 100%, 60%)` 
+              : `hsl(${baseHue}, 100%, 60%)`;
           }
+          
+          // Base sphere with gradient for 3D effect
+          const gradient = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, 0, 0, 0, radius);
+          gradient.addColorStop(0, `hsl(${baseHue}, 90%, ${intensity + 30}%)`);
+          gradient.addColorStop(0.4, `hsl(${baseHue}, 85%, ${intensity + 10}%)`);
+          gradient.addColorStop(0.7, `hsl(${baseHue}, 80%, ${intensity}%)`);
+          gradient.addColorStop(1, `hsl(${baseHue}, 75%, ${intensity - 25}%)`);
           
           ctx.fillStyle = gradient;
           ctx.beginPath();
           ctx.arc(0, 0, radius, 0, Math.PI * 2);
           ctx.fill();
           
-          // Specular highlight
-          ctx.fillStyle = `rgba(255, 255, 255, ${boss.isAngry ? 0.5 : 0.3})`;
+          // Horizontal bands for 3D sphere illusion (latitude lines)
+          ctx.strokeStyle = `hsla(${baseHue}, 70%, ${intensity - 15}%, 0.5)`;
+          ctx.lineWidth = 2;
+          const bandCount = 5;
+          for (let i = 1; i < bandCount; i++) {
+            const yPos = -radius + (radius * 2 * i / bandCount);
+            const bandRadius = Math.sqrt(radius * radius - yPos * yPos);
+            if (bandRadius > 0) {
+              ctx.beginPath();
+              ctx.ellipse(0, yPos, bandRadius, bandRadius * 0.15, 0, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+          }
+          
+          // Vertical meridian line that rotates with oscillation
+          ctx.save();
+          ctx.rotate(oscillation);
+          ctx.strokeStyle = `hsla(${baseHue}, 70%, ${intensity - 10}%, 0.6)`;
+          ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.ellipse(-radius * 0.3, -radius * 0.3, radius * 0.25, radius * 0.15, -Math.PI / 4, 0, Math.PI * 2);
+          ctx.ellipse(0, 0, radius * 0.15, radius, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          
+          // Second meridian at 90 degrees
+          ctx.beginPath();
+          ctx.ellipse(0, 0, radius, radius * 0.15, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+          
+          // Specular highlight (moves slightly with rotation)
+          const highlightOffset = Math.sin(oscillation) * radius * 0.1;
+          ctx.fillStyle = `rgba(255, 255, 255, ${boss.isAngry ? 0.6 : 0.4})`;
+          ctx.beginPath();
+          ctx.ellipse(-radius * 0.3 + highlightOffset, -radius * 0.35, radius * 0.2, radius * 0.12, -Math.PI / 4, 0, Math.PI * 2);
           ctx.fill();
+          
+          // Pixel retro angry eyes when angry
+          if (boss.isAngry) {
+            ctx.shadowBlur = 0;
+            const eyeSize = radius * 0.12;
+            const eyeY = -radius * 0.1;
+            const eyeSpacing = radius * 0.35;
+            
+            // Eye backgrounds (white)
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-eyeSpacing - eyeSize, eyeY - eyeSize, eyeSize * 2, eyeSize * 2);
+            ctx.fillRect(eyeSpacing - eyeSize, eyeY - eyeSize, eyeSize * 2, eyeSize * 2);
+            
+            // Pupils (black, offset based on oscillation for tracking effect)
+            const pupilOffset = Math.sin(oscillation) * eyeSize * 0.3;
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(-eyeSpacing - eyeSize * 0.5 + pupilOffset, eyeY - eyeSize * 0.5, eyeSize, eyeSize);
+            ctx.fillRect(eyeSpacing - eyeSize * 0.5 + pupilOffset, eyeY - eyeSize * 0.5, eyeSize, eyeSize);
+            
+            // Angry eyebrows (diagonal pixel lines)
+            ctx.fillStyle = '#000000';
+            const browY = eyeY - eyeSize * 1.8;
+            const browThickness = eyeSize * 0.5;
+            
+            // Left eyebrow (angled down toward center) - pixel blocks
+            for (let i = 0; i < 4; i++) {
+              ctx.fillRect(-eyeSpacing - eyeSize + i * eyeSize * 0.6, browY + i * browThickness * 0.4, eyeSize * 0.7, browThickness);
+            }
+            
+            // Right eyebrow (angled down toward center) - pixel blocks
+            for (let i = 0; i < 4; i++) {
+              ctx.fillRect(eyeSpacing + eyeSize - i * eyeSize * 0.6 - eyeSize * 0.7, browY + i * browThickness * 0.4, eyeSize * 0.7, browThickness);
+            }
+            
+            // Angry mouth (jagged pixel line)
+            const mouthY = radius * 0.35;
+            const mouthWidth = radius * 0.5;
+            ctx.fillStyle = '#000000';
+            // Jagged angry mouth
+            ctx.fillRect(-mouthWidth, mouthY, mouthWidth * 0.3, eyeSize * 0.6);
+            ctx.fillRect(-mouthWidth * 0.5, mouthY + eyeSize * 0.4, mouthWidth * 0.3, eyeSize * 0.6);
+            ctx.fillRect(0, mouthY, mouthWidth * 0.3, eyeSize * 0.6);
+            ctx.fillRect(mouthWidth * 0.5, mouthY + eyeSize * 0.4, mouthWidth * 0.3, eyeSize * 0.6);
+          }
+          
+          // Pulsing edge glow when angry
+          if (boss.isAngry && qualitySettings.glowEnabled) {
+            const pulse = Math.sin(Date.now() / 100) * 0.5 + 0.5;
+            ctx.shadowBlur = 35 * pulse;
+            ctx.shadowColor = `hsl(0, 100%, 50%)`;
+            ctx.strokeStyle = `hsla(0, 100%, 70%, ${0.5 + pulse * 0.5})`;
+            ctx.lineWidth = 3 + pulse * 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius + 2, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+          }
           
         } else if (boss.type === 'pyramid') {
           const size = boss.width / 2;
