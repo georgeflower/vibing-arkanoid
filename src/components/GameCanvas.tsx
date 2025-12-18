@@ -2116,14 +2116,6 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.ellipse(-radius * 0.3, -radius * 0.3, radius * 0.25, radius * 0.15, -Math.PI / 4, 0, Math.PI * 2);
           ctx.fill();
           
-          // Rotating ring
-          ctx.strokeStyle = `hsl(${baseHue}, 100%, 70%)`;
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          const ringRadius = radius * 1.2;
-          ctx.ellipse(0, 0, ringRadius, ringRadius * 0.3, boss.rotationY, 0, Math.PI * 2);
-          ctx.stroke();
-          
         } else if (boss.type === 'pyramid') {
           const size = boss.width / 2;
           const baseHue = boss.isAngry ? 0 : (boss.isSuperAngry ? 280 : 280);
