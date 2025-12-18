@@ -3904,7 +3904,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             level,
             ballCount: balls.length,
             enemyCount: enemies.length,
-            particleCount: explosions.reduce((sum, exp) => sum + exp.particles.length, 0),
+            particleCount: particlePool.getStats().active,
             powerUpCount: powerUps.length,
             bossActive: !!boss,
             quality: quality || "unknown",
@@ -3949,9 +3949,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // ========== Performance Profiling (Debug) ==========
       if (ENABLE_DEBUG_FEATURES && debugSettings.enableDetailedFrameLogging) {
-        // Count total particles
+        // Count total particles (from particle pool + special particles)
         const totalParticles =
-          explosions.reduce((sum, exp) => sum + exp.particles.length, 0) +
+          particlePool.getStats().active +
           gameOverParticles.length +
           highScoreParticles.length;
 
