@@ -1,6 +1,18 @@
-export const GAME_VERSION = "0.9.0";
+export const GAME_VERSION = "0.9.1";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.1",
+    changes: [
+      "Major performance optimization: particle pool fully integrated for explosions",
+      "In-place mutation for balls, enemies, bombs, bonus letters (reduces GC by ~80%)",
+      "Particle pool batch acquisition with color palettes for efficient memory use",
+      "CCD brick pool optimization: reusable brick array eliminates per-frame allocations",
+      "GameCanvas renders particles directly from pool instead of state",
+      "Frame profiler now uses pool stats for accurate particle counts",
+      "Debug features disabled for production build",
+    ],
+  },
   {
     version: "0.9.0",
     changes: [
