@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useRef } from "react";
 import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, Particle, Boss, BossAttack, ShieldImpact } from "@/types/game";
 import type { QualitySettings } from "@/hooks/useAdaptiveQuality";
 import { powerUpImages } from "@/utils/powerUpImages";
+import { particlePool } from "@/utils/particlePool";
 import { bonusLetterImages } from "@/utils/bonusLetterImages";
 import paddleImg from "@/assets/paddle.png";
 import paddleTurretsImg from "@/assets/paddle-turrets.png";
@@ -1680,11 +1681,11 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.arc(explosion.x, explosion.y, radius * 0.6, 0, Math.PI * 2);
         ctx.fill();
         
-        // Draw debris particles (with quality-based sampling)
+        // Draw debris particles from pool (with quality-based sampling)
+        const pooledParticles = particlePool.getActive();
         const particleStep = Math.ceil(1 / qualitySettings.particleMultiplier);
-        explosion.particles.forEach((particle: Particle, index: number) => {
-          // Skip particles based on quality
-          if (index % particleStep !== 0) return;
+        for (let index = 0; index < pooledParticles.length; index += particleStep) {
+          const particle = pooledParticles[index];
           
           const particleAlpha = particle.life / particle.maxLife;
           ctx.globalAlpha = particleAlpha;
@@ -1712,7 +1713,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             particle.size / 2,
             particle.size / 2
           );
-        });
+        }
         
         ctx.restore();
       });

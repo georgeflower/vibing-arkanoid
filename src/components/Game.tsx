@@ -31,6 +31,7 @@ import { getParticleLimits, shouldCreateParticle, calculateParticleCount } from 
 import { FrameProfilerOverlay } from "./FrameProfilerOverlay";
 import { CCDPerformanceTracker } from "@/utils/rollingStats";
 import { debugLogger } from "@/utils/debugLogger";
+import { particlePool } from "@/utils/particlePool";
 // ═══════════════════════════════════════════════════════════════
 import { Maximize2, Minimize2, Home, X } from "lucide-react";
 import { QualityIndicator } from "./QualityIndicator";
@@ -1013,54 +1014,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   });
 
   // Helper function to create explosion particles based on enemy type
+  // OPTIMIZED: Uses particle pool instead of creating new arrays
   const createExplosionParticles = useCallback(
     (x: number, y: number, enemyType: EnemyType): Particle[] => {
-      const particles: Particle[] = [];
-      const particleCount = Math.round(qualitySettings.explosionParticles); // Adjust based on quality
-
-      // Determine colors based on enemy type
-      let colors: string[] = [];
-      if (enemyType === "cube") {
-        colors = [
-          "hsl(200, 100%, 60%)",
-          // Cyan
-          "hsl(180, 100%, 50%)",
-          // Light cyan
-          "hsl(220, 100%, 70%)", // Light blue
-        ];
-      } else if (enemyType === "sphere") {
-        colors = [
-          "hsl(330, 100%, 60%)",
-          // Pink
-          "hsl(350, 100%, 65%)",
-          // Light pink
-          "hsl(310, 100%, 55%)", // Magenta
-        ];
-      } else if (enemyType === "pyramid") {
-        colors = [
-          "hsl(280, 100%, 60%)",
-          // Purple
-          "hsl(260, 100%, 65%)",
-          // Light purple
-          "hsl(300, 100%, 55%)", // Violet
-        ];
-      }
-      for (let i = 0; i < particleCount; i++) {
-        const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.3;
-        const speed = 2 + Math.random() * 3;
-        const size = 3 + Math.random() * 4;
-        particles.push({
-          x,
-          y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          life: 30,
-          maxLife: 30,
-        });
-      }
-      return particles;
+      const particleCount = Math.round(qualitySettings.explosionParticles);
+      // Add particles directly to the pool - no new array allocation
+      particlePool.acquireForExplosion(x, y, particleCount, enemyType);
+      // Return empty array for backwards compatibility with Explosion type
+      // The actual particles are now managed by the pool
+      return [];
     },
     [qualitySettings.explosionParticles],
   );
@@ -4045,33 +4007,29 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     frameProfiler.endTiming("rendering");
 
     // Update balls rotation only (position is updated in checkCollision with substeps)
-    setBalls((prev) =>
-      prev.map((ball) => {
+    // OPTIMIZED: In-place mutation instead of creating new objects
+    setBalls((prev) => {
+      for (const ball of prev) {
         if (ball.waitingToLaunch && paddle) {
           // Keep ball attached to paddle
-          return {
-            ...ball,
-            x: paddle.x + paddle.width / 2,
-            y: paddle.y - ball.radius - 5,
-          };
+          ball.x = paddle.x + paddle.width / 2;
+          ball.y = paddle.y - ball.radius - 5;
         }
-        return {
-          ...ball,
-          rotation: ((ball.rotation || 0) + 3) % 360, // Spinning rotation
-        };
-      }),
-    );
+        ball.rotation = ((ball.rotation || 0) + 3) % 360; // Spinning rotation
+      }
+      return [...prev]; // New array reference for React
+    });
 
     // Update power-ups
     updatePowerUps();
 
-    // Update bonus letters
-    setBonusLetters((prev) =>
-      prev.map((letter) => ({
-        ...letter,
-        y: letter.y + letter.speed,
-      })),
-    );
+    // Update bonus letters - OPTIMIZED: In-place mutation
+    setBonusLetters((prev) => {
+      for (const letter of prev) {
+        letter.y += letter.speed;
+      }
+      return [...prev];
+    });
 
     // Check bonus letter collisions
     checkBonusLetterCollision();
@@ -4083,52 +4041,49 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Update enemies
     frameProfiler.startTiming("enemies");
-    setEnemies((prev) =>
-      prev.map((enemy) => {
+    // Update enemies - OPTIMIZED: In-place mutation
+    setEnemies((prev) => {
+      for (const enemy of prev) {
         let newX = enemy.x + enemy.dx;
         let newY = enemy.y + enemy.dy;
-        let newDx = enemy.dx;
-        let newDy = enemy.dy;
 
         // Sphere and Pyramid enemies have more random movement
         if (enemy.type === "sphere" || enemy.type === "pyramid") {
           // Add some randomness to movement
           if (Math.random() < (enemy.type === "pyramid" ? 0.08 : 0.05)) {
             const randomAngle = ((Math.random() - 0.5) * Math.PI) / 4;
-            const currentAngle = Math.atan2(newDy, newDx);
+            const currentAngle = Math.atan2(enemy.dy, enemy.dx);
             const newAngle = currentAngle + randomAngle;
-            newDx = Math.cos(newAngle) * enemy.speed;
-            newDy = Math.sin(newAngle) * enemy.speed;
+            enemy.dx = Math.cos(newAngle) * enemy.speed;
+            enemy.dy = Math.sin(newAngle) * enemy.speed;
           }
         }
 
         // Bounce off walls
         if (newX <= 0 || newX >= SCALED_CANVAS_WIDTH - enemy.width) {
-          newDx = -enemy.dx;
+          enemy.dx = -enemy.dx;
           newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - enemy.width, newX));
         }
 
         // Bounce off top and 60% boundary
         const maxY = SCALED_CANVAS_HEIGHT * 0.6;
         if (newY <= 0 || newY >= maxY - enemy.height) {
-          newDy = -enemy.dy;
+          enemy.dy = -enemy.dy;
           newY = Math.max(0, Math.min(maxY - enemy.height, newY));
         }
-        return {
-          ...enemy,
-          x: newX,
-          y: newY,
-          dx: newDx,
-          dy: newDy,
-          rotationX: enemy.rotationX + (enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" ? 0.08 : 0.05),
-          rotationY: enemy.rotationY + (enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" ? 0.12 : 0.08),
-          rotationZ: enemy.rotationZ + (enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" ? 0.06 : 0.03),
-        };
-      }),
-    );
+        
+        // Update in place
+        enemy.x = newX;
+        enemy.y = newY;
+        enemy.rotationX += enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" ? 0.08 : 0.05;
+        enemy.rotationY += enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" ? 0.12 : 0.08;
+        enemy.rotationZ += enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" ? 0.06 : 0.03;
+      }
+      return [...prev]; // New array reference for React
+    });
     frameProfiler.endTiming("enemies");
 
-    // Update explosions and their particles
+    // Update explosions and their particles - OPTIMIZED: Use particle pool
     frameProfiler.startTiming("particles");
     if (debugSettings.enableExplosions && debugSettings.enableParticles) {
       // Skip particle updates on alternate frames when quality is low
@@ -4136,190 +4091,169 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const shouldUpdateParticles = qualitySettings.level !== "low" || currentFrameTick % 2 === 0;
 
       if (shouldUpdateParticles) {
-        setExplosions((prev) =>
-          prev
-            .map((exp) => ({
-              ...exp,
-              frame: exp.frame + 1,
-              particles: exp.particles
-                .map((p) => ({
-                  ...p,
-                  x: p.x + p.vx,
-                  y: p.y + p.vy,
-                  vy: p.vy + 0.2,
-                  // Add gravity
-                  life: p.life - 1,
-                }))
-                .filter((p) => p.life > 0),
-            }))
-            .filter((exp) => exp.frame < exp.maxFrames),
-        );
+        // Update pooled particles in place (no new objects created)
+        particlePool.updateParticles(0.2);
+        
+        // Update legacy explosion state for frame tracking only
+        setExplosions((prev) => {
+          for (let i = prev.length - 1; i >= 0; i--) {
+            prev[i].frame += 1;
+            if (prev[i].frame >= prev[i].maxFrames) {
+              prev.splice(i, 1);
+            }
+          }
+          return prev.length > 0 ? [...prev] : [];
+        });
       }
     } else {
       setExplosions([]);
+      particlePool.releaseAll();
     }
 
-    // Update game over particles (Phase 4: Particle Limits)
+    // Update game over particles - OPTIMIZED: In-place mutation
     if (debugSettings.enableParticles) {
-      setGameOverParticles((prev) =>
-        prev
-          .map((p) => ({
-            ...p,
-            x: p.x + p.vx,
-            y: p.y + p.vy,
-            vy: p.vy + 0.15, // Gravity
-            vx: p.vx * 0.98, // Air resistance
-            life: p.life - 1,
-          }))
-          .filter((p) => p.life > 0),
-      );
+      setGameOverParticles((prev) => {
+        for (let i = prev.length - 1; i >= 0; i--) {
+          const p = prev[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.15; // Gravity
+          p.vx *= 0.98; // Air resistance
+          p.life -= 1;
+          if (p.life <= 0) {
+            prev.splice(i, 1);
+          }
+        }
+        return prev.length > 0 ? [...prev] : [];
+      });
 
-      // Update high score celebration particles
-      setHighScoreParticles((prev) =>
-        prev
-          .map((p) => ({
-            ...p,
-            x: p.x + p.vx,
-            y: p.y + p.vy,
-            vy: p.vy + 0.2, // Gravity effect
-            life: p.life - 1,
-          }))
-          .filter((p) => p.life > 0),
-      );
+      // Update high score celebration particles - OPTIMIZED: In-place mutation
+      setHighScoreParticles((prev) => {
+        for (let i = prev.length - 1; i >= 0; i--) {
+          const p = prev[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.2; // Gravity effect
+          p.life -= 1;
+          if (p.life <= 0) {
+            prev.splice(i, 1);
+          }
+        }
+        return prev.length > 0 ? [...prev] : [];
+      });
     } else {
       setGameOverParticles([]);
       setHighScoreParticles([]);
     }
     frameProfiler.endTiming("particles");
 
-    // Count particles for profiler
+    // Count particles for profiler - use pool stats
+    const poolStats = particlePool.getStats();
     frameProfiler.incrementCounter(
       "particles",
-      explosions.reduce((sum, exp) => sum + exp.particles.length, 0) +
-        gameOverParticles.length +
-        highScoreParticles.length,
+      poolStats.active + gameOverParticles.length + highScoreParticles.length,
     );
 
-    // Update bombs and rockets (pyramid bullets move in straight lines with angle)
-    setBombs((prev) =>
-      prev
-        .map((bomb) => {
-          // Apply homing behavior to reflected bombs
-          if (bomb.isReflected) {
-            // Find closest target (boss or enemy)
-            let closestTarget: { x: number; y: number; width: number; height: number } | null = null;
-            let closestDist = Infinity;
+    // Update bombs and rockets - OPTIMIZED: In-place mutation with backwards iteration
+    setBombs((prev) => {
+      for (let i = prev.length - 1; i >= 0; i--) {
+        const bomb = prev[i];
+        
+        // Check if should be removed first
+        let shouldRemove = false;
+        if (bomb.isReflected) {
+          shouldRemove = bomb.y <= 0 || bomb.y >= SCALED_CANVAS_HEIGHT || bomb.x <= 0 || bomb.x >= SCALED_CANVAS_WIDTH;
+          if (shouldRemove && ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+            console.log(`[Collision Debug] REFLECTED BOMB#${bomb.id} filtered OFF-SCREEN at (${bomb.x.toFixed(1)}, ${bomb.y.toFixed(1)})`);
+          }
+        } else {
+          shouldRemove = bomb.y >= SCALED_CANVAS_HEIGHT;
+        }
+        
+        if (shouldRemove) {
+          prev.splice(i, 1);
+          continue;
+        }
+        
+        // Apply homing behavior to reflected bombs
+        if (bomb.isReflected) {
+          // Find closest target (boss or enemy)
+          let closestTarget: { x: number; y: number; width: number; height: number } | null = null;
+          let closestDist = Infinity;
 
-            const bombCenterX = bomb.x + bomb.width / 2;
-            const bombCenterY = bomb.y + bomb.height / 2;
+          const bombCenterX = bomb.x + bomb.width / 2;
+          const bombCenterY = bomb.y + bomb.height / 2;
 
-            // Check main boss
-            if (boss) {
-              const bossCenterX = boss.x + boss.width / 2;
-              const bossCenterY = boss.y + boss.height / 2;
-              const dist = Math.sqrt(Math.pow(bossCenterX - bombCenterX, 2) + Math.pow(bossCenterY - bombCenterY, 2));
-              if (dist < closestDist) {
-                closestDist = dist;
-                closestTarget = boss;
-              }
+          // Check main boss
+          if (boss) {
+            const bossCenterX = boss.x + boss.width / 2;
+            const bossCenterY = boss.y + boss.height / 2;
+            const dist = Math.sqrt(Math.pow(bossCenterX - bombCenterX, 2) + Math.pow(bossCenterY - bombCenterY, 2));
+            if (dist < closestDist) {
+              closestDist = dist;
+              closestTarget = boss;
             }
-
-            // Check resurrected bosses
-            for (const rb of resurrectedBosses) {
-              const rbCenterX = rb.x + rb.width / 2;
-              const rbCenterY = rb.y + rb.height / 2;
-              const dist = Math.sqrt(Math.pow(rbCenterX - bombCenterX, 2) + Math.pow(rbCenterY - bombCenterY, 2));
-              if (dist < closestDist) {
-                closestDist = dist;
-                closestTarget = rb;
-              }
-            }
-
-            // Check enemies
-            for (const enemy of enemies) {
-              const enemyCenterX = enemy.x + enemy.width / 2;
-              const enemyCenterY = enemy.y + enemy.height / 2;
-              const dist = Math.sqrt(Math.pow(enemyCenterX - bombCenterX, 2) + Math.pow(enemyCenterY - bombCenterY, 2));
-              if (dist < closestDist) {
-                closestDist = dist;
-                closestTarget = enemy;
-              }
-            }
-
-            // Steer toward closest target
-            if (closestTarget) {
-              const targetCenterX = closestTarget.x + closestTarget.width / 2;
-              const targetCenterY = closestTarget.y + closestTarget.height / 2;
-
-              // Calculate direction to target
-              const dirX = targetCenterX - bombCenterX;
-              const dirY = targetCenterY - bombCenterY;
-              const dirLength = Math.sqrt(dirX * dirX + dirY * dirY);
-
-              if (dirLength > 0) {
-                // Normalize direction
-                const normDirX = dirX / dirLength;
-                const normDirY = dirY / dirLength;
-
-                // Apply steering (blend current direction with target direction)
-                const steeringStrength = 0.15;
-                const currentSpeed = Math.sqrt((bomb.dx || 0) ** 2 + (bomb.dy || 0) ** 2);
-
-                // Calculate new velocities WITHOUT mutating the original bomb
-                const newDx = (bomb.dx || 0) * (1 - steeringStrength) + normDirX * currentSpeed * steeringStrength;
-                const newDy = (bomb.dy || 0) * (1 - steeringStrength) + normDirY * currentSpeed * steeringStrength;
-
-                // Normalize to maintain speed
-                const newSpeed = Math.sqrt(newDx * newDx + newDy * newDy);
-                const finalDx = newSpeed > 0 ? (newDx / newSpeed) * currentSpeed : newDx;
-                const finalDy = newSpeed > 0 ? (newDy / newSpeed) * currentSpeed : newDy;
-
-                return {
-                  ...bomb,
-                  dx: finalDx,
-                  dy: finalDy,
-                  x: bomb.x + finalDx,
-                  y: bomb.y + finalDy,
-                };
-              }
-            }
-
-            return {
-              ...bomb,
-              x: bomb.x + (bomb.dx || 0),
-              y: bomb.y + (bomb.dy || 0),
-            };
           }
 
-          if (bomb.type === "pyramidBullet" && bomb.dx !== undefined) {
-            // Pyramid bullets move in straight line at angle
-            return {
-              ...bomb,
-              x: bomb.x + (bomb.dx || 0),
-              y: bomb.y + bomb.speed,
-            };
-          }
-          return {
-            ...bomb,
-            y: bomb.y + bomb.speed,
-          };
-        })
-        .filter((bomb) => {
-          // Reflected bombs: remove if off any edge
-          if (bomb.isReflected) {
-            const isOnScreen =
-              bomb.y > 0 && bomb.y < SCALED_CANVAS_HEIGHT && bomb.x > 0 && bomb.x < SCALED_CANVAS_WIDTH;
-            if (!isOnScreen && ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
-              console.log(
-                `[Collision Debug] REFLECTED BOMB#${bomb.id} filtered OFF-SCREEN at (${bomb.x.toFixed(1)}, ${bomb.y.toFixed(1)})`,
-              );
+          // Check resurrected bosses
+          for (const rb of resurrectedBosses) {
+            const rbCenterX = rb.x + rb.width / 2;
+            const rbCenterY = rb.y + rb.height / 2;
+            const dist = Math.sqrt(Math.pow(rbCenterX - bombCenterX, 2) + Math.pow(rbCenterY - bombCenterY, 2));
+            if (dist < closestDist) {
+              closestDist = dist;
+              closestTarget = rb;
             }
-            return isOnScreen;
           }
-          // Non-reflected: remove if below screen
-          return bomb.y < SCALED_CANVAS_HEIGHT;
-        }),
-    );
+
+          // Check enemies
+          for (const enemy of enemies) {
+            const enemyCenterX = enemy.x + enemy.width / 2;
+            const enemyCenterY = enemy.y + enemy.height / 2;
+            const dist = Math.sqrt(Math.pow(enemyCenterX - bombCenterX, 2) + Math.pow(enemyCenterY - bombCenterY, 2));
+            if (dist < closestDist) {
+              closestDist = dist;
+              closestTarget = enemy;
+            }
+          }
+
+          // Steer toward closest target
+          if (closestTarget) {
+            const targetCenterX = closestTarget.x + closestTarget.width / 2;
+            const targetCenterY = closestTarget.y + closestTarget.height / 2;
+
+            const dirX = targetCenterX - bombCenterX;
+            const dirY = targetCenterY - bombCenterY;
+            const dirLength = Math.sqrt(dirX * dirX + dirY * dirY);
+
+            if (dirLength > 0) {
+              const normDirX = dirX / dirLength;
+              const normDirY = dirY / dirLength;
+              const steeringStrength = 0.15;
+              const currentSpeed = Math.sqrt((bomb.dx || 0) ** 2 + (bomb.dy || 0) ** 2);
+
+              const newDx = (bomb.dx || 0) * (1 - steeringStrength) + normDirX * currentSpeed * steeringStrength;
+              const newDy = (bomb.dy || 0) * (1 - steeringStrength) + normDirY * currentSpeed * steeringStrength;
+
+              const newSpeed = Math.sqrt(newDx * newDx + newDy * newDy);
+              bomb.dx = newSpeed > 0 ? (newDx / newSpeed) * currentSpeed : newDx;
+              bomb.dy = newSpeed > 0 ? (newDy / newSpeed) * currentSpeed : newDy;
+              bomb.x += bomb.dx;
+              bomb.y += bomb.dy;
+              continue;
+            }
+          }
+          bomb.x += bomb.dx || 0;
+          bomb.y += bomb.dy || 0;
+        } else if (bomb.type === "pyramidBullet" && bomb.dx !== undefined) {
+          bomb.x += bomb.dx || 0;
+          bomb.y += bomb.speed;
+        } else {
+          bomb.y += bomb.speed;
+        }
+      }
+      return [...prev];
+    });
 
     // Check bomb-paddle collision
     if (paddle) {
