@@ -45,7 +45,7 @@ export default defineConfig(({ mode }) => ({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,mp3,ogg}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB limit for large assets
         runtimeCaching: [
           {
@@ -63,19 +63,12 @@ export default defineConfig(({ mode }) => ({
             }
           },
           {
-            urlPattern: /\.(mp3|ogg)$/,
+            urlPattern: /\.mp3$/,
             handler: "CacheFirst",
             options: {
               cacheName: "audio-cache",
-              plugins: [{
-                cacheWillUpdate: async ({ response }: { response: Response | undefined }) => {
-                  // Accept both full (200) and partial (206) responses for audio
-                  return response && (response.status === 200 || response.status === 206) 
-                    ? response : null;
-                }
-              }],
               expiration: {
-                maxEntries: 50,
+                maxEntries: 30,
                 maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
               }
             }
