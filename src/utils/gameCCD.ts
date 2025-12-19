@@ -74,18 +74,9 @@ const reusableResult: CCDResult = {
   }
 };
 
-// Pre-allocated ball object for return value
-const reusableReturnBall: Ball = {
-  id: 0,
-  x: 0,
-  y: 0,
-  dx: 0,
-  dy: 0,
-  radius: 0,
-  speed: 0,
-  isFireball: false,
-  lastHitTime: 0
-};
+// NOTE: We intentionally create a fresh Ball object per call instead of reusing one.
+// Sharing a single reusableReturnBall caused multiball synchronization bugs where
+// all balls would share the same position/velocity state.
 
 export function processBallWithCCD(
   ball: Ball,
@@ -259,24 +250,25 @@ export function processBallWithCCD(
     return reusableResult;
   }
 
-  // Populate reusable return ball in-place (Phase 2: no spread allocation)
-  reusableReturnBall.id = ball.id;
-  reusableReturnBall.x = result.ball.x;
-  reusableReturnBall.y = result.ball.y;
-  reusableReturnBall.dx = result.ball.dx / (60 * gameState.speedMultiplier); // Convert px/sec back to px/frame
-  reusableReturnBall.dy = result.ball.dy / (60 * gameState.speedMultiplier);
-  reusableReturnBall.radius = ball.radius;
-  reusableReturnBall.speed = ball.speed;
-  reusableReturnBall.isFireball = ball.isFireball;
-  reusableReturnBall.lastHitTime = result.ball.lastHitTick;
-  // Copy any additional properties from original ball
-  reusableReturnBall.waitingToLaunch = ball.waitingToLaunch;
+  // Create a fresh Ball object for each call to avoid multiball synchronization bugs
+  const returnBall: Ball = {
+    id: ball.id,
+    x: result.ball.x,
+    y: result.ball.y,
+    dx: result.ball.dx / (60 * gameState.speedMultiplier), // Convert px/sec back to px/frame
+    dy: result.ball.dy / (60 * gameState.speedMultiplier),
+    radius: ball.radius,
+    speed: ball.speed,
+    isFireball: ball.isFireball,
+    lastHitTime: result.ball.lastHitTick,
+    waitingToLaunch: ball.waitingToLaunch
+  };
   
   const postProcessingEnd = ENABLE_CCD_PROFILING ? performance.now() : 0;
   const perfEnd = ENABLE_CCD_PROFILING ? performance.now() : 0;
 
   // Populate reusable result in-place
-  reusableResult.ball = reusableReturnBall;
+  reusableResult.ball = returnBall;
   reusableResult.events = result.events;
   reusableResult.debug = result.debug;
   reusableResult.substepsUsed = PHYSICS_SUBSTEPS;
