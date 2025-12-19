@@ -33,7 +33,7 @@ import { CCDPerformanceTracker } from "@/utils/rollingStats";
 import { debugLogger } from "@/utils/debugLogger";
 import { particlePool } from "@/utils/particlePool";
 // ═══════════════════════════════════════════════════════════════
-import { Maximize2, Minimize2, Home, X } from "lucide-react";
+import { Maximize2, Minimize2, Home, X, Pause } from "lucide-react";
 import { QualityIndicator } from "./QualityIndicator";
 import type {
   Brick,
@@ -7304,8 +7304,36 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       onReset={resetDebugSettings}
                     />
 
+                    {/* Mobile Pause Button - always visible on mobile when playing */}
+                    {isMobileDevice && gameState === "playing" && (
+                      <button
+                        onTouchStart={(e) => {
+                          e.stopPropagation();
+                        }}
+                        onTouchEnd={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setGameState("paused");
+                          if (gameLoopRef.current) {
+                            gameLoopRef.current.pause();
+                          }
+                        }}
+                        onClick={() => {
+                          setGameState("paused");
+                          if (gameLoopRef.current) {
+                            gameLoopRef.current.pause();
+                          }
+                        }}
+                        className="fixed left-4 top-4 z-[100] w-12 h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 transition-transform touch-manipulation"
+                        aria-label="Pause Game"
+                        style={{ touchAction: "manipulation" }}
+                      >
+                        <Pause className="w-6 h-6 text-white/70" />
+                      </button>
+                    )}
+
                     {/* Mobile Debug Button - floating icon for touch devices */}
-                    {ENABLE_DEBUG_FEATURES && isMobileDevice && !showDebugDashboard && (
+                    {isMobileDevice && !showDebugDashboard && (
                       <button
                         onTouchStart={(e) => {
                           e.stopPropagation();
