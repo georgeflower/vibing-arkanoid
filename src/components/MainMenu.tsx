@@ -44,20 +44,6 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const lockedMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { maxLevelReached, isLevelUnlocked } = useLevelProgress();
 
-  // Preload all audio silently in background when component mounts
-  useEffect(() => {
-    const preloadAudio = async () => {
-      if (soundManager.isMusicPreloaded()) return;
-      
-      // Preload SFX first (smaller files)
-      await soundManager.preloadSounds();
-      
-      // Then preload all music silently in background
-      soundManager.preloadAllMusic();
-    };
-    
-    preloadAudio();
-  }, []);
   
   // Refs for swipe gesture detection
   const highScoresRef = useRef<HTMLDivElement>(null);
