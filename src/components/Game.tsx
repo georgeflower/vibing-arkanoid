@@ -29,8 +29,6 @@ import { frameProfiler } from "@/utils/frameProfiler";
 
 import { getParticleLimits, shouldCreateParticle, calculateParticleCount } from "@/utils/particleLimits";
 import { FrameProfilerOverlay } from "./FrameProfilerOverlay";
-import { FrameTimeGraphOverlay } from "./FrameTimeGraphOverlay";
-import { MemoryProfilerOverlay } from "./MemoryProfilerOverlay";
 import { CCDPerformanceTracker } from "@/utils/rollingStats";
 import { debugLogger } from "@/utils/debugLogger";
 import { particlePool } from "@/utils/particlePool";
@@ -2237,19 +2235,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const sampleX = ball.x + ball.dx * (dtSeconds * alpha);
         const sampleY = ball.y + ball.dy * (dtSeconds * alpha);
 
-        // Use sample coordinates directly (no object allocation)
+        // Create virtual sample ball
+        const sampleBall: Ball = { ...ball, x: sampleX, y: sampleY };
+
         let collision: { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null = null;
 
         // Shape-specific collision checks (inlined for performance)
-        // Use sampleX, sampleY, ball.radius, ball.dx, ball.dy directly
         if (bossTarget.type === "cube") {
           // Rotated rectangle collision logic
           const centerX = bossTarget.x + bossTarget.width / 2;
           const centerY = bossTarget.y + bossTarget.height / 2;
           const HITBOX_EXPAND = 1;
 
-          const dx = sampleX - centerX;
-          const dy = sampleY - centerY;
+          const dx = sampleBall.x - centerX;
+          const dy = sampleBall.y - centerY;
 
           const cos = Math.cos(-bossTarget.rotationY);
           const sin = Math.sin(-bossTarget.rotationY);
@@ -2266,9 +2265,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const distY = uy - closestY;
           const distSq = distX * distX + distY * distY;
 
-          if (distSq <= ball.radius * ball.radius) {
+          if (distSq <= sampleBall.radius * sampleBall.radius) {
             const dist = Math.sqrt(distSq) || 1e-6;
-            const penetration = ball.radius - dist;
+            const penetration = sampleBall.radius - dist;
             const correctionDist = penetration + 2; // +2 pixel safety margin
             const pushX = ux + (distX / dist) * correctionDist;
             const pushY = uy + (distY / dist) * correctionDist;
@@ -2282,9 +2281,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             // Normal in world space
             const worldNormalX = Math.abs(dist) < 1e-6 ? 0 : (distX / dist) * cos + (distY / dist) * sin;
             const worldNormalY = Math.abs(dist) < 1e-6 ? -1 : -(distX / dist) * sin + (distY / dist) * cos;
-            const dot = ball.dx * worldNormalX + ball.dy * worldNormalY;
-            const newVx = ball.dx - 2 * dot * worldNormalX;
-            const newVy = ball.dy - 2 * dot * worldNormalY;
+            const dot = sampleBall.dx * worldNormalX + sampleBall.dy * worldNormalY;
+            const newVx = sampleBall.dx - 2 * dot * worldNormalX;
+            const newVy = sampleBall.dy - 2 * dot * worldNormalY;
             collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
           }
         } else if (bossTarget.type === "sphere") {
@@ -2293,22 +2292,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const centerY = bossTarget.y + bossTarget.height / 2;
           const HITBOX_EXPAND = 1;
 
-          const dx = sampleX - centerX;
-          const dy = sampleY - centerY;
+          const dx = sampleBall.x - centerX;
+          const dy = sampleBall.y - centerY;
           const dist = Math.sqrt(dx * dx + dy * dy);
           const bossRadius = bossTarget.width / 2 + HITBOX_EXPAND;
-          const totalRadius = ball.radius + bossRadius;
+          const totalRadius = sampleBall.radius + bossRadius;
 
           if (dist < totalRadius) {
             const penetration = totalRadius - dist;
             const normalX = dx / (dist || 1e-6);
             const normalY = dy / (dist || 1e-6);
             const overlap = penetration + 2; // +2 pixel safety margin
-            const newX = sampleX + normalX * overlap;
-            const newY = sampleY + normalY * overlap;
-            const dot = ball.dx * normalX + ball.dy * normalY;
-            const newVx = ball.dx - 2 * dot * normalX;
-            const newVy = ball.dy - 2 * dot * normalY;
+            const newX = sampleBall.x + normalX * overlap;
+            const newY = sampleBall.y + normalY * overlap;
+            const dot = sampleBall.dx * normalX + sampleBall.dy * normalY;
+            const newVx = sampleBall.dx - 2 * dot * normalX;
+            const newVy = sampleBall.dy - 2 * dot * normalY;
             collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
           }
         } else if (bossTarget.type === "pyramid") {
@@ -2317,86 +2316,57 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const centerY = bossTarget.y + bossTarget.height / 2;
           const HITBOX_EXPAND = 1;
           const size = bossTarget.width / 2 + HITBOX_EXPAND;
-          const v0x = 0, v0y = -size;
-          const v1x = size, v1y = size;
-          const v2x = -size, v2y = size;
+          const v0 = { x: 0, y: -size };
+          const v1 = { x: size, y: size };
+          const v2 = { x: -size, y: size };
           const cos = Math.cos(bossTarget.rotationY);
           const sin = Math.sin(bossTarget.rotationY);
-          // Inline rotation to avoid object allocations
-          const rv0x = v0x * cos - v0y * sin, rv0y = v0x * sin + v0y * cos;
-          const rv1x = v1x * cos - v1y * sin, rv1y = v1x * sin + v1y * cos;
-          const rv2x = v2x * cos - v2y * sin, rv2y = v2x * sin + v2y * cos;
-          const wv0x = centerX + rv0x, wv0y = centerY + rv0y;
-          const wv1x = centerX + rv1x, wv1y = centerY + rv1y;
-          const wv2x = centerX + rv2x, wv2y = centerY + rv2y;
-          // Process edges inline without array allocation
+          const rotatePoint = (p: { x: number; y: number }) => ({ x: p.x * cos - p.y * sin, y: p.x * sin + p.y * cos });
+          const rv0 = rotatePoint(v0);
+          const rv1 = rotatePoint(v1);
+          const rv2 = rotatePoint(v2);
+          const wv0 = { x: centerX + rv0.x, y: centerY + rv0.y };
+          const wv1 = { x: centerX + rv1.x, y: centerY + rv1.y };
+          const wv2 = { x: centerX + rv2.x, y: centerY + rv2.y };
+          const edges = [
+            { a: wv0, b: wv1 },
+            { a: wv1, b: wv2 },
+            { a: wv2, b: wv0 },
+          ];
           let closestDist = Infinity;
-          let closestNormalX = 0, closestNormalY = 0;
-          // Edge 0: wv0 -> wv1
-          {
-            const ex = wv1x - wv0x, ey = wv1y - wv0y;
+          let closestNormal = { x: 0, y: 0 };
+          for (const edge of edges) {
+            const ex = edge.b.x - edge.a.x;
+            const ey = edge.b.y - edge.a.y;
             const len = Math.sqrt(ex * ex + ey * ey) || 1e-6;
-            const edgeNormX = ex / len, edgeNormY = ey / len;
-            const normalX = -edgeNormY, normalY = edgeNormX;
-            const toBallX = sampleX - wv0x, toBallY = sampleY - wv0y;
+            const edgeNormX = ex / len;
+            const edgeNormY = ey / len;
+            const normalX = -edgeNormY;
+            const normalY = edgeNormX;
+            const toBallX = sampleBall.x - edge.a.x;
+            const toBallY = sampleBall.y - edge.a.y;
             const t = Math.max(0, Math.min(len, toBallX * edgeNormX + toBallY * edgeNormY));
-            const closestX = wv0x + t * edgeNormX, closestY = wv0y + t * edgeNormY;
-            const distX = sampleX - closestX, distY = sampleY - closestY;
+            const closestX = edge.a.x + t * edgeNormX;
+            const closestY = edge.a.y + t * edgeNormY;
+            const distX = sampleBall.x - closestX;
+            const distY = sampleBall.y - closestY;
             const dist = Math.sqrt(distX * distX + distY * distY);
             if (dist < closestDist) {
               closestDist = dist;
-              const toCenterX = sampleX - centerX, toCenterY = sampleY - centerY;
+              const toCenterX = sampleBall.x - centerX;
+              const toCenterY = sampleBall.y - centerY;
               const dotProduct = normalX * toCenterX + normalY * toCenterY;
-              closestNormalX = dotProduct > 0 ? normalX : -normalX;
-              closestNormalY = dotProduct > 0 ? normalY : -normalY;
+              closestNormal = dotProduct > 0 ? { x: normalX, y: normalY } : { x: -normalX, y: -normalY };
             }
           }
-          // Edge 1: wv1 -> wv2
-          {
-            const ex = wv2x - wv1x, ey = wv2y - wv1y;
-            const len = Math.sqrt(ex * ex + ey * ey) || 1e-6;
-            const edgeNormX = ex / len, edgeNormY = ey / len;
-            const normalX = -edgeNormY, normalY = edgeNormX;
-            const toBallX = sampleX - wv1x, toBallY = sampleY - wv1y;
-            const t = Math.max(0, Math.min(len, toBallX * edgeNormX + toBallY * edgeNormY));
-            const closestX = wv1x + t * edgeNormX, closestY = wv1y + t * edgeNormY;
-            const distX = sampleX - closestX, distY = sampleY - closestY;
-            const dist = Math.sqrt(distX * distX + distY * distY);
-            if (dist < closestDist) {
-              closestDist = dist;
-              const toCenterX = sampleX - centerX, toCenterY = sampleY - centerY;
-              const dotProduct = normalX * toCenterX + normalY * toCenterY;
-              closestNormalX = dotProduct > 0 ? normalX : -normalX;
-              closestNormalY = dotProduct > 0 ? normalY : -normalY;
-            }
-          }
-          // Edge 2: wv2 -> wv0
-          {
-            const ex = wv0x - wv2x, ey = wv0y - wv2y;
-            const len = Math.sqrt(ex * ex + ey * ey) || 1e-6;
-            const edgeNormX = ex / len, edgeNormY = ey / len;
-            const normalX = -edgeNormY, normalY = edgeNormX;
-            const toBallX = sampleX - wv2x, toBallY = sampleY - wv2y;
-            const t = Math.max(0, Math.min(len, toBallX * edgeNormX + toBallY * edgeNormY));
-            const closestX = wv2x + t * edgeNormX, closestY = wv2y + t * edgeNormY;
-            const distX = sampleX - closestX, distY = sampleY - closestY;
-            const dist = Math.sqrt(distX * distX + distY * distY);
-            if (dist < closestDist) {
-              closestDist = dist;
-              const toCenterX = sampleX - centerX, toCenterY = sampleY - centerY;
-              const dotProduct = normalX * toCenterX + normalY * toCenterY;
-              closestNormalX = dotProduct > 0 ? normalX : -normalX;
-              closestNormalY = dotProduct > 0 ? normalY : -normalY;
-            }
-          }
-          if (closestDist < ball.radius) {
-            const penetration = ball.radius - closestDist;
+          if (closestDist < sampleBall.radius) {
+            const penetration = sampleBall.radius - closestDist;
             const correctionDist = penetration + 2; // +2 pixel safety margin
-            const newX = sampleX + closestNormalX * correctionDist;
-            const newY = sampleY + closestNormalY * correctionDist;
-            const dot = ball.dx * closestNormalX + ball.dy * closestNormalY;
-            const newVx = ball.dx - 2 * dot * closestNormalX;
-            const newVy = ball.dy - 2 * dot * closestNormalY;
+            const newX = sampleBall.x + closestNormal.x * correctionDist;
+            const newY = sampleBall.y + closestNormal.y * correctionDist;
+            const dot = sampleBall.dx * closestNormal.x + sampleBall.dy * closestNormal.y;
+            const newVx = sampleBall.dx - 2 * dot * closestNormal.x;
+            const newVy = sampleBall.dy - 2 * dot * closestNormal.y;
             collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
           }
         }
@@ -4117,7 +4087,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Update bonus letters - OPTIMIZED: In-place mutation
     setBonusLetters((prev) => {
-      if (prev.length === 0) return prev; // No allocation for empty arrays
       for (const letter of prev) {
         letter.y += letter.speed;
       }
@@ -4136,7 +4105,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     frameProfiler.startTiming("enemies");
     // Update enemies - OPTIMIZED: In-place mutation
     setEnemies((prev) => {
-      if (prev.length === 0) return prev; // No allocation for empty arrays
       for (const enemy of prev) {
         let newX = enemy.x + enemy.dx;
         let newY = enemy.y + enemy.dy;
@@ -4190,16 +4158,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         // Update legacy explosion state for frame tracking only
         setExplosions((prev) => {
-          if (prev.length === 0) return prev; // No allocation for empty arrays
-          let removed = false;
           for (let i = prev.length - 1; i >= 0; i--) {
             prev[i].frame += 1;
             if (prev[i].frame >= prev[i].maxFrames) {
               prev.splice(i, 1);
-              removed = true;
             }
           }
-          return removed || prev.length > 0 ? [...prev] : [];
+          return prev.length > 0 ? [...prev] : [];
         });
       }
     } else {
@@ -4217,7 +4182,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Update bombs and rockets - OPTIMIZED: In-place mutation with backwards iteration
     setBombs((prev) => {
-      if (prev.length === 0) return prev; // No allocation for empty arrays
       for (let i = prev.length - 1; i >= 0; i--) {
         const bomb = prev[i];
 
@@ -4316,7 +4280,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           bomb.y += bomb.speed;
         }
       }
-      return prev.length > 0 ? [...prev] : prev;
+      return [...prev];
     });
 
     // Check bomb-paddle collision
@@ -7396,12 +7360,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                     {/* Frame Profiler Overlay - Phase 1 */}
                     <FrameProfilerOverlay visible={debugSettings.showFrameProfiler} />
-
-                    {/* Frame Time Graph Overlay */}
-                    <FrameTimeGraphOverlay visible={debugSettings.showFrameTimeGraph} />
-
-                    {/* Memory Profiler Overlay */}
-                    <MemoryProfilerOverlay visible={debugSettings.showMemoryProfiler} />
 
                     {/* Collision History Viewer */}
                     {debugSettings.showCollisionHistory && (

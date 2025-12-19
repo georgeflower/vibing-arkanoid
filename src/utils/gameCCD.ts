@@ -1,9 +1,6 @@
 import { processBallCCD, Ball as CCDBall, Brick as CCDBrick, Paddle as CCDPaddle, CollisionEvent } from './processBallCCD';
 import { Brick, Ball, Paddle, Boss, Enemy } from '@/types/game';
 
-// Debug flag - set to false for production
-const ENABLE_CCD_PROFILING = false;
-
 export interface CCDResult {
   ball: Ball | null;
   events: CollisionEvent[];
@@ -37,47 +34,6 @@ for (let i = 0; i < BRICK_POOL_SIZE; i++) {
   });
 }
 
-// Pre-allocated CCD conversion objects (Phase 2 optimization)
-const reusableCCDBall: CCDBall = {
-  id: 0,
-  x: 0,
-  y: 0,
-  dx: 0,
-  dy: 0,
-  radius: 0,
-  lastHitTick: 0,
-  isFireball: false
-};
-
-const reusableCCDPaddle: CCDPaddle = {
-  id: 0,
-  x: 0,
-  y: 0,
-  width: 0,
-  height: 0
-};
-
-// Pre-allocated result object (reused each frame)
-const reusableResult: CCDResult = {
-  ball: null,
-  events: [],
-  debug: undefined,
-  substepsUsed: 0,
-  maxIterations: 3,
-  collisionCount: 0,
-  toiIterationsUsed: 0,
-  performance: {
-    bossFirstSweepMs: 0,
-    ccdCoreMs: 0,
-    postProcessingMs: 0,
-    totalMs: 0
-  }
-};
-
-// NOTE: We intentionally create a fresh Ball object per call instead of reusing one.
-// Sharing a single reusableReturnBall caused multiball synchronization bugs where
-// all balls would share the same position/velocity state.
-
 export function processBallWithCCD(
   ball: Ball,
   dtSeconds: number, // Changed from dt (ms) to dtSeconds
@@ -94,8 +50,8 @@ export function processBallWithCCD(
     qualityLevel?: 'low' | 'medium' | 'high';
   }
 ): CCDResult {
-  // Only profile when enabled (Phase 5: throttle performance.now() calls)
-  const perfStart = ENABLE_CCD_PROFILING ? performance.now() : 0;
+  // Start total performance timer
+  const perfStart = performance.now();
   
   // Quality-aware substep limits
   const qualitySubstepCaps = {
@@ -110,25 +66,28 @@ export function processBallWithCCD(
   const desiredSubsteps = Math.ceil(ballSpeed * gameState.speedMultiplier / (gameState.minBrickDimension * 0.15));
   const PHYSICS_SUBSTEPS = Math.max(2, Math.min(desiredSubsteps, MAX_SUBSTEPS));
   
-  // Log high substep counts for debugging (throttled)
-  if (ENABLE_CCD_PROFILING && PHYSICS_SUBSTEPS > 12) {
+  // Log high substep counts for debugging
+  if (PHYSICS_SUBSTEPS > 12) {
     console.warn(`[CCD] High substeps: ${PHYSICS_SUBSTEPS}, ballSpeed: ${ballSpeed.toFixed(2)}, speedMult: ${gameState.speedMultiplier.toFixed(2)}, quality: ${gameState.qualityLevel}`);
   }
   
-  // Boss-first sweep timing - only when profiling enabled
-  const bossFirstSweepStart = ENABLE_CCD_PROFILING ? performance.now() : 0;
+  // Boss-first sweep timing (currently we don't have a separate boss sweep phase)
+  // This is a placeholder for when boss collision is separate from CCD
+  const bossFirstSweepStart = performance.now();
   // No boss sweep currently - handled in Game.tsx before CCD
-  const bossFirstSweepEnd = ENABLE_CCD_PROFILING ? performance.now() : 0;
+  const bossFirstSweepEnd = performance.now();
 
-  // Populate reusable CCD ball in-place (Phase 2: no object allocation)
-  reusableCCDBall.id = ball.id;
-  reusableCCDBall.x = ball.x;
-  reusableCCDBall.y = ball.y;
-  reusableCCDBall.dx = ball.dx * 60 * gameState.speedMultiplier; // Convert px/frame to px/sec
-  reusableCCDBall.dy = ball.dy * 60 * gameState.speedMultiplier;
-  reusableCCDBall.radius = ball.radius;
-  reusableCCDBall.lastHitTick = ball.lastHitTime;
-  reusableCCDBall.isFireball = !!ball.isFireball;
+  // Convert game types to CCD types
+  const ccdBall: CCDBall = {
+    id: ball.id,
+    x: ball.x,
+    y: ball.y,
+    dx: ball.dx * 60 * gameState.speedMultiplier, // Convert px/frame to px/sec and apply multiplier
+    dy: ball.dy * 60 * gameState.speedMultiplier,
+    radius: ball.radius,
+    lastHitTick: ball.lastHitTime,
+    isFireball: !!ball.isFireball // Propagate fireball flag to CCD system
+  };
 
   // Populate reusable brick pool in-place (no new object creation)
   let brickIndex = 0;
@@ -191,25 +150,27 @@ export function processBallWithCCD(
     }
   }
 
-  // Populate reusable paddle in-place (Phase 2: no object allocation)
-  reusableCCDPaddle.id = 0;
-  reusableCCDPaddle.x = gameState.paddle.x;
-  reusableCCDPaddle.y = gameState.paddle.y;
-  reusableCCDPaddle.width = gameState.paddle.width;
-  reusableCCDPaddle.height = gameState.paddle.height;
+  // Convert paddle to CCD format
+  const ccdPaddle = {
+    id: 0,
+    x: gameState.paddle.x,
+    y: gameState.paddle.y,
+    width: gameState.paddle.width,
+    height: gameState.paddle.height
+  };
   
-  // CCD core timing - only when profiling enabled
-  const ccdCoreStart = ENABLE_CCD_PROFILING ? performance.now() : 0;
+  // CCD core timing
+  const ccdCoreStart = performance.now();
   
   // Run CCD with paddle included
   // Pass brickCount directly to avoid .slice() allocation
-  const result = processBallCCD(reusableCCDBall, {
+  const result = processBallCCD(ccdBall, {
     dt: dtSeconds, // Pass seconds, not milliseconds
     substeps: PHYSICS_SUBSTEPS,
     maxToiIterations: 3,
     epsilon: 0.5, // Small separation after collision
     minBrickDimension: gameState.minBrickDimension,
-    paddle: reusableCCDPaddle, // Use pre-allocated paddle
+    paddle: ccdPaddle, // Re-included in CCD
     bricks: ccdBricks, // Pass full pool
     brickCount: totalBrickCount, // Limit to valid bricks only
     canvasSize: gameState.canvasSize,
@@ -217,10 +178,10 @@ export function processBallWithCCD(
     maxSubstepTravelFactor: 0.9
   });
   
-  const ccdCoreEnd = ENABLE_CCD_PROFILING ? performance.now() : 0;
+  const ccdCoreEnd = performance.now();
   
-  // Post-processing timing - only when profiling enabled
-  const postProcessingStart = ENABLE_CCD_PROFILING ? performance.now() : 0;
+  // Post-processing timing
+  const postProcessingStart = performance.now();
 
   // Calculate collision count and max TOI iterations from debug data
   const collisionCount = result.events.length;
@@ -230,56 +191,51 @@ export function processBallWithCCD(
 
   // Convert result back to game types
   if (!result.ball) {
-    const postProcessingEnd = ENABLE_CCD_PROFILING ? performance.now() : 0;
-    const perfEnd = ENABLE_CCD_PROFILING ? performance.now() : 0;
+    const postProcessingEnd = performance.now();
+    const perfEnd = performance.now();
     
-    // Populate reusable result in-place
-    reusableResult.ball = null;
-    reusableResult.events = result.events;
-    reusableResult.debug = result.debug;
-    reusableResult.substepsUsed = PHYSICS_SUBSTEPS;
-    reusableResult.maxIterations = 3;
-    reusableResult.collisionCount = collisionCount;
-    reusableResult.toiIterationsUsed = toiIterationsUsed;
-    if (ENABLE_CCD_PROFILING && reusableResult.performance) {
-      reusableResult.performance.bossFirstSweepMs = bossFirstSweepEnd - bossFirstSweepStart;
-      reusableResult.performance.ccdCoreMs = ccdCoreEnd - ccdCoreStart;
-      reusableResult.performance.postProcessingMs = postProcessingEnd - postProcessingStart;
-      reusableResult.performance.totalMs = perfEnd - perfStart;
-    }
-    return reusableResult;
+    return {
+      ball: null,
+      events: result.events,
+      debug: result.debug,
+      substepsUsed: PHYSICS_SUBSTEPS,
+      maxIterations: 3,
+      collisionCount,
+      toiIterationsUsed,
+      performance: {
+        bossFirstSweepMs: bossFirstSweepEnd - bossFirstSweepStart,
+        ccdCoreMs: ccdCoreEnd - ccdCoreStart,
+        postProcessingMs: postProcessingEnd - postProcessingStart,
+        totalMs: perfEnd - perfStart
+      }
+    };
   }
 
-  // Create a fresh Ball object for each call to avoid multiball synchronization bugs
-  const returnBall: Ball = {
-    id: ball.id,
+  const updatedBall: Ball = {
+    ...ball,
     x: result.ball.x,
     y: result.ball.y,
     dx: result.ball.dx / (60 * gameState.speedMultiplier), // Convert px/sec back to px/frame
     dy: result.ball.dy / (60 * gameState.speedMultiplier),
-    radius: ball.radius,
-    speed: ball.speed,
-    isFireball: ball.isFireball,
-    lastHitTime: result.ball.lastHitTick,
-    waitingToLaunch: ball.waitingToLaunch
+    lastHitTime: result.ball.lastHitTick
   };
   
-  const postProcessingEnd = ENABLE_CCD_PROFILING ? performance.now() : 0;
-  const perfEnd = ENABLE_CCD_PROFILING ? performance.now() : 0;
+  const postProcessingEnd = performance.now();
+  const perfEnd = performance.now();
 
-  // Populate reusable result in-place
-  reusableResult.ball = returnBall;
-  reusableResult.events = result.events;
-  reusableResult.debug = result.debug;
-  reusableResult.substepsUsed = PHYSICS_SUBSTEPS;
-  reusableResult.maxIterations = 3;
-  reusableResult.collisionCount = collisionCount;
-  reusableResult.toiIterationsUsed = toiIterationsUsed;
-  if (ENABLE_CCD_PROFILING && reusableResult.performance) {
-    reusableResult.performance.bossFirstSweepMs = bossFirstSweepEnd - bossFirstSweepStart;
-    reusableResult.performance.ccdCoreMs = ccdCoreEnd - ccdCoreStart;
-    reusableResult.performance.postProcessingMs = postProcessingEnd - postProcessingStart;
-    reusableResult.performance.totalMs = perfEnd - perfStart;
-  }
-  return reusableResult;
+  return {
+    ball: updatedBall,
+    events: result.events,
+    debug: result.debug,
+    substepsUsed: PHYSICS_SUBSTEPS,
+    maxIterations: 3,
+    collisionCount,
+    toiIterationsUsed,
+    performance: {
+      bossFirstSweepMs: bossFirstSweepEnd - bossFirstSweepStart,
+      ccdCoreMs: ccdCoreEnd - ccdCoreStart,
+      postProcessingMs: postProcessingEnd - postProcessingStart,
+      totalMs: perfEnd - perfStart
+    }
+  };
 }
