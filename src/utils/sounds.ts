@@ -383,6 +383,12 @@ class SoundManager {
   // AudioBuffer cache for preloaded sounds
   private audioBuffers: { [key: string]: AudioBuffer } = {};
   private soundsLoaded = false;
+  private musicBuffers: { [key: string]: AudioBuffer } = {};
+  private musicLoaded = false;
+  private currentMusicSource: AudioBufferSourceNode | null = null;
+  private currentMusicGain: GainNode | null = null;
+  private musicStartTime = 0;
+  private musicPauseTime = 0;
 
   private soundUrls = [
     '/multiball.mp3',
@@ -393,6 +399,21 @@ class SoundManager {
     '/wider.mp3',
     '/smaller.mp3',
     '/shield.mp3'
+  ];
+
+  private bossMusisUrls = [
+    '/Boss_level_sphere.mp3',
+    '/Boss_level_pyramid.mp3',
+    '/Boss_level_cube.mp3'
+  ];
+
+  private allMusicUrls = [
+    ...this.trackUrls,
+    '/High_score.mp3',
+    '/Boss_level_sphere.mp3',
+    '/Boss_level_pyramid.mp3',
+    '/Boss_level_cube.mp3',
+    '/siren-alarm-boss.ogg'
   ];
 
   async preloadSounds(): Promise<void> {
@@ -418,6 +439,41 @@ class SoundManager {
     } catch (err) {
       console.error('Error preloading sounds:', err);
     }
+  }
+
+  async preloadAllMusic(onProgress?: (loaded: number, total: number) => void): Promise<void> {
+    if (this.musicLoaded) return;
+
+    const ctx = this.getAudioContext();
+    const total = this.allMusicUrls.length;
+    let loaded = 0;
+    
+    try {
+      const loadPromises = this.allMusicUrls.map(async (url) => {
+        try {
+          const response = await fetch(url);
+          const arrayBuffer = await response.arrayBuffer();
+          const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+          this.musicBuffers[url] = audioBuffer;
+          loaded++;
+          onProgress?.(loaded, total);
+        } catch (err) {
+          console.warn(`Failed to load music ${url}:`, err);
+          loaded++;
+          onProgress?.(loaded, total);
+        }
+      });
+
+      await Promise.all(loadPromises);
+      this.musicLoaded = true;
+      console.log('All music preloaded successfully');
+    } catch (err) {
+      console.error('Error preloading music:', err);
+    }
+  }
+
+  isMusicPreloaded(): boolean {
+    return this.musicLoaded;
   }
 
   private playAudioBuffer(buffer: AudioBuffer, volume: number): void {
