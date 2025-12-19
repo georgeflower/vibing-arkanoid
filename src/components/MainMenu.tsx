@@ -37,8 +37,6 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [showPressToStart, setShowPressToStart] = useState(true);
   const [showChangelog, setShowChangelog] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
-  const [audioLoadProgress, setAudioLoadProgress] = useState({ loaded: 0, total: 0 });
-  const [isPreloading, setIsPreloading] = useState(false);
   
   // Starting level state
   const [startingLevel, setStartingLevel] = useState(1);
@@ -46,22 +44,16 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const lockedMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { maxLevelReached, isLevelUnlocked } = useLevelProgress();
 
-  // Preload all audio when component mounts
+  // Preload all audio silently in background when component mounts
   useEffect(() => {
     const preloadAudio = async () => {
       if (soundManager.isMusicPreloaded()) return;
       
-      setIsPreloading(true);
-      
       // Preload SFX first (smaller files)
       await soundManager.preloadSounds();
       
-      // Then preload all music with progress tracking
-      await soundManager.preloadAllMusic((loaded, total) => {
-        setAudioLoadProgress({ loaded, total });
-      });
-      
-      setIsPreloading(false);
+      // Then preload all music silently in background
+      soundManager.preloadAllMusic();
     };
     
     preloadAudio();
@@ -387,22 +379,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           />
         </picture>
         <div className="text-center relative z-10">
-          {isPreloading ? (
-            <div className="space-y-2">
-              <p className="text-white text-xl font-bold">Loading audio...</p>
-              <div className="w-48 h-2 bg-white/20 rounded-full mx-auto overflow-hidden">
-                <div 
-                  className="h-full bg-[hsl(200,70%,50%)] transition-all duration-200"
-                  style={{ width: audioLoadProgress.total > 0 ? `${(audioLoadProgress.loaded / audioLoadProgress.total) * 100}%` : '0%' }}
-                />
-              </div>
-              <p className="text-white/60 text-sm">
-                {audioLoadProgress.loaded}/{audioLoadProgress.total} tracks
-              </p>
-            </div>
-          ) : (
-            <p className="text-white text-2xl font-bold animate-pulse">Press key/mouse to continue</p>
-          )}
+          <p className="text-white text-2xl font-bold animate-pulse">Press key/mouse to continue</p>
         </div>
       </div>
     );
