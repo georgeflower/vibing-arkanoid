@@ -43,7 +43,6 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [showLockedMessage, setShowLockedMessage] = useState(false);
   const lockedMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { maxLevelReached, isLevelUnlocked } = useLevelProgress();
-
   
   // Refs for swipe gesture detection
   const highScoresRef = useRef<HTMLDivElement>(null);
@@ -364,8 +363,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             className="w-full h-full object-contain"
           />
         </picture>
-        <div className="text-center relative z-10">
-          <p className="text-white text-2xl font-bold animate-pulse">Press key/mouse to continue</p>
+        <div className="text-center animate-pulse relative z-10">
+          <p className="text-white text-2xl font-bold">Press key/mouse to continue</p>
         </div>
       </div>
     );

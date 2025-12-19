@@ -383,6 +383,7 @@ class SoundManager {
   // AudioBuffer cache for preloaded sounds
   private audioBuffers: { [key: string]: AudioBuffer } = {};
   private soundsLoaded = false;
+
   private soundUrls = [
     '/multiball.mp3',
     '/turrets.mp3',
@@ -392,12 +393,6 @@ class SoundManager {
     '/wider.mp3',
     '/smaller.mp3',
     '/shield.mp3'
-  ];
-
-  private bossMusisUrls = [
-    '/Boss_level_sphere.mp3',
-    '/Boss_level_pyramid.mp3',
-    '/Boss_level_cube.mp3'
   ];
 
   async preloadSounds(): Promise<void> {
