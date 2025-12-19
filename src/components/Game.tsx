@@ -548,15 +548,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const gameLoopRef = useRef<FixedStepGameLoop | null>(null);
   const isTogglingFullscreenRef = useRef(false);
 
-  // Initialize fixed-step game loop on mount
+  // Initialize game loop utility on mount
   useEffect(() => {
     if (!gameLoopRef.current) {
       gameLoopRef.current = new FixedStepGameLoop({
-        fixedStep: 16.6667, // 60Hz
         maxDeltaMs: 250,
-        maxUpdatesPerFrame: 8,
         timeScale: 1.0,
-        mode: "fixedStep",
       });
     }
   }, []);
@@ -2002,13 +1999,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             const newScale = Math.min(3.0, gameLoopRef.current.getTimeScale() + 0.1);
             gameLoopRef.current.setTimeScale(newScale);
             toast.success(`Time scale: ${newScale.toFixed(1)}x`);
-          }
-        } else if (e.key === "\\") {
-          // Toggle loop mode
-          if (gameLoopRef.current) {
-            const newMode = gameLoopRef.current.getMode() === "fixedStep" ? "legacy" : "fixedStep";
-            gameLoopRef.current.setMode(newMode);
-            toast.success(`Loop mode: ${newMode}`);
           }
         } else if (e.key === "q" || e.key === "Q") {
           if (e.shiftKey) {
@@ -7007,14 +6997,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           <GameLoopDebugOverlay
                             getDebugInfo={() =>
                               gameLoopRef.current?.getDebugInfo() ?? {
-                                mode: "legacy",
-                                fixedHz: 60,
-                                maxDeltaMs: 250,
-                                accumulator: 0,
-                                timeScale: 1,
                                 fps: 0,
-                                updatesThisFrame: 0,
-                                alpha: 0,
+                                frameTick: 0,
+                                timeScale: 1,
+                                maxDeltaMs: 250,
                               }
                             }
                             visible={debugSettings.showGameLoopDebug}
