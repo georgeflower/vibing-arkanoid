@@ -45,8 +45,7 @@ export default defineConfig(({ mode }) => ({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,mp3,ogg}"],
-        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB limit for large assets
+        globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -59,24 +58,6 @@ export default defineConfig(({ mode }) => ({
               },
               cacheableResponse: {
                 statuses: [0, 200]
-              }
-            }
-          },
-          {
-            urlPattern: /\.(mp3|ogg)$/,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "audio-cache",
-              plugins: [{
-                cacheWillUpdate: async ({ response }: { response: Response | undefined }) => {
-                  // Accept both full (200) and partial (206) responses for audio
-                  return response && (response.status === 200 || response.status === 206) 
-                    ? response : null;
-                }
-              }],
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
               }
             }
           }
