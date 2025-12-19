@@ -3960,11 +3960,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (frameStart - lagDetectionRef.current.lastLagLogTime > 1000) {
         // Check if this was due to tab being backgrounded
         if (lagDetectionRef.current.tabWasHidden && frameGap > 500) {
-          if (debugSettings.enableLagLogging) {
+          if (ENABLE_DEBUG_FEATURES && debugSettings.enableLagLogging) {
             debugLogger.log(`[DEBUG] [TAB RESUME] Resumed after ${frameGap.toFixed(0)}ms (tab was backgrounded)`);
           }
           lagDetectionRef.current.tabWasHidden = false;
-        } else if (debugSettings.enableLagLogging) {
+        } else if (ENABLE_DEBUG_FEATURES && debugSettings.enableLagLogging) {
           const context = {
             level,
             ballCount: balls.length,
