@@ -92,6 +92,81 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const zoomDirectionRef = useRef(1);
     const dashOffsetRef = useRef(0);
     
+    // Offscreen canvas cache for static backgrounds
+    const offscreenBgCacheRef = useRef<{
+      canvas: OffscreenCanvas | HTMLCanvasElement | null;
+      level: number;
+      width: number;
+      height: number;
+    }>({ canvas: null, level: -1, width: 0, height: 0 });
+    
+    // Helper to get or create cached background
+    const getCachedBackground = (ctx: CanvasRenderingContext2D, currentLevel: number, w: number, h: number): OffscreenCanvas | HTMLCanvasElement | null => {
+      const cache = offscreenBgCacheRef.current;
+      
+      // Check if cache is valid
+      if (cache.canvas && cache.level === currentLevel && cache.width === w && cache.height === h) {
+        return cache.canvas;
+      }
+      
+      // Create new offscreen canvas
+      const offscreen = typeof OffscreenCanvas !== 'undefined' 
+        ? new OffscreenCanvas(w, h)
+        : document.createElement('canvas');
+      
+      if (!(offscreen instanceof OffscreenCanvas)) {
+        offscreen.width = w;
+        offscreen.height = h;
+      }
+      
+      const offCtx = offscreen.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+      if (!offCtx) return null;
+      
+      // Draw fallback color
+      offCtx.fillStyle = 'hsl(220, 25%, 12%)';
+      offCtx.fillRect(0, 0, w, h);
+      
+      // Boss levels use fitted backgrounds
+      if (currentLevel === 5 && isImageValid(bossLevel5BgRef.current)) {
+        offCtx.drawImage(bossLevel5BgRef.current, 0, 0, w, h);
+      } else if (currentLevel === 10 && isImageValid(bossLevel10BgRef.current)) {
+        offCtx.drawImage(bossLevel10BgRef.current, 0, 0, w, h);
+      } else if (currentLevel === 15 && isImageValid(bossLevel15BgRef.current)) {
+        offCtx.drawImage(bossLevel15BgRef.current, 0, 0, w, h);
+      } else {
+        // Determine which background tile to use based on level
+        let bgImg: HTMLImageElement | null = null;
+        
+        if (currentLevel >= 16 && currentLevel <= 19) {
+          bgImg = backgroundImage1620Ref.current;
+        } else if (currentLevel >= 11 && currentLevel <= 14) {
+          bgImg = backgroundImage1114Ref.current;
+        } else if (currentLevel >= 6 && currentLevel <= 9) {
+          bgImg = backgroundImage69Ref.current;
+        } else {
+          bgImg = backgroundImage4Ref.current;
+        }
+        
+        if (isImageValid(bgImg)) {
+          const pattern = offCtx.createPattern(bgImg, 'repeat');
+          if (pattern) {
+            offCtx.fillStyle = pattern;
+            offCtx.fillRect(0, 0, w, h);
+          }
+        }
+        
+        // Apply dimming for levels 1-4
+        if (currentLevel >= 1 && currentLevel <= 4) {
+          offCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+          offCtx.fillRect(0, 0, w, h);
+        }
+      }
+      
+      // Cache the result
+      offscreenBgCacheRef.current = { canvas: offscreen, level: currentLevel, width: w, height: h };
+      return offscreen;
+    };
+    
     
     // Helper function to check if image is valid and loaded
     const isImageValid = (img: HTMLImageElement | null): img is HTMLImageElement => {
@@ -270,72 +345,25 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.translate(shakeX, shakeY);
       }
 
-      // Clear canvas - tiled background with flash overlay
-      ctx.fillStyle = 'hsl(220, 25%, 12%)'; // Fallback color while image loads
-      ctx.fillRect(0, 0, width, height);
-      
-      // Draw tiled background based on level
-      let useFittedBackground = false;
-      
-      // Boss levels use fitted backgrounds (not tiled)
-      if (level === 5 && isImageValid(bossLevel5BgRef.current)) {
-        ctx.drawImage(bossLevel5BgRef.current, 0, 0, width, height);
-        useFittedBackground = true;
-      } else if (level === 10 && isImageValid(bossLevel10BgRef.current)) {
-        ctx.drawImage(bossLevel10BgRef.current, 0, 0, width, height);
-        useFittedBackground = true;
-      } else if (level === 15 && isImageValid(bossLevel15BgRef.current)) {
-        ctx.drawImage(bossLevel15BgRef.current, 0, 0, width, height);
-        useFittedBackground = true;
-      }
-      
-      if (!useFittedBackground) {
-        // Determine which background tile to use based on level
-        let bgImg: HTMLImageElement | null = null;
-        let bgPatternRef: React.MutableRefObject<CanvasPattern | null> = backgroundPattern4Ref;
-        
-        if (level >= 16 && level <= 19) {
-          bgImg = backgroundImage1620Ref.current;
-          bgPatternRef = backgroundPattern1620Ref;
-        } else if (level >= 11 && level <= 14) {
-          bgImg = backgroundImage1114Ref.current;
-          bgPatternRef = backgroundPattern1114Ref;
-        } else if (level >= 6 && level <= 9) {
-          bgImg = backgroundImage69Ref.current;
-          bgPatternRef = backgroundPattern69Ref;
-        } else {
-          // Levels 1-4
-          bgImg = backgroundImage4Ref.current;
-          bgPatternRef = backgroundPattern4Ref;
-        }
-        
-        if (isImageValid(bgImg)) {
-          // Create pattern if not already created
-          if (!bgPatternRef.current) {
-            bgPatternRef.current = ctx.createPattern(bgImg, 'repeat');
-          }
-          
-          if (bgPatternRef.current) {
-            ctx.fillStyle = bgPatternRef.current;
-            ctx.fillRect(0, 0, width, height);
-          }
-        }
-      }
-          
-      // Dim background for levels 1-4 (40% darker)
-      if (level >= 1 && level <= 4) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      // Draw cached background from offscreen canvas (static pattern + dimming pre-rendered)
+      const cachedBg = getCachedBackground(ctx, level, width, height);
+      if (cachedBg) {
+        ctx.drawImage(cachedBg, 0, 0);
+      } else {
+        // Fallback if cache isn't ready
+        ctx.fillStyle = 'hsl(220, 25%, 12%)';
         ctx.fillRect(0, 0, width, height);
-        
-        // Subtle ambient flicker on brighter areas (only levels 1-4, disabled on mobile)
-        if (!isMobile) {
-          const ambientFlicker = Math.sin(Date.now() / 500) * 0.03 + 0.03;
-          ctx.save();
-          ctx.globalCompositeOperation = 'screen';
-          ctx.fillStyle = `rgba(100, 150, 200, ${ambientFlicker})`;
-          ctx.fillRect(0, 0, width, height);
-          ctx.restore();
-        }
+      }
+      
+      // Apply dynamic effects on top of cached background
+      // Subtle ambient flicker on brighter areas (only levels 1-4, disabled on mobile)
+      if (level >= 1 && level <= 4 && !isMobile) {
+        const ambientFlicker = Math.sin(Date.now() / 500) * 0.03 + 0.03;
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = `rgba(100, 150, 200, ${ambientFlicker})`;
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
       }
       
       // Apply highlight flash effect for explosions/kills/extra life (levels 1-4 only)
