@@ -98,6 +98,18 @@ export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }:
               onChange={() => onToggle("showFrameProfiler")}
               description="Shows per-subsystem timing breakdown"
             />
+            <DebugToggle
+              label="Frame Time Graph"
+              checked={settings.showFrameTimeGraph}
+              onChange={() => onToggle("showFrameTimeGraph")}
+              description="Visual graph of frame times and hitches"
+            />
+            <DebugToggle
+              label="Memory Profiler"
+              checked={settings.showMemoryProfiler}
+              onChange={() => onToggle("showMemoryProfiler")}
+              description="Live heap usage and allocation rate (Chrome only)"
+            />
           </div>
         </section>
 

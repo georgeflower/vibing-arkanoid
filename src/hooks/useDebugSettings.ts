@@ -7,6 +7,8 @@ export interface DebugSettings {
   showCCDPerformance: boolean;
   showCollisionHistory: boolean;
   showFrameProfiler: boolean;
+  showFrameTimeGraph: boolean;
+  showMemoryProfiler: boolean;
   enableCollisionLogging: boolean;
   enablePowerUpLogging: boolean;
   enablePerformanceLogging: boolean;
@@ -32,6 +34,8 @@ const DEFAULT_SETTINGS: DebugSettings = {
   showCCDPerformance: false,
   showCollisionHistory: false,
   showFrameProfiler: false,
+  showFrameTimeGraph: false,
+  showMemoryProfiler: false,
   enableCollisionLogging: false,
   enablePowerUpLogging: false,
   enablePerformanceLogging: true,
