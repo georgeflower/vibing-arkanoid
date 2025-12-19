@@ -27,13 +27,6 @@ export const GameLoopDebugOverlay = ({ getDebugInfo, visible = true }: GameLoopD
         <div className="font-bold text-primary mb-2">Game Loop Debug</div>
         
         <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Mode:</span>
-          <span className={debugInfo.mode === "fixedStep" ? "text-green-400" : "text-yellow-400"}>
-            {debugInfo.mode}
-          </span>
-        </div>
-        
-        <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">FPS:</span>
           <span className={debugInfo.fps >= 55 ? "text-green-400" : debugInfo.fps >= 30 ? "text-yellow-400" : "text-red-400"}>
             {debugInfo.fps}
@@ -41,25 +34,8 @@ export const GameLoopDebugOverlay = ({ getDebugInfo, visible = true }: GameLoopD
         </div>
         
         <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Fixed Hz:</span>
-          <span>{debugInfo.fixedHz}</span>
-        </div>
-        
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Updates/Frame:</span>
-          <span className={debugInfo.updatesThisFrame > 5 ? "text-red-400" : "text-green-400"}>
-            {debugInfo.updatesThisFrame}
-          </span>
-        </div>
-        
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Accumulator:</span>
-          <span>{debugInfo.accumulator}ms</span>
-        </div>
-        
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Alpha:</span>
-          <span>{debugInfo.alpha}</span>
+          <span className="text-muted-foreground">Frame Tick:</span>
+          <span>{debugInfo.frameTick}</span>
         </div>
         
         <div className="flex justify-between gap-4">
