@@ -29,6 +29,8 @@ import { frameProfiler } from "@/utils/frameProfiler";
 
 import { getParticleLimits, shouldCreateParticle, calculateParticleCount } from "@/utils/particleLimits";
 import { FrameProfilerOverlay } from "./FrameProfilerOverlay";
+import { FrameTimeGraphOverlay } from "./FrameTimeGraphOverlay";
+import { MemoryProfilerOverlay } from "./MemoryProfilerOverlay";
 import { CCDPerformanceTracker } from "@/utils/rollingStats";
 import { debugLogger } from "@/utils/debugLogger";
 import { particlePool } from "@/utils/particlePool";
@@ -7394,6 +7396,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                     {/* Frame Profiler Overlay - Phase 1 */}
                     <FrameProfilerOverlay visible={debugSettings.showFrameProfiler} />
+
+                    {/* Frame Time Graph Overlay */}
+                    <FrameTimeGraphOverlay visible={debugSettings.showFrameTimeGraph} />
+
+                    {/* Memory Profiler Overlay */}
+                    <MemoryProfilerOverlay visible={debugSettings.showMemoryProfiler} />
 
                     {/* Collision History Viewer */}
                     {debugSettings.showCollisionHistory && (
