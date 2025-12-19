@@ -282,6 +282,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       backgroundImage4.onload = () => {
         backgroundImage4Ref.current = backgroundImage4;
         backgroundPattern4Ref.current = null;
+        offscreenBgCacheRef.current = { canvas: null, level: -1, width: 0, height: 0 };
       };
       
       // Background for levels 6-9 (tiled)
@@ -290,6 +291,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       backgroundImage69.onload = () => {
         backgroundImage69Ref.current = backgroundImage69;
         backgroundPattern69Ref.current = null;
+        offscreenBgCacheRef.current = { canvas: null, level: -1, width: 0, height: 0 };
       };
       
       // Background for levels 11-14 (tiled)
@@ -298,6 +300,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       backgroundImage1114.onload = () => {
         backgroundImage1114Ref.current = backgroundImage1114;
         backgroundPattern1114Ref.current = null;
+        offscreenBgCacheRef.current = { canvas: null, level: -1, width: 0, height: 0 };
       };
       
       // Background for levels 16-20 (tiled)
@@ -306,6 +309,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       backgroundImage1620.onload = () => {
         backgroundImage1620Ref.current = backgroundImage1620;
         backgroundPattern1620Ref.current = null;
+        offscreenBgCacheRef.current = { canvas: null, level: -1, width: 0, height: 0 };
       };
       
       // Boss level 5 background (fitted, not tiled)
@@ -313,6 +317,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       bossLevel5BgImage.src = bossLevel5Bg;
       bossLevel5BgImage.onload = () => {
         bossLevel5BgRef.current = bossLevel5BgImage;
+        offscreenBgCacheRef.current = { canvas: null, level: -1, width: 0, height: 0 };
       };
       
       // Boss level 10 background (fitted, not tiled)
@@ -320,6 +325,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       bossLevel10BgImage.src = bossLevel10Bg;
       bossLevel10BgImage.onload = () => {
         bossLevel10BgRef.current = bossLevel10BgImage;
+        offscreenBgCacheRef.current = { canvas: null, level: -1, width: 0, height: 0 };
       };
       
       // Boss level 15 background (fitted, not tiled)
@@ -327,6 +333,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       bossLevel15BgImage.src = bossLevel15Bg;
       bossLevel15BgImage.onload = () => {
         bossLevel15BgRef.current = bossLevel15BgImage;
+        offscreenBgCacheRef.current = { canvas: null, level: -1, width: 0, height: 0 };
       };
     }, []);
 
