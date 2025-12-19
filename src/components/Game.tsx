@@ -7324,7 +7324,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             gameLoopRef.current.pause();
                           }
                         }}
-                        className="fixed left-4 top-4 z-[100] w-12 h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 transition-transform touch-manipulation"
+                        className="fixed left-4 top-[116px] z-[100] w-12 h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 transition-transform touch-manipulation"
                         aria-label="Pause Game"
                         style={{ touchAction: "manipulation" }}
                       >
