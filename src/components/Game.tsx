@@ -203,6 +203,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const firstBossMinionKilledRef = useRef(false);
   // Track newly reflected bombs synchronously to avoid stale closure issues
   const newlyReflectedBombIdsRef = useRef<Set<number>>(new Set());
+  // Track pending chain explosions for explosive bricks (delayed by 200ms)
+  const pendingChainExplosionsRef = useRef<Array<{ brick: Brick; triggerTime: number }>>([]);
   const [isMobileDevice] = useState(() => {
     return (
       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
@@ -2750,6 +2752,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       let comboIncrease = 0;
       const powerUpsToCreate: Brick[] = [];
       const explosiveBricksToDetonate: Brick[] = [];
+      
+      // Process pending chain explosions (from previous frames)
+      const now = Date.now();
+      const readyExplosions = pendingChainExplosionsRef.current.filter(
+        (pending) => now >= pending.triggerTime
+      );
+      pendingChainExplosionsRef.current = pendingChainExplosionsRef.current.filter(
+        (pending) => now < pending.triggerTime
+      );
+      // Add ready chain explosions to this frame's detonation queue
+      readyExplosions.forEach((pending) => {
+        // Only detonate if brick is still visible
+        const brick = bricks.find((b) => b.id === pending.brick.id);
+        if (brick && brick.visible) {
+          explosiveBricksToDetonate.push(brick);
+        }
+      });
       const soundsToPlay: Array<{ type: string; param?: any }> = [];
 
       // Enemy batched updates
@@ -3467,7 +3486,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           },
         ]);
 
-        // Destroy nearby bricks
+        // Destroy nearby bricks (queue explosive bricks for delayed chain reaction)
+        const chainExplosionDelay = 200; // ms
         bricks.forEach((otherBrick) => {
           if (otherBrick.id === brick.id || !otherBrick.visible) return;
 
@@ -3479,9 +3499,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           if (distance <= explosionRadius) {
             if (!brickUpdates.has(otherBrick.id)) {
-              brickUpdates.set(otherBrick.id, { visible: false, hitsRemaining: 0 });
-              scoreIncrease += otherBrick.points;
-              bricksDestroyedCount += 1;
+              // Check if this is an explosive brick - queue for chain reaction instead of destroying
+              if (otherBrick.type === "explosive") {
+                // Check if not already pending
+                const alreadyPending = pendingChainExplosionsRef.current.some(
+                  (p) => p.brick.id === otherBrick.id
+                );
+                if (!alreadyPending) {
+                  pendingChainExplosionsRef.current.push({
+                    brick: otherBrick,
+                    triggerTime: Date.now() + chainExplosionDelay,
+                  });
+                }
+              } else {
+                // Non-explosive brick - destroy immediately
+                brickUpdates.set(otherBrick.id, { visible: false, hitsRemaining: 0 });
+                scoreIncrease += otherBrick.points;
+                bricksDestroyedCount += 1;
+              }
             }
           }
         });
