@@ -99,7 +99,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -2752,14 +2752,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       let comboIncrease = 0;
       const powerUpsToCreate: Brick[] = [];
       const explosiveBricksToDetonate: Brick[] = [];
-      
+
       // Process pending chain explosions (from previous frames)
       const now = Date.now();
-      const readyExplosions = pendingChainExplosionsRef.current.filter(
-        (pending) => now >= pending.triggerTime
-      );
+      const readyExplosions = pendingChainExplosionsRef.current.filter((pending) => now >= pending.triggerTime);
       pendingChainExplosionsRef.current = pendingChainExplosionsRef.current.filter(
-        (pending) => now < pending.triggerTime
+        (pending) => now < pending.triggerTime,
       );
       // Add ready chain explosions to this frame's detonation queue
       readyExplosions.forEach((pending) => {
@@ -3509,9 +3507,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               // Check if this is an explosive brick - queue for chain reaction instead of destroying
               if (otherBrick.type === "explosive") {
                 // Check if not already pending
-                const alreadyPending = pendingChainExplosionsRef.current.some(
-                  (p) => p.brick.id === otherBrick.id
-                );
+                const alreadyPending = pendingChainExplosionsRef.current.some((p) => p.brick.id === otherBrick.id);
                 if (!alreadyPending) {
                   pendingChainExplosionsRef.current.push({
                     brick: otherBrick,
