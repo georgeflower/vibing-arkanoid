@@ -3469,6 +3469,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Handle explosive bricks
       explosiveBricksToDetonate.forEach((brick) => {
+        // Mark the detonating brick as destroyed FIRST to prevent infinite loop
+        if (!brickUpdates.has(brick.id)) {
+          brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
+          scoreIncrease += brick.points;
+          bricksDestroyedCount += 1;
+        }
+
         const explosionRadius = 70;
         const brickCenterX = brick.x + brick.width / 2;
         const brickCenterY = brick.y + brick.height / 2;
