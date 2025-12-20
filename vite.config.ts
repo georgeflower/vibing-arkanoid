@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      injectRegister: null,
+      injectRegister: 'auto',
       includeAssets: ["favicon.ico"],
       manifest: {
         name: "Vibing Arkanoid",
