@@ -99,7 +99,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -179,110 +179,26 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [beatLevel50Completed, setBeatLevel50Completed] = useState(false);
   const [timer, setTimer] = useState(0);
   const [totalPlayTime, setTotalPlayTime] = useState(0);
-  
-  // ═══════════════════════════════════════════════════════════════
-  // MEMORY OPTIMIZATION: High-frequency entities use refs to reduce GC
-  // A single renderTick state triggers canvas re-renders
-  // ═══════════════════════════════════════════════════════════════
-  const enemiesRef = useRef<Enemy[]>([]);
-  const bombsRef = useRef<Bomb[]>([]);
-  const explosionsRef = useRef<Explosion[]>([]);
-  const bonusLettersRef = useRef<BonusLetter[]>([]);
-  const backgroundPhaseRef = useRef(0);
-  const bossAttacksRef = useRef<BossAttack[]>([]);
-  const shieldImpactsRef = useRef<ShieldImpact[]>([]);
-  const laserWarningsRef = useRef<Array<{ x: number; startTime: number }>>([]);
-  const [renderTick, setRenderTick] = useState(0);
-  
-  // Legacy state getters/setters for compatibility (wrap refs)
-  const enemies = enemiesRef.current;
-  const setEnemies = useCallback((updater: Enemy[] | ((prev: Enemy[]) => Enemy[])) => {
-    if (typeof updater === 'function') {
-      enemiesRef.current = updater(enemiesRef.current);
-    } else {
-      enemiesRef.current = updater;
-    }
-  }, []);
-  
-  const bombs = bombsRef.current;
-  const setBombs = useCallback((updater: Bomb[] | ((prev: Bomb[]) => Bomb[])) => {
-    if (typeof updater === 'function') {
-      bombsRef.current = updater(bombsRef.current);
-    } else {
-      bombsRef.current = updater;
-    }
-  }, []);
-  
-  const explosions = explosionsRef.current;
-  const setExplosions = useCallback((updater: Explosion[] | ((prev: Explosion[]) => Explosion[])) => {
-    if (typeof updater === 'function') {
-      explosionsRef.current = updater(explosionsRef.current);
-    } else {
-      explosionsRef.current = updater;
-    }
-  }, []);
-  
-  const bonusLetters = bonusLettersRef.current;
-  const setBonusLetters = useCallback((updater: BonusLetter[] | ((prev: BonusLetter[]) => BonusLetter[])) => {
-    if (typeof updater === 'function') {
-      bonusLettersRef.current = updater(bonusLettersRef.current);
-    } else {
-      bonusLettersRef.current = updater;
-    }
-  }, []);
-  
-  const backgroundPhase = backgroundPhaseRef.current;
-  const setBackgroundPhase = useCallback((updater: number | ((prev: number) => number)) => {
-    if (typeof updater === 'function') {
-      backgroundPhaseRef.current = updater(backgroundPhaseRef.current);
-    } else {
-      backgroundPhaseRef.current = updater;
-    }
-  }, []);
-  
-  const bossAttacks = bossAttacksRef.current;
-  const setBossAttacks = useCallback((updater: BossAttack[] | ((prev: BossAttack[]) => BossAttack[])) => {
-    if (typeof updater === 'function') {
-      bossAttacksRef.current = updater(bossAttacksRef.current);
-    } else {
-      bossAttacksRef.current = updater;
-    }
-  }, []);
-  
-  const shieldImpacts = shieldImpactsRef.current;
-  const setShieldImpacts = useCallback((updater: ShieldImpact[] | ((prev: ShieldImpact[]) => ShieldImpact[])) => {
-    if (typeof updater === 'function') {
-      shieldImpactsRef.current = updater(shieldImpactsRef.current);
-    } else {
-      shieldImpactsRef.current = updater;
-    }
-  }, []);
-  
-  const laserWarnings = laserWarningsRef.current;
-  const setLaserWarnings = useCallback((updater: Array<{ x: number; startTime: number }> | ((prev: Array<{ x: number; startTime: number }>) => Array<{ x: number; startTime: number }>)) => {
-    if (typeof updater === 'function') {
-      laserWarningsRef.current = updater(laserWarningsRef.current);
-    } else {
-      laserWarningsRef.current = updater;
-    }
-  }, []);
-  // ═══════════════════════════════════════════════════════════════
-  
+  const [enemies, setEnemies] = useState<Enemy[]>([]);
+  const [bombs, setBombs] = useState<Bomb[]>([]);
+  const [backgroundPhase, setBackgroundPhase] = useState(0);
+  const [explosions, setExplosions] = useState<Explosion[]>([]);
   const [enemySpawnCount, setEnemySpawnCount] = useState(0);
   const [lastEnemySpawnTime, setLastEnemySpawnTime] = useState(0);
   const [launchAngle, setLaunchAngle] = useState(-20);
   const [showInstructions, setShowInstructions] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
   const [droppedLettersThisLevel, setDroppedLettersThisLevel] = useState<Set<BonusLetterType>>(new Set());
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
   const [letterLevelAssignments, setLetterLevelAssignments] = useState<Record<number, BonusLetterType>>({});
   const [boss, setBoss] = useState<Boss | null>(null);
   const [resurrectedBosses, setResurrectedBosses] = useState<Boss[]>([]);
-  // bossAttacks moved to ref above for memory optimization
+  const [bossAttacks, setBossAttacks] = useState<BossAttack[]>([]);
   const [bossDefeatedTransitioning, setBossDefeatedTransitioning] = useState(false);
   const [bossActive, setBossActive] = useState(false);
   const [bossHitCooldown, setBossHitCooldown] = useState(0);
-  // laserWarnings moved to ref above for memory optimization
+  const [laserWarnings, setLaserWarnings] = useState<Array<{ x: number; startTime: number }>>([]);
   const bossSpawnedEnemiesRef = useRef<Set<number>>(new Set());
   const firstBossMinionKilledRef = useRef(false);
   // Track newly reflected bombs synchronously to avoid stale closure issues
@@ -331,7 +247,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const highlightFlashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [lastBossSpawnTime, setLastBossSpawnTime] = useState(0);
   const [bossSpawnAnimation, setBossSpawnAnimation] = useState<{ active: boolean; startTime: number } | null>(null);
-  // shieldImpacts moved to ref above for memory optimization
+  const [shieldImpacts, setShieldImpacts] = useState<ShieldImpact[]>([]);
   const [lastScoreMilestone, setLastScoreMilestone] = useState(0);
   const [scoreBlinking, setScoreBlinking] = useState(false);
 
@@ -4008,26 +3924,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     lastUsedHeap: 0, // Track heap size for GC detection
     tabWasHidden: false, // Track if tab was backgrounded
   });
-  
-  // MEMORY OPTIMIZATION: Pre-allocated reusable objects to avoid GC
-  const gcContextRef = useRef({
-    heapDropMB: '',
-    heapUsedMB: '',
-    frameGapMs: '',
-    level: 0,
-    ballCount: 0,
-    enemyCount: 0,
-  });
-  const lagContextRef = useRef({
-    level: 0,
-    ballCount: 0,
-    enemyCount: 0,
-    particleCount: 0,
-    powerUpCount: 0,
-    bossActive: false,
-    quality: 'unknown' as string,
-    heapUsedMB: 'N/A' as string,
-  });
 
   // Tab visibility detection for explaining large frame gaps
   useEffect(() => {
@@ -4068,15 +3964,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           frameStart - lagDetectionRef.current.lastGCLogTime > GC_LOG_THROTTLE_MS
         ) {
           if (debugSettings.enableGCLogging) {
-            // MEMORY OPTIMIZED: Reuse pre-allocated context object
-            const ctx = gcContextRef.current;
-            ctx.heapDropMB = (heapDrop / 1_000_000).toFixed(2);
-            ctx.heapUsedMB = (currentHeap / 1_000_000).toFixed(1);
-            ctx.frameGapMs = frameGap.toFixed(1);
-            ctx.level = level;
-            ctx.ballCount = balls.length;
-            ctx.enemyCount = enemiesRef.current.length;
-            debugLogger.warn(`[DEBUG] [GC DETECTED] Heap dropped by ${ctx.heapDropMB}MB`, ctx);
+            const gcContext = {
+              heapDropMB: (heapDrop / 1_000_000).toFixed(2),
+              heapUsedMB: (currentHeap / 1_000_000).toFixed(1),
+              frameGapMs: frameGap.toFixed(1),
+              level,
+              ballCount: balls.length,
+              enemyCount: enemies.length,
+            };
+            debugLogger.warn(`[DEBUG] [GC DETECTED] Heap dropped by ${gcContext.heapDropMB}MB`, gcContext);
           }
           lagDetectionRef.current.lastGCLogTime = frameStart;
         }
@@ -4195,13 +4091,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // ═══ PHASE 1: Time Rendering ═══
     frameProfiler.startTiming("rendering");
 
-    // Update background animation - MEMORY OPTIMIZED: Direct ref mutation
-    backgroundPhaseRef.current = (backgroundPhaseRef.current + 1) % 360;
+    // Update background animation
+    setBackgroundPhase((prev) => (prev + 1) % 360);
 
     frameProfiler.endTiming("rendering");
 
     // Update balls rotation only (position is updated in checkCollision with substeps)
-    // MEMORY OPTIMIZED: In-place mutation, single array copy at end
+    // OPTIMIZED: In-place mutation instead of creating new objects
     setBalls((prev) => {
       for (const ball of prev) {
         if (ball.waitingToLaunch && paddle) {
@@ -4211,16 +4107,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
         ball.rotation = ((ball.rotation || 0) + 3) % 360; // Spinning rotation
       }
-      return [...prev]; // Still need new reference for React state
+      return [...prev]; // New array reference for React
     });
 
     // Update power-ups
     updatePowerUps();
 
-    // Update bonus letters - MEMORY OPTIMIZED: Direct ref mutation
-    for (const letter of bonusLettersRef.current) {
-      letter.y += letter.speed;
-    }
+    // Update bonus letters - OPTIMIZED: In-place mutation
+    setBonusLetters((prev) => {
+      for (const letter of prev) {
+        letter.y += letter.speed;
+      }
+      return [...prev];
+    });
 
     // Check bonus letter collisions
     checkBonusLetterCollision();
@@ -4230,44 +4129,48 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     updateBullets(bricks);
     frameProfiler.endTiming("bullets");
 
-    // Update enemies - MEMORY OPTIMIZED: Direct ref mutation
+    // Update enemies
     frameProfiler.startTiming("enemies");
-    for (const enemy of enemiesRef.current) {
-      let newX = enemy.x + enemy.dx;
-      let newY = enemy.y + enemy.dy;
+    // Update enemies - OPTIMIZED: In-place mutation
+    setEnemies((prev) => {
+      for (const enemy of prev) {
+        let newX = enemy.x + enemy.dx;
+        let newY = enemy.y + enemy.dy;
 
-      // Sphere and Pyramid enemies have more random movement
-      if (enemy.type === "sphere" || enemy.type === "pyramid") {
-        // Add some randomness to movement
-        if (Math.random() < (enemy.type === "pyramid" ? 0.08 : 0.05)) {
-          const randomAngle = ((Math.random() - 0.5) * Math.PI) / 4;
-          const currentAngle = Math.atan2(enemy.dy, enemy.dx);
-          const newAngle = currentAngle + randomAngle;
-          enemy.dx = Math.cos(newAngle) * enemy.speed;
-          enemy.dy = Math.sin(newAngle) * enemy.speed;
+        // Sphere and Pyramid enemies have more random movement
+        if (enemy.type === "sphere" || enemy.type === "pyramid") {
+          // Add some randomness to movement
+          if (Math.random() < (enemy.type === "pyramid" ? 0.08 : 0.05)) {
+            const randomAngle = ((Math.random() - 0.5) * Math.PI) / 4;
+            const currentAngle = Math.atan2(enemy.dy, enemy.dx);
+            const newAngle = currentAngle + randomAngle;
+            enemy.dx = Math.cos(newAngle) * enemy.speed;
+            enemy.dy = Math.sin(newAngle) * enemy.speed;
+          }
         }
-      }
 
-      // Bounce off walls
-      if (newX <= 0 || newX >= SCALED_CANVAS_WIDTH - enemy.width) {
-        enemy.dx = -enemy.dx;
-        newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - enemy.width, newX));
-      }
+        // Bounce off walls
+        if (newX <= 0 || newX >= SCALED_CANVAS_WIDTH - enemy.width) {
+          enemy.dx = -enemy.dx;
+          newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - enemy.width, newX));
+        }
 
-      // Bounce off top and 60% boundary
-      const maxY = SCALED_CANVAS_HEIGHT * 0.6;
-      if (newY <= 0 || newY >= maxY - enemy.height) {
-        enemy.dy = -enemy.dy;
-        newY = Math.max(0, Math.min(maxY - enemy.height, newY));
-      }
+        // Bounce off top and 60% boundary
+        const maxY = SCALED_CANVAS_HEIGHT * 0.6;
+        if (newY <= 0 || newY >= maxY - enemy.height) {
+          enemy.dy = -enemy.dy;
+          newY = Math.max(0, Math.min(maxY - enemy.height, newY));
+        }
 
-      // Update in place
-      enemy.x = newX;
-      enemy.y = newY;
-      enemy.rotationX += enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" ? 0.08 : 0.05;
-      enemy.rotationY += enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" ? 0.12 : 0.08;
-      enemy.rotationZ += enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" ? 0.06 : 0.03;
-    }
+        // Update in place
+        enemy.x = newX;
+        enemy.y = newY;
+        enemy.rotationX += enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" ? 0.08 : 0.05;
+        enemy.rotationY += enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" ? 0.12 : 0.08;
+        enemy.rotationZ += enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" ? 0.06 : 0.03;
+      }
+      return [...prev]; // New array reference for React
+    });
     frameProfiler.endTiming("enemies");
 
     // Update explosions and their particles - OPTIMIZED: Use particle pool
@@ -4281,17 +4184,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Update pooled particles in place (no new objects created)
         particlePool.updateParticles(0.2);
 
-        // Update legacy explosion state for frame tracking - MEMORY OPTIMIZED: Direct ref mutation
-        const expl = explosionsRef.current;
-        for (let i = expl.length - 1; i >= 0; i--) {
-          expl[i].frame += 1;
-          if (expl[i].frame >= expl[i].maxFrames) {
-            expl.splice(i, 1);
+        // Update legacy explosion state for frame tracking only
+        setExplosions((prev) => {
+          for (let i = prev.length - 1; i >= 0; i--) {
+            prev[i].frame += 1;
+            if (prev[i].frame >= prev[i].maxFrames) {
+              prev.splice(i, 1);
+            }
           }
-        }
+          return prev.length > 0 ? [...prev] : [];
+        });
       }
     } else {
-      explosionsRef.current = [];
+      setExplosions([]);
       particlePool.releaseAll();
     }
 
@@ -4303,106 +4208,108 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const poolStats = particlePool.getStats();
     frameProfiler.incrementCounter("particles", poolStats.active);
 
-    // Update bombs and rockets - MEMORY OPTIMIZED: Direct ref mutation
-    const bombsList = bombsRef.current;
-    for (let i = bombsList.length - 1; i >= 0; i--) {
-      const bomb = bombsList[i];
+    // Update bombs and rockets - OPTIMIZED: In-place mutation with backwards iteration
+    setBombs((prev) => {
+      for (let i = prev.length - 1; i >= 0; i--) {
+        const bomb = prev[i];
 
-      // Check if should be removed first
-      let shouldRemove = false;
-      if (bomb.isReflected) {
-        shouldRemove = bomb.y <= 0 || bomb.y >= SCALED_CANVAS_HEIGHT || bomb.x <= 0 || bomb.x >= SCALED_CANVAS_WIDTH;
-        if (shouldRemove && ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
-          console.log(
-            `[Collision Debug] REFLECTED BOMB#${bomb.id} filtered OFF-SCREEN at (${bomb.x.toFixed(1)}, ${bomb.y.toFixed(1)})`,
-          );
+        // Check if should be removed first
+        let shouldRemove = false;
+        if (bomb.isReflected) {
+          shouldRemove = bomb.y <= 0 || bomb.y >= SCALED_CANVAS_HEIGHT || bomb.x <= 0 || bomb.x >= SCALED_CANVAS_WIDTH;
+          if (shouldRemove && ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
+            console.log(
+              `[Collision Debug] REFLECTED BOMB#${bomb.id} filtered OFF-SCREEN at (${bomb.x.toFixed(1)}, ${bomb.y.toFixed(1)})`,
+            );
+          }
+        } else {
+          shouldRemove = bomb.y >= SCALED_CANVAS_HEIGHT;
         }
-      } else {
-        shouldRemove = bomb.y >= SCALED_CANVAS_HEIGHT;
+
+        if (shouldRemove) {
+          prev.splice(i, 1);
+          continue;
+        }
+
+        // Apply homing behavior to reflected bombs
+        if (bomb.isReflected) {
+          // Find closest target (boss or enemy)
+          let closestTarget: { x: number; y: number; width: number; height: number } | null = null;
+          let closestDist = Infinity;
+
+          const bombCenterX = bomb.x + bomb.width / 2;
+          const bombCenterY = bomb.y + bomb.height / 2;
+
+          // Check main boss
+          if (boss) {
+            const bossCenterX = boss.x + boss.width / 2;
+            const bossCenterY = boss.y + boss.height / 2;
+            const dist = Math.sqrt(Math.pow(bossCenterX - bombCenterX, 2) + Math.pow(bossCenterY - bombCenterY, 2));
+            if (dist < closestDist) {
+              closestDist = dist;
+              closestTarget = boss;
+            }
+          }
+
+          // Check resurrected bosses
+          for (const rb of resurrectedBosses) {
+            const rbCenterX = rb.x + rb.width / 2;
+            const rbCenterY = rb.y + rb.height / 2;
+            const dist = Math.sqrt(Math.pow(rbCenterX - bombCenterX, 2) + Math.pow(rbCenterY - bombCenterY, 2));
+            if (dist < closestDist) {
+              closestDist = dist;
+              closestTarget = rb;
+            }
+          }
+
+          // Check enemies
+          for (const enemy of enemies) {
+            const enemyCenterX = enemy.x + enemy.width / 2;
+            const enemyCenterY = enemy.y + enemy.height / 2;
+            const dist = Math.sqrt(Math.pow(enemyCenterX - bombCenterX, 2) + Math.pow(enemyCenterY - bombCenterY, 2));
+            if (dist < closestDist) {
+              closestDist = dist;
+              closestTarget = enemy;
+            }
+          }
+
+          // Steer toward closest target
+          if (closestTarget) {
+            const targetCenterX = closestTarget.x + closestTarget.width / 2;
+            const targetCenterY = closestTarget.y + closestTarget.height / 2;
+
+            const dirX = targetCenterX - bombCenterX;
+            const dirY = targetCenterY - bombCenterY;
+            const dirLength = Math.sqrt(dirX * dirX + dirY * dirY);
+
+            if (dirLength > 0) {
+              const normDirX = dirX / dirLength;
+              const normDirY = dirY / dirLength;
+              const steeringStrength = 0.15;
+              const currentSpeed = Math.sqrt((bomb.dx || 0) ** 2 + (bomb.dy || 0) ** 2);
+
+              const newDx = (bomb.dx || 0) * (1 - steeringStrength) + normDirX * currentSpeed * steeringStrength;
+              const newDy = (bomb.dy || 0) * (1 - steeringStrength) + normDirY * currentSpeed * steeringStrength;
+
+              const newSpeed = Math.sqrt(newDx * newDx + newDy * newDy);
+              bomb.dx = newSpeed > 0 ? (newDx / newSpeed) * currentSpeed : newDx;
+              bomb.dy = newSpeed > 0 ? (newDy / newSpeed) * currentSpeed : newDy;
+              bomb.x += bomb.dx;
+              bomb.y += bomb.dy;
+              continue;
+            }
+          }
+          bomb.x += bomb.dx || 0;
+          bomb.y += bomb.dy || 0;
+        } else if (bomb.type === "pyramidBullet" && bomb.dx !== undefined) {
+          bomb.x += bomb.dx || 0;
+          bomb.y += bomb.speed;
+        } else {
+          bomb.y += bomb.speed;
+        }
       }
-
-      if (shouldRemove) {
-        bombsList.splice(i, 1);
-        continue;
-      }
-
-      // Apply homing behavior to reflected bombs
-      if (bomb.isReflected) {
-        // Find closest target (boss or enemy)
-        let closestTarget: { x: number; y: number; width: number; height: number } | null = null;
-        let closestDist = Infinity;
-
-        const bombCenterX = bomb.x + bomb.width / 2;
-        const bombCenterY = bomb.y + bomb.height / 2;
-
-        // Check main boss
-        if (boss) {
-          const bossCenterX = boss.x + boss.width / 2;
-          const bossCenterY = boss.y + boss.height / 2;
-          const dist = Math.sqrt(Math.pow(bossCenterX - bombCenterX, 2) + Math.pow(bossCenterY - bombCenterY, 2));
-          if (dist < closestDist) {
-            closestDist = dist;
-            closestTarget = boss;
-          }
-        }
-
-        // Check resurrected bosses
-        for (const rb of resurrectedBosses) {
-          const rbCenterX = rb.x + rb.width / 2;
-          const rbCenterY = rb.y + rb.height / 2;
-          const dist = Math.sqrt(Math.pow(rbCenterX - bombCenterX, 2) + Math.pow(rbCenterY - bombCenterY, 2));
-          if (dist < closestDist) {
-            closestDist = dist;
-            closestTarget = rb;
-          }
-        }
-
-        // Check enemies
-        for (const enemy of enemiesRef.current) {
-          const enemyCenterX = enemy.x + enemy.width / 2;
-          const enemyCenterY = enemy.y + enemy.height / 2;
-          const dist = Math.sqrt(Math.pow(enemyCenterX - bombCenterX, 2) + Math.pow(enemyCenterY - bombCenterY, 2));
-          if (dist < closestDist) {
-            closestDist = dist;
-            closestTarget = enemy;
-          }
-        }
-
-        // Steer toward closest target
-        if (closestTarget) {
-          const targetCenterX = closestTarget.x + closestTarget.width / 2;
-          const targetCenterY = closestTarget.y + closestTarget.height / 2;
-
-          const dirX = targetCenterX - bombCenterX;
-          const dirY = targetCenterY - bombCenterY;
-          const dirLength = Math.sqrt(dirX * dirX + dirY * dirY);
-
-          if (dirLength > 0) {
-            const normDirX = dirX / dirLength;
-            const normDirY = dirY / dirLength;
-            const steeringStrength = 0.15;
-            const currentSpeed = Math.sqrt((bomb.dx || 0) ** 2 + (bomb.dy || 0) ** 2);
-
-            const newDx = (bomb.dx || 0) * (1 - steeringStrength) + normDirX * currentSpeed * steeringStrength;
-            const newDy = (bomb.dy || 0) * (1 - steeringStrength) + normDirY * currentSpeed * steeringStrength;
-
-            const newSpeed = Math.sqrt(newDx * newDx + newDy * newDy);
-            bomb.dx = newSpeed > 0 ? (newDx / newSpeed) * currentSpeed : newDx;
-            bomb.dy = newSpeed > 0 ? (newDy / newSpeed) * currentSpeed : newDy;
-            bomb.x += bomb.dx;
-            bomb.y += bomb.dy;
-            continue;
-          }
-        }
-        bomb.x += bomb.dx || 0;
-        bomb.y += bomb.dy || 0;
-      } else if (bomb.type === "pyramidBullet" && bomb.dx !== undefined) {
-        bomb.x += bomb.dx || 0;
-        bomb.y += bomb.speed;
-      } else {
-        bomb.y += bomb.speed;
-      }
-    }
+      return [...prev];
+    });
 
     // Check bomb-paddle collision
     if (paddle) {
@@ -5699,14 +5606,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     });
 
-    // Clean up expired laser warnings - MEMORY OPTIMIZED: In-place removal
-    const warnings = laserWarningsRef.current;
-    const warningNow = Date.now();
-    for (let i = warnings.length - 1; i >= 0; i--) {
-      if (warningNow - warnings[i].startTime >= 800) {
-        warnings.splice(i, 1);
-      }
-    }
+    // Clean up expired laser warnings
+    setLaserWarnings((prev) => prev.filter((warning) => Date.now() - warning.startTime < 800));
 
     // Boss collisions are now handled via CCD and shape-specific checks in Phase 3.5
     // Old collision code removed to prevent conflicts with unified boss-local cooldown system
@@ -5720,14 +5621,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Check ball timeout without paddle hit (15s and 25s)
     if (lastPaddleHitTime > 0) {
       const timeSinceHit = (Date.now() - lastPaddleHitTime) / 1000;
-      if (timeSinceHit >= 25 && enemiesRef.current.length > 0) {
+      if (timeSinceHit >= 25 && enemies.length > 0) {
         // 25s - nearest enemy kamikaze
         const activeBall = balls.find((b) => !b.waitingToLaunch);
         if (activeBall) {
           // Find closest enemy
-          let closestEnemy = enemiesRef.current[0];
+          let closestEnemy = enemies[0];
           let minDistance = Infinity;
-          for (const enemy of enemiesRef.current) {
+          for (const enemy of enemies) {
             const dx = enemy.x + enemy.width / 2 - activeBall.x;
             const dy = enemy.y + enemy.height / 2 - activeBall.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
@@ -5737,12 +5638,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             }
           }
 
-          // Make closest enemy go kamikaze towards ball - MEMORY OPTIMIZED: Direct mutation
-          const targetEnemy = enemiesRef.current.find(e => e.id === closestEnemy.id);
-          if (targetEnemy) {
-            targetEnemy.dx = ((activeBall.x - (targetEnemy.x + targetEnemy.width / 2)) / minDistance) * targetEnemy.speed * 3;
-            targetEnemy.dy = ((activeBall.y - (targetEnemy.y + targetEnemy.height / 2)) / minDistance) * targetEnemy.speed * 3;
-          }
+          // Make closest enemy go kamikaze towards ball
+          setEnemies((prev) =>
+            prev.map((e) =>
+              e.id === closestEnemy.id
+                ? {
+                    ...e,
+                    dx: ((activeBall.x - (e.x + e.width / 2)) / minDistance) * e.speed * 3,
+                    dy: ((activeBall.y - (e.y + e.height / 2)) / minDistance) * e.speed * 3,
+                  }
+                : e,
+            ),
+          );
           toast.warning("Enemy kamikaze attack!");
           setLastPaddleHitTime(Date.now()); // Reset timer
         }
@@ -5790,10 +5697,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         particleCount: stats?.counters?.particles || 0,
       });
     }
-
-    // MEMORY OPTIMIZATION: Single state update to trigger canvas re-render
-    // This replaces multiple setState calls that created new arrays
-    setRenderTick(t => t + 1);
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
   }, [
