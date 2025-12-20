@@ -356,12 +356,11 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <picture className="absolute inset-0 w-full h-full pointer-events-none">
           <source srcSet={startScreenWebp} type="image/webp" />
-          <img
-            src={startScreenImg}
-            alt="Game start screen"
-            fetchPriority="high"
-            className="w-full h-full object-contain"
-          />
+        <img
+          src={startScreenImg}
+          alt="Game start screen"
+          className="w-full h-full object-contain"
+        />
         </picture>
         <div className="text-center animate-pulse relative z-10">
           <p className="text-white text-2xl font-bold">Press key/mouse to continue</p>
