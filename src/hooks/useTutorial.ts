@@ -27,13 +27,23 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   },
 ];
 
-const TUTORIAL_STORAGE_KEY = 'vibing_arkanoid_tutorial_enabled';
+const TUTORIAL_LAST_SHOWN_KEY = 'vibing_arkanoid_tutorial_last_shown';
 const COMPLETED_TUTORIALS_KEY = 'vibing_arkanoid_completed_tutorials';
+const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
+// Check if tutorial should be shown (once per month)
+const shouldShowTutorialThisMonth = (): boolean => {
+  const lastShown = localStorage.getItem(TUTORIAL_LAST_SHOWN_KEY);
+  if (!lastShown) return true; // Never shown, show it
+  
+  const lastShownDate = parseInt(lastShown, 10);
+  const now = Date.now();
+  return (now - lastShownDate) >= ONE_MONTH_MS;
+};
 
 export const useTutorial = () => {
   const [tutorialEnabled, setTutorialEnabledState] = useState<boolean>(() => {
-    const stored = localStorage.getItem(TUTORIAL_STORAGE_KEY);
-    return stored !== 'false'; // Tutorial enabled by default
+    return shouldShowTutorialThisMonth();
   });
   const [currentStep, setCurrentStep] = useState<TutorialStep | null>(null);
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(() => {
@@ -50,7 +60,7 @@ export const useTutorial = () => {
   });
   const [tutorialActive, setTutorialActive] = useState(false);
 
-  // Persist completed tutorials and auto-disable when all are done
+  // Persist completed tutorials and record when shown
   useEffect(() => {
     localStorage.setItem(COMPLETED_TUTORIALS_KEY, JSON.stringify([...completedSteps]));
     
@@ -59,16 +69,15 @@ export const useTutorial = () => {
     const allComplete = allTutorialIds.every(id => completedSteps.has(id));
     
     if (allComplete && tutorialEnabled) {
-      // Auto-disable tutorials when all have been seen
+      // Record that tutorial was shown this month and disable
+      localStorage.setItem(TUTORIAL_LAST_SHOWN_KEY, Date.now().toString());
       setTutorialEnabledState(false);
-      localStorage.setItem(TUTORIAL_STORAGE_KEY, 'false');
     }
   }, [completedSteps, tutorialEnabled]);
 
-  // Custom setter that persists to localStorage
+  // Custom setter (no longer persisted - controlled by monthly logic)
   const setTutorialEnabled = useCallback((enabled: boolean) => {
     setTutorialEnabledState(enabled);
-    localStorage.setItem(TUTORIAL_STORAGE_KEY, enabled ? 'true' : 'false');
   }, []);
 
   // Check if a tutorial step should trigger
@@ -123,12 +132,12 @@ export const useTutorial = () => {
     setTutorialActive(false);
   }, [currentStep]);
 
-  // Skip all tutorials - persists the setting
+  // Skip all tutorials - marks as shown this month
   const skipAllTutorials = useCallback(() => {
     setTutorialEnabledState(false);
     setCurrentStep(null);
     setTutorialActive(false);
-    localStorage.setItem(TUTORIAL_STORAGE_KEY, 'false');
+    localStorage.setItem(TUTORIAL_LAST_SHOWN_KEY, Date.now().toString());
   }, []);
 
   // Reset tutorials (for testing or new players)
@@ -137,7 +146,7 @@ export const useTutorial = () => {
     setCompletedSteps(new Set());
     setCurrentStep(null);
     setTutorialActive(false);
-    localStorage.setItem(TUTORIAL_STORAGE_KEY, 'true');
+    localStorage.removeItem(TUTORIAL_LAST_SHOWN_KEY);
     localStorage.removeItem(COMPLETED_TUTORIALS_KEY);
   }, []);
 
