@@ -270,6 +270,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Fireball timer state
   const [fireballEndTime, setFireballEndTime] = useState<number | null>(null);
 
+  // Glue timer state
+  const [glueEndTime, setGlueEndTime] = useState<number | null>(null);
+
+  // Second chance impact effect state
+  const [secondChanceImpact, setSecondChanceImpact] = useState<{ x: number; y: number; startTime: number } | null>(null);
+
   // Pause-aware timer tracking
   const pauseStartTimeRef = useRef<number | null>(null);
   const savedTimerDurationsRef = useRef<{
@@ -277,7 +283,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     reflectShield: number | null;
     homingBall: number | null;
     fireball: number | null;
-  }>({ bossStunner: null, reflectShield: null, homingBall: null, fireball: null });
+    glue: number | null;
+  }>({ bossStunner: null, reflectShield: null, homingBall: null, fireball: null, glue: null });
 
   // Tutorial system
   const {
@@ -395,6 +402,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         reflectShield: reflectShieldEndTime ? Math.max(0, reflectShieldEndTime - now) : null,
         homingBall: homingBallEndTime ? Math.max(0, homingBallEndTime - now) : null,
         fireball: fireballEndTime ? Math.max(0, fireballEndTime - now) : null,
+        glue: glueEndTime ? Math.max(0, glueEndTime - now) : null,
       };
 
       // Clear active timeouts
@@ -442,10 +450,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setFireballEndTime(now + saved.fireball);
       }
 
+      if (saved.glue !== null && saved.glue > 0) {
+        setGlueEndTime(now + saved.glue);
+      }
+
       pauseStartTimeRef.current = null;
-      savedTimerDurationsRef.current = { bossStunner: null, reflectShield: null, homingBall: null, fireball: null };
+      savedTimerDurationsRef.current = { bossStunner: null, reflectShield: null, homingBall: null, fireball: null, glue: null };
     }
-  }, [gameState, tutorialActive, bossStunnerEndTime, reflectShieldEndTime, homingBallEndTime, fireballEndTime, boss]);
+  }, [gameState, tutorialActive, bossStunnerEndTime, reflectShieldEndTime, homingBallEndTime, fireballEndTime, glueEndTime, boss]);
 
   // "Get Ready" speed ramp - gradually increase speed from 30% to 100% over 2 seconds
   useEffect(() => {
@@ -724,6 +736,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setFireballEndTime(null);
   }, []);
 
+  // Handle second chance power-up activation
+  const handleSecondChance = useCallback(() => {
+    // Just for tracking - the paddle state is set in usePowerUps
+    console.log("[PowerUp] Second Chance activated!");
+  }, []);
+
+  // Handle glue power-up activation
+  const handleGlueStart = useCallback(() => {
+    setGlueEndTime(Date.now() + 30000);
+  }, []);
+
+  const handleGlueEnd = useCallback(() => {
+    setGlueEndTime(null);
+    toast.info("Glue expired!");
+  }, []);
+
   // Trigger highlight flash for background effects (levels 1-4)
   const triggerHighlightFlash = useCallback((intensity: number, duration: number) => {
     if (highlightFlashTimeoutRef.current) {
@@ -795,6 +823,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       handleHomingBall,
       handleFireballStart,
       handleFireballEnd,
+      handleSecondChance,
+      handleGlueStart,
+      handleGlueEnd,
     );
   const { bullets, setBullets, fireBullets, updateBullets } = useBullets(
     setScore,
@@ -3772,12 +3803,37 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Phase 4: Update ball positions and check for lost balls
       // CRITICAL: Use the ball instances from ballResults to preserve lastHitTime
+      const SAFETY_NET_Y = paddle ? paddle.y + 40 : SCALED_CANVAS_HEIGHT - 30;
+      
       const updatedBalls = ballResults
         .map((r) => r.ball)
         .filter((ball): ball is NonNullable<typeof ball> => {
           if (!ball) return false;
-          // Check if ball fell off bottom
-          return ball.y <= SCALED_CANVAS_HEIGHT + ball.radius;
+          
+          // Check if ball is falling below screen
+          if (ball.y > SCALED_CANVAS_HEIGHT + ball.radius) {
+            return false; // Ball lost
+          }
+          
+          // Check for Second Chance save - ball passed safety net line
+          if (paddle?.hasSecondChance && ball.y > SAFETY_NET_Y && ball.dy > 0) {
+            // Save the ball! Reflect upward
+            ball.dy = -Math.abs(ball.dy);
+            ball.y = SAFETY_NET_Y - ball.radius - 5;
+            
+            // Remove second chance from paddle
+            setPaddle(prev => prev ? { ...prev, hasSecondChance: false } : null);
+            
+            // Play save sound and show effect
+            soundManager.playSecondChanceSaveSound();
+            setSecondChanceImpact({ x: ball.x, y: SAFETY_NET_Y, startTime: Date.now() });
+            toast.success("Second Chance saved you!");
+            
+            // Clear impact effect after 500ms
+            setTimeout(() => setSecondChanceImpact(null), 500);
+          }
+          
+          return true;
         });
 
       // Check if all balls are lost

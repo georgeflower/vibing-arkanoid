@@ -1,4 +1,5 @@
 import type { Ball, Paddle } from "@/types/game";
+import { soundManager } from "@/utils/sounds";
 
 interface Vec2 {
   x: number;
@@ -13,6 +14,7 @@ interface CollisionResult {
   newVelocityY: number;
   normal: Vec2;
   penetration: number;
+  stuck?: boolean; // Ball stuck to glue paddle
 }
 
 const CORNER_RADIUS = 5;
@@ -35,6 +37,7 @@ export function checkCircleVsRoundedPaddle(
     newVelocityY: ball.dy,
     normal: { x: 0, y: 1 },
     penetration: 0,
+    stuck: false,
   };
 
   // Find closest point on the rounded rectangle to the ball center
@@ -72,6 +75,16 @@ export function checkCircleVsRoundedPaddle(
 
     // Only apply launcher physics if moving into the paddle
     if (dotProduct < 0) {
+      // Check if paddle has glue active - make ball stick
+      if (paddle.isGlued && paddle.glueEndTime && Date.now() < paddle.glueEndTime) {
+        result.stuck = true;
+        result.newVelocityX = 0;
+        result.newVelocityY = 0;
+        result.newY = paddle.y - ball.radius - 2;
+        soundManager.playGlueStickSound();
+        return result;
+      }
+      
       // For top surface hits, use position-based launcher physics
       if (Math.abs(result.normal.y + 1) < 0.1) {
         // Calculate impact position using CORRECTED position (after penetration resolution)

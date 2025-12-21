@@ -1007,6 +1007,156 @@ class SoundManager {
     oscillator2.start(ctx.currentTime);
     oscillator2.stop(ctx.currentTime + 0.15);
   }
+
+  playSecondChanceSound() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Electric crackle + save chime
+    // Layer 1: Electric crackle/zap
+    const noise = ctx.createOscillator();
+    const noiseGain = ctx.createGain();
+    const noiseFilter = ctx.createBiquadFilter();
+    
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    
+    noise.type = 'sawtooth';
+    noise.frequency.setValueAtTime(800, ctx.currentTime);
+    noise.frequency.exponentialRampToValueAtTime(2000, ctx.currentTime + 0.1);
+    noise.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.2);
+    
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.value = 1500;
+    noiseFilter.Q.value = 5;
+    
+    noiseGain.gain.setValueAtTime(0.2, ctx.currentTime);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+    
+    noise.start(ctx.currentTime);
+    noise.stop(ctx.currentTime + 0.2);
+    
+    // Layer 2: Rising chime for the "save" feeling
+    [0, 0.05, 0.1].forEach((delay, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.frequency.value = [600, 900, 1200][i];
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.15, ctx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + delay + 0.15);
+      
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.15);
+    });
+  }
+
+  playSecondChanceSaveSound() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Dramatic electric zap + relief sound when ball is saved
+    // Electric zap
+    const zap = ctx.createOscillator();
+    const zapGain = ctx.createGain();
+    zap.connect(zapGain);
+    zapGain.connect(ctx.destination);
+    
+    zap.type = 'sawtooth';
+    zap.frequency.setValueAtTime(1500, ctx.currentTime);
+    zap.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.15);
+    
+    zapGain.gain.setValueAtTime(0.3, ctx.currentTime);
+    zapGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    
+    zap.start(ctx.currentTime);
+    zap.stop(ctx.currentTime + 0.15);
+    
+    // Relief ascending tone
+    const relief = ctx.createOscillator();
+    const reliefGain = ctx.createGain();
+    relief.connect(reliefGain);
+    reliefGain.connect(ctx.destination);
+    
+    relief.type = 'sine';
+    relief.frequency.setValueAtTime(400, ctx.currentTime + 0.1);
+    relief.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.3);
+    
+    reliefGain.gain.setValueAtTime(0.2, ctx.currentTime + 0.1);
+    reliefGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    
+    relief.start(ctx.currentTime + 0.1);
+    relief.stop(ctx.currentTime + 0.3);
+  }
+
+  playGlueSound() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Sticky/gloopy sound
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(200, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.2);
+    osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.3);
+    
+    filter.type = 'lowpass';
+    filter.frequency.value = 500;
+    
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+    
+    // Add a "splat" component
+    const splat = ctx.createOscillator();
+    const splatGain = ctx.createGain();
+    splat.connect(splatGain);
+    splatGain.connect(ctx.destination);
+    
+    splat.type = 'triangle';
+    splat.frequency.setValueAtTime(400, ctx.currentTime);
+    splat.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.15);
+    
+    splatGain.gain.setValueAtTime(0.15, ctx.currentTime);
+    splatGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    
+    splat.start(ctx.currentTime);
+    splat.stop(ctx.currentTime + 0.15);
+  }
+
+  playGlueStickSound() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Quick "stick" sound when ball sticks to paddle
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(300, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.08);
+    
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+    
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.08);
+  }
 }
 
 export const soundManager = new SoundManager();
