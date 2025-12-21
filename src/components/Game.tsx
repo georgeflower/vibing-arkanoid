@@ -133,10 +133,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [balls, setBalls] = useState<Ball[]>([]);
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   // Helper function to calculate speed multiplier for any level
+  // Max total speed caps (including brick hit bonuses): 150% normal, 175% godlike
+  const MAX_TOTAL_SPEED_NORMAL = 1.5;
+  const MAX_TOTAL_SPEED_GODLIKE = 1.75;
+
   const calculateSpeedForLevel = useCallback((levelNum: number, difficulty: string) => {
     // 105% base for normal, 137.5% for godlike
     const baseMultiplier = difficulty === "godlike" ? 1.375 : 1.05;
-    // Caps: 155% godlike, 140% normal
+    // Level-based caps (before brick hit bonuses): 155% godlike, 140% normal
     const maxSpeedMultiplier = difficulty === "godlike" ? 1.55 : 1.4;
 
     let speedMult: number;
@@ -3360,10 +3364,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     comboIncrease += 1;
                   }
 
-                  // Speed increase (cap at 30%)
-                  if (brickHitSpeedAccumulated < 0.3) {
-                    const speedIncrease = 0.005;
-                    setBrickHitSpeedAccumulated((prev) => Math.min(0.3, prev + speedIncrease));
+                  // Speed increase - cap based on total speed (150% normal, 175% godlike)
+                  const maxTotalSpeed = settings.difficulty === "godlike" ? MAX_TOTAL_SPEED_GODLIKE : MAX_TOTAL_SPEED_NORMAL;
+                  const currentTotalSpeed = speedMultiplier + brickHitSpeedAccumulated;
+                  if (currentTotalSpeed < maxTotalSpeed) {
+                    const speedIncrease = Math.min(0.005, maxTotalSpeed - currentTotalSpeed);
+                    setBrickHitSpeedAccumulated((prev) => Math.min(maxTotalSpeed - speedMultiplier, prev + speedIncrease));
                     result.ball.dx *= 1 + speedIncrease;
                     result.ball.dy *= 1 + speedIncrease;
                   }
