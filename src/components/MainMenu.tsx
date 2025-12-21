@@ -626,32 +626,6 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             )}
           </div>
 
-          {/* Tutorial Toggle */}
-          <div className="space-y-2 pt-2 border-t border-[hsl(200,70%,50%)]/30">
-            <div className="flex justify-between items-center">
-              <Label className="text-white text-base">Tutorial Tips</Label>
-              <button
-                onClick={() => {
-                  soundManager.playMenuClick();
-                  if (tutorialEnabled) {
-                    skipAllTutorials();
-                  } else {
-                    resetTutorials();
-                  }
-                }}
-                className={`px-4 py-1 rounded text-sm transition-colors ${
-                  tutorialEnabled 
-                    ? 'bg-green-600 hover:bg-green-700 text-white' 
-                    : 'bg-gray-600 hover:bg-gray-700 text-gray-300'
-                }`}
-              >
-                {tutorialEnabled ? 'ON' : 'OFF'}
-              </button>
-            </div>
-            <p className="text-xs text-gray-400">
-              {tutorialEnabled ? 'Shows helpful tips for new players' : 'Tutorial tips disabled'}
-            </p>
-          </div>
         </div>
 
         {/* Action Buttons */}

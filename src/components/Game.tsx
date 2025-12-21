@@ -7233,30 +7233,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           </div>
                         </div>
 
-                        {/* Tutorial Toggle */}
-                        <div className="mt-2 md:mt-4 pt-2 md:pt-4 border-t border-cyan-500/30">
-                          <div className="flex justify-between items-center">
-                            <span className="text-cyan-300 retro-pixel-text text-sm">Tutorial Tips</span>
-                            <button
-                              onClick={() => {
-                                soundManager.playMenuClick();
-                                if (tutorialEnabled) {
-                                  skipAllTutorials();
-                                } else {
-                                  resetTutorials();
-                                }
-                              }}
-                              className={`px-3 py-1 rounded text-xs retro-pixel-text transition-colors ${
-                                tutorialEnabled
-                                  ? "bg-green-600 hover:bg-green-700 text-white"
-                                  : "bg-gray-600 hover:bg-gray-700 text-gray-300"
-                              }`}
-                            >
-                              {tutorialEnabled ? "ON" : "OFF"}
-                            </button>
-                          </div>
-                        </div>
-
                         <div
                           className="mt-2 md:mt-4 text-center retro-pixel-text text-[10px] md:text-xs animate-pulse"
                           style={{ color: "hsl(48, 100%, 60%)" }}
@@ -7306,6 +7282,34 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                 {/* Tutorial Overlay moved inside scaled game-glow container above */}
 
+                {/* Mobile Pause Button - always visible on mobile when playing */}
+                {isMobileDevice && gameState === "playing" && (
+                  <button
+                    onTouchStart={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onTouchEnd={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setGameState("paused");
+                      if (gameLoopRef.current) {
+                        gameLoopRef.current.pause();
+                      }
+                    }}
+                    onClick={() => {
+                      setGameState("paused");
+                      if (gameLoopRef.current) {
+                        gameLoopRef.current.pause();
+                      }
+                    }}
+                    className="fixed left-4 top-[116px] z-[100] w-12 h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 transition-transform touch-manipulation"
+                    aria-label="Pause Game"
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    <Pause className="w-6 h-6 text-white/70" />
+                  </button>
+                )}
+
                 {/* ═══════════════════════════════════════════════════════════════
                      ████████╗ DEBUG UI COMPONENTS - REMOVE BEFORE PRODUCTION ████████╗
                      ═══════════════════════════════════════════════════════════════ */}
@@ -7327,34 +7331,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       onToggle={toggleDebugSetting}
                       onReset={resetDebugSettings}
                     />
-
-                    {/* Mobile Pause Button - always visible on mobile when playing */}
-                    {isMobileDevice && gameState === "playing" && (
-                      <button
-                        onTouchStart={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onTouchEnd={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          setGameState("paused");
-                          if (gameLoopRef.current) {
-                            gameLoopRef.current.pause();
-                          }
-                        }}
-                        onClick={() => {
-                          setGameState("paused");
-                          if (gameLoopRef.current) {
-                            gameLoopRef.current.pause();
-                          }
-                        }}
-                        className="fixed left-4 top-[116px] z-[100] w-12 h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 transition-transform touch-manipulation"
-                        aria-label="Pause Game"
-                        style={{ touchAction: "manipulation" }}
-                      >
-                        <Pause className="w-6 h-6 text-white/70" />
-                      </button>
-                    )}
 
                     {/* Mobile Debug Button - floating icon for touch devices */}
                     {isMobileDevice && !showDebugDashboard && (
