@@ -6,6 +6,8 @@ import slowdownImg from "@/assets/powerup-slowdown.png";
 import extendImg from "@/assets/powerup-extend.png";
 import shrinkImg from "@/assets/powerup-shrink.png";
 import shieldImg from "@/assets/powerup-shield.png";
+import secondChanceImg from "@/assets/powerup-secondchance.png";
+import glueImg from "@/assets/powerup-glue.png";
 import type { PowerUpType } from "@/types/game";
 
 export const powerUpImages: Record<PowerUpType, string> = {
@@ -20,6 +22,8 @@ export const powerUpImages: Record<PowerUpType, string> = {
   bossStunner: "", // Rendered with emoji
   reflectShield: "", // Rendered with emoji
   homingBall: "", // Rendered with emoji
+  secondChance: secondChanceImg,
+  glue: glueImg,
 };
 
 export const powerUpColors: Record<PowerUpType, string> = {
@@ -34,4 +38,6 @@ export const powerUpColors: Record<PowerUpType, string> = {
   bossStunner: "hsl(60, 100%, 50%)", // bright yellow
   reflectShield: "hsl(0, 0%, 75%)", // silver
   homingBall: "hsl(0, 100%, 50%)", // red
+  secondChance: "hsl(190, 100%, 60%)", // electric blue
+  glue: "hsl(90, 70%, 50%)", // lime green
 };

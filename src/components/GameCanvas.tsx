@@ -56,10 +56,11 @@ interface GameCanvasProps {
   debugEnabled?: boolean; // DEBUG: Remove before production
   getReadyGlow?: { opacity: number } | null; // Mobile ball glow during Get Ready sequence
   isMobile?: boolean; // Mobile device flag for disabling certain effects
+  secondChanceImpact?: { x: number; y: number; startTime: number } | null;
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null, isMobile = false }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null, isMobile = false, secondChanceImpact = null }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
