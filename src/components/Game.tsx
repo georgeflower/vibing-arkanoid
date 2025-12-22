@@ -6958,10 +6958,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       debugEnabled={ENABLE_DEBUG_FEATURES}
                       getReadyGlow={isMobileDevice ? getReadyGlow : null}
                       isMobile={isMobileDevice}
+                      secondChanceImpact={secondChanceImpact}
                     />
 
                     {/* Boss Power-Up Duration Timers - Mobile responsive positioning */}
-                    {paddle && (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime) && (
+                    {paddle && (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || glueEndTime) && (
                       <div
                         className="absolute inset-0 pointer-events-none"
                         style={{ transform: `scale(${gameScale})`, transformOrigin: "top center" }}
@@ -7036,6 +7037,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             }}
                           >
                             FIREBALL: {((fireballEndTime - Date.now()) / 1000).toFixed(1)}s
+                          </div>
+                        )}
+                        {glueEndTime && Date.now() < glueEndTime && (
+                          <div
+                            className="absolute retro-pixel-text"
+                            style={{
+                              left: isMobileDevice ? `${paddle.x - 10}px` : `${paddle.x + paddle.width / 2}px`,
+                              top: isMobileDevice ? `${paddle.y - 70}px` : `${paddle.y - 105}px`,
+                              transform: isMobileDevice
+                                ? `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`
+                                : `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              color: `hsl(${Math.max(0, 120 - (1 - (glueEndTime - Date.now()) / 30000) * 120)}, 100%, 50%)`,
+                              textShadow: `0 0 10px currentColor`,
+                              fontSize: isMobileDevice ? "10px" : "12px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            GLUE: {((glueEndTime - Date.now()) / 1000).toFixed(1)}s
                           </div>
                         )}
                       </div>
