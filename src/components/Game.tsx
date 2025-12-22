@@ -7395,8 +7395,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   </button>
                 )}
 
-                {/* Mobile Music & SFX Toggle Buttons - right side */}
-                {isMobileDevice && gameState === "playing" && (
+                {/* Music & SFX Toggle Buttons - right side */}
+                {gameState === "playing" && (
                   <div className="fixed right-4 top-[116px] z-[100] flex flex-col gap-2">
                     {/* Music Toggle */}
                     <button
@@ -7421,14 +7421,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           soundManager.playBackgroundMusic();
                         }
                       }}
-                      className="w-12 h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 transition-transform touch-manipulation"
+                      className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 hover:border-white/50 transition-all touch-manipulation"
                       aria-label="Toggle Music"
                       style={{ touchAction: "manipulation" }}
                     >
                       {musicEnabled ? (
-                        <Music className="w-6 h-6 text-white/70" />
+                        <Music className="w-5 h-5 md:w-6 md:h-6 text-white/70" />
                       ) : (
-                        <Music2 className="w-6 h-6 text-white/40" />
+                        <Music2 className="w-5 h-5 md:w-6 md:h-6 text-white/40" />
                       )}
                     </button>
                     {/* SFX Toggle */}
@@ -7448,14 +7448,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         setSfxEnabled(newState);
                         soundManager.setSfxEnabled(newState);
                       }}
-                      className="w-12 h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 transition-transform touch-manipulation"
+                      className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 hover:border-white/50 transition-all touch-manipulation"
                       aria-label="Toggle SFX"
                       style={{ touchAction: "manipulation" }}
                     >
                       {sfxEnabled ? (
-                        <Volume2 className="w-6 h-6 text-white/70" />
+                        <Volume2 className="w-5 h-5 md:w-6 md:h-6 text-white/70" />
                       ) : (
-                        <VolumeX className="w-6 h-6 text-white/40" />
+                        <VolumeX className="w-5 h-5 md:w-6 md:h-6 text-white/40" />
                       )}
                     </button>
                   </div>
