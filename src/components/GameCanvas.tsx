@@ -1223,6 +1223,191 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         });
       }
 
+      // Second Chance safety net - animated electricity line below paddle
+      if (paddle?.hasSecondChance) {
+        const safetyNetY = paddle.y + paddle.height + 35;
+        const lineStartX = 10;
+        const lineEndX = width - 10;
+        const time = Date.now() / 1000;
+        
+        ctx.save();
+        
+        if (qualitySettings.level === 'low') {
+          // LOW QUALITY: Static cyan line
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = 'rgba(0, 200, 255, 0.8)';
+          ctx.strokeStyle = 'rgba(0, 200, 255, 0.9)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(lineStartX, safetyNetY);
+          ctx.lineTo(lineEndX, safetyNetY);
+          ctx.stroke();
+        } else {
+          // MEDIUM/HIGH QUALITY: Animated electricity effect
+          const pulseIntensity = 0.6 + Math.sin(time * 6) * 0.4;
+          
+          // Main glow line
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = `rgba(0, 200, 255, ${pulseIntensity})`;
+          ctx.strokeStyle = `rgba(0, 200, 255, ${pulseIntensity * 0.9})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(lineStartX, safetyNetY);
+          ctx.lineTo(lineEndX, safetyNetY);
+          ctx.stroke();
+          
+          // Electrical arcs along the line
+          const arcCount = 12;
+          for (let i = 0; i < arcCount; i++) {
+            const arcProgress = (i + 1) / (arcCount + 1);
+            const arcX = lineStartX + (lineEndX - lineStartX) * arcProgress;
+            const arcPhase = time * 8 + i * 1.5;
+            const arcHeight = Math.sin(arcPhase) * 12 * pulseIntensity;
+            const branchIntensity = (Math.sin(arcPhase * 2) + 1) / 2;
+            
+            if (Math.abs(arcHeight) > 3) {
+              ctx.strokeStyle = `rgba(100, 220, 255, ${branchIntensity * 0.8})`;
+              ctx.lineWidth = 1.5;
+              ctx.shadowBlur = 10;
+              ctx.shadowColor = "rgba(0, 200, 255, 0.9)";
+              
+              ctx.beginPath();
+              ctx.moveTo(arcX, safetyNetY);
+              
+              // Create jagged electrical path
+              const segments = 3;
+              const targetY = safetyNetY - arcHeight;
+              for (let s = 1; s <= segments; s++) {
+                const t = s / segments;
+                const segY = safetyNetY + (targetY - safetyNetY) * t;
+                const jitterX = (Math.random() - 0.5) * 6;
+                ctx.lineTo(arcX + jitterX, segY);
+              }
+              ctx.stroke();
+            }
+          }
+          
+          // Traveling spark effect
+          const sparkCount = 3;
+          for (let s = 0; s < sparkCount; s++) {
+            const sparkPhase = (time * 2 + s * 0.33) % 1;
+            const sparkX = lineStartX + (lineEndX - lineStartX) * sparkPhase;
+            const sparkGlow = Math.sin(sparkPhase * Math.PI);
+            
+            ctx.fillStyle = `rgba(255, 255, 255, ${sparkGlow * 0.9})`;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "rgba(100, 220, 255, 1)";
+            ctx.beginPath();
+            ctx.arc(sparkX, safetyNetY, 3 + sparkGlow * 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        
+        ctx.restore();
+      }
+      
+      // Second Chance impact effect
+      if (secondChanceImpact) {
+        const elapsed = Date.now() - secondChanceImpact.startTime;
+        const impactDuration = 500;
+        
+        if (elapsed < impactDuration) {
+          const progress = elapsed / impactDuration;
+          const fadeOut = 1 - progress;
+          
+          ctx.save();
+          
+          // Expanding energy wave
+          const waveRadius = 20 + progress * 80;
+          const waveGradient = ctx.createRadialGradient(
+            secondChanceImpact.x, secondChanceImpact.y, 0,
+            secondChanceImpact.x, secondChanceImpact.y, waveRadius
+          );
+          waveGradient.addColorStop(0, `rgba(0, 255, 255, ${fadeOut * 0.8})`);
+          waveGradient.addColorStop(0.5, `rgba(0, 200, 255, ${fadeOut * 0.4})`);
+          waveGradient.addColorStop(1, `rgba(0, 200, 255, 0)`);
+          
+          ctx.fillStyle = waveGradient;
+          ctx.beginPath();
+          ctx.arc(secondChanceImpact.x, secondChanceImpact.y, waveRadius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Flash at impact point
+          ctx.fillStyle = `rgba(255, 255, 255, ${fadeOut * 0.9})`;
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = "rgba(0, 200, 255, 1)";
+          ctx.beginPath();
+          ctx.arc(secondChanceImpact.x, secondChanceImpact.y, 8 * fadeOut, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Electric sparks
+          if (qualitySettings.level !== 'low') {
+            const sparkCount = 8;
+            for (let i = 0; i < sparkCount; i++) {
+              const angle = (i / sparkCount) * Math.PI * 2 + progress * Math.PI * 2;
+              const dist = 15 + progress * 40;
+              const sx = secondChanceImpact.x + Math.cos(angle) * dist;
+              const sy = secondChanceImpact.y + Math.sin(angle) * dist;
+              
+              ctx.strokeStyle = `rgba(100, 220, 255, ${fadeOut * 0.8})`;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(secondChanceImpact.x, secondChanceImpact.y);
+              
+              // Jagged path to spark
+              const midX = (secondChanceImpact.x + sx) / 2 + (Math.random() - 0.5) * 10;
+              const midY = (secondChanceImpact.y + sy) / 2 + (Math.random() - 0.5) * 10;
+              ctx.lineTo(midX, midY);
+              ctx.lineTo(sx, sy);
+              ctx.stroke();
+            }
+          }
+          
+          ctx.restore();
+        }
+      }
+      
+      // Glue effect on paddle - green/yellow sticky glow
+      if (paddle?.isGlued && paddle.glueEndTime && Date.now() < paddle.glueEndTime) {
+        const time = Date.now() / 1000;
+        const pulseIntensity = 0.5 + Math.sin(time * 3) * 0.3;
+        const remainingRatio = (paddle.glueEndTime - Date.now()) / 30000;
+        
+        // Hue transitions from green (120) to yellow (60) as time runs out
+        const hue = 60 + remainingRatio * 60;
+        
+        ctx.save();
+        
+        // Glue glow around paddle
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = `hsla(${hue}, 100%, 50%, ${pulseIntensity})`;
+        ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${pulseIntensity * 0.8})`;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(paddle.x - 3, paddle.y - 3, paddle.width + 6, paddle.height + 6);
+        
+        // Dripping glue effect on top of paddle
+        if (qualitySettings.level !== 'low') {
+          const dripCount = 5;
+          for (let i = 0; i < dripCount; i++) {
+            const dripX = paddle.x + (paddle.width / (dripCount + 1)) * (i + 1);
+            const dripPhase = time * 2 + i * 0.7;
+            const dripHeight = 4 + Math.sin(dripPhase) * 3;
+            const dripAlpha = 0.5 + Math.sin(dripPhase * 1.5) * 0.3;
+            
+            ctx.fillStyle = `hsla(${hue}, 100%, 50%, ${dripAlpha})`;
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = `hsla(${hue}, 100%, 50%, 0.8)`;
+            
+            // Droplet shape
+            ctx.beginPath();
+            ctx.ellipse(dripX, paddle.y - dripHeight / 2, 3, dripHeight, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        
+        ctx.restore();
+      }
+
       // Reflect shield visual effect (smaller/thinner)
       if (paddle?.hasReflectShield) {
         ctx.save();
