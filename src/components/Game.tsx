@@ -33,7 +33,7 @@ import { CCDPerformanceTracker } from "@/utils/rollingStats";
 import { debugLogger } from "@/utils/debugLogger";
 import { particlePool } from "@/utils/particlePool";
 // ═══════════════════════════════════════════════════════════════
-import { Maximize2, Minimize2, Home, X, Pause } from "lucide-react";
+import { Maximize2, Minimize2, Home, X, Pause, Volume2, VolumeX, Music, Music2 } from "lucide-react";
 import { QualityIndicator } from "./QualityIndicator";
 import type {
   Brick,
@@ -275,6 +275,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Second chance impact effect state
   const [secondChanceImpact, setSecondChanceImpact] = useState<{ x: number; y: number; startTime: number } | null>(null);
+
+  // Audio toggle state (for UI reactivity)
+  const [musicEnabled, setMusicEnabled] = useState(() => soundManager.getMusicEnabled());
+  const [sfxEnabled, setSfxEnabled] = useState(() => soundManager.getSfxEnabled());
 
   // Pause-aware timer tracking
   const pauseStartTimeRef = useRef<number | null>(null);
@@ -7389,6 +7393,72 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   >
                     <Pause className="w-6 h-6 text-white/70" />
                   </button>
+                )}
+
+                {/* Mobile Music & SFX Toggle Buttons - right side */}
+                {isMobileDevice && gameState === "playing" && (
+                  <div className="fixed right-4 top-[116px] z-[100] flex flex-col gap-2">
+                    {/* Music Toggle */}
+                    <button
+                      onTouchStart={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const newState = !musicEnabled;
+                        setMusicEnabled(newState);
+                        soundManager.setMusicEnabled(newState);
+                        if (newState) {
+                          soundManager.playBackgroundMusic();
+                        }
+                      }}
+                      onClick={() => {
+                        const newState = !musicEnabled;
+                        setMusicEnabled(newState);
+                        soundManager.setMusicEnabled(newState);
+                        if (newState) {
+                          soundManager.playBackgroundMusic();
+                        }
+                      }}
+                      className="w-12 h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 transition-transform touch-manipulation"
+                      aria-label="Toggle Music"
+                      style={{ touchAction: "manipulation" }}
+                    >
+                      {musicEnabled ? (
+                        <Music className="w-6 h-6 text-white/70" />
+                      ) : (
+                        <Music2 className="w-6 h-6 text-white/40" />
+                      )}
+                    </button>
+                    {/* SFX Toggle */}
+                    <button
+                      onTouchStart={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const newState = !sfxEnabled;
+                        setSfxEnabled(newState);
+                        soundManager.setSfxEnabled(newState);
+                      }}
+                      onClick={() => {
+                        const newState = !sfxEnabled;
+                        setSfxEnabled(newState);
+                        soundManager.setSfxEnabled(newState);
+                      }}
+                      className="w-12 h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 transition-transform touch-manipulation"
+                      aria-label="Toggle SFX"
+                      style={{ touchAction: "manipulation" }}
+                    >
+                      {sfxEnabled ? (
+                        <Volume2 className="w-6 h-6 text-white/70" />
+                      ) : (
+                        <VolumeX className="w-6 h-6 text-white/40" />
+                      )}
+                    </button>
+                  </div>
                 )}
 
                 {/* ═══════════════════════════════════════════════════════════════
