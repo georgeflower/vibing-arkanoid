@@ -33,7 +33,7 @@ import { CCDPerformanceTracker } from "@/utils/rollingStats";
 import { debugLogger } from "@/utils/debugLogger";
 import { particlePool } from "@/utils/particlePool";
 // ═══════════════════════════════════════════════════════════════
-import { Maximize2, Minimize2, Home, X, Pause, Volume2, VolumeX, Music, Music2 } from "lucide-react";
+import { Maximize2, Minimize2, Home, X, Pause, Volume2, VolumeX } from "lucide-react";
 import { QualityIndicator } from "./QualityIndicator";
 import type {
   Brick,
@@ -7395,10 +7395,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   </button>
                 )}
 
-                {/* Music & SFX Toggle Buttons - right side */}
+                {/* Music Toggle Button - right side */}
                 {gameState === "playing" && (
-                  <div className="fixed right-4 top-[116px] z-[100] flex flex-col gap-2">
-                    {/* Music Toggle */}
+                  <div className="fixed right-4 top-[116px] z-[100]">
                     <button
                       onTouchStart={(e) => {
                         e.stopPropagation();
@@ -7426,33 +7425,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       style={{ touchAction: "manipulation" }}
                     >
                       {musicEnabled ? (
-                        <Music className="w-5 h-5 md:w-6 md:h-6 text-white/70" />
-                      ) : (
-                        <Music2 className="w-5 h-5 md:w-6 md:h-6 text-white/40" />
-                      )}
-                    </button>
-                    {/* SFX Toggle */}
-                    <button
-                      onTouchStart={(e) => {
-                        e.stopPropagation();
-                      }}
-                      onTouchEnd={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        const newState = !sfxEnabled;
-                        setSfxEnabled(newState);
-                        soundManager.setSfxEnabled(newState);
-                      }}
-                      onClick={() => {
-                        const newState = !sfxEnabled;
-                        setSfxEnabled(newState);
-                        soundManager.setSfxEnabled(newState);
-                      }}
-                      className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 hover:border-white/50 transition-all touch-manipulation"
-                      aria-label="Toggle SFX"
-                      style={{ touchAction: "manipulation" }}
-                    >
-                      {sfxEnabled ? (
                         <Volume2 className="w-5 h-5 md:w-6 md:h-6 text-white/70" />
                       ) : (
                         <VolumeX className="w-5 h-5 md:w-6 md:h-6 text-white/40" />
