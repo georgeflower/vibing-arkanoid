@@ -1367,46 +1367,6 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         }
       }
       
-      // Glue effect on paddle - green/yellow sticky glow
-      if (paddle?.isGlued && paddle.glueEndTime && Date.now() < paddle.glueEndTime) {
-        const time = Date.now() / 1000;
-        const pulseIntensity = 0.5 + Math.sin(time * 3) * 0.3;
-        const remainingRatio = (paddle.glueEndTime - Date.now()) / 30000;
-        
-        // Hue transitions from green (120) to yellow (60) as time runs out
-        const hue = 60 + remainingRatio * 60;
-        
-        ctx.save();
-        
-        // Glue glow around paddle
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = `hsla(${hue}, 100%, 50%, ${pulseIntensity})`;
-        ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${pulseIntensity * 0.8})`;
-        ctx.lineWidth = 3;
-        ctx.strokeRect(paddle.x - 3, paddle.y - 3, paddle.width + 6, paddle.height + 6);
-        
-        // Dripping glue effect on top of paddle
-        if (qualitySettings.level !== 'low') {
-          const dripCount = 5;
-          for (let i = 0; i < dripCount; i++) {
-            const dripX = paddle.x + (paddle.width / (dripCount + 1)) * (i + 1);
-            const dripPhase = time * 2 + i * 0.7;
-            const dripHeight = 4 + Math.sin(dripPhase) * 3;
-            const dripAlpha = 0.5 + Math.sin(dripPhase * 1.5) * 0.3;
-            
-            ctx.fillStyle = `hsla(${hue}, 100%, 50%, ${dripAlpha})`;
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = `hsla(${hue}, 100%, 50%, 0.8)`;
-            
-            // Droplet shape
-            ctx.beginPath();
-            ctx.ellipse(dripX, paddle.y - dripHeight / 2, 3, dripHeight, 0, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-        
-        ctx.restore();
-      }
 
       // Reflect shield visual effect (smaller/thinner)
       if (paddle?.hasReflectShield) {

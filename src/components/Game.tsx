@@ -270,8 +270,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Fireball timer state
   const [fireballEndTime, setFireballEndTime] = useState<number | null>(null);
 
-  // Glue timer state
-  const [glueEndTime, setGlueEndTime] = useState<number | null>(null);
 
   // Second chance impact effect state
   const [secondChanceImpact, setSecondChanceImpact] = useState<{ x: number; y: number; startTime: number } | null>(null);
@@ -287,8 +285,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     reflectShield: number | null;
     homingBall: number | null;
     fireball: number | null;
-    glue: number | null;
-  }>({ bossStunner: null, reflectShield: null, homingBall: null, fireball: null, glue: null });
+  }>({ bossStunner: null, reflectShield: null, homingBall: null, fireball: null });
 
   // Tutorial system
   const {
@@ -406,7 +403,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         reflectShield: reflectShieldEndTime ? Math.max(0, reflectShieldEndTime - now) : null,
         homingBall: homingBallEndTime ? Math.max(0, homingBallEndTime - now) : null,
         fireball: fireballEndTime ? Math.max(0, fireballEndTime - now) : null,
-        glue: glueEndTime ? Math.max(0, glueEndTime - now) : null,
       };
 
       // Clear active timeouts
@@ -454,14 +450,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setFireballEndTime(now + saved.fireball);
       }
 
-      if (saved.glue !== null && saved.glue > 0) {
-        setGlueEndTime(now + saved.glue);
-      }
-
       pauseStartTimeRef.current = null;
-      savedTimerDurationsRef.current = { bossStunner: null, reflectShield: null, homingBall: null, fireball: null, glue: null };
+      savedTimerDurationsRef.current = { bossStunner: null, reflectShield: null, homingBall: null, fireball: null };
     }
-  }, [gameState, tutorialActive, bossStunnerEndTime, reflectShieldEndTime, homingBallEndTime, fireballEndTime, glueEndTime, boss]);
+  }, [gameState, tutorialActive, bossStunnerEndTime, reflectShieldEndTime, homingBallEndTime, fireballEndTime, boss]);
 
   // "Get Ready" speed ramp - gradually increase speed from 30% to 100% over 2 seconds
   useEffect(() => {
@@ -746,15 +738,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     console.log("[PowerUp] Second Chance activated!");
   }, []);
 
-  // Handle glue power-up activation
-  const handleGlueStart = useCallback(() => {
-    setGlueEndTime(Date.now() + 30000);
-  }, []);
-
-  const handleGlueEnd = useCallback(() => {
-    setGlueEndTime(null);
-    toast.info("Glue expired!");
-  }, []);
 
   // Trigger highlight flash for background effects (levels 1-4)
   const triggerHighlightFlash = useCallback((intensity: number, duration: number) => {
@@ -828,8 +811,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       handleFireballStart,
       handleFireballEnd,
       handleSecondChance,
-      handleGlueStart,
-      handleGlueEnd,
     );
   const { bullets, setBullets, fireBullets, updateBullets } = useBullets(
     setScore,
@@ -6966,7 +6947,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     />
 
                     {/* Boss Power-Up Duration Timers - Mobile responsive positioning */}
-                    {paddle && (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || glueEndTime) && (
+                    {paddle && (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime) && (
                       <div
                         className="absolute inset-0 pointer-events-none"
                         style={{ transform: `scale(${gameScale})`, transformOrigin: "top center" }}
@@ -7041,24 +7022,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             }}
                           >
                             FIREBALL: {((fireballEndTime - Date.now()) / 1000).toFixed(1)}s
-                          </div>
-                        )}
-                        {glueEndTime && Date.now() < glueEndTime && (
-                          <div
-                            className="absolute retro-pixel-text"
-                            style={{
-                              left: isMobileDevice ? `${paddle.x - 10}px` : `${paddle.x + paddle.width / 2}px`,
-                              top: isMobileDevice ? `${paddle.y - 70}px` : `${paddle.y - 105}px`,
-                              transform: isMobileDevice
-                                ? `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`
-                                : `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
-                              color: `hsl(${Math.max(0, 120 - (1 - (glueEndTime - Date.now()) / 30000) * 120)}, 100%, 50%)`,
-                              textShadow: `0 0 10px currentColor`,
-                              fontSize: isMobileDevice ? "10px" : "12px",
-                              fontWeight: "bold",
-                            }}
-                          >
-                            GLUE: {((glueEndTime - Date.now()) / 1000).toFixed(1)}s
                           </div>
                         )}
                       </div>

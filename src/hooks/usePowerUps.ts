@@ -4,7 +4,7 @@ import { POWERUP_SIZE, POWERUP_FALL_SPEED, POWERUP_DROP_CHANCE, CANVAS_HEIGHT, F
 import { toast } from "sonner";
 import { soundManager } from "@/utils/sounds";
 
-const regularPowerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life", "slowdown", "paddleExtend", "paddleShrink", "shield", "secondChance", "glue"];
+const regularPowerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life", "slowdown", "paddleExtend", "paddleShrink", "shield", "secondChance"];
 const bossPowerUpTypes: PowerUpType[] = ["bossStunner", "reflectShield", "homingBall"];
 
 export const usePowerUps = (
@@ -21,14 +21,10 @@ export const usePowerUps = (
   onFireballStart?: () => void,
   onFireballEnd?: () => void,
   onSecondChance?: () => void,
-  onGlueStart?: () => void,
-  onGlueEnd?: () => void,
 ) => {
   const [powerUps, setPowerUps] = useState<PowerUp[]>([]);
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
   const fireballTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const glueTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const GLUE_DURATION = 30000; // 30 seconds
 
   const createPowerUp = useCallback((brick: Brick, isBossMinion: boolean = false, forceBossPowerUp: boolean = false): PowerUp | null => {
     const isEnemyDrop = brick.id < 0; // Enemies use fakeBricks with id: -1
@@ -273,26 +269,6 @@ export const usePowerUps = (
               toast.success("Second Chance! Safety net activated!");
               break;
 
-            case "glue":
-              soundManager.playGlueSound();
-              // Clear existing timeout if glue is already active
-              if (glueTimeoutRef.current) {
-                clearTimeout(glueTimeoutRef.current);
-              }
-              setPaddle(prev => prev ? { 
-                ...prev, 
-                isGlued: true, 
-                glueEndTime: Date.now() + GLUE_DURATION 
-              } : null);
-              onGlueStart?.();
-              // Set new timeout
-              glueTimeoutRef.current = setTimeout(() => {
-                setPaddle(prev => prev ? { ...prev, isGlued: false, glueEndTime: undefined } : null);
-                glueTimeoutRef.current = null;
-                onGlueEnd?.();
-              }, GLUE_DURATION);
-              toast.success("Glue activated! Ball sticks to paddle for 30 seconds!");
-              break;
           }
 
           return { ...powerUp, active: false };
@@ -300,7 +276,7 @@ export const usePowerUps = (
         return powerUp;
       });
     });
-  }, [currentLevel, extraLifeUsedLevels, setLives, onBossStunner, onReflectShield, onHomingBall, onSecondChance, onGlueStart, onGlueEnd]);
+  }, [currentLevel, extraLifeUsedLevels, setLives, onBossStunner, onReflectShield, onHomingBall, onSecondChance]);
 
   return {
     powerUps,
