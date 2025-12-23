@@ -1462,6 +1462,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       turretShots: prev?.turretShots || 0,
       hasSuperTurrets: prev?.hasSuperTurrets || false,
       hasShield: prev?.hasShield || false,
+      hasSecondChance: prev?.hasSecondChance || false, // Persist second chance across levels
     }));
 
     // Initialize ball with new speed - waiting to launch (capped at 155%)
