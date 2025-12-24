@@ -1024,7 +1024,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   );
 
   // Adaptive quality system
-  const { quality, qualitySettings, updateFps, setQuality, toggleAutoAdjust, autoAdjustEnabled } = useAdaptiveQuality({
+  const { quality, qualitySettings, updateFps, setQuality, toggleAutoAdjust, autoAdjustEnabled, resetQualityLockout } = useAdaptiveQuality({
     initialQuality: "high",
     autoAdjust: true,
     lowFpsThreshold: 50,
@@ -1334,6 +1334,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     [extraLifeUsedLevels, level, settings.difficulty],
   );
   const initGame = useCallback(() => {
+    // Reset quality lockout for new game session
+    resetQualityLockout();
+    
     // Initialize paddle
     const initialPaddleX = SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2;
     setPaddle({
@@ -1430,7 +1433,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
-  }, [setPowerUps, initBricksForLevel, createRandomLetterAssignments, initPowerUpAssignments, settings.startingLevel]);
+  }, [setPowerUps, initBricksForLevel, createRandomLetterAssignments, initPowerUpAssignments, settings.startingLevel, resetQualityLockout]);
   const nextLevel = useCallback(() => {
     // Stop game loop before starting new level
     if (gameLoopRef.current) {
