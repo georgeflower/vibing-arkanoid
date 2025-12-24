@@ -111,6 +111,8 @@ export type BonusLetterType = "Q" | "U" | "M" | "R" | "A" | "N";
 export interface BonusLetter {
   x: number;
   y: number;
+  originX: number; // Original X position for sine wave calculation
+  spawnTime: number; // Time when letter was spawned for sine wave phase
   width: number;
   height: number;
   type: BonusLetterType;
