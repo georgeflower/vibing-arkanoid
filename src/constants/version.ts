@@ -1,6 +1,14 @@
-export const GAME_VERSION = "0.9.3";
+export const GAME_VERSION = "0.9.5";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.5",
+    changes: [
+      "Bonus letters now fall in a sine wave pattern (±30px amplitude, 4-second period)",
+      "Quality lockout system: if quality drops to 'low' twice, it stays locked for the rest of the game",
+      "Quality lockout resets when starting a new game",
+    ],
+  },
   {
     version: "0.9.3",
     changes: [
