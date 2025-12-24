@@ -1148,11 +1148,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Mark letter as dropped for this level
       setDroppedLettersThisLevel((prev) => new Set(prev).add(assignedLetter));
 
+      const originX = x - 15;
       setBonusLetters((prev) => [
         ...prev,
         {
-          x: x - 15,
+          x: originX,
           y: y,
+          originX: originX,
+          spawnTime: Date.now(),
           width: 30,
           height: 30,
           type: assignedLetter,
@@ -4164,10 +4167,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Update power-ups
     updatePowerUps();
 
-    // Update bonus letters - OPTIMIZED: In-place mutation
+    // Update bonus letters - OPTIMIZED: In-place mutation with sine wave motion
+    const currentTime = Date.now();
     setBonusLetters((prev) => {
       for (const letter of prev) {
+        // Fall down
         letter.y += letter.speed;
+        // Sine wave horizontal motion: amplitude 30, period 4 seconds
+        const elapsed = currentTime - letter.spawnTime;
+        const sinePhase = (elapsed / 4000) * 2 * Math.PI;
+        letter.x = letter.originX + 30 * Math.sin(sinePhase);
       }
       return [...prev];
     });
