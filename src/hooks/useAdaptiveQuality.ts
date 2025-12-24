@@ -73,6 +73,7 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
 
   const [quality, setQuality] = useState<QualityLevel>(initialQuality);
   const [autoAdjustEnabled, setAutoAdjustEnabled] = useState(autoAdjust);
+  const [lockedToLow, setLockedToLow] = useState(false);
   
   const fpsHistoryRef = useRef<number[]>([]);
   const lastAdjustmentTimeRef = useRef<number>(0);
@@ -80,6 +81,7 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
   const notificationCooldownRef = useRef<number>(0);
   const performanceLogRef = useRef<PerformanceLogEntry[]>([]);
   const lastPerformanceLogMs = useRef<number>(0);
+  const lowQualityDropCountRef = useRef<number>(0); // Track how many times we dropped to low
   const qualityStartTimeRef = useRef<Record<QualityLevel, number>>({
     low: 0,
     medium: 0,
@@ -177,9 +179,11 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
     if (avgFps < lowFpsThreshold) {
       targetQuality = 'low';
     } else if (avgFps < mediumFpsThreshold) {
-      targetQuality = 'medium';
+      // If locked to low, don't upgrade to medium
+      targetQuality = lockedToLow ? 'low' : 'medium';
     } else if (avgFps >= highFpsThreshold) {
-      targetQuality = 'high';
+      // If locked to low, don't upgrade to high
+      targetQuality = lockedToLow ? 'low' : 'high';
     }
 
     // Only adjust if quality level changes
@@ -187,6 +191,19 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
       const isDowngrade = 
         (quality === 'high' && (targetQuality === 'medium' || targetQuality === 'low')) ||
         (quality === 'medium' && targetQuality === 'low');
+
+      // Track drops to low quality
+      if (targetQuality === 'low' && isDowngrade) {
+        lowQualityDropCountRef.current++;
+        console.log(`[Performance] Dropped to LOW quality (count: ${lowQualityDropCountRef.current})`);
+        
+        // Lock to low if we've dropped twice
+        if (lowQualityDropCountRef.current >= 2 && !lockedToLow) {
+          setLockedToLow(true);
+          console.log('[Performance] Quality LOCKED to LOW for remainder of game session');
+          toast.info('Quality locked to LOW for this game session', { duration: 4000 });
+        }
+      }
 
       // Log quality change
       const timeSinceStart = (now / 1000).toFixed(1);
@@ -211,7 +228,7 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
         notificationCooldownRef.current = now;
       }
     }
-  }, [quality, autoAdjustEnabled, lowFpsThreshold, mediumFpsThreshold, highFpsThreshold, sampleWindow]);
+  }, [quality, autoAdjustEnabled, lowFpsThreshold, mediumFpsThreshold, highFpsThreshold, sampleWindow, lockedToLow]);
 
   // Manual quality change
   const setManualQuality = useCallback((newQuality: QualityLevel) => {
@@ -230,6 +247,15 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
     });
   }, []);
 
+  // Reset quality lockout for new game session
+  const resetQualityLockout = useCallback(() => {
+    lowQualityDropCountRef.current = 0;
+    setLockedToLow(false);
+    setQuality(initialQuality);
+    fpsHistoryRef.current = [];
+    console.log('[Performance] Quality lockout reset for new game');
+  }, [initialQuality]);
+
   // Get performance log for analysis
   const getPerformanceLog = useCallback(() => {
     return {
@@ -246,6 +272,8 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
     setQuality: setManualQuality,
     autoAdjustEnabled,
     toggleAutoAdjust,
-    getPerformanceLog
+    getPerformanceLog,
+    resetQualityLockout,
+    lockedToLow
   };
 };
