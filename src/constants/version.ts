@@ -10,6 +10,12 @@ export const CHANGELOG = [
     ],
   },
   {
+    version: "0.9.4",
+    changes: [
+      "New power-up: Barrier - creates a safety net at the bottom of the screen that saves your ball once before disappearing",
+    ],
+  },
+  {
     version: "0.9.3",
     changes: [
       "Paddle corner collision: rounded corners (60% of paddle height) now reflect the ball",
