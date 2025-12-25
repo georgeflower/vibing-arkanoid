@@ -196,6 +196,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [droppedLettersThisLevel, setDroppedLettersThisLevel] = useState<Set<BonusLetterType>>(new Set());
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
   const [letterLevelAssignments, setLetterLevelAssignments] = useState<Record<number, BonusLetterType>>({});
+  const [missedLetters, setMissedLetters] = useState<BonusLetterType[]>([]);
   const [boss, setBoss] = useState<Boss | null>(null);
   const [resurrectedBosses, setResurrectedBosses] = useState<Boss[]>([]);
   const [bossAttacks, setBossAttacks] = useState<BossAttack[]>([]);
@@ -1112,16 +1113,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Create random letter assignments for a new game
   const createRandomLetterAssignments = useCallback(() => {
-    const availableLevels = [4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19];
+    const availableLevels = [4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19, 20];
     const allLetters: BonusLetterType[] = ["Q", "U", "M", "R", "A", "N"];
 
     // Shuffle letters
     const shuffledLetters = [...allLetters].sort(() => Math.random() - 0.5);
 
-    // Assign first 6 letters to first 6 levels
+    // Shuffle available levels and pick 6 random ones
+    const shuffledLevels = [...availableLevels].sort(() => Math.random() - 0.5);
+    const selectedLevels = shuffledLevels.slice(0, 6);
+
+    // Assign letters to randomly selected levels
     const assignments: Record<number, BonusLetterType> = {};
     for (let i = 0; i < 6; i++) {
-      assignments[availableLevels[i]] = shuffledLetters[i];
+      assignments[selectedLevels[i]] = shuffledLetters[i];
     }
 
     return assignments;
@@ -1228,6 +1233,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         // Check if letter went off screen (missed)
         if (letter.y > SCALED_CANVAS_HEIGHT) {
+          // Add to missed letters queue for next level
+          setMissedLetters(prev => [...prev, letter.type]);
+          toast(`Letter ${letter.type} missed! It will appear again.`, {
+            icon: "🔄",
+          });
           return false;
         }
         return true;
@@ -1403,6 +1413,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBonusLetters([]);
     setDroppedLettersThisLevel(new Set());
     setCollectedLetters(new Set());
+    setMissedLetters([]);
     setEnemiesKilled(0);
     setLastBossSpawnTime(0);
     setBossSpawnAnimation(null);
@@ -1453,6 +1464,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBonusLetters([]);
     setDroppedLettersThisLevel(new Set());
     const newLevel = level + 1;
+    
+    // Reassign missed letters to the new level if it's a valid letter level
+    const availableLevels = [4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19, 20];
+    if (missedLetters.length > 0 && availableLevels.includes(newLevel)) {
+      const letterToReassign = missedLetters[0];
+      setLetterLevelAssignments(prev => ({ ...prev, [newLevel]: letterToReassign }));
+      setMissedLetters(prev => prev.slice(1)); // Remove from missed queue
+    }
+    
     const newSpeedMultiplier = calculateSpeedForLevel(newLevel, settings.difficulty);
     setLevel(newLevel);
     setSpeedMultiplier(newSpeedMultiplier);
@@ -1544,7 +1564,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     } else {
       toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
     }
-  }, [level, initBricksForLevel, setPowerUps, initPowerUpAssignments, updateMaxLevel]);
+  }, [level, initBricksForLevel, setPowerUps, initPowerUpAssignments, updateMaxLevel, missedLetters]);
 
   // Update nextLevel ref whenever nextLevel function changes
   nextLevelRef.current = nextLevel;
