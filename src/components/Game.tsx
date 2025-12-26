@@ -1112,20 +1112,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, []);
 
   // Create random letter assignments for a new game
-  const createRandomLetterAssignments = useCallback(() => {
-    const availableLevels = [4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19, 20];
+  const createRandomLetterAssignments = useCallback((startLevel: number = 1) => {
+    const allAvailableLevels = [4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19, 20];
+    
+    // Filter to only include levels >= starting level
+    const availableLevels = allAvailableLevels.filter(lvl => lvl >= startLevel);
+    
     const allLetters: BonusLetterType[] = ["Q", "U", "M", "R", "A", "N"];
 
     // Shuffle letters
     const shuffledLetters = [...allLetters].sort(() => Math.random() - 0.5);
 
-    // Shuffle available levels and pick 6 random ones
+    // Shuffle available levels and pick up to 6 random ones
     const shuffledLevels = [...availableLevels].sort(() => Math.random() - 0.5);
-    const selectedLevels = shuffledLevels.slice(0, 6);
+    const selectedLevels = shuffledLevels.slice(0, Math.min(6, shuffledLevels.length));
 
     // Assign letters to randomly selected levels
     const assignments: Record<number, BonusLetterType> = {};
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < selectedLevels.length; i++) {
       assignments[selectedLevels[i]] = shuffledLetters[i];
     }
 
@@ -1386,8 +1390,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     launchAngleDirectionRef.current = 1; // Move right initially
     setShowInstructions(true); // Show instructions for new game
 
-    // Create random letter assignments
-    setLetterLevelAssignments(createRandomLetterAssignments());
+    // Create random letter assignments based on starting level
+    setLetterLevelAssignments(createRandomLetterAssignments(startLevel));
 
     // Initialize bricks for starting level (startLevel already declared above)
     const initialBricks = initBricksForLevel(startLevel);
