@@ -90,7 +90,7 @@ import { createBoss, createResurrectedPyramid } from "@/utils/bossUtils";
 import { performBossAttack } from "@/utils/bossAttacks";
 import { BOSS_LEVELS, BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
 import { processBallWithCCD } from "@/utils/gameCCD";
-import { assignPowerUpsToBricks } from "@/utils/powerUpAssignment";
+import { assignPowerUpsToBricks, reassignPowerUpsToBricks } from "@/utils/powerUpAssignment";
 interface GameProps {
   settings: GameSettings;
   onReturnToMenu: () => void;
@@ -539,6 +539,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bricksDestroyedByTurrets, setBricksDestroyedByTurrets] = useState(0);
   const [bossesKilled, setBossesKilled] = useState(0);
   const [powerUpAssignments, setPowerUpAssignments] = useState<Map<number, PowerUpType>>(new Map());
+  const [powerUpDropCounts, setPowerUpDropCounts] = useState<Partial<Record<PowerUpType, number>>>({});
 
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
@@ -804,6 +805,35 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (gameLoopRef.current) gameLoopRef.current.pause();
           }
         }
+
+        // Track power-up drop count and reassign remaining brick power-ups
+        const powerUpType = type as PowerUpType;
+        setPowerUpDropCounts((prevCounts) => {
+          const newCounts = { ...prevCounts, [powerUpType]: (prevCounts[powerUpType] || 0) + 1 };
+          
+          // Reassign power-ups to remaining bricks with updated weights
+          setBricks((currentBricks) => {
+            const newAssignments = reassignPowerUpsToBricks(
+              powerUpAssignments,
+              currentBricks,
+              extraLifeUsedLevels,
+              level,
+              settings.difficulty,
+              newCounts
+            );
+            setPowerUpAssignments(newAssignments);
+            
+            if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
+              console.log(
+                `[Power-Up] Collected ${type}, reassigned ${newAssignments.size} power-ups with updated weights`
+              );
+            }
+            
+            return currentBricks; // Don't modify bricks, just use current state
+          });
+          
+          return newCounts;
+        });
       },
       powerUpAssignments,
       handleBossStunner,
@@ -1339,8 +1369,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Initialize power-up assignments for bricks
   const initPowerUpAssignments = useCallback(
-    (bricks: Brick[]) => {
-      const assignments = assignPowerUpsToBricks(bricks, extraLifeUsedLevels, level, settings.difficulty);
+    (bricks: Brick[], dropCounts: Partial<Record<PowerUpType, number>> = {}) => {
+      const assignments = assignPowerUpsToBricks(bricks, extraLifeUsedLevels, level, settings.difficulty, dropCounts);
       setPowerUpAssignments(assignments);
       if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
         console.log(
@@ -1396,7 +1426,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Initialize bricks for starting level (startLevel already declared above)
     const initialBricks = initBricksForLevel(startLevel);
     setBricks(initialBricks);
-    initPowerUpAssignments(initialBricks);
+    // Reset power-up drop counts for new game
+    setPowerUpDropCounts({});
+    initPowerUpAssignments(initialBricks, {});
     setScore(0);
     setLives(3);
     setLevel(startLevel);
@@ -1516,7 +1548,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Initialize bricks for new level
     const newLevelBricks = initBricksForLevel(newLevel);
     setBricks(newLevelBricks);
-    initPowerUpAssignments(newLevelBricks);
+    // Reset power-up drop counts for new level
+    setPowerUpDropCounts({});
+    initPowerUpAssignments(newLevelBricks, {});
     setPowerUps([]);
     setBullets([]);
     setTimer(0);
