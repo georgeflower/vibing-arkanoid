@@ -18,6 +18,7 @@ import CRTOverlay from "./CRTOverlay";
 // ═══════════════════════════════════════════════════════════════
 import { GameLoopDebugOverlay } from "./GameLoopDebugOverlay";
 import { SubstepDebugOverlay } from "./SubstepDebugOverlay";
+import { PowerUpWeightsOverlay } from "./PowerUpWeightsOverlay";
 import { CollisionHistoryViewer } from "./CollisionHistoryViewer";
 import { CCDPerformanceOverlay, CCDPerformanceData } from "./CCDPerformanceOverlay";
 import { collisionHistory } from "@/utils/collisionHistory";
@@ -2073,6 +2074,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Toggle debug overlay
           toggleDebugSetting("showGameLoopDebug");
           toast.success(debugSettings.showGameLoopDebug ? "Debug overlay disabled" : "Debug overlay enabled");
+        } else if (e.key === "w" || e.key === "W") {
+          // Toggle power-up weights overlay
+          toggleDebugSetting("showPowerUpWeights");
+          toast.success(debugSettings.showPowerUpWeights ? "Power-up weights disabled" : "Power-up weights enabled");
         } else if (e.key === "[") {
           // Decrease time scale
           if (gameLoopRef.current) {
@@ -7168,6 +7173,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                               }
                             }
                             visible={debugSettings.showGameLoopDebug}
+                          />
+                        )}
+                        {debugSettings.showPowerUpWeights && (
+                          <PowerUpWeightsOverlay
+                            dropCounts={powerUpDropCounts}
+                            difficulty={settings.difficulty}
+                            currentLevel={level}
+                            extraLifeUsedLevels={extraLifeUsedLevels}
+                            visible={debugSettings.showPowerUpWeights}
                           />
                         )}
                       </>
