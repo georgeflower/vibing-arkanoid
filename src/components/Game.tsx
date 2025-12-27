@@ -100,7 +100,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -272,9 +272,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Fireball timer state
   const [fireballEndTime, setFireballEndTime] = useState<number | null>(null);
 
-
   // Second chance impact effect state
-  const [secondChanceImpact, setSecondChanceImpact] = useState<{ x: number; y: number; startTime: number } | null>(null);
+  const [secondChanceImpact, setSecondChanceImpact] = useState<{ x: number; y: number; startTime: number } | null>(
+    null,
+  );
 
   // Audio toggle state (for UI reactivity)
   const [musicEnabled, setMusicEnabled] = useState(() => soundManager.getMusicEnabled());
@@ -741,7 +742,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     console.log("[PowerUp] Second Chance activated!");
   }, []);
 
-
   // Trigger highlight flash for background effects (levels 1-4)
   const triggerHighlightFlash = useCallback((intensity: number, duration: number) => {
     if (highlightFlashTimeoutRef.current) {
@@ -811,7 +811,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const powerUpType = type as PowerUpType;
         setPowerUpDropCounts((prevCounts) => {
           const newCounts = { ...prevCounts, [powerUpType]: (prevCounts[powerUpType] || 0) + 1 };
-          
+
           // Reassign power-ups to remaining bricks with updated weights
           setBricks((currentBricks) => {
             const newAssignments = reassignPowerUpsToBricks(
@@ -820,19 +820,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               extraLifeUsedLevels,
               level,
               settings.difficulty,
-              newCounts
+              newCounts,
             );
             setPowerUpAssignments(newAssignments);
-            
+
             if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
               console.log(
-                `[Power-Up] Collected ${type}, reassigned ${newAssignments.size} power-ups with updated weights`
+                `[Power-Up] Collected ${type}, reassigned ${newAssignments.size} power-ups with updated weights`,
               );
             }
-            
+
             return currentBricks; // Don't modify bricks, just use current state
           });
-          
+
           return newCounts;
         });
       },
@@ -1056,15 +1056,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   );
 
   // Adaptive quality system
-  const { quality, qualitySettings, updateFps, setQuality, toggleAutoAdjust, autoAdjustEnabled, resetQualityLockout } = useAdaptiveQuality({
-    initialQuality: "high",
-    autoAdjust: true,
-    lowFpsThreshold: 50,
-    mediumFpsThreshold: 55,
-    highFpsThreshold: 55,
-    sampleWindow: 3,
-    enableLogging: ENABLE_DEBUG_FEATURES && debugSettings.enableFPSLogging,
-  });
+  const { quality, qualitySettings, updateFps, setQuality, toggleAutoAdjust, autoAdjustEnabled, resetQualityLockout } =
+    useAdaptiveQuality({
+      initialQuality: "high",
+      autoAdjust: true,
+      lowFpsThreshold: 50,
+      mediumFpsThreshold: 55,
+      highFpsThreshold: 55,
+      sampleWindow: 3,
+      enableLogging: ENABLE_DEBUG_FEATURES && debugSettings.enableFPSLogging,
+    });
 
   // Helper function to create explosion particles based on enemy type
   // OPTIMIZED: Uses particle pool instead of creating new arrays
@@ -1145,10 +1146,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Create random letter assignments for a new game
   const createRandomLetterAssignments = useCallback((startLevel: number = 1) => {
     const allAvailableLevels = [4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19, 20];
-    
+
     // Filter to only include levels >= starting level
-    const availableLevels = allAvailableLevels.filter(lvl => lvl >= startLevel);
-    
+    const availableLevels = allAvailableLevels.filter((lvl) => lvl >= startLevel);
+
     const allLetters: BonusLetterType[] = ["Q", "U", "M", "R", "A", "N"];
 
     // Shuffle letters
@@ -1269,7 +1270,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Check if letter went off screen (missed)
         if (letter.y > SCALED_CANVAS_HEIGHT) {
           // Add to missed letters queue for next level
-          setMissedLetters(prev => [...prev, letter.type]);
+          setMissedLetters((prev) => [...prev, letter.type]);
           toast(`Letter ${letter.type} missed! It will appear again.`, {
             icon: "🔄",
           });
@@ -1371,7 +1372,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Initialize power-up assignments for bricks
   const initPowerUpAssignments = useCallback(
     (bricks: Brick[], targetLevel: number, dropCounts: Partial<Record<PowerUpType, number>> = {}) => {
-      const assignments = assignPowerUpsToBricks(bricks, extraLifeUsedLevels, targetLevel, settings.difficulty, dropCounts);
+      const assignments = assignPowerUpsToBricks(
+        bricks,
+        extraLifeUsedLevels,
+        targetLevel,
+        settings.difficulty,
+        dropCounts,
+      );
       setPowerUpAssignments(assignments);
       if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
         console.log(
@@ -1384,7 +1391,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const initGame = useCallback(() => {
     // Reset quality lockout for new game session
     resetQualityLockout();
-    
+
     // Initialize paddle
     const initialPaddleX = SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2;
     setPaddle({
@@ -1484,7 +1491,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
-  }, [setPowerUps, initBricksForLevel, createRandomLetterAssignments, initPowerUpAssignments, settings.startingLevel, resetQualityLockout]);
+  }, [
+    setPowerUps,
+    initBricksForLevel,
+    createRandomLetterAssignments,
+    initPowerUpAssignments,
+    settings.startingLevel,
+    resetQualityLockout,
+  ]);
   const nextLevel = useCallback(() => {
     // Stop game loop before starting new level
     if (gameLoopRef.current) {
@@ -1501,15 +1515,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBonusLetters([]);
     setDroppedLettersThisLevel(new Set());
     const newLevel = level + 1;
-    
+
     // Reassign missed letters to the new level if it's a valid letter level
     const availableLevels = [4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19, 20];
     if (missedLetters.length > 0 && availableLevels.includes(newLevel)) {
       const letterToReassign = missedLetters[0];
-      setLetterLevelAssignments(prev => ({ ...prev, [newLevel]: letterToReassign }));
-      setMissedLetters(prev => prev.slice(1)); // Remove from missed queue
+      setLetterLevelAssignments((prev) => ({ ...prev, [newLevel]: letterToReassign }));
+      setMissedLetters((prev) => prev.slice(1)); // Remove from missed queue
     }
-    
+
     const newSpeedMultiplier = calculateSpeedForLevel(newLevel, settings.difficulty);
     setLevel(newLevel);
     setSpeedMultiplier(newSpeedMultiplier);
@@ -3451,11 +3465,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   }
 
                   // Speed increase - cap based on total speed (150% normal, 175% godlike)
-                  const maxTotalSpeed = settings.difficulty === "godlike" ? MAX_TOTAL_SPEED_GODLIKE : MAX_TOTAL_SPEED_NORMAL;
+                  const maxTotalSpeed =
+                    settings.difficulty === "godlike" ? MAX_TOTAL_SPEED_GODLIKE : MAX_TOTAL_SPEED_NORMAL;
                   const currentTotalSpeed = speedMultiplier + brickHitSpeedAccumulated;
                   if (currentTotalSpeed < maxTotalSpeed) {
                     const speedIncrease = Math.min(0.005, maxTotalSpeed - currentTotalSpeed);
-                    setBrickHitSpeedAccumulated((prev) => Math.min(maxTotalSpeed - speedMultiplier, prev + speedIncrease));
+                    setBrickHitSpeedAccumulated((prev) =>
+                      Math.min(maxTotalSpeed - speedMultiplier, prev + speedIncrease),
+                    );
                     result.ball.dx *= 1 + speedIncrease;
                     result.ball.dy *= 1 + speedIncrease;
                   }
@@ -3859,35 +3876,35 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Phase 4: Update ball positions and check for lost balls
       // CRITICAL: Use the ball instances from ballResults to preserve lastHitTime
       const SAFETY_NET_Y = paddle ? paddle.y + 40 : SCALED_CANVAS_HEIGHT - 30;
-      
+
       const updatedBalls = ballResults
         .map((r) => r.ball)
         .filter((ball): ball is NonNullable<typeof ball> => {
           if (!ball) return false;
-          
+
           // Check if ball is falling below screen
           if (ball.y > SCALED_CANVAS_HEIGHT + ball.radius) {
             return false; // Ball lost
           }
-          
+
           // Check for Second Chance save - ball passed safety net line
           if (paddle?.hasSecondChance && ball.y > SAFETY_NET_Y && ball.dy > 0) {
             // Save the ball! Reflect upward
             ball.dy = -Math.abs(ball.dy);
             ball.y = SAFETY_NET_Y - ball.radius - 5;
-            
+
             // Remove second chance from paddle
-            setPaddle(prev => prev ? { ...prev, hasSecondChance: false } : null);
-            
+            setPaddle((prev) => (prev ? { ...prev, hasSecondChance: false } : null));
+
             // Play save sound and show effect
             soundManager.playSecondChanceSaveSound();
             setSecondChanceImpact({ x: ball.x, y: SAFETY_NET_Y, startTime: Date.now() });
             toast.success("Second Chance saved you!");
-            
+
             // Clear impact effect after 500ms
             setTimeout(() => setSecondChanceImpact(null), 500);
           }
-          
+
           return true;
         });
 
@@ -4592,11 +4609,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (paddle) {
       bullets.forEach((bullet) => {
         if (!bullet.isBounced) return;
-        
+
         // Expand collision zone to account for fast paddle movement
         // This prevents bullets from "tunneling" through the shield when paddle moves quickly
-        const shieldExpansion = (paddle.hasShield || paddle.hasReflectShield) ? 20 : 0;
-        
+        const shieldExpansion = paddle.hasShield || paddle.hasReflectShield ? 20 : 0;
+
         const bulletHitsPaddle =
           bullet.x + bullet.width > paddle.x - shieldExpansion &&
           bullet.x < paddle.x + paddle.width + shieldExpansion &&
@@ -4659,14 +4676,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           toast.success("Shield absorbed the hit!");
           return;
         }
-        
+
         // No shield - check if bullet hits paddle (damage case)
         const bulletHitsPaddleNoShield =
           bullet.x + bullet.width > paddle.x &&
           bullet.x < paddle.x + paddle.width &&
           bullet.y + bullet.height > paddle.y &&
           bullet.y < paddle.y + paddle.height;
-          
+
         if (bulletHitsPaddleNoShield) {
           // Bounced bullet hit paddle - lose a life
           soundManager.playLoseLife();
