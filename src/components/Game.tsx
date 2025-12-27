@@ -1369,16 +1369,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Initialize power-up assignments for bricks
   const initPowerUpAssignments = useCallback(
-    (bricks: Brick[], dropCounts: Partial<Record<PowerUpType, number>> = {}) => {
-      const assignments = assignPowerUpsToBricks(bricks, extraLifeUsedLevels, level, settings.difficulty, dropCounts);
+    (bricks: Brick[], targetLevel: number, dropCounts: Partial<Record<PowerUpType, number>> = {}) => {
+      const assignments = assignPowerUpsToBricks(bricks, extraLifeUsedLevels, targetLevel, settings.difficulty, dropCounts);
       setPowerUpAssignments(assignments);
       if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
         console.log(
-          `[Power-Up] Assigned ${assignments.size} power-ups to ${bricks.length} bricks (${Math.round((assignments.size / bricks.length) * 100)}%)`,
+          `[Power-Up] Assigned ${assignments.size} power-ups to ${bricks.length} bricks for level ${targetLevel} (${Math.round((assignments.size / bricks.length) * 100)}%)`,
         );
       }
     },
-    [extraLifeUsedLevels, level, settings.difficulty],
+    [extraLifeUsedLevels, settings.difficulty],
   );
   const initGame = useCallback(() => {
     // Reset quality lockout for new game session
@@ -1428,7 +1428,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBricks(initialBricks);
     // Reset power-up drop counts for new game
     setPowerUpDropCounts({});
-    initPowerUpAssignments(initialBricks, {});
+    initPowerUpAssignments(initialBricks, startLevel, {});
     setScore(0);
     setLives(3);
     setLevel(startLevel);
@@ -1550,7 +1550,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBricks(newLevelBricks);
     // Reset power-up drop counts for new level
     setPowerUpDropCounts({});
-    initPowerUpAssignments(newLevelBricks, {});
+    initPowerUpAssignments(newLevelBricks, newLevel, {});
     setPowerUps([]);
     setBullets([]);
     setTimer(0);
@@ -4586,11 +4586,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Check bounced bullet-paddle collision
     if (paddle) {
       bullets.forEach((bullet) => {
+        if (!bullet.isBounced) return;
+        
+        // Expand collision zone to account for fast paddle movement
+        // This prevents bullets from "tunneling" through the shield when paddle moves quickly
+        const shieldExpansion = (paddle.hasShield || paddle.hasReflectShield) ? 20 : 0;
+        
         const bulletHitsPaddle =
-          bullet.isBounced &&
-          bullet.x + bullet.width > paddle.x &&
-          bullet.x < paddle.x + paddle.width &&
-          bullet.y + bullet.height > paddle.y &&
+          bullet.x + bullet.width > paddle.x - shieldExpansion &&
+          bullet.x < paddle.x + paddle.width + shieldExpansion &&
+          bullet.y + bullet.height > paddle.y - shieldExpansion &&
           bullet.y < paddle.y + paddle.height;
 
         // Check for reflect shield FIRST (on boss levels) - preserves regular shield
@@ -4649,13 +4654,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           toast.success("Shield absorbed the hit!");
           return;
         }
-        if (
-          bullet.isBounced &&
+        
+        // No shield - check if bullet hits paddle (damage case)
+        const bulletHitsPaddleNoShield =
           bullet.x + bullet.width > paddle.x &&
           bullet.x < paddle.x + paddle.width &&
           bullet.y + bullet.height > paddle.y &&
-          bullet.y < paddle.y + paddle.height
-        ) {
+          bullet.y < paddle.y + paddle.height;
+          
+        if (bulletHitsPaddleNoShield) {
           // Bounced bullet hit paddle - lose a life
           soundManager.playLoseLife();
           setBullets((prev) => prev.filter((b) => b !== bullet));
