@@ -392,7 +392,8 @@ class SoundManager {
     '/slower.mp3',
     '/wider.mp3',
     '/smaller.mp3',
-    '/shield.mp3'
+    '/shield.mp3',
+    '/barrier.mp3'
   ];
 
   async preloadSounds(): Promise<void> {
@@ -1010,9 +1011,10 @@ class SoundManager {
 
   playSecondChanceSound() {
     if (!this.sfxEnabled) return;
-    const audio = new Audio('/barrier.mp3');
-    audio.volume = 0.5;
-    audio.play().catch(err => console.log('Barrier sound failed:', err));
+    const buffer = this.audioBuffers['/barrier.mp3'];
+    if (buffer) {
+      this.playAudioBuffer(buffer, 0.5);
+    }
   }
 
   playSecondChanceSaveSound() {
