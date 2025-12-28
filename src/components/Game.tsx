@@ -1735,6 +1735,37 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     (e: MouseEvent) => {
       if (!canvasRef.current || !paddle || gameState === "paused") return;
 
+      // Level 20 perimeter mode - paddle moves along path
+      if (isPerimeterMode && perimeterConfig) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+        const scaleY = SCALED_CANVAS_HEIGHT / rect.height;
+        const mouseX = (e.clientX - rect.left) * scaleX;
+        const mouseY = (e.clientY - rect.top) * scaleY;
+        
+        // Convert mouse position to path position
+        const newS = mouseXToPathS(mouseX, mouseY, perimeterConfig);
+        const clampedS = clampPathPosition(newS, perimeterConfig);
+        
+        setPaddlePathPosition(clampedS);
+        
+        // Get world position from path position
+        const pos = sToPosition(clampedS, perimeterConfig);
+        
+        // Update paddle position and rotation
+        setPaddle((prev) =>
+          prev
+            ? {
+                ...prev,
+                x: pos.x - prev.width / 2,
+                y: pos.y - prev.height / 2,
+              }
+            : null,
+        );
+        paddleXRef.current = pos.x - paddle.width / 2;
+        return;
+      }
+
       let newX: number;
 
       // Use movementX when pointer is locked, otherwise use absolute position
@@ -1763,7 +1794,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           : null,
       );
     },
-    [gameState, paddle, isPointerLocked, SCALED_CANVAS_WIDTH],
+    [gameState, paddle, isPointerLocked, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, isPerimeterMode, perimeterConfig],
   );
   const activeTouchRef = useRef<number | null>(null);
   const secondTouchRef = useRef<number | null>(null);
@@ -4881,6 +4912,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       toast.info("Boss recovered from stun!");
     }
 
+    // Boss attack logic - different for Mega Boss (Level 20) vs regular bosses
     if (
       boss &&
       !boss.isStunned &&
@@ -4888,7 +4920,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       Date.now() - boss.lastAttackTime >= boss.attackCooldown &&
       paddle
     ) {
-      performBossAttack(boss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings);
+      if (level === MEGA_BOSS_LEVEL && isMegaBoss(boss)) {
+        // Mega Boss uses specialized attack patterns
+        const megaBoss = boss as MegaBoss;
+        performMegaBossAttack(megaBoss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings, setEmpSlowActive);
+      } else {
+        // Regular boss attack
+        performBossAttack(boss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings);
+      }
       const nextIndex = (boss.currentPositionIndex + 1) % boss.positions.length;
       setBoss((prev) =>
         prev
@@ -4901,6 +4940,135 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             }
           : null,
       );
+    }
+
+    // ═══ MEGA BOSS (Level 20) SPECIFIC GAME LOOP LOGIC ═══
+    if (level === MEGA_BOSS_LEVEL && boss && isMegaBoss(boss) && paddle) {
+      const megaBoss = boss as MegaBoss;
+      const now = Date.now();
+      
+      // Check if hatch should open (based on health/time)
+      if (shouldOpenHatch(megaBoss)) {
+        const updatedBoss = openMegaBossHatch(megaBoss);
+        setBoss(updatedBoss as unknown as Boss);
+        toast.warning("⚠️ HATCH OPENING!", { duration: 2000 });
+        soundManager.playBounce(); // Use existing sound
+      }
+      
+      // Check if player ball enters open hatch
+      if (megaBoss.hatchOpen && !megaBoss.trappedBall) {
+        balls.forEach((ball) => {
+          if (!ball.waitingToLaunch && isBallInHatchArea(ball, megaBoss)) {
+            // Trap the ball!
+            const trappedBoss = trapBallInMegaBoss(megaBoss, ball);
+            setBoss(trappedBoss as unknown as Boss);
+            
+            // Hide the trapped ball
+            setBalls((prev) => prev.filter((b) => b !== ball));
+            
+            toast.error("🔴 BALL TRAPPED! Danger balls incoming!", { duration: 3000 });
+            soundManager.playExplosion(); // Use existing sound
+          }
+        });
+      }
+      
+      // Handle danger ball spawning from trapped ball sequence
+      if (megaBoss.trappedBall && megaBoss.scheduledDangerBalls.length > 0) {
+        const nextSpawnTime = megaBoss.scheduledDangerBalls[0];
+        if (now >= nextSpawnTime) {
+          // Spawn a danger ball
+          const newDangerBall = spawnDangerBall(megaBoss);
+          setDangerBalls((prev) => [...prev, newDangerBall]);
+          
+          // Remove from schedule
+          setBoss((prev) => {
+            if (!prev || !isMegaBoss(prev)) return prev;
+            const mb = prev as MegaBoss;
+            return {
+              ...mb,
+              scheduledDangerBalls: mb.scheduledDangerBalls.slice(1),
+              dangerBallsFired: mb.dangerBallsFired + 1,
+            } as unknown as Boss;
+          });
+          
+          toast.warning(`⚡ DANGER BALL ${megaBoss.dangerBallsFired + 1}/3!`, { duration: 1500 });
+          soundManager.playBounce();
+        }
+      }
+      
+      // Release trapped ball after all danger balls fired
+      if (megaBoss.trappedBall && megaBoss.dangerBallsFired >= 3 && megaBoss.scheduledDangerBalls.length === 0) {
+        const { boss: updatedBoss, releasedBall } = releaseBallFromMegaBoss(megaBoss);
+        setBoss(updatedBoss as unknown as Boss);
+        if (releasedBall) {
+          setBalls((prev) => [...prev, releasedBall]);
+        }
+        toast.success("Ball released!", { duration: 1500 });
+      }
+      
+      // Close hatch after duration
+      if (megaBoss.hatchOpen && megaBoss.hatchOpenStartTime) {
+        const hatchDuration = now - megaBoss.hatchOpenStartTime;
+        if (hatchDuration > MEGA_BOSS_CONFIG.hatchOpenDuration && !megaBoss.trappedBall) {
+          setBoss((prev) => {
+            if (!prev || !isMegaBoss(prev)) return prev;
+            return {
+              ...prev,
+              hatchOpen: false,
+              hatchOpenStartTime: null,
+            } as unknown as Boss;
+          });
+        }
+      }
+    }
+    
+    // ═══ DANGER BALL UPDATE LOOP ═══
+    if (dangerBalls.length > 0 && paddle) {
+      setDangerBalls((prev) => {
+        const updatedBalls: DangerBall[] = [];
+        let livesLost = 0;
+        
+        prev.forEach((ball) => {
+          // Update position
+          let updatedBall = updateDangerBall(ball);
+          
+          // Check if intercepted by paddle
+          if (isDangerBallIntercepted(updatedBall, paddle.x, paddle.y, paddle.width, paddle.height)) {
+            // Reflect off paddle
+            updatedBall = reflectDangerBall(updatedBall, paddle.x, paddle.width);
+            toast.success("Danger ball deflected!", { duration: 1000 });
+            soundManager.playBounce();
+          }
+          
+          // Check if reached bottom (lose life)
+          if (isDangerBallAtBottom(updatedBall, SCALED_CANVAS_HEIGHT)) {
+            livesLost++;
+            toast.error("💀 Danger ball missed! -1 Life", { duration: 2000 });
+            return; // Don't add to updated balls
+          }
+          
+          // Check if off screen (sides or top)
+          if (updatedBall.x < -50 || updatedBall.x > SCALED_CANVAS_WIDTH + 50 || updatedBall.y < -50) {
+            return; // Remove from game
+          }
+          
+          updatedBalls.push(updatedBall);
+        });
+        
+        if (livesLost > 0) {
+          setLives((l) => Math.max(0, l - livesLost));
+          soundManager.playLoseLife();
+        }
+        
+        return updatedBalls;
+      });
+    }
+    
+    // ═══ EMP SLOW EFFECT ═══
+    if (empSlowActive && empSlowEndTime && Date.now() >= empSlowEndTime) {
+      setEmpSlowActive(false);
+      setEmpSlowEndTime(null);
+      toast.info("EMP effect ended");
     }
 
     // Update resurrected bosses
