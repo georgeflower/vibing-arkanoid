@@ -1,4 +1,4 @@
-export const BOSS_LEVELS = [5, 10, 15];
+export const BOSS_LEVELS = [5, 10, 15, 20];
 
 export const BOSS_CONFIG = {
   cube: {

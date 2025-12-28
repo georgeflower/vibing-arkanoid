@@ -92,6 +92,40 @@ import { performBossAttack } from "@/utils/bossAttacks";
 import { BOSS_LEVELS, BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
 import { processBallWithCCD } from "@/utils/gameCCD";
 import { assignPowerUpsToBricks, reassignPowerUpsToBricks } from "@/utils/powerUpAssignment";
+import { MEGA_BOSS_LEVEL, MEGA_BOSS_CONFIG } from "@/constants/megaBossConfig";
+import { 
+  createMegaBoss, 
+  isMegaBoss, 
+  handleMegaBossDamage, 
+  triggerMegaBossResurrection,
+  openMegaBossHatch,
+  trapBallInMegaBoss,
+  releaseBallFromMegaBoss,
+  shouldOpenHatch,
+  isBallInHatchArea,
+  MegaBoss
+} from "@/utils/megaBossUtils";
+import { 
+  DangerBall, 
+  spawnDangerBall, 
+  updateDangerBall, 
+  isDangerBallAtBottom, 
+  isDangerBallIntercepted,
+  reflectDangerBall,
+  performMegaBossAttack
+} from "@/utils/megaBossAttacks";
+import {
+  createPerimeterConfig,
+  sToPosition,
+  getPerimeterPathLength,
+  getPathSegments,
+  PerimeterPathConfig
+} from "@/utils/perimeterPath";
+import {
+  checkBallVsPerimeterPaddle,
+  mouseXToPathS,
+  clampPathPosition
+} from "@/utils/perimeterPaddleCollision";
 interface GameProps {
   settings: GameSettings;
   onReturnToMenu: () => void;
@@ -1480,7 +1514,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Show boss name and start boss music after 1 second
       setTimeout(() => {
         soundManager.playBossMusic(startLevel);
-        const bossName = startLevel === 5 ? "CUBE GUARDIAN" : startLevel === 10 ? "SPHERE DESTROYER" : "PYRAMID LORD";
+        const bossName = startLevel === 5 ? "CUBE GUARDIAN" : startLevel === 10 ? "SPHERE DESTROYER" : startLevel === 15 ? "PYRAMID LORD" : "MEGA BOSS";
         toast.error(`⚠️ BOSS APPROACHING: ${bossName} ⚠️`, { duration: 3000 });
       }, 1000);
 
@@ -1600,7 +1634,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Show boss name and start boss music after 1 second
       setTimeout(() => {
         soundManager.playBossMusic(newLevel);
-        const bossName = newLevel === 5 ? "CUBE GUARDIAN" : newLevel === 10 ? "SPHERE DESTROYER" : "PYRAMID LORD";
+        const bossName = newLevel === 5 ? "CUBE GUARDIAN" : newLevel === 10 ? "SPHERE DESTROYER" : newLevel === 15 ? "PYRAMID LORD" : "MEGA BOSS";
         toast.error(`⚠️ BOSS APPROACHING: ${bossName} ⚠️`, { duration: 3000 });
       }, 1000);
 

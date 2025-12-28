@@ -19,6 +19,7 @@ import backgroundTile1620 from "@/assets/background-tile-16-20.png";
 import bossLevel5Bg from "@/assets/boss-level-5-bg.png";
 import bossLevel10Bg from "@/assets/boss-level-10-bg.png";
 import bossLevel15Bg from "@/assets/boss-level-15-bg.png";
+import bossLevel20Bg from "@/assets/boss-level-20-bg.png";
 
 interface GameCanvasProps {
   width: number;
