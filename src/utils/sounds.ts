@@ -1010,48 +1010,9 @@ class SoundManager {
 
   playSecondChanceSound() {
     if (!this.sfxEnabled) return;
-    const ctx = this.getAudioContext();
-    
-    // Electric crackle + save chime
-    // Layer 1: Electric crackle/zap
-    const noise = ctx.createOscillator();
-    const noiseGain = ctx.createGain();
-    const noiseFilter = ctx.createBiquadFilter();
-    
-    noise.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
-    
-    noise.type = 'sawtooth';
-    noise.frequency.setValueAtTime(800, ctx.currentTime);
-    noise.frequency.exponentialRampToValueAtTime(2000, ctx.currentTime + 0.1);
-    noise.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.2);
-    
-    noiseFilter.type = 'bandpass';
-    noiseFilter.frequency.value = 1500;
-    noiseFilter.Q.value = 5;
-    
-    noiseGain.gain.setValueAtTime(0.2, ctx.currentTime);
-    noiseGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-    
-    noise.start(ctx.currentTime);
-    noise.stop(ctx.currentTime + 0.2);
-    
-    // Layer 2: Rising chime for the "save" feeling
-    [0, 0.05, 0.1].forEach((delay, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      
-      osc.frequency.value = [600, 900, 1200][i];
-      osc.type = 'sine';
-      gain.gain.setValueAtTime(0.15, ctx.currentTime + delay);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + delay + 0.15);
-      
-      osc.start(ctx.currentTime + delay);
-      osc.stop(ctx.currentTime + delay + 0.15);
-    });
+    const audio = new Audio('/barrier.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(err => console.log('Barrier sound failed:', err));
   }
 
   playSecondChanceSaveSound() {
