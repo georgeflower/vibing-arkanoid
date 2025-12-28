@@ -100,7 +100,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
   // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
+  const ENABLE_DEBUG_FEATURES = false; // Set to false for production
   // ═══════════════════════════════════════════════════════════════
 
   // Detect updates but don't apply during gameplay - defer until back at menu
@@ -7467,9 +7467,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   </button>
                 )}
 
-                {/* Music Toggle Button - right side (mobile only) */}
+                {/* Music Toggle Button - right side */}
                 {gameState === "playing" && (
-                  <div className="fixed right-4 top-[116px] z-[100] md:hidden">
+                  <div className="fixed right-4 top-[116px] z-[100]">
                     <button
                       onTouchStart={(e) => {
                         e.stopPropagation();
