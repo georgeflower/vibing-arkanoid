@@ -2171,45 +2171,137 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         
         // Check if this is a Mega Boss (level 20)
         if (level === 20 && isMegaBoss(boss)) {
-          // Render Mega Boss using sprite or fallback
+          // Render Mega Boss as hexagon with large cannon
           const megaBoss = boss as MegaBoss;
+          const radius = boss.width / 2;
+          const baseHue = megaBoss.hasResurrected ? 0 : 220; // Blue, red when resurrected
           
-          if (isImageValid(megaBossImageRef.current)) {
-            // Draw mega boss sprite
-            ctx.drawImage(
-              megaBossImageRef.current,
-              -boss.width / 2,
-              -boss.height / 2,
-              boss.width,
-              boss.height
-            );
-          } else {
-            // Fallback: Draw as a mechanical cube with red accents
-            const size = boss.width / 2;
-            const baseHue = megaBoss.hasResurrected ? 0 : 270; // Purple, red when resurrected
-            
-            if (qualitySettings.glowEnabled) {
-              ctx.shadowBlur = 25;
-              ctx.shadowColor = megaBoss.hasResurrected ? 'rgba(255, 0, 0, 0.8)' : 'rgba(150, 0, 255, 0.8)';
+          if (qualitySettings.glowEnabled) {
+            ctx.shadowBlur = 30;
+            ctx.shadowColor = megaBoss.hasResurrected ? 'rgba(255, 50, 50, 0.9)' : 'rgba(50, 150, 255, 0.9)';
+          }
+          
+          // Draw hexagon body
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i - Math.PI / 2; // Start from top
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            if (i === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
             }
-            
-            // Main body
-            ctx.fillStyle = `hsl(${baseHue}, 70%, 35%)`;
-            ctx.fillRect(-size, -size, size * 2, size * 2);
-            
-            // Metallic border
-            ctx.strokeStyle = `hsl(${baseHue}, 80%, 55%)`;
-            ctx.lineWidth = 4;
-            ctx.strokeRect(-size, -size, size * 2, size * 2);
-            
-            // Hatch indicator at bottom
-            if (megaBoss.hatchOpen) {
-              ctx.fillStyle = 'rgba(255, 200, 0, 0.8)';
-              ctx.fillRect(-20, size - 15, 40, 20);
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-              ctx.lineWidth = 2;
-              ctx.strokeRect(-20, size - 15, 40, 20);
+          }
+          ctx.closePath();
+          
+          // Hexagon gradient fill
+          const hexGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+          hexGrad.addColorStop(0, `hsl(${baseHue}, 60%, 45%)`);
+          hexGrad.addColorStop(0.7, `hsl(${baseHue}, 70%, 30%)`);
+          hexGrad.addColorStop(1, `hsl(${baseHue}, 80%, 20%)`);
+          ctx.fillStyle = hexGrad;
+          ctx.fill();
+          
+          // Hexagon border
+          ctx.strokeStyle = `hsl(${baseHue}, 80%, 60%)`;
+          ctx.lineWidth = 4;
+          ctx.stroke();
+          
+          // Inner hexagon detail
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i - Math.PI / 2;
+            const x = Math.cos(angle) * (radius * 0.6);
+            const y = Math.sin(angle) * (radius * 0.6);
+            if (i === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
             }
+          }
+          ctx.closePath();
+          ctx.strokeStyle = `hsl(${baseHue}, 70%, 50%)`;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          
+          // Central core/eye
+          ctx.beginPath();
+          ctx.arc(0, 0, radius * 0.25, 0, Math.PI * 2);
+          const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 0.25);
+          coreGrad.addColorStop(0, megaBoss.hasResurrected ? '#ff6666' : '#66ccff');
+          coreGrad.addColorStop(0.5, megaBoss.hasResurrected ? '#ff0000' : '#0088ff');
+          coreGrad.addColorStop(1, megaBoss.hasResurrected ? '#880000' : '#004488');
+          ctx.fillStyle = coreGrad;
+          ctx.fill();
+          ctx.strokeStyle = megaBoss.hasResurrected ? '#ffaaaa' : '#aaddff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          
+          // Disable shadow for cannon
+          ctx.shadowBlur = 0;
+          
+          // Large cannon pointing downward
+          const cannonWidth = 28;
+          const cannonLength = radius * 1.2;
+          const cannonY = radius * 0.3; // Start below center
+          
+          // Cannon barrel gradient
+          const cannonGrad = ctx.createLinearGradient(-cannonWidth/2, cannonY, cannonWidth/2, cannonY);
+          cannonGrad.addColorStop(0, '#444');
+          cannonGrad.addColorStop(0.3, '#888');
+          cannonGrad.addColorStop(0.5, '#aaa');
+          cannonGrad.addColorStop(0.7, '#888');
+          cannonGrad.addColorStop(1, '#444');
+          
+          // Cannon barrel
+          ctx.fillStyle = cannonGrad;
+          ctx.fillRect(-cannonWidth/2, cannonY, cannonWidth, cannonLength);
+          
+          // Cannon barrel ridges
+          ctx.strokeStyle = '#333';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(-cannonWidth/2, cannonY, cannonWidth, cannonLength);
+          
+          // Cannon ridges for detail
+          for (let i = 1; i <= 3; i++) {
+            const ridgeY = cannonY + (cannonLength / 4) * i;
+            ctx.beginPath();
+            ctx.moveTo(-cannonWidth/2 - 3, ridgeY);
+            ctx.lineTo(cannonWidth/2 + 3, ridgeY);
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+          }
+          
+          // Cannon muzzle
+          ctx.beginPath();
+          ctx.arc(0, cannonY + cannonLength, cannonWidth/2 + 4, 0, Math.PI);
+          ctx.fillStyle = '#222';
+          ctx.fill();
+          ctx.strokeStyle = megaBoss.hasResurrected ? '#ff4444' : '#4488ff';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          
+          // Cannon base mount
+          ctx.beginPath();
+          ctx.arc(0, cannonY, cannonWidth/2 + 8, 0, Math.PI * 2);
+          ctx.fillStyle = `hsl(${baseHue}, 50%, 25%)`;
+          ctx.fill();
+          ctx.strokeStyle = `hsl(${baseHue}, 60%, 45%)`;
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          
+          // Hatch indicator at bottom of hexagon
+          if (megaBoss.hatchOpen) {
+            const hatchPulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
+            ctx.fillStyle = `rgba(255, 200, 0, ${hatchPulse})`;
+            ctx.beginPath();
+            ctx.arc(0, radius * 0.7, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
           }
           
           // Invulnerability flash
