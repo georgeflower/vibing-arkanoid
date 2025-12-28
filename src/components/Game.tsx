@@ -7467,9 +7467,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   </button>
                 )}
 
-                {/* Music Toggle Button - right side */}
+                {/* Music Toggle Button - right side (mobile only) */}
                 {gameState === "playing" && (
-                  <div className="fixed right-4 top-[116px] z-[100]">
+                  <div className="fixed right-4 top-[116px] z-[100] md:hidden">
                     <button
                       onTouchStart={(e) => {
                         e.stopPropagation();
