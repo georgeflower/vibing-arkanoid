@@ -595,14 +595,25 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         }
       });
 
-      // Draw paddle (always use regular paddle image, turrets drawn separately)
+      // Draw paddle (with rotation support for perimeter mode)
       if (paddle) {
         const img = paddleImageRef.current;
+        
+        ctx.save();
+        
+        // Apply rotation for perimeter mode
+        if (isPerimeterMode && paddleRotation !== 0) {
+          const centerX = paddle.x + paddle.width / 2;
+          const centerY = paddle.y + paddle.height / 2;
+          ctx.translate(centerX, centerY);
+          ctx.rotate((paddleRotation * Math.PI) / 180);
+          ctx.translate(-centerX, -centerY);
+        }
         
         if (isImageValid(img)) {
           if (qualitySettings.shadowsEnabled) {
             ctx.shadowBlur = 12;
-            ctx.shadowColor = "hsl(200, 70%, 50%)";
+            ctx.shadowColor = isPerimeterMode ? "hsl(280, 70%, 60%)" : "hsl(200, 70%, 50%)";
           }
           ctx.drawImage(img, paddle.x, paddle.y, paddle.width, paddle.height);
           ctx.shadowBlur = 0;
@@ -610,9 +621,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           // Fallback while image loads
           if (qualitySettings.shadowsEnabled) {
             ctx.shadowBlur = 12;
-            ctx.shadowColor = "hsl(200, 70%, 50%)";
+            ctx.shadowColor = isPerimeterMode ? "hsl(280, 70%, 60%)" : "hsl(200, 70%, 50%)";
           }
-          ctx.fillStyle = "hsl(200, 70%, 50%)";
+          ctx.fillStyle = isPerimeterMode ? "hsl(280, 70%, 50%)" : "hsl(200, 70%, 50%)";
           ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
           ctx.shadowBlur = 0;
           
@@ -620,6 +631,70 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
           ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height / 2);
         }
+        
+        ctx.restore();
+      }
+      
+      // ═══ DANGER BALL RENDERING ═══
+      if (dangerBalls && dangerBalls.length > 0) {
+        dangerBalls.forEach((dangerBall) => {
+          ctx.save();
+          
+          // Flashing animation between red and white
+          const flashPhase = Math.sin(Date.now() / 80);
+          const isWhitePhase = flashPhase > 0;
+          
+          // Outer glow
+          if (qualitySettings.glowEnabled) {
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = isWhitePhase ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 50, 50, 0.9)';
+          }
+          
+          // Draw danger ball
+          ctx.beginPath();
+          ctx.arc(dangerBall.x, dangerBall.y, dangerBall.radius, 0, Math.PI * 2);
+          
+          // Gradient fill
+          const grad = ctx.createRadialGradient(
+            dangerBall.x - dangerBall.radius * 0.3,
+            dangerBall.y - dangerBall.radius * 0.3,
+            0,
+            dangerBall.x,
+            dangerBall.y,
+            dangerBall.radius
+          );
+          
+          if (isWhitePhase) {
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.5, '#ffcccc');
+            grad.addColorStop(1, '#ff6666');
+          } else {
+            grad.addColorStop(0, '#ff8888');
+            grad.addColorStop(0.5, '#ff2222');
+            grad.addColorStop(1, '#aa0000');
+          }
+          
+          ctx.fillStyle = grad;
+          ctx.fill();
+          
+          // Inner warning symbol (exclamation mark)
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = isWhitePhase ? '#ff0000' : '#ffffff';
+          ctx.font = `bold ${dangerBall.radius}px monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('!', dangerBall.x, dangerBall.y);
+          
+          // Outer ring pulse
+          const pulseScale = 1 + Math.sin(Date.now() / 150) * 0.2;
+          ctx.strokeStyle = isWhitePhase ? 'rgba(255, 100, 100, 0.6)' : 'rgba(255, 255, 255, 0.6)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(dangerBall.x, dangerBall.y, dangerBall.radius * pulseScale * 1.3, 0, Math.PI * 2);
+          ctx.stroke();
+          
+          ctx.restore();
+        });
       }
 
       // Draw balls

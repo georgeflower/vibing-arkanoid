@@ -1339,7 +1339,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const config = createPerimeterConfig(SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, SCALED_PADDLE_WIDTH, SCALED_PADDLE_HEIGHT);
       setPerimeterConfig(config);
       setIsPerimeterMode(true);
-      setPaddlePathPosition(getPerimeterPathLength(config) / 2); // Start at center of bottom
+      
+      // Set paddle path position to center of bottom and update paddle position
+      const centerS = getPerimeterPathLength(config) / 2;
+      setPaddlePathPosition(centerS);
+      
+      // Calculate the actual paddle position from path
+      const paddlePos = sToPosition(centerS, config);
+      setPaddle((prev) => ({
+        x: paddlePos.x - SCALED_PADDLE_WIDTH / 2,
+        y: paddlePos.y - SCALED_PADDLE_HEIGHT / 2,
+        width: SCALED_PADDLE_WIDTH,
+        height: SCALED_PADDLE_HEIGHT,
+        hasTurrets: prev?.hasTurrets || false,
+        turretShots: prev?.turretShots || 0,
+        hasSuperTurrets: prev?.hasSuperTurrets || false,
+        hasShield: prev?.hasShield || false,
+        hasSecondChance: prev?.hasSecondChance || false,
+      }));
       
       toast.success(`LEVEL ${currentLevel}: MEGA BOSS!`, { duration: 3000 });
       return []; // No bricks on boss levels
@@ -1735,7 +1752,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     (e: MouseEvent) => {
       if (!canvasRef.current || !paddle || gameState === "paused") return;
 
-      // Level 20 perimeter mode - paddle moves along path
+      // Level 20 perimeter mode - paddle moves along path (works in ready and playing states)
       if (isPerimeterMode && perimeterConfig) {
         const rect = canvasRef.current.getBoundingClientRect();
         const scaleX = SCALED_CANVAS_WIDTH / rect.width;
@@ -1752,7 +1769,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Get world position from path position
         const pos = sToPosition(clampedS, perimeterConfig);
         
-        // Update paddle position and rotation
+        // Update paddle position
         setPaddle((prev) =>
           prev
             ? {
@@ -1772,7 +1789,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (isPointerLocked) {
         const sensitivity = 1.5;
         newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, paddle.x + e.movementX * sensitivity));
-      } else if (gameState === "playing") {
+      } else if (gameState === "playing" || gameState === "ready") {
         const rect = canvasRef.current.getBoundingClientRect();
         const scaleX = SCALED_CANVAS_WIDTH / rect.width;
         const mouseX = (e.clientX - rect.left) * scaleX;
