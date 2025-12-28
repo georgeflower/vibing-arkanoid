@@ -291,6 +291,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [lastScoreMilestone, setLastScoreMilestone] = useState(0);
   const [scoreBlinking, setScoreBlinking] = useState(false);
 
+  // ═══ MEGA BOSS (Level 20) State ═══
+  const [dangerBalls, setDangerBalls] = useState<DangerBall[]>([]);
+  const [isPerimeterMode, setIsPerimeterMode] = useState(false);
+  const [paddlePathPosition, setPaddlePathPosition] = useState(0);
+  const [perimeterConfig, setPerimeterConfig] = useState<PerimeterPathConfig | null>(null);
+  const [empSlowActive, setEmpSlowActive] = useState(false);
+  const [empSlowEndTime, setEmpSlowEndTime] = useState<number | null>(null);
+
   // Boss power-up states
   const [reflectShieldActive, setReflectShieldActive] = useState(false);
   const [homingBallActive, setHomingBallActive] = useState(false);
@@ -1316,8 +1324,29 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     });
   }, [paddle]);
   const initBricksForLevel = useCallback((currentLevel: number) => {
-    // Check if this is a boss level
-    if (BOSS_LEVELS.includes(currentLevel)) {
+    // Check if this is the Mega Boss level (level 20)
+    if (currentLevel === MEGA_BOSS_LEVEL) {
+      // Create Mega Boss
+      const megaBoss = createMegaBoss(SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT);
+      setBoss(megaBoss as unknown as Boss); // Cast to Boss for state compatibility
+      setBossActive(true);
+      setResurrectedBosses([]);
+      setBossAttacks([]);
+      setLaserWarnings([]);
+      setDangerBalls([]);
+      
+      // Initialize perimeter mode
+      const config = createPerimeterConfig(SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, SCALED_PADDLE_WIDTH, SCALED_PADDLE_HEIGHT);
+      setPerimeterConfig(config);
+      setIsPerimeterMode(true);
+      setPaddlePathPosition(getPerimeterPathLength(config) / 2); // Start at center of bottom
+      
+      toast.success(`LEVEL ${currentLevel}: MEGA BOSS!`, { duration: 3000 });
+      return []; // No bricks on boss levels
+    }
+    
+    // Check if this is a regular boss level (5, 10, 15)
+    if (BOSS_LEVELS.includes(currentLevel) && currentLevel !== MEGA_BOSS_LEVEL) {
       const newBoss = createBoss(currentLevel, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT);
       // Initialize boss with lastHitAt timestamp for cooldown tracking
       if (newBoss) {
@@ -1329,6 +1358,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setResurrectedBosses([]);
       setBossAttacks([]);
       setLaserWarnings([]);
+      
+      // Disable perimeter mode for regular bosses
+      setIsPerimeterMode(false);
+      setPerimeterConfig(null);
+      
       const bossName = newBoss?.type.toUpperCase();
       toast.success(`LEVEL ${currentLevel}: ${bossName} BOSS!`, { duration: 3000 });
       return []; // No bricks on boss levels
@@ -7078,6 +7112,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       getReadyGlow={isMobileDevice ? getReadyGlow : null}
                       isMobile={isMobileDevice}
                       secondChanceImpact={secondChanceImpact}
+                      dangerBalls={dangerBalls}
+                      isPerimeterMode={isPerimeterMode}
+                      perimeterConfig={perimeterConfig}
+                      paddleRotation={perimeterConfig && isPerimeterMode ? sToPosition(paddlePathPosition, perimeterConfig).rotation : 0}
                     />
 
                     {/* Boss Power-Up Duration Timers - Mobile responsive positioning */}
