@@ -121,25 +121,36 @@ export function getPerimeterPaddleCorners(
   }));
 }
 
-// Convert mouse X position to path position for horizontal control
+// Convert mouse position to path position S
 export function mouseXToPathS(
   mouseX: number,
-  canvasWidth: number,
+  mouseY: number,
   config: PerimeterPathConfig
 ): number {
+  const { canvasWidth, canvasHeight, wallMargin, cornerRadius, wallHeight } = config;
   const segments = getPathSegments(config);
-  const totalLength = getPerimeterPathLength(config);
   
-  // Map mouse X (0 to canvasWidth) to path position
-  // Center of screen maps to center of bottom segment
-  const bottomCenter = (segments.leftCornerEnd + segments.bottomEnd) / 2;
-  const halfBottom = (segments.bottomEnd - segments.leftCornerEnd) / 2;
+  const bottomY = canvasHeight - wallMargin - 40;
+  const leftBoundary = cornerRadius + wallMargin + 50;
+  const rightBoundary = canvasWidth - cornerRadius - wallMargin - 50;
   
-  // Normalized mouse position (-1 to 1)
-  const normalizedX = (mouseX / canvasWidth) * 2 - 1;
+  // On left side near wall
+  if (mouseX < leftBoundary && mouseY < bottomY - cornerRadius) {
+    const wallProgress = Math.max(0, Math.min(1, (bottomY - cornerRadius - mouseY) / wallHeight));
+    return wallProgress * wallHeight;
+  }
   
-  // Map to full path range
-  return bottomCenter + normalizedX * (totalLength / 2 - config.wallHeight);
+  // On right side near wall
+  if (mouseX > rightBoundary && mouseY < bottomY - cornerRadius) {
+    const wallProgress = Math.max(0, Math.min(1, (bottomY - cornerRadius - mouseY) / wallHeight));
+    return segments.rightCornerEnd + wallProgress * wallHeight;
+  }
+  
+  // On bottom - map mouseX to bottom path segment
+  const bottomWidth = segments.bottomEnd - segments.leftCornerEnd;
+  const normalizedX = (mouseX - leftBoundary) / (rightBoundary - leftBoundary);
+  const clampedX = Math.max(0, Math.min(1, normalizedX));
+  return segments.leftCornerEnd + clampedX * bottomWidth;
 }
 
 // Clamp path position to valid range

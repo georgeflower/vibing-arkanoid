@@ -2171,10 +2171,15 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         
         // Check if this is a Mega Boss (level 20)
         if (level === 20 && isMegaBoss(boss)) {
-          // Render Mega Boss as hexagon with large cannon
+          // Render Mega Boss as rotating hexagon
           const megaBoss = boss as MegaBoss;
           const radius = boss.width / 2;
           const baseHue = megaBoss.hasResurrected ? 0 : 220; // Blue, red when resurrected
+          
+          // Slow rotation based on time
+          const rotationSpeed = megaBoss.hasResurrected ? 0.002 : 0.001;
+          const hexRotation = (Date.now() * rotationSpeed) % (Math.PI * 2);
+          ctx.rotate(hexRotation);
           
           if (qualitySettings.glowEnabled) {
             ctx.shadowBlur = 30;
@@ -2184,7 +2189,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           // Draw hexagon body
           ctx.beginPath();
           for (let i = 0; i < 6; i++) {
-            const angle = (Math.PI / 3) * i - Math.PI / 2; // Start from top
+            const angle = (Math.PI / 3) * i - Math.PI / 2;
             const x = Math.cos(angle) * radius;
             const y = Math.sin(angle) * radius;
             if (i === 0) {
@@ -2212,8 +2217,8 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.beginPath();
           for (let i = 0; i < 6; i++) {
             const angle = (Math.PI / 3) * i - Math.PI / 2;
-            const x = Math.cos(angle) * (radius * 0.6);
-            const y = Math.sin(angle) * (radius * 0.6);
+            const x = Math.cos(angle) * (radius * 0.65);
+            const y = Math.sin(angle) * (radius * 0.65);
             if (i === 0) {
               ctx.moveTo(x, y);
             } else {
@@ -2225,82 +2230,48 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.lineWidth = 2;
           ctx.stroke();
           
-          // Central core/eye
-          ctx.beginPath();
-          ctx.arc(0, 0, radius * 0.25, 0, Math.PI * 2);
-          const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 0.25);
-          coreGrad.addColorStop(0, megaBoss.hasResurrected ? '#ff6666' : '#66ccff');
-          coreGrad.addColorStop(0.5, megaBoss.hasResurrected ? '#ff0000' : '#0088ff');
-          coreGrad.addColorStop(1, megaBoss.hasResurrected ? '#880000' : '#004488');
-          ctx.fillStyle = coreGrad;
-          ctx.fill();
-          ctx.strokeStyle = megaBoss.hasResurrected ? '#ffaaaa' : '#aaddff';
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          
-          // Disable shadow for cannon
+          // Outer ring details at each vertex
           ctx.shadowBlur = 0;
-          
-          // Large cannon pointing downward
-          const cannonWidth = 28;
-          const cannonLength = radius * 1.2;
-          const cannonY = radius * 0.3; // Start below center
-          
-          // Cannon barrel gradient
-          const cannonGrad = ctx.createLinearGradient(-cannonWidth/2, cannonY, cannonWidth/2, cannonY);
-          cannonGrad.addColorStop(0, '#444');
-          cannonGrad.addColorStop(0.3, '#888');
-          cannonGrad.addColorStop(0.5, '#aaa');
-          cannonGrad.addColorStop(0.7, '#888');
-          cannonGrad.addColorStop(1, '#444');
-          
-          // Cannon barrel
-          ctx.fillStyle = cannonGrad;
-          ctx.fillRect(-cannonWidth/2, cannonY, cannonWidth, cannonLength);
-          
-          // Cannon barrel ridges
-          ctx.strokeStyle = '#333';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(-cannonWidth/2, cannonY, cannonWidth, cannonLength);
-          
-          // Cannon ridges for detail
-          for (let i = 1; i <= 3; i++) {
-            const ridgeY = cannonY + (cannonLength / 4) * i;
+          for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i - Math.PI / 2;
+            const vx = Math.cos(angle) * (radius * 0.85);
+            const vy = Math.sin(angle) * (radius * 0.85);
             ctx.beginPath();
-            ctx.moveTo(-cannonWidth/2 - 3, ridgeY);
-            ctx.lineTo(cannonWidth/2 + 3, ridgeY);
-            ctx.strokeStyle = '#666';
-            ctx.lineWidth = 3;
+            ctx.arc(vx, vy, 8, 0, Math.PI * 2);
+            ctx.fillStyle = `hsl(${baseHue}, 60%, 40%)`;
+            ctx.fill();
+            ctx.strokeStyle = `hsl(${baseHue}, 80%, 65%)`;
+            ctx.lineWidth = 2;
             ctx.stroke();
           }
           
-          // Cannon muzzle
+          // Central core/eye
           ctx.beginPath();
-          ctx.arc(0, cannonY + cannonLength, cannonWidth/2 + 4, 0, Math.PI);
-          ctx.fillStyle = '#222';
+          ctx.arc(0, 0, radius * 0.3, 0, Math.PI * 2);
+          const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 0.3);
+          coreGrad.addColorStop(0, megaBoss.hasResurrected ? '#ff8888' : '#88ddff');
+          coreGrad.addColorStop(0.5, megaBoss.hasResurrected ? '#ff2222' : '#0099ff');
+          coreGrad.addColorStop(1, megaBoss.hasResurrected ? '#990000' : '#005588');
+          ctx.fillStyle = coreGrad;
           ctx.fill();
-          ctx.strokeStyle = megaBoss.hasResurrected ? '#ff4444' : '#4488ff';
+          ctx.strokeStyle = megaBoss.hasResurrected ? '#ffcccc' : '#bbddff';
           ctx.lineWidth = 3;
           ctx.stroke();
           
-          // Cannon base mount
+          // Inner core pulse
+          const pulseScale = 0.15 + Math.sin(Date.now() / 200) * 0.05;
           ctx.beginPath();
-          ctx.arc(0, cannonY, cannonWidth/2 + 8, 0, Math.PI * 2);
-          ctx.fillStyle = `hsl(${baseHue}, 50%, 25%)`;
+          ctx.arc(0, 0, radius * pulseScale, 0, Math.PI * 2);
+          ctx.fillStyle = megaBoss.hasResurrected ? 'rgba(255, 255, 200, 0.9)' : 'rgba(200, 255, 255, 0.9)';
           ctx.fill();
-          ctx.strokeStyle = `hsl(${baseHue}, 60%, 45%)`;
-          ctx.lineWidth = 3;
-          ctx.stroke();
           
-          // Hatch indicator at bottom of hexagon
+          // Hatch indicator (pulsing ring around core when open)
           if (megaBoss.hatchOpen) {
             const hatchPulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
-            ctx.fillStyle = `rgba(255, 200, 0, ${hatchPulse})`;
             ctx.beginPath();
-            ctx.arc(0, radius * 0.7, 15, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.lineWidth = 2;
+            ctx.arc(0, 0, radius * 0.45, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(255, 200, 0, ${hatchPulse})`;
+            ctx.lineWidth = 4;
             ctx.stroke();
           }
           
