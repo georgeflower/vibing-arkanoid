@@ -1,9 +1,13 @@
 import { forwardRef, useEffect, useRef } from "react";
 import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, Particle, Boss, BossAttack, ShieldImpact } from "@/types/game";
 import type { QualitySettings } from "@/hooks/useAdaptiveQuality";
+import type { DangerBall } from "@/utils/megaBossAttacks";
+import type { PerimeterPathConfig } from "@/utils/perimeterPath";
+import type { MegaBoss } from "@/utils/megaBossUtils";
 import { powerUpImages } from "@/utils/powerUpImages";
 import { particlePool } from "@/utils/particlePool";
 import { bonusLetterImages } from "@/utils/bonusLetterImages";
+import { isMegaBoss } from "@/utils/megaBossUtils";
 import paddleImg from "@/assets/paddle.png";
 import paddleTurretsImg from "@/assets/paddle-turrets.png";
 import crackedBrick1 from "@/assets/brick-cracked-1.png";
@@ -20,6 +24,7 @@ import bossLevel5Bg from "@/assets/boss-level-5-bg.png";
 import bossLevel10Bg from "@/assets/boss-level-10-bg.png";
 import bossLevel15Bg from "@/assets/boss-level-15-bg.png";
 import bossLevel20Bg from "@/assets/boss-level-20-bg.png";
+import megaBossSprite from "@/assets/mega-boss.png";
 
 interface GameCanvasProps {
   width: number;
@@ -58,10 +63,15 @@ interface GameCanvasProps {
   getReadyGlow?: { opacity: number } | null; // Mobile ball glow during Get Ready sequence
   isMobile?: boolean; // Mobile device flag for disabling certain effects
   secondChanceImpact?: { x: number; y: number; startTime: number } | null;
+  // Mega Boss (Level 20) props
+  dangerBalls?: DangerBall[];
+  isPerimeterMode?: boolean;
+  perimeterConfig?: PerimeterPathConfig | null;
+  paddleRotation?: number; // Paddle rotation for perimeter mode
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null, isMobile = false, secondChanceImpact = null }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null, isMobile = false, secondChanceImpact = null, dangerBalls = [], isPerimeterMode = false, perimeterConfig = null, paddleRotation = 0 }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -79,6 +89,8 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const bossLevel5BgRef = useRef<HTMLImageElement | null>(null);
     const bossLevel10BgRef = useRef<HTMLImageElement | null>(null);
     const bossLevel15BgRef = useRef<HTMLImageElement | null>(null);
+    const bossLevel20BgRef = useRef<HTMLImageElement | null>(null);
+    const megaBossImageRef = useRef<HTMLImageElement | null>(null);
     const backgroundPattern1Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern2Ref = useRef<CanvasPattern | null>(null);
     const backgroundPattern3Ref = useRef<CanvasPattern | null>(null);
@@ -255,6 +267,20 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       bossLevel15BgImage.onload = () => {
         bossLevel15BgRef.current = bossLevel15BgImage;
       };
+      
+      // Boss level 20 (Mega Boss) background (fitted, not tiled)
+      const bossLevel20BgImage = new Image();
+      bossLevel20BgImage.src = bossLevel20Bg;
+      bossLevel20BgImage.onload = () => {
+        bossLevel20BgRef.current = bossLevel20BgImage;
+      };
+      
+      // Mega Boss sprite
+      const megaBossImage = new Image();
+      megaBossImage.src = megaBossSprite;
+      megaBossImage.onload = () => {
+        megaBossImageRef.current = megaBossImage;
+      };
     }, []);
 
     useEffect(() => {
@@ -288,6 +314,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         useFittedBackground = true;
       } else if (level === 15 && isImageValid(bossLevel15BgRef.current)) {
         ctx.drawImage(bossLevel15BgRef.current, 0, 0, width, height);
+        useFittedBackground = true;
+      } else if (level === 20 && isImageValid(bossLevel20BgRef.current)) {
+        ctx.drawImage(bossLevel20BgRef.current, 0, 0, width, height);
         useFittedBackground = true;
       }
       
@@ -2140,7 +2169,83 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.save();
         ctx.translate(centerX, centerY);
         
-        if (boss.type === 'cube') {
+        // Check if this is a Mega Boss (level 20)
+        if (level === 20 && isMegaBoss(boss)) {
+          // Render Mega Boss using sprite or fallback
+          const megaBoss = boss as MegaBoss;
+          
+          if (isImageValid(megaBossImageRef.current)) {
+            // Draw mega boss sprite
+            ctx.drawImage(
+              megaBossImageRef.current,
+              -boss.width / 2,
+              -boss.height / 2,
+              boss.width,
+              boss.height
+            );
+          } else {
+            // Fallback: Draw as a mechanical cube with red accents
+            const size = boss.width / 2;
+            const baseHue = megaBoss.hasResurrected ? 0 : 270; // Purple, red when resurrected
+            
+            if (qualitySettings.glowEnabled) {
+              ctx.shadowBlur = 25;
+              ctx.shadowColor = megaBoss.hasResurrected ? 'rgba(255, 0, 0, 0.8)' : 'rgba(150, 0, 255, 0.8)';
+            }
+            
+            // Main body
+            ctx.fillStyle = `hsl(${baseHue}, 70%, 35%)`;
+            ctx.fillRect(-size, -size, size * 2, size * 2);
+            
+            // Metallic border
+            ctx.strokeStyle = `hsl(${baseHue}, 80%, 55%)`;
+            ctx.lineWidth = 4;
+            ctx.strokeRect(-size, -size, size * 2, size * 2);
+            
+            // Hatch indicator at bottom
+            if (megaBoss.hatchOpen) {
+              ctx.fillStyle = 'rgba(255, 200, 0, 0.8)';
+              ctx.fillRect(-20, size - 15, 40, 20);
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(-20, size - 15, 40, 20);
+            }
+          }
+          
+          // Invulnerability flash
+          if (megaBoss.isInvulnerable && Date.now() < megaBoss.invulnerableUntil) {
+            const flash = Math.sin(Date.now() / 50) > 0 ? 0.5 : 0;
+            ctx.fillStyle = `rgba(255, 255, 255, ${flash})`;
+            ctx.fillRect(-boss.width / 2, -boss.height / 2, boss.width, boss.height);
+          }
+          
+          ctx.restore();
+          
+          // Draw Mega Boss health bar (with resurrection indicator)
+          const hbWidth = boss.width + 60;
+          const hbHeight = 14;
+          const hbX = boss.x + boss.width / 2 - hbWidth / 2;
+          const hbY = boss.y - 30;
+          
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+          ctx.fillRect(hbX, hbY, hbWidth, hbHeight);
+          
+          const hpPercent = boss.currentHealth / boss.maxHealth;
+          const hpHue = megaBoss.hasResurrected ? 0 : (hpPercent > 0.5 ? 280 : (hpPercent > 0.25 ? 30 : 0));
+          ctx.fillStyle = `hsl(${hpHue}, 80%, 50%)`;
+          ctx.fillRect(hbX + 2, hbY + 2, (hbWidth - 4) * hpPercent, hbHeight - 4);
+          
+          ctx.strokeStyle = megaBoss.hasResurrected ? 'rgba(255, 100, 100, 0.8)' : 'rgba(200, 150, 255, 0.8)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(hbX, hbY, hbWidth, hbHeight);
+          
+          // "MEGA BOSS" label
+          ctx.fillStyle = megaBoss.hasResurrected ? '#ff4444' : '#aa77ff';
+          ctx.font = 'bold 12px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(megaBoss.hasResurrected ? 'RESURRECTED!' : 'MEGA BOSS', boss.x + boss.width / 2, hbY - 5);
+          ctx.textAlign = 'left';
+        } else if (boss.type === 'cube') {
           // 2D isometric cube that emulates 3D
           const size = boss.width / 2;
           const baseHue = boss.isAngry ? 0 : 180;
