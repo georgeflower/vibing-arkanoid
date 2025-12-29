@@ -14,6 +14,7 @@ interface GameStats {
   enemiesKilled?: number;
   bossesKilled?: number;
   totalPlayTime?: number; // in seconds
+  isVictory?: boolean; // True if player beat level 20
 }
 
 interface EndScreenProps {
@@ -76,6 +77,8 @@ export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: E
   const animatedBosses = useAnimatedCounter(stats?.bossesKilled ?? 0, 900, 700);
   const animatedPlayTime = useAnimatedCounter(stats?.totalPlayTime ?? 0, 1600, 150);
   
+  const isVictory = stats?.isVictory === true;
+  
   return (
     <div 
       className="min-h-screen w-full flex items-center justify-center"
@@ -86,8 +89,15 @@ export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: E
         backgroundRepeat: 'no-repeat'
       }}
     >
-      <div className="text-center bg-black/70 p-4 md:p-8 rounded-lg border-4 border-red-500/50 w-[95vw] md:w-auto max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in">
-        <h1 className="text-3xl md:text-6xl font-bold text-red-500 mb-3 md:mb-6 animate-pulse">GAME OVER</h1>
+      <div className={`text-center bg-black/70 p-4 md:p-8 rounded-lg border-4 ${isVictory ? 'border-yellow-500/70' : 'border-red-500/50'} w-[95vw] md:w-auto max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in`}>
+        {isVictory ? (
+          <>
+            <h1 className="text-3xl md:text-5xl font-bold text-yellow-400 mb-2 animate-pulse">🎉 CONGRATULATIONS! 🎉</h1>
+            <h2 className="text-xl md:text-3xl font-bold text-green-400 mb-4 md:mb-6">YOU BEAT THE GAME!</h2>
+          </>
+        ) : (
+          <h1 className="text-3xl md:text-6xl font-bold text-red-500 mb-3 md:mb-6 animate-pulse">GAME OVER</h1>
+        )}
         
         {stats?.levelSkipped && (
           <div className="mb-3 md:mb-6 p-2 md:p-4 bg-yellow-900/50 border-2 border-yellow-500 rounded animate-pulse">

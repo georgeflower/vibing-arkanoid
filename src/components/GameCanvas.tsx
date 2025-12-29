@@ -2236,16 +2236,18 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           // Render Mega Boss as rotating hexagon
           const megaBoss = boss as MegaBoss;
           const radius = boss.width / 2;
-          const baseHue = megaBoss.hasResurrected ? 0 : 220; // Blue, red when resurrected
+          const baseHue = megaBoss.corePhase === 3 ? 0 : (megaBoss.corePhase === 2 ? 30 : 220); // Blue -> Orange -> Red
           
-          // Slow rotation based on time
-          const rotationSpeed = megaBoss.hasResurrected ? 0.002 : 0.001;
+          // Slow rotation based on time and phase
+          const rotationSpeed = megaBoss.corePhase === 3 ? 0.003 : (megaBoss.corePhase === 2 ? 0.002 : 0.001);
           const hexRotation = (Date.now() * rotationSpeed) % (Math.PI * 2);
           ctx.rotate(hexRotation);
           
           if (qualitySettings.glowEnabled) {
             ctx.shadowBlur = 30;
-            ctx.shadowColor = megaBoss.hasResurrected ? 'rgba(255, 50, 50, 0.9)' : 'rgba(50, 150, 255, 0.9)';
+            const glowColor = megaBoss.corePhase === 3 ? 'rgba(255, 50, 50, 0.9)' : 
+                              megaBoss.corePhase === 2 ? 'rgba(255, 150, 50, 0.9)' : 'rgba(50, 150, 255, 0.9)';
+            ctx.shadowColor = glowColor;
           }
           
           // Draw hexagon body
@@ -2307,34 +2309,90 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.stroke();
           }
           
-          // Central core/eye
+          // Central core/eye - changes based on state
+          const coreRadius = megaBoss.coreExposed ? radius * 0.4 : radius * 0.3;
           ctx.beginPath();
-          ctx.arc(0, 0, radius * 0.3, 0, Math.PI * 2);
-          const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 0.3);
-          coreGrad.addColorStop(0, megaBoss.hasResurrected ? '#ff8888' : '#88ddff');
-          coreGrad.addColorStop(0.5, megaBoss.hasResurrected ? '#ff2222' : '#0099ff');
-          coreGrad.addColorStop(1, megaBoss.hasResurrected ? '#990000' : '#005588');
+          ctx.arc(0, 0, coreRadius, 0, Math.PI * 2);
+          
+          const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, coreRadius);
+          if (megaBoss.coreExposed) {
+            // Exposed core - pulsing yellow/white (vulnerable!)
+            const pulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
+            coreGrad.addColorStop(0, `rgba(255, 255, 200, ${pulse})`);
+            coreGrad.addColorStop(0.5, `rgba(255, 200, 50, ${pulse})`);
+            coreGrad.addColorStop(1, `rgba(200, 100, 0, ${pulse * 0.8})`);
+          } else {
+            // Normal core
+            const coreColor1 = megaBoss.corePhase === 3 ? '#ff8888' : megaBoss.corePhase === 2 ? '#ffaa88' : '#88ddff';
+            const coreColor2 = megaBoss.corePhase === 3 ? '#ff2222' : megaBoss.corePhase === 2 ? '#ff6622' : '#0099ff';
+            const coreColor3 = megaBoss.corePhase === 3 ? '#990000' : megaBoss.corePhase === 2 ? '#993300' : '#005588';
+            coreGrad.addColorStop(0, coreColor1);
+            coreGrad.addColorStop(0.5, coreColor2);
+            coreGrad.addColorStop(1, coreColor3);
+          }
           ctx.fillStyle = coreGrad;
           ctx.fill();
-          ctx.strokeStyle = megaBoss.hasResurrected ? '#ffcccc' : '#bbddff';
-          ctx.lineWidth = 3;
+          
+          // Core border
+          const coreBorderColor = megaBoss.coreExposed ? '#ffff00' : 
+                                   megaBoss.corePhase === 3 ? '#ffcccc' : 
+                                   megaBoss.corePhase === 2 ? '#ffddaa' : '#bbddff';
+          ctx.strokeStyle = coreBorderColor;
+          ctx.lineWidth = megaBoss.coreExposed ? 4 : 3;
           ctx.stroke();
           
           // Inner core pulse
-          const pulseScale = 0.15 + Math.sin(Date.now() / 200) * 0.05;
-          ctx.beginPath();
-          ctx.arc(0, 0, radius * pulseScale, 0, Math.PI * 2);
-          ctx.fillStyle = megaBoss.hasResurrected ? 'rgba(255, 255, 200, 0.9)' : 'rgba(200, 255, 255, 0.9)';
-          ctx.fill();
-          
-          // Hatch indicator (pulsing ring around core when open)
-          if (megaBoss.hatchOpen) {
-            const hatchPulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
+          if (!megaBoss.coreExposed) {
+            const pulseScale = 0.15 + Math.sin(Date.now() / 200) * 0.05;
             ctx.beginPath();
-            ctx.arc(0, 0, radius * 0.45, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(255, 200, 0, ${hatchPulse})`;
-            ctx.lineWidth = 4;
+            ctx.arc(0, 0, radius * pulseScale, 0, Math.PI * 2);
+            ctx.fillStyle = megaBoss.corePhase >= 2 ? 'rgba(255, 255, 200, 0.9)' : 'rgba(200, 255, 255, 0.9)';
+            ctx.fill();
+          }
+          
+          // "CORE EXPOSED!" pulsing ring when vulnerable
+          if (megaBoss.coreExposed) {
+            const hatchPulse = Math.sin(Date.now() / 80) * 0.4 + 0.6;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.55, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(255, 255, 0, ${hatchPulse})`;
+            ctx.lineWidth = 5;
             ctx.stroke();
+          }
+          
+          // Cannon extension (when danger balls are being fired)
+          if (megaBoss.cannonExtended && megaBoss.trappedBall) {
+            ctx.save();
+            ctx.rotate(-hexRotation); // Counter-rotate to keep cannon pointing down
+            
+            // Cannon barrel
+            const cannonWidth = 30;
+            const cannonLength = 50;
+            ctx.fillStyle = `hsl(${baseHue}, 50%, 25%)`;
+            ctx.fillRect(-cannonWidth / 2, radius * 0.5, cannonWidth, cannonLength);
+            
+            // Cannon border
+            ctx.strokeStyle = `hsl(${baseHue}, 70%, 50%)`;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(-cannonWidth / 2, radius * 0.5, cannonWidth, cannonLength);
+            
+            // Cannon muzzle
+            ctx.fillStyle = `hsl(0, 80%, 40%)`;
+            ctx.beginPath();
+            ctx.arc(0, radius * 0.5 + cannonLength, cannonWidth / 2, 0, Math.PI);
+            ctx.fill();
+            
+            // Pulsing glow at muzzle
+            const muzzlePulse = Math.sin(Date.now() / 150) * 0.5 + 0.5;
+            ctx.shadowBlur = 15 * muzzlePulse;
+            ctx.shadowColor = 'rgba(255, 100, 100, 0.8)';
+            ctx.beginPath();
+            ctx.arc(0, radius * 0.5 + cannonLength, 8, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 200, 100, ${muzzlePulse})`;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            ctx.restore();
           }
           
           // Invulnerability flash
@@ -2346,29 +2404,39 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           
           ctx.restore();
           
-          // Draw Mega Boss health bar (with resurrection indicator)
+          // Draw Mega Boss health bar (outer shield HP)
           const hbWidth = boss.width + 60;
           const hbHeight = 14;
           const hbX = boss.x + boss.width / 2 - hbWidth / 2;
-          const hbY = boss.y - 30;
+          const hbY = boss.y - 35;
           
           ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
           ctx.fillRect(hbX, hbY, hbWidth, hbHeight);
           
-          const hpPercent = boss.currentHealth / boss.maxHealth;
-          const hpHue = megaBoss.hasResurrected ? 0 : (hpPercent > 0.5 ? 280 : (hpPercent > 0.25 ? 30 : 0));
-          ctx.fillStyle = `hsl(${hpHue}, 80%, 50%)`;
+          const hpPercent = megaBoss.outerShieldHP / megaBoss.outerShieldMaxHP;
+          const hpHue = megaBoss.corePhase === 3 ? 0 : (megaBoss.corePhase === 2 ? 30 : 280);
+          ctx.fillStyle = megaBoss.coreExposed ? 'hsl(60, 100%, 50%)' : `hsl(${hpHue}, 80%, 50%)`;
           ctx.fillRect(hbX + 2, hbY + 2, (hbWidth - 4) * hpPercent, hbHeight - 4);
           
-          ctx.strokeStyle = megaBoss.hasResurrected ? 'rgba(255, 100, 100, 0.8)' : 'rgba(200, 150, 255, 0.8)';
+          ctx.strokeStyle = megaBoss.corePhase >= 2 ? 'rgba(255, 100, 100, 0.8)' : 'rgba(200, 150, 255, 0.8)';
           ctx.lineWidth = 2;
           ctx.strokeRect(hbX, hbY, hbWidth, hbHeight);
           
-          // "MEGA BOSS" label
-          ctx.fillStyle = megaBoss.hasResurrected ? '#ff4444' : '#aa77ff';
+          // Phase label
+          const phaseLabels = ['MEGA BOSS', 'ANGRY!', 'VERY ANGRY!'];
+          const phaseColors = ['#aa77ff', '#ff8844', '#ff4444'];
+          ctx.fillStyle = megaBoss.coreExposed ? '#ffff00' : phaseColors[megaBoss.corePhase - 1];
           ctx.font = 'bold 12px monospace';
           ctx.textAlign = 'center';
-          ctx.fillText(megaBoss.hasResurrected ? 'RESURRECTED!' : 'MEGA BOSS', boss.x + boss.width / 2, hbY - 5);
+          ctx.fillText(megaBoss.coreExposed ? 'CORE EXPOSED!' : phaseLabels[megaBoss.corePhase - 1], boss.x + boss.width / 2, hbY - 5);
+          
+          // Danger ball catch counter (when cannon is active)
+          if (megaBoss.cannonExtended && megaBoss.trappedBall) {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 14px monospace';
+            ctx.fillText(`CATCH: ${megaBoss.dangerBallsCaught}/5`, boss.x + boss.width / 2, hbY + hbHeight + 18);
+          }
+          
           ctx.textAlign = 'left';
         } else if (boss.type === 'cube') {
           // 2D isometric cube that emulates 3D
@@ -2636,23 +2704,25 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         
         ctx.restore();
         
-        // Draw boss health bar
-        const hbWidth = boss.width + 40;
-        const hbHeight = 10;
-        const hbX = boss.x + boss.width / 2 - hbWidth / 2;
-        const hbY = boss.y - 25;
-        
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fillRect(hbX, hbY, hbWidth, hbHeight);
-        
-        const hpPercent = boss.currentHealth / boss.maxHealth;
-        const hpHue = hpPercent > 0.5 ? 120 : (hpPercent > 0.25 ? 60 : 0);
-        ctx.fillStyle = `hsl(${hpHue}, 80%, 50%)`;
-        ctx.fillRect(hbX, hbY, hbWidth * hpPercent, hbHeight);
-        
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(hbX, hbY, hbWidth, hbHeight);
+        // Draw boss health bar (skip for Mega Boss - it has its own health bar)
+        if (!(level === 20 && isMegaBoss(boss))) {
+          const hbWidth = boss.width + 40;
+          const hbHeight = 10;
+          const hbX = boss.x + boss.width / 2 - hbWidth / 2;
+          const hbY = boss.y - 25;
+          
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+          ctx.fillRect(hbX, hbY, hbWidth, hbHeight);
+          
+          const hpPercent = boss.currentHealth / boss.maxHealth;
+          const hpHue = hpPercent > 0.5 ? 120 : (hpPercent > 0.25 ? 60 : 0);
+          ctx.fillStyle = `hsl(${hpHue}, 80%, 50%)`;
+          ctx.fillRect(hbX, hbY, hbWidth * hpPercent, hbHeight);
+          
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(hbX, hbY, hbWidth, hbHeight);
+        }
       }
 
 

@@ -4,33 +4,49 @@ export const MEGA_BOSS_LEVEL = 20;
 export const MEGA_BOSS_CONFIG = {
   level: 20,
   size: 120,
-  healthPhase1: 20,
-  healthPhase2: 10, // After resurrection
+  
+  // Phase-based HP system
+  outerShieldHP: 10, // Hits to expose core each phase
+  coreHP: 1, // Ball must hit core once to trap it
+  dangerBallsToComplete: 5, // Must catch 5 danger balls to release player ball
+  
+  // Legacy values for compatibility
+  healthPhase1: 10, // Outer shield for phase 1
+  healthPhase2: 10, // Outer shield for phase 2 (angry)
+  healthPhase3: 10, // Outer shield for phase 3 (very angry)
+  
   positions: 9,
   moveSpeed: 2.0,
-  angryMoveSpeed: 3.5,
+  angryMoveSpeed: 3.0,
+  veryAngryMoveSpeed: 4.0,
   attackInterval: 2500,
-  points: 50000,
+  angryAttackInterval: 2000,
+  veryAngryAttackInterval: 1500,
+  points: 100000, // Final boss victory points
   
   // Hatch mechanics
-  hatchOpenDuration: 5000,
-  hatchCooldown: 25000, // Cooldown between trapped ball sequences
+  hatchOpenDuration: 8000, // How long hatch stays open for ball to enter
   
-  // Danger ball settings
-  dangerBallCount: 3,
-  dangerBallIntervalMin: 2000,
-  dangerBallIntervalMax: 6000,
-  dangerBallSpeed: 2.5,
-  dangerBallSize: 12,
+  // Danger ball settings (shot from cannon after core hit)
+  dangerBallCount: 5, // Must catch 5 per phase
+  dangerBallIntervalMin: 1500,
+  dangerBallIntervalMax: 3500,
+  dangerBallSpeed: 3.0,
+  dangerBallSize: 14,
   
-  // Resurrection settings
-  resurrectionInvulnDuration: 1500,
+  // Swarming enemies in phase 3
+  swarmSpawnInterval: 5000, // Every 5 seconds
+  swarmEnemyCount: 3,
+  
+  // Visual timing
+  cannonExtendDuration: 1000, // Time for cannon to visually extend
+  coreExposeDuration: 500, // Time for core to become visible
   
   // Attack weights by phase
   attackWeights: {
-    phase1: { hatchSalvo: 0.2, sweepTurret: 0.3, shot: 0.3, super: 0.2 },
-    phase2: { hatchSalvo: 0.15, sweepTurret: 0.25, shot: 0.2, super: 0.25, empPulse: 0.15 },
-    phase3: { hatchSalvo: 0.1, sweepTurret: 0.2, shot: 0.15, super: 0.3, empPulse: 0.1, phaseBurst: 0.15 }
+    phase1: { hatchSalvo: 0.15, sweepTurret: 0.25, shot: 0.35, super: 0.25 },
+    phase2: { hatchSalvo: 0.2, sweepTurret: 0.25, shot: 0.25, super: 0.2, empPulse: 0.1 },
+    phase3: { hatchSalvo: 0.15, sweepTurret: 0.2, shot: 0.2, super: 0.2, empPulse: 0.1, phaseBurst: 0.15 }
   }
 } as const;
 
@@ -54,13 +70,6 @@ export const MEGA_BOSS_POSITIONS = [
   { x: 0.5, y: 0.42 },
   { x: 0.85, y: 0.48 }
 ] as const;
-
-// Perimeter path configuration
-export const PERIMETER_CONFIG = {
-  cornerRadius: 40, // Radius of rounded corners
-  wallMargin: 10, // Distance from canvas edge
-  paddleWallHeight: 200, // How far up the walls the paddle can travel
-} as const;
 
 // EMP Pulse settings
 export const EMP_CONFIG = {
