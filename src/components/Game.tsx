@@ -114,14 +114,6 @@ import {
   reflectDangerBall,
   performMegaBossAttack,
 } from "@/utils/megaBossAttacks";
-import {
-  createPerimeterConfig,
-  sToPosition,
-  getPerimeterPathLength,
-  getPathSegments,
-  PerimeterPathConfig,
-} from "@/utils/perimeterPath";
-import { checkBallVsPerimeterPaddle, mouseXToPathS, clampPathPosition } from "@/utils/perimeterPaddleCollision";
 interface GameProps {
   settings: GameSettings;
   onReturnToMenu: () => void;
@@ -289,9 +281,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // ═══ MEGA BOSS (Level 20) State ═══
   const [dangerBalls, setDangerBalls] = useState<DangerBall[]>([]);
-  const [isPerimeterMode, setIsPerimeterMode] = useState(false);
-  const [paddlePathPosition, setPaddlePathPosition] = useState(0);
-  const [perimeterConfig, setPerimeterConfig] = useState<PerimeterPathConfig | null>(null);
   const [empSlowActive, setEmpSlowActive] = useState(false);
   const [empSlowEndTime, setEmpSlowEndTime] = useState<number | null>(null);
 
@@ -1331,25 +1320,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setLaserWarnings([]);
       setDangerBalls([]);
 
-      // Initialize perimeter mode
-      const config = createPerimeterConfig(
-        SCALED_CANVAS_WIDTH,
-        SCALED_CANVAS_HEIGHT,
-        SCALED_PADDLE_WIDTH,
-        SCALED_PADDLE_HEIGHT,
-      );
-      setPerimeterConfig(config);
-      setIsPerimeterMode(true);
-
-      // Set paddle path position to center of bottom and update paddle position
-      const centerS = getPerimeterPathLength(config) / 2;
-      setPaddlePathPosition(centerS);
-
-      // Calculate the actual paddle position from path
-      const paddlePos = sToPosition(centerS, config);
+      // Center paddle at bottom (normal behavior)
       setPaddle((prev) => ({
-        x: paddlePos.x - SCALED_PADDLE_WIDTH / 2,
-        y: paddlePos.y - SCALED_PADDLE_HEIGHT / 2,
+        x: SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2,
+        y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_HEIGHT - 10,
         width: SCALED_PADDLE_WIDTH,
         height: SCALED_PADDLE_HEIGHT,
         hasTurrets: prev?.hasTurrets || false,
@@ -1376,10 +1350,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setResurrectedBosses([]);
       setBossAttacks([]);
       setLaserWarnings([]);
-
-      // Disable perimeter mode for regular bosses
-      setIsPerimeterMode(false);
-      setPerimeterConfig(null);
 
       const bossName = newBoss?.type.toUpperCase();
       toast.success(`LEVEL ${currentLevel}: ${bossName} BOSS!`, { duration: 3000 });
@@ -1767,37 +1737,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     (e: MouseEvent) => {
       if (!canvasRef.current || !paddle || gameState === "paused") return;
 
-      // Level 20 perimeter mode - paddle moves along path (works in ready and playing states)
-      if (isPerimeterMode && perimeterConfig) {
-        const rect = canvasRef.current.getBoundingClientRect();
-        const scaleX = SCALED_CANVAS_WIDTH / rect.width;
-        const scaleY = SCALED_CANVAS_HEIGHT / rect.height;
-        const mouseX = (e.clientX - rect.left) * scaleX;
-        const mouseY = (e.clientY - rect.top) * scaleY;
-
-        // Convert mouse position to path position
-        const newS = mouseXToPathS(mouseX, mouseY, perimeterConfig);
-        const clampedS = clampPathPosition(newS, perimeterConfig);
-
-        setPaddlePathPosition(clampedS);
-
-        // Get world position from path position
-        const pos = sToPosition(clampedS, perimeterConfig);
-
-        // Update paddle position
-        setPaddle((prev) =>
-          prev
-            ? {
-                ...prev,
-                x: pos.x - prev.width / 2,
-                y: pos.y - prev.height / 2,
-              }
-            : null,
-        );
-        paddleXRef.current = pos.x - paddle.width / 2;
-        return;
-      }
-
       let newX: number;
 
       // Use movementX when pointer is locked, otherwise use absolute position
@@ -1826,7 +1765,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           : null,
       );
     },
-    [gameState, paddle, isPointerLocked, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, isPerimeterMode, perimeterConfig],
+    [gameState, paddle, isPointerLocked, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT],
   );
   const activeTouchRef = useRef<number | null>(null);
   const secondTouchRef = useRef<number | null>(null);
@@ -7320,13 +7259,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       isMobile={isMobileDevice}
                       secondChanceImpact={secondChanceImpact}
                       dangerBalls={dangerBalls}
-                      isPerimeterMode={isPerimeterMode}
-                      perimeterConfig={perimeterConfig}
-                      paddleRotation={
-                        perimeterConfig && isPerimeterMode
-                          ? sToPosition(paddlePathPosition, perimeterConfig).rotation
-                          : 0
-                      }
                     />
 
                     {/* Boss Power-Up Duration Timers - Mobile responsive positioning */}
