@@ -20,25 +20,26 @@ export interface DangerBall {
 
 let nextDangerBallId = 3000;
 
-// Spawn a danger ball toward a random corner
+// Spawn a danger ball from the cannon (shoots downward toward paddle)
 export function spawnDangerBall(boss: MegaBoss): DangerBall {
   const config = MEGA_BOSS_CONFIG;
   
-  // Pick random corner
+  // Pick random corner as general direction target
   const targetCorner = CORNER_TARGETS[Math.floor(Math.random() * CORNER_TARGETS.length)];
   
-  // Calculate direction from boss to corner with jitter
+  // Shoot mostly downward with some spread toward corners
   const bossX = boss.x + boss.width / 2;
-  const bossY = boss.y + boss.height / 2;
+  const bossY = boss.y + boss.height;
   
-  const baseAngle = Math.atan2(targetCorner.y - bossY, targetCorner.x - bossX);
-  const jitter = (Math.random() - 0.5) * (40 * Math.PI / 180); // ±20 degrees
-  const angle = baseAngle + jitter;
+  // Random angle between 60 and 120 degrees (downward spread)
+  const baseAngle = Math.PI / 2; // Straight down
+  const spread = (Math.random() - 0.5) * (Math.PI / 3); // ±30 degrees
+  const angle = baseAngle + spread;
   
   return {
     id: nextDangerBallId++,
     x: bossX,
-    y: boss.y + boss.height, // Spawn from hatch area
+    y: bossY + 30, // Below cannon muzzle
     dx: Math.cos(angle) * config.dangerBallSpeed,
     dy: Math.sin(angle) * config.dangerBallSpeed,
     radius: config.dangerBallSize,
@@ -55,16 +56,16 @@ export function updateDangerBall(ball: DangerBall): DangerBall {
     ...ball,
     x: ball.x + ball.dx,
     y: ball.y + ball.dy,
-    flashPhase: (ball.flashPhase + 0.1) % (Math.PI * 2)
+    flashPhase: (ball.flashPhase + 0.15) % (Math.PI * 2)
   };
 }
 
-// Check if danger ball reached bottom (player loses life)
+// Check if danger ball reached bottom (player loses life if not caught)
 export function isDangerBallAtBottom(ball: DangerBall, canvasHeight: number): boolean {
-  return ball.y + ball.radius >= canvasHeight - 50; // Near bottom
+  return ball.y + ball.radius >= canvasHeight - 10;
 }
 
-// Check if danger ball was intercepted by paddle
+// Check if danger ball was caught by paddle (collision = catch)
 export function isDangerBallIntercepted(
   ball: DangerBall,
   paddleX: number,
@@ -80,7 +81,7 @@ export function isDangerBallIntercepted(
   );
 }
 
-// Reflect danger ball off paddle
+// Reflect danger ball off paddle (legacy - now we catch instead)
 export function reflectDangerBall(ball: DangerBall, paddleX: number, paddleWidth: number): DangerBall {
   // Calculate hit position on paddle (-1 to 1)
   const hitPos = ((ball.x - paddleX) / paddleWidth) * 2 - 1;
@@ -159,21 +160,30 @@ function performShotAttack(
 ) {
   const angle = Math.atan2(paddleY - (boss.y + boss.height / 2), paddleX - (boss.x + boss.width / 2));
   
-  const attack: BossAttack = {
-    bossId: boss.id,
-    type: 'shot',
-    x: boss.x + boss.width / 2,
-    y: boss.y + boss.height / 2,
-    width: 12,
-    height: 12,
-    speed: 4,
-    angle,
-    dx: Math.cos(angle) * 4,
-    dy: Math.sin(angle) * 4,
-    damage: 1
-  };
+  // More shots in higher phases
+  const shotCount = boss.corePhase >= 3 ? 3 : (boss.corePhase >= 2 ? 2 : 1);
+  const attacks: BossAttack[] = [];
   
-  setBossAttacks(prev => [...prev, attack]);
+  for (let i = 0; i < shotCount; i++) {
+    const spreadAngle = shotCount > 1 ? (i - (shotCount - 1) / 2) * 0.2 : 0;
+    const finalAngle = angle + spreadAngle;
+    
+    attacks.push({
+      bossId: boss.id,
+      type: 'shot',
+      x: boss.x + boss.width / 2,
+      y: boss.y + boss.height / 2,
+      width: 12,
+      height: 12,
+      speed: 4,
+      angle: finalAngle,
+      dx: Math.cos(finalAngle) * 4,
+      dy: Math.sin(finalAngle) * 4,
+      damage: 1
+    });
+  }
+  
+  setBossAttacks(prev => [...prev, ...attacks]);
 }
 
 function performHatchSalvo(
@@ -185,9 +195,11 @@ function performHatchSalvo(
   const centerX = boss.x + boss.width / 2;
   const centerY = boss.y + boss.height;
   
-  for (let i = 0; i < 5; i++) {
-    const spreadAngle = (i - 2) * 0.2; // -0.4 to +0.4 radians
-    const angle = Math.PI / 2 + spreadAngle; // Downward + spread
+  const salvoCount = boss.corePhase >= 3 ? 7 : 5;
+  
+  for (let i = 0; i < salvoCount; i++) {
+    const spreadAngle = (i - (salvoCount - 1) / 2) * 0.15;
+    const angle = Math.PI / 2 + spreadAngle;
     
     attacks.push({
       bossId: boss.id,
@@ -205,7 +217,7 @@ function performHatchSalvo(
   }
   
   setBossAttacks(prev => [...prev, ...attacks]);
-  toast.warning("MEGA BOSS HATCH SALVO!");
+  toast.warning("MEGA BOSS SALVO!");
 }
 
 function performSweepTurret(
@@ -219,12 +231,12 @@ function performSweepTurret(
   
   const attack: BossAttack = {
     bossId: boss.id,
-    type: 'super', // Reuse super type for visual
+    type: 'super',
     x: boss.x + boss.width / 2,
     y: boss.y + boss.height / 2,
     width: 20,
     height: 20,
-    speed: 2.5, // Slower
+    speed: 2.5,
     angle,
     dx: Math.cos(angle) * 2.5,
     dy: Math.sin(angle) * 2.5,
@@ -232,7 +244,7 @@ function performSweepTurret(
   };
   
   setBossAttacks(prev => [...prev, attack]);
-  toast.warning("MEGA BOSS SWEEP TURRET!");
+  toast.warning("MEGA BOSS SWEEP!");
 }
 
 function performEmpPulse(
@@ -256,11 +268,11 @@ function performPhaseBurst(
   boss: MegaBoss,
   setBossAttacks: React.Dispatch<React.SetStateAction<BossAttack[]>>
 ) {
-  // Radial burst of projectiles (used after resurrection)
+  // Radial burst of projectiles
   const attacks: BossAttack[] = [];
   const centerX = boss.x + boss.width / 2;
   const centerY = boss.y + boss.height / 2;
-  const count = 16;
+  const count = boss.corePhase >= 3 ? 20 : 16;
   
   for (let i = 0; i < count; i++) {
     const angle = (i / count) * Math.PI * 2;
