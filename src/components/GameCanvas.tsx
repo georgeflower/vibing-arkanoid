@@ -2,7 +2,6 @@ import { forwardRef, useEffect, useRef } from "react";
 import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, Particle, Boss, BossAttack, ShieldImpact } from "@/types/game";
 import type { QualitySettings } from "@/hooks/useAdaptiveQuality";
 import type { DangerBall } from "@/utils/megaBossAttacks";
-import type { PerimeterPathConfig } from "@/utils/perimeterPath";
 import type { MegaBoss } from "@/utils/megaBossUtils";
 import { powerUpImages } from "@/utils/powerUpImages";
 import { particlePool } from "@/utils/particlePool";
@@ -65,13 +64,10 @@ interface GameCanvasProps {
   secondChanceImpact?: { x: number; y: number; startTime: number } | null;
   // Mega Boss (Level 20) props
   dangerBalls?: DangerBall[];
-  isPerimeterMode?: boolean;
-  perimeterConfig?: PerimeterPathConfig | null;
-  paddleRotation?: number; // Paddle rotation for perimeter mode
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null, isMobile = false, secondChanceImpact = null, dangerBalls = [], isPerimeterMode = false, perimeterConfig = null, paddleRotation = 0 }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null, isMobile = false, secondChanceImpact = null, dangerBalls = [] }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -601,19 +597,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         
         ctx.save();
         
-        // Apply rotation for perimeter mode
-        if (isPerimeterMode && paddleRotation !== 0) {
-          const centerX = paddle.x + paddle.width / 2;
-          const centerY = paddle.y + paddle.height / 2;
-          ctx.translate(centerX, centerY);
-          ctx.rotate((paddleRotation * Math.PI) / 180);
-          ctx.translate(-centerX, -centerY);
-        }
-        
         if (isImageValid(img)) {
           if (qualitySettings.shadowsEnabled) {
             ctx.shadowBlur = 12;
-            ctx.shadowColor = isPerimeterMode ? "hsl(280, 70%, 60%)" : "hsl(200, 70%, 50%)";
+            ctx.shadowColor = "hsl(200, 70%, 50%)";
           }
           ctx.drawImage(img, paddle.x, paddle.y, paddle.width, paddle.height);
           ctx.shadowBlur = 0;
@@ -621,9 +608,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           // Fallback while image loads
           if (qualitySettings.shadowsEnabled) {
             ctx.shadowBlur = 12;
-            ctx.shadowColor = isPerimeterMode ? "hsl(280, 70%, 60%)" : "hsl(200, 70%, 50%)";
+            ctx.shadowColor = "hsl(200, 70%, 50%)";
           }
-          ctx.fillStyle = isPerimeterMode ? "hsl(280, 70%, 50%)" : "hsl(200, 70%, 50%)";
+          ctx.fillStyle = "hsl(200, 70%, 50%)";
           ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
           ctx.shadowBlur = 0;
           
