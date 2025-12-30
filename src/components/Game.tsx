@@ -2541,6 +2541,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         if (collision) {
           // FOUND boss collision at this sample point
+          
+          // ═══ MEGA BOSS: Skip reflection when core is exposed ═══
+          // When core is exposed, the outer shell becomes penetrable
+          // so the ball can pass through and hit the core
+          if (isMegaBoss(bossTarget)) {
+            const megaBoss = bossTarget as MegaBoss;
+            if (megaBoss.coreExposed && !megaBoss.trappedBall) {
+              // Don't reflect - let ball pass through to hit core
+              if (debugSettings.enableBossLogging) {
+                console.log("[MegaBoss] Core exposed - allowing ball to pass through outer shell");
+              }
+              continue; // Skip this collision, ball passes through
+            }
+          }
 
           // Log boss collision with [Collision Debug] prefix
           if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {

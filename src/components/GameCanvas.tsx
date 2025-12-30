@@ -2272,10 +2272,18 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fillStyle = hexGrad;
           ctx.fill();
           
-          // Hexagon border
-          ctx.strokeStyle = `hsl(${baseHue}, 80%, 60%)`;
-          ctx.lineWidth = 4;
+          // Hexagon border - dotted when core is exposed (penetrable)
+          if (megaBoss.coreExposed) {
+            ctx.setLineDash([12, 8]); // Dotted line to show penetrability
+            ctx.strokeStyle = `rgba(255, 255, 0, ${0.5 + Math.sin(Date.now() / 100) * 0.3})`; // Pulsing yellow
+            ctx.lineWidth = 3;
+          } else {
+            ctx.setLineDash([]); // Solid line
+            ctx.strokeStyle = `hsl(${baseHue}, 80%, 60%)`;
+            ctx.lineWidth = 4;
+          }
           ctx.stroke();
+          ctx.setLineDash([]); // Reset dash pattern
           
           // Inner hexagon detail
           ctx.beginPath();
