@@ -96,13 +96,15 @@ import { MEGA_BOSS_LEVEL, MEGA_BOSS_CONFIG } from "@/constants/megaBossConfig";
 import {
   createMegaBoss,
   isMegaBoss,
-  handleMegaBossDamage,
-  triggerMegaBossResurrection,
-  openMegaBossHatch,
-  trapBallInMegaBoss,
-  releaseBallFromMegaBoss,
-  shouldOpenHatch,
+  handleMegaBossOuterDamage,
+  exposeMegaBossCore,
+  handleMegaBossCoreHit,
+  catchDangerBall,
+  shouldReleaseBall,
+  releaseBallAndNextPhase,
   isBallInHatchArea,
+  shouldSpawnSwarm,
+  markSwarmSpawned,
   MegaBoss,
 } from "@/utils/megaBossUtils";
 import {
@@ -2587,6 +2589,48 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (isBoss) {
               setBoss((prev) => {
                 if (!prev) return prev;
+                
+                // ═══ MEGA BOSS SPECIAL HANDLING ═══
+                if (isMegaBoss(prev)) {
+                  const megaBoss = prev as MegaBoss;
+                  
+                  // If core is exposed, don't damage outer shield
+                  if (megaBoss.coreExposed || megaBoss.trappedBall) {
+                    // Ball can enter the core - handled in game loop
+                    return prev;
+                  }
+                  
+                  // Damage outer shield
+                  const { newOuterHP, shouldExposeCore } = handleMegaBossOuterDamage(megaBoss, 1);
+                  
+                  if (shouldExposeCore) {
+                    // Core is now exposed! Player must hit core
+                    const exposedBoss = exposeMegaBossCore(megaBoss);
+                    toast.warning(`⚠️ CORE EXPOSED! Hit the core!`, { duration: 3000 });
+                    soundManager.playExplosion();
+                    triggerScreenShake(12, 600);
+                    return {
+                      ...exposedBoss,
+                      outerShieldHP: 0,
+                      currentHealth: 0, // For health bar to show empty
+                      lastHitAt: nowMs,
+                    } as unknown as Boss;
+                  } else {
+                    // Just damaged outer shield
+                    toast.info(`MEGA BOSS: ${newOuterHP}/${megaBoss.outerShieldMaxHP} Shield`, {
+                      duration: 1000,
+                      style: { background: "#ff0000", color: "#fff" },
+                    });
+                    return {
+                      ...megaBoss,
+                      outerShieldHP: newOuterHP,
+                      currentHealth: newOuterHP, // Sync for health bar
+                      lastHitAt: nowMs,
+                    } as unknown as Boss;
+                  }
+                }
+                
+                // ═══ REGULAR BOSS HANDLING ═══
                 const newHealth = Math.max(0, prev.currentHealth - 1);
 
                 // Handle boss defeat based on type
@@ -4925,27 +4969,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const megaBoss = boss as MegaBoss;
       const now = Date.now();
 
-      // Check if hatch should open (based on health/time)
-      if (shouldOpenHatch(megaBoss)) {
-        const updatedBoss = openMegaBossHatch(megaBoss);
-        setBoss(updatedBoss as unknown as Boss);
-        toast.warning("⚠️ HATCH OPENING!", { duration: 2000 });
-        soundManager.playBounce(); // Use existing sound
-      }
-
-      // Check if player ball enters open hatch
-      if (megaBoss.hatchOpen && !megaBoss.trappedBall) {
+      // Check if player ball enters exposed core
+      if (megaBoss.coreExposed && !megaBoss.trappedBall) {
         balls.forEach((ball) => {
           if (!ball.waitingToLaunch && isBallInHatchArea(ball, megaBoss)) {
-            // Trap the ball!
-            const trappedBoss = trapBallInMegaBoss(megaBoss, ball);
+            // Trap the ball in the core!
+            const trappedBoss = handleMegaBossCoreHit(megaBoss, ball);
             setBoss(trappedBoss as unknown as Boss);
 
             // Hide the trapped ball
-            setBalls((prev) => prev.filter((b) => b !== ball));
+            setBalls((prev) => prev.filter((b) => b.id !== ball.id));
 
-            toast.error("🔴 BALL TRAPPED! Danger balls incoming!", { duration: 3000 });
-            soundManager.playExplosion(); // Use existing sound
+            toast.error("🔴 BALL TRAPPED IN CORE! Catch 5 danger balls!", { duration: 3000 });
+            soundManager.playExplosion();
           }
         });
       }
@@ -4969,53 +5005,153 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             } as unknown as Boss;
           });
 
-          toast.warning(`⚡ DANGER BALL ${megaBoss.dangerBallsFired + 1}/3!`, { duration: 1500 });
+          toast.warning(`⚡ DANGER BALL ${megaBoss.dangerBallsFired + 1}/5!`, { duration: 1500 });
           soundManager.playBounce();
         }
       }
 
-      // Release trapped ball after all danger balls fired
-      if (megaBoss.trappedBall && megaBoss.dangerBallsFired >= 3 && megaBoss.scheduledDangerBalls.length === 0) {
-        const { boss: updatedBoss, releasedBall } = releaseBallFromMegaBoss(megaBoss);
-        setBoss(updatedBoss as unknown as Boss);
-        if (releasedBall) {
-          setBalls((prev) => [...prev, releasedBall]);
+      // Check if all danger balls caught - release ball and transition phase
+      if (shouldReleaseBall(megaBoss)) {
+        const { boss: updatedBoss, releasedBall, isDefeated } = releaseBallAndNextPhase(megaBoss);
+        
+        if (isDefeated) {
+          // MEGA BOSS DEFEATED! Victory!
+          soundManager.playExplosion();
+          soundManager.playBossDefeatSound();
+          setScore((s) => s + MEGA_BOSS_CONFIG.points);
+          toast.success(`🎉 MEGA BOSS DEFEATED! +${MEGA_BOSS_CONFIG.points} points!`, { duration: 5000 });
+          
+          setExplosions((e) => [
+            ...e,
+            {
+              x: megaBoss.x + megaBoss.width / 2,
+              y: megaBoss.y + megaBoss.height / 2,
+              frame: 0,
+              maxFrames: 40,
+              enemyType: "cube" as EnemyType,
+              particles: createExplosionParticles(
+                megaBoss.x + megaBoss.width / 2,
+                megaBoss.y + megaBoss.height / 2,
+                "cube" as EnemyType,
+              ),
+            },
+          ]);
+          
+          setBossesKilled((k) => k + 1);
+          setBossActive(false);
+          setBoss(null);
+          setDangerBalls([]);
+          setBossAttacks([]);
+          setEnemies([]);
+          setBombs([]);
+          setBullets([]);
+          
+          // Release the ball for celebration
+          if (releasedBall) {
+            setBalls([releasedBall]);
+          }
+          
+          soundManager.stopBossMusic();
+          
+          // Show victory screen
+          setTimeout(() => {
+            setGameState("won");
+            setShowEndScreen(true);
+            soundManager.playHighScoreMusic();
+          }, 2000);
+        } else {
+          // Phase transition - not defeated yet
+          setBoss(updatedBoss as unknown as Boss);
+          if (releasedBall) {
+            setBalls((prev) => [...prev, releasedBall]);
+          }
+          
+          const phaseNum = (updatedBoss as MegaBoss).corePhase;
+          if (phaseNum === 2) {
+            toast.error("🔥 PHASE 2: MEGA BOSS ANGRY!", { duration: 3000 });
+          } else if (phaseNum === 3) {
+            toast.error("💀 PHASE 3: MEGA BOSS VERY ANGRY! Swarm incoming!", { duration: 3000 });
+          }
+          soundManager.playExplosion();
         }
-        toast.success("Ball released!", { duration: 1500 });
       }
 
-      // Close hatch after duration
-      if (megaBoss.hatchOpen && megaBoss.hatchOpenStartTime) {
-        const hatchDuration = now - megaBoss.hatchOpenStartTime;
-        if (hatchDuration > MEGA_BOSS_CONFIG.hatchOpenDuration && !megaBoss.trappedBall) {
+      // Close core exposure after duration if ball didn't enter
+      if (megaBoss.coreExposed && megaBoss.coreExposedTime) {
+        const exposeDuration = now - megaBoss.coreExposedTime;
+        if (exposeDuration > MEGA_BOSS_CONFIG.hatchOpenDuration && !megaBoss.trappedBall) {
           setBoss((prev) => {
             if (!prev || !isMegaBoss(prev)) return prev;
             return {
               ...prev,
+              coreExposed: false,
+              coreExposedTime: null,
               hatchOpen: false,
-              hatchOpenStartTime: null,
             } as unknown as Boss;
           });
+          toast.warning("Core closed! Hit outer shield again.", { duration: 2000 });
         }
+      }
+
+      // Phase 3: Spawn swarm enemies every 5 seconds
+      if (shouldSpawnSwarm(megaBoss)) {
+        const swarmCount = MEGA_BOSS_CONFIG.swarmEnemyCount;
+        const newEnemies: Enemy[] = [];
+        
+        for (let i = 0; i < swarmCount; i++) {
+          const spawnX = Math.random() * (SCALED_CANVAS_WIDTH - 40) + 20;
+          const spawnY = 50 + Math.random() * 50;
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 1.5 + Math.random() * 0.5;
+          
+          newEnemies.push({
+            id: Date.now() + i,
+            type: "cube",
+            x: spawnX,
+            y: spawnY,
+            width: 30,
+            height: 30,
+            dx: Math.cos(angle) * speed,
+            dy: Math.sin(angle) * speed,
+            speed,
+            rotation: 0,
+            rotationX: 0,
+            rotationY: 0,
+            rotationZ: 0,
+            hits: 0,
+          });
+        }
+        
+        setEnemies((prev) => [...prev, ...newEnemies]);
+        setBoss((prev) => {
+          if (!prev || !isMegaBoss(prev)) return prev;
+          return markSwarmSpawned(prev as MegaBoss) as unknown as Boss;
+        });
+        
+        toast.warning(`⚔️ ${swarmCount} SWARM ENEMIES SPAWNED!`, { duration: 1500 });
       }
     }
 
-    // ═══ DANGER BALL UPDATE LOOP ═══
-    if (dangerBalls.length > 0 && paddle) {
+    // ═══ DANGER BALL UPDATE LOOP (with catching mechanic) ═══
+    if (dangerBalls.length > 0 && paddle && boss && isMegaBoss(boss)) {
+      const megaBoss = boss as MegaBoss;
+      
       setDangerBalls((prev) => {
         const updatedBalls: DangerBall[] = [];
         let livesLost = 0;
+        let ballsCaught = 0;
 
         prev.forEach((ball) => {
           // Update position
-          let updatedBall = updateDangerBall(ball);
+          const updatedBall = updateDangerBall(ball);
 
-          // Check if intercepted by paddle
+          // Check if CAUGHT by paddle (not reflected)
           if (isDangerBallIntercepted(updatedBall, paddle.x, paddle.y, paddle.width, paddle.height)) {
-            // Reflect off paddle
-            updatedBall = reflectDangerBall(updatedBall, paddle.x, paddle.width);
-            toast.success("Danger ball deflected!", { duration: 1000 });
+            // Ball is caught! Increment counter
+            ballsCaught++;
+            toast.success(`✅ DANGER BALL CAUGHT! (${megaBoss.dangerBallsCaught + ballsCaught}/5)`, { duration: 1000 });
             soundManager.playBounce();
+            return; // Remove caught ball
           }
 
           // Check if reached bottom (lose life)
@@ -5025,7 +5161,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             return; // Don't add to updated balls
           }
 
-          // Check if off screen (sides or top)
+          // Check if off screen (sides or top) - shouldn't happen often but safety
           if (updatedBall.x < -50 || updatedBall.x > SCALED_CANVAS_WIDTH + 50 || updatedBall.y < -50) {
             return; // Remove from game
           }
@@ -5033,9 +5169,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           updatedBalls.push(updatedBall);
         });
 
+        // Update lives
         if (livesLost > 0) {
           setLives((l) => Math.max(0, l - livesLost));
           soundManager.playLoseLife();
+        }
+
+        // Update caught count on boss
+        if (ballsCaught > 0) {
+          setBoss((prevBoss) => {
+            if (!prevBoss || !isMegaBoss(prevBoss)) return prevBoss;
+            let mb = prevBoss as MegaBoss;
+            for (let i = 0; i < ballsCaught; i++) {
+              mb = catchDangerBall(mb);
+            }
+            return mb as unknown as Boss;
+          });
         }
 
         return updatedBalls;
@@ -7162,6 +7311,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             enemiesKilled,
             bossesKilled,
             totalPlayTime: totalPlayTime,
+            isVictory: gameState === "won",
           }}
         />
       ) : showHighScoreDisplay ? (
