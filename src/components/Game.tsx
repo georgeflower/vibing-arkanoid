@@ -103,6 +103,10 @@ import {
   shouldReleaseBall,
   releaseBallAndNextPhase,
   isBallInHatchArea,
+  isBallInsideMegaBoss,
+  applyGravityWellToBall,
+  shouldEndDangerBallPhase,
+  resetMegaBossPhaseProgress,
   shouldSpawnSwarm,
   markSwarmSpawned,
   MegaBoss,
@@ -4010,6 +4014,26 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         .filter((ball): ball is NonNullable<typeof ball> => {
           if (!ball) return false;
 
+          // MEGA BOSS: Apply gravity well effect when core is exposed and ball is inside boss
+          if (level === MEGA_BOSS_LEVEL && boss && isMegaBoss(boss)) {
+            const megaBoss = boss as MegaBoss;
+            if (megaBoss.coreExposed && isBallInsideMegaBoss(ball, megaBoss)) {
+              // Don't let the ball die - apply gravity well to pull toward core
+              const pulledBall = applyGravityWellToBall(ball, megaBoss);
+              ball.dx = pulledBall.dx;
+              ball.dy = pulledBall.dy;
+              
+              // Keep ball inside boss area
+              const bossBottom = megaBoss.y + megaBoss.height;
+              if (ball.y > bossBottom - ball.radius) {
+                ball.y = bossBottom - ball.radius - 5;
+                ball.dy = -Math.abs(ball.dy) * 0.5; // Bounce back up
+              }
+              
+              return true; // Ball is safe inside boss
+            }
+          }
+
           // Check if ball is falling below screen
           if (ball.y > SCALED_CANVAS_HEIGHT + ball.radius) {
             return false; // Ball lost
@@ -5117,9 +5141,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const spawnY = 50 + Math.random() * 50;
           const angle = Math.random() * Math.PI * 2;
           const speed = 1.5 + Math.random() * 0.5;
+          const enemyId = Date.now() + i;
           
           newEnemies.push({
-            id: Date.now() + i,
+            id: enemyId,
             type: "cube",
             x: spawnX,
             y: spawnY,
@@ -5134,6 +5159,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             rotationZ: 0,
             hits: 0,
           });
+          
+          // Add to boss spawned enemies for power-up drops
+          bossSpawnedEnemiesRef.current.add(enemyId);
         }
         
         setEnemies((prev) => [...prev, ...newEnemies]);
@@ -5154,6 +5182,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const updatedBalls: DangerBall[] = [];
         let livesLost = 0;
         let ballsCaught = 0;
+        let ballsMissed = 0;
 
         prev.forEach((ball) => {
           // Update position
@@ -5168,10 +5197,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             return; // Remove caught ball
           }
 
-          // Check if reached bottom (lose life)
+          // Check if reached bottom (count as missed but DON'T lose life)
           if (isDangerBallAtBottom(updatedBall, SCALED_CANVAS_HEIGHT)) {
-            livesLost++;
-            toast.error("💀 Danger ball missed! -1 Life", { duration: 2000 });
+            ballsMissed++;
+            toast.warning("⚠️ Danger ball missed!", { duration: 1000 });
             return; // Don't add to updated balls
           }
 
@@ -5183,11 +5212,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           updatedBalls.push(updatedBall);
         });
 
-        // Update lives
-        if (livesLost > 0) {
-          setLives((l) => Math.max(0, l - livesLost));
-          soundManager.playLoseLife();
-        }
+        // NO LIFE LOSS for missed danger balls - removed livesLost logic
 
         // Update caught count on boss
         if (ballsCaught > 0) {
@@ -5203,6 +5228,26 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         return updatedBalls;
       });
+      
+      // Check if danger ball phase should end (all danger balls dealt with)
+      if (shouldEndDangerBallPhase(megaBoss) && dangerBalls.length === 0) {
+        // All danger balls have been spawned and no more on screen
+        if (megaBoss.dangerBallsCaught >= MEGA_BOSS_CONFIG.dangerBallsToComplete) {
+          // Success! Release ball and advance phase
+          // This is handled by shouldReleaseBall in the existing code
+        } else {
+          // Failed to catch all 5 - release ball and reset outer shield HP
+          const { boss: resetBoss, releasedBall } = resetMegaBossPhaseProgress(megaBoss);
+          setBoss(resetBoss as unknown as Boss);
+          
+          if (releasedBall) {
+            setBalls((prev) => [...prev, releasedBall]);
+          }
+          
+          toast.warning(`Only caught ${megaBoss.dangerBallsCaught}/5 danger balls. Shield regenerated!`, { duration: 3000 });
+          soundManager.playBounce();
+        }
+      }
     }
 
     // ═══ EMP SLOW EFFECT ═══
