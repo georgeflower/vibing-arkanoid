@@ -4,6 +4,7 @@ import { BULLET_WIDTH, BULLET_HEIGHT, BULLET_SPEED, CANVAS_HEIGHT, BRICK_PADDING
 import { soundManager } from "@/utils/sounds";
 import { getHitColor } from "@/constants/game";
 import { toast } from "sonner";
+import { isMegaBoss, handleMegaBossOuterDamage, exposeMegaBossCore, MegaBoss } from "@/utils/megaBossUtils";
 
 export const useBullets = (
   setScore: React.Dispatch<React.SetStateAction<number>>,
@@ -165,39 +166,75 @@ export const useBullets = (
           // Damage main boss
           if (boss && bossDamageMap.has(boss.id)) {
             const damage = bossDamageMap.get(boss.id)!;
-            setBoss(prev => {
-              if (!prev) return null;
-              const newHealth = Math.max(0, prev.currentHealth - damage);
-              
-              soundManager.playBossHitSound();
-              
-              // Check for defeat/phase change
-              if (newHealth <= 0) {
-                if (prev.type === "cube") {
-                  onBossDefeated?.("cube", prev);
-                  return null;
-                } else if (prev.type === "sphere") {
-                  if (prev.currentStage === 1) {
-                    // Phase 2 transition
-                    const phase2Boss = onSpherePhaseChange?.(prev);
-                    return phase2Boss || null;
-                  } else {
-                    // Sphere defeated
-                    onBossDefeated?.("sphere", prev);
+            
+            // Check if this is a Mega Boss - route damage to outer shield HP
+            if (isMegaBoss(boss)) {
+              setBoss(prev => {
+                if (!prev || !isMegaBoss(prev)) return prev;
+                const megaBoss = prev as MegaBoss;
+                
+                // Don't damage if core is already exposed (should hit core with ball)
+                if (megaBoss.coreExposed) {
+                  return prev;
+                }
+                
+                const result = handleMegaBossOuterDamage(megaBoss, damage);
+                soundManager.playBossHitSound();
+                
+                if (result.shouldExposeCore) {
+                  // Expose the core!
+                  const exposedBoss = exposeMegaBossCore({
+                    ...megaBoss,
+                    outerShieldHP: 0,
+                    currentHealth: 0
+                  } as MegaBoss);
+                  toast.success("💥 CORE EXPOSED! Hit the core with the ball!", { duration: 3000 });
+                  return exposedBoss as unknown as Boss;
+                }
+                
+                // Update outer shield HP
+                return {
+                  ...megaBoss,
+                  outerShieldHP: result.newOuterHP,
+                  currentHealth: result.newOuterHP // For health bar display
+                } as unknown as Boss;
+              });
+            } else {
+              // Regular boss damage
+              setBoss(prev => {
+                if (!prev) return null;
+                const newHealth = Math.max(0, prev.currentHealth - damage);
+                
+                soundManager.playBossHitSound();
+                
+                // Check for defeat/phase change
+                if (newHealth <= 0) {
+                  if (prev.type === "cube") {
+                    onBossDefeated?.("cube", prev);
                     return null;
-                  }
-                } else if (prev.type === "pyramid") {
-                  if (prev.currentStage === 1) {
-                    // Pyramid split
-                    onPyramidSplit?.(prev);
-                    return null;
+                  } else if (prev.type === "sphere") {
+                    if (prev.currentStage === 1) {
+                      // Phase 2 transition
+                      const phase2Boss = onSpherePhaseChange?.(prev);
+                      return phase2Boss || null;
+                    } else {
+                      // Sphere defeated
+                      onBossDefeated?.("sphere", prev);
+                      return null;
+                    }
+                  } else if (prev.type === "pyramid") {
+                    if (prev.currentStage === 1) {
+                      // Pyramid split
+                      onPyramidSplit?.(prev);
+                      return null;
+                    }
                   }
                 }
-              }
-              
-              // Health updated but boss still alive
-              return { ...prev, currentHealth: newHealth };
-            });
+                
+                // Health updated but boss still alive
+                return { ...prev, currentHealth: newHealth };
+              });
+            }
           }
           
           // Damage resurrected bosses

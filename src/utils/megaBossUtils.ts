@@ -320,13 +320,113 @@ export function isBallInHatchArea(ball: Ball, boss: MegaBoss): boolean {
   // Core is at center of boss
   const coreX = boss.x + boss.width / 2;
   const coreY = boss.y + boss.height / 2;
-  const coreRadius = 35; // Larger hit area for the core
+  const coreRadius = 60; // LARGER hit area for easier core hit
   
   const dx = ball.x - coreX;
   const dy = ball.y - coreY;
   const dist = Math.sqrt(dx * dx + dy * dy);
   
   return dist < coreRadius + ball.radius;
+}
+
+// Check if ball is inside the mega boss bounding box (for gravity well effect)
+export function isBallInsideMegaBoss(ball: Ball, boss: MegaBoss): boolean {
+  const bossLeft = boss.x;
+  const bossRight = boss.x + boss.width;
+  const bossTop = boss.y;
+  const bossBottom = boss.y + boss.height;
+  
+  return ball.x > bossLeft && ball.x < bossRight && ball.y > bossTop && ball.y < bossBottom;
+}
+
+// Apply gravity well effect to pull ball toward core
+export function applyGravityWellToBall(ball: Ball, boss: MegaBoss): Ball {
+  const coreX = boss.x + boss.width / 2;
+  const coreY = boss.y + boss.height / 2;
+  
+  const dx = coreX - ball.x;
+  const dy = coreY - ball.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  
+  if (dist < 5) {
+    // Ball is essentially at core
+    return ball;
+  }
+  
+  // Normalize direction and apply attraction
+  const attractionStrength = 0.5;
+  const newDx = ball.dx + (dx / dist) * attractionStrength;
+  const newDy = ball.dy + (dy / dist) * attractionStrength;
+  
+  // Limit max speed
+  const speed = Math.sqrt(newDx * newDx + newDy * newDy);
+  const maxSpeed = 6;
+  
+  if (speed > maxSpeed) {
+    return {
+      ...ball,
+      dx: (newDx / speed) * maxSpeed,
+      dy: (newDy / speed) * maxSpeed
+    };
+  }
+  
+  return {
+    ...ball,
+    dx: newDx,
+    dy: newDy
+  };
+}
+
+// Check if danger ball phase should end (all danger balls dealt with)
+export function shouldEndDangerBallPhase(boss: MegaBoss): boolean {
+  const config = MEGA_BOSS_CONFIG;
+  // Phase ends when all 5 danger balls have been fired AND there are no more scheduled
+  return (
+    boss.trappedBall !== null &&
+    boss.dangerBallsFired >= config.dangerBallCount &&
+    boss.scheduledDangerBalls.length === 0
+  );
+}
+
+// Reset phase progress after failing to catch all danger balls
+export function resetMegaBossPhaseProgress(boss: MegaBoss): { boss: MegaBoss; releasedBall: Ball | null } {
+  const config = MEGA_BOSS_CONFIG;
+  
+  if (!boss.trappedBall) {
+    return { boss, releasedBall: null };
+  }
+  
+  // Release the ball
+  const releasedBall: Ball = {
+    ...boss.trappedBall,
+    x: boss.x + boss.width / 2,
+    y: boss.y + boss.height + 15,
+    dx: 0,
+    dy: 4,
+    waitingToLaunch: false
+  };
+  
+  // Reset outer shield HP for another attempt
+  return {
+    boss: {
+      ...boss,
+      outerShieldHP: config.outerShieldHP,
+      outerShieldMaxHP: config.outerShieldHP,
+      currentHealth: config.outerShieldHP,
+      maxHealth: config.outerShieldHP,
+      coreExposed: false,
+      coreExposedTime: null,
+      coreHit: false,
+      trappedBall: null,
+      cannonExtended: false,
+      cannonExtendedTime: null,
+      dangerBallsCaught: 0,
+      dangerBallsFired: 0,
+      scheduledDangerBalls: [],
+      hatchOpen: false
+    },
+    releasedBall
+  };
 }
 
 // Check if should spawn swarm enemies (phase 3)

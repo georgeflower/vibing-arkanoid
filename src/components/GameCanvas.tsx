@@ -664,13 +664,13 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fillStyle = grad;
           ctx.fill();
           
-          // Inner warning symbol (exclamation mark)
+          // Inner warning symbol (star)
           ctx.shadowBlur = 0;
           ctx.fillStyle = isWhitePhase ? '#ff0000' : '#ffffff';
-          ctx.font = `bold ${dangerBall.radius}px monospace`;
+          ctx.font = `bold ${dangerBall.radius * 1.2}px monospace`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText('!', dangerBall.x, dangerBall.y);
+          ctx.fillText('★', dangerBall.x, dangerBall.y);
           
           // Outer ring pulse
           const pulseScale = 1 + Math.sin(Date.now() / 150) * 0.2;
