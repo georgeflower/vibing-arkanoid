@@ -2614,14 +2614,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   
                   // If core is exposed, don't damage outer shield
                   if (megaBoss.coreExposed || megaBoss.trappedBall) {
+                    console.log(`[MEGA BOSS DEBUG] Ball bounced off boss but core exposed/trapped - no shield damage`);
                     // Ball can enter the core - handled in game loop
                     return prev;
                   }
                   
                   // Damage outer shield
                   const { newOuterHP, shouldExposeCore } = handleMegaBossOuterDamage(megaBoss, 1);
+                  console.log(`[MEGA BOSS DEBUG] Ball hit outer shield! HP: ${megaBoss.outerShieldHP} -> ${newOuterHP}`);
                   
                   if (shouldExposeCore) {
+                    console.log(`[MEGA BOSS DEBUG] ★★★ BALL EXPOSED THE CORE! ★★★`);
                     // Core is now exposed! Player must hit core
                     const exposedBoss = exposeMegaBossCore(megaBoss);
                     toast.warning(`⚠️ CORE EXPOSED! Hit the core!`, { duration: 3000 });
@@ -4018,6 +4021,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           if (level === MEGA_BOSS_LEVEL && boss && isMegaBoss(boss)) {
             const megaBoss = boss as MegaBoss;
             if (megaBoss.coreExposed && isBallInsideMegaBoss(ball, megaBoss)) {
+              console.log(`[MEGA BOSS DEBUG] Ball ${ball.id} inside boss with core exposed - applying gravity well`);
+              
               // Don't let the ball die - apply gravity well to pull toward core
               const pulledBall = applyGravityWellToBall(ball, megaBoss);
               ball.dx = pulledBall.dx;
@@ -4026,6 +4031,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               // Keep ball inside boss area
               const bossBottom = megaBoss.y + megaBoss.height;
               if (ball.y > bossBottom - ball.radius) {
+                console.log(`[MEGA BOSS DEBUG] Ball ${ball.id} bouncing back up from boss bottom`);
                 ball.y = bossBottom - ball.radius - 5;
                 ball.dy = -Math.abs(ball.dy) * 0.5; // Bounce back up
               }
@@ -4036,6 +4042,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           // Check if ball is falling below screen
           if (ball.y > SCALED_CANVAS_HEIGHT + ball.radius) {
+            // DEBUG: Log when ball is lost on level 20
+            if (level === MEGA_BOSS_LEVEL) {
+              console.log(`[MEGA BOSS DEBUG] ⚠️ BALL ${ball.id} LOST! Position: (${ball.x.toFixed(1)}, ${ball.y.toFixed(1)})`);
+              if (boss && isMegaBoss(boss)) {
+                const megaBoss = boss as MegaBoss;
+                console.log(`[MEGA BOSS DEBUG] Boss state at ball loss:`, {
+                  coreExposed: megaBoss.coreExposed,
+                  trappedBall: megaBoss.trappedBall ? 'YES' : 'NO',
+                  bossPosition: { x: megaBoss.x.toFixed(1), y: megaBoss.y.toFixed(1) }
+                });
+              }
+            }
             return false; // Ball lost
           }
 
@@ -5007,16 +5025,45 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const megaBoss = boss as MegaBoss;
       const now = Date.now();
 
+      // DEBUG: Log Mega Boss state every 60 frames (~1 second)
+      if (frameCountRef.current % 60 === 0) {
+        console.log(`[MEGA BOSS DEBUG] State:`, {
+          corePhase: megaBoss.corePhase,
+          outerShieldHP: megaBoss.outerShieldHP,
+          coreExposed: megaBoss.coreExposed,
+          trappedBall: megaBoss.trappedBall ? 'YES' : 'NO',
+          dangerBallsCaught: megaBoss.dangerBallsCaught,
+          dangerBallsFired: megaBoss.dangerBallsFired,
+          scheduledDangerBalls: megaBoss.scheduledDangerBalls.length,
+          isInvulnerable: megaBoss.isInvulnerable,
+          position: { x: megaBoss.x.toFixed(1), y: megaBoss.y.toFixed(1) }
+        });
+      }
+
       // Check if player ball enters exposed core
       if (megaBoss.coreExposed && !megaBoss.trappedBall) {
         balls.forEach((ball) => {
+          // DEBUG: Log ball position relative to core when core is exposed
+          const coreX = megaBoss.x + megaBoss.width / 2;
+          const coreY = megaBoss.y + megaBoss.height / 2;
+          const distToCore = Math.sqrt(Math.pow(ball.x - coreX, 2) + Math.pow(ball.y - coreY, 2));
+          
+          if (frameCountRef.current % 10 === 0) {
+            console.log(`[MEGA BOSS DEBUG] Ball ${ball.id} distance to core: ${distToCore.toFixed(1)}px, inside boss: ${isBallInsideMegaBoss(ball, megaBoss)}, in hatch area: ${isBallInHatchArea(ball, megaBoss)}`);
+          }
+          
           if (!ball.waitingToLaunch && isBallInHatchArea(ball, megaBoss)) {
+            console.log(`[MEGA BOSS DEBUG] ★★★ BALL ${ball.id} HIT THE CORE! ★★★`);
+            console.log(`[MEGA BOSS DEBUG] Ball position: (${ball.x.toFixed(1)}, ${ball.y.toFixed(1)}), Core position: (${coreX.toFixed(1)}, ${coreY.toFixed(1)})`);
+            
             // Trap the ball in the core!
             const trappedBoss = handleMegaBossCoreHit(megaBoss, ball);
             setBoss(trappedBoss as unknown as Boss);
 
             // Hide the trapped ball
             setBalls((prev) => prev.filter((b) => b.id !== ball.id));
+            
+            console.log(`[MEGA BOSS DEBUG] Ball trapped, danger balls scheduled: ${(trappedBoss as MegaBoss).scheduledDangerBalls.length}`);
 
             toast.error("🔴 BALL TRAPPED IN CORE! Catch 5 danger balls!", { duration: 3000 });
             soundManager.playExplosion();
@@ -5028,6 +5075,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (megaBoss.trappedBall && megaBoss.scheduledDangerBalls.length > 0) {
         const nextSpawnTime = megaBoss.scheduledDangerBalls[0];
         if (now >= nextSpawnTime) {
+          console.log(`[MEGA BOSS DEBUG] Spawning danger ball ${megaBoss.dangerBallsFired + 1}/5`);
+          
           // Spawn a danger ball
           const newDangerBall = spawnDangerBall(megaBoss);
           setDangerBalls((prev) => [...prev, newDangerBall]);
@@ -5050,6 +5099,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Check if all danger balls caught - release ball and transition phase
       if (shouldReleaseBall(megaBoss)) {
+        console.log(`[MEGA BOSS DEBUG] ★★★ ALL 5 DANGER BALLS CAUGHT! Releasing ball and transitioning phase ★★★`);
         const { boss: updatedBoss, releasedBall, isDefeated } = releaseBallAndNextPhase(megaBoss);
         
         if (isDefeated) {
@@ -5192,6 +5242,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           if (isDangerBallIntercepted(updatedBall, paddle.x, paddle.y, paddle.width, paddle.height)) {
             // Ball is caught! Increment counter
             ballsCaught++;
+            console.log(`[MEGA BOSS DEBUG] ✅ Danger ball ${ball.id} CAUGHT! Total: ${megaBoss.dangerBallsCaught + ballsCaught}/5`);
             toast.success(`✅ DANGER BALL CAUGHT! (${megaBoss.dangerBallsCaught + ballsCaught}/5)`, { duration: 1000 });
             soundManager.playBounce();
             return; // Remove caught ball
@@ -5200,12 +5251,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Check if reached bottom (count as missed but DON'T lose life)
           if (isDangerBallAtBottom(updatedBall, SCALED_CANVAS_HEIGHT)) {
             ballsMissed++;
+            console.log(`[MEGA BOSS DEBUG] ⚠️ Danger ball ${ball.id} MISSED! (no life lost)`);
             toast.warning("⚠️ Danger ball missed!", { duration: 1000 });
             return; // Don't add to updated balls
           }
 
           // Check if off screen (sides or top) - shouldn't happen often but safety
           if (updatedBall.x < -50 || updatedBall.x > SCALED_CANVAS_WIDTH + 50 || updatedBall.y < -50) {
+            console.log(`[MEGA BOSS DEBUG] Danger ball ${ball.id} went off screen`);
             return; // Remove from game
           }
 
@@ -5231,16 +5284,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       
       // Check if danger ball phase should end (all danger balls dealt with)
       if (shouldEndDangerBallPhase(megaBoss) && dangerBalls.length === 0) {
+        console.log(`[MEGA BOSS DEBUG] Danger ball phase ending. Caught: ${megaBoss.dangerBallsCaught}/5`);
+        
         // All danger balls have been spawned and no more on screen
         if (megaBoss.dangerBallsCaught >= MEGA_BOSS_CONFIG.dangerBallsToComplete) {
+          console.log(`[MEGA BOSS DEBUG] SUCCESS! All 5 danger balls caught - advancing phase`);
           // Success! Release ball and advance phase
           // This is handled by shouldReleaseBall in the existing code
         } else {
+          console.log(`[MEGA BOSS DEBUG] FAILED! Only caught ${megaBoss.dangerBallsCaught}/5 - resetting shield`);
           // Failed to catch all 5 - release ball and reset outer shield HP
           const { boss: resetBoss, releasedBall } = resetMegaBossPhaseProgress(megaBoss);
           setBoss(resetBoss as unknown as Boss);
           
           if (releasedBall) {
+            console.log(`[MEGA BOSS DEBUG] Released player ball at (${releasedBall.x.toFixed(1)}, ${releasedBall.y.toFixed(1)})`);
             setBalls((prev) => [...prev, releasedBall]);
           }
           
