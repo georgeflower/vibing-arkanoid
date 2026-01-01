@@ -1,3 +1,9 @@
+// ═══════════════════════════════════════════════════════════════
+// ████████╗ DEBUG CONFIGURATION - SET TO FALSE FOR PRODUCTION ████████╗
+// ═══════════════════════════════════════════════════════════════
+export const ENABLE_DEBUG_FEATURES = true;
+// ═══════════════════════════════════════════════════════════════
+
 export const CANVAS_WIDTH = 850;
 export const CANVAS_HEIGHT = 650;
 export const PADDLE_WIDTH = 110;

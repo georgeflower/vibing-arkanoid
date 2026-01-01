@@ -21,7 +21,7 @@ import { TopScoresDisplay } from "./TopScoresDisplay";
 import { X, ChevronUp, ChevronDown } from "lucide-react";
 import { useTutorial } from "@/hooks/useTutorial";
 import { useLevelProgress } from "@/hooks/useLevelProgress";
-import { FINAL_LEVEL } from "@/constants/game";
+import { FINAL_LEVEL, ENABLE_DEBUG_FEATURES } from "@/constants/game";
 
 interface MainMenuProps {
   onStartGame: (settings: GameSettings) => void;
@@ -92,6 +92,12 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
     
     soundManager.playMenuClick();
     setStartingLevel(newLevel);
+    
+    // In debug mode, all levels are unlocked
+    if (ENABLE_DEBUG_FEATURES) {
+      setShowLockedMessage(false);
+      return;
+    }
     
     if (!isLevelUnlocked(newLevel)) {
       // Show locked message
@@ -599,7 +605,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 </button>
                 <span 
                   className={`text-sm font-mono min-w-[28px] text-center transition-colors ${
-                    isLevelUnlocked(startingLevel) 
+                    (ENABLE_DEBUG_FEATURES || isLevelUnlocked(startingLevel))
                       ? 'text-white' 
                       : 'text-gray-500'
                   }`}
@@ -632,7 +638,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
         <div className="space-y-2 mt-6">
           <Button
             onClick={() => {
-              if (!isLevelUnlocked(startingLevel)) {
+              // In debug mode, all levels are unlocked
+              if (!ENABLE_DEBUG_FEATURES && !isLevelUnlocked(startingLevel)) {
                 soundManager.playMenuClick();
                 if (lockedMessageTimeoutRef.current) {
                   clearTimeout(lockedMessageTimeoutRef.current);
@@ -648,12 +655,12 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             }}
             onMouseEnter={() => soundManager.playMenuHover()}
             className={`w-full text-white text-lg py-4 ${
-              isLevelUnlocked(startingLevel)
+              (ENABLE_DEBUG_FEATURES || isLevelUnlocked(startingLevel))
                 ? 'bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)]'
                 : 'bg-gray-600 cursor-not-allowed'
             }`}
           >
-            Start Game
+            Start Game{ENABLE_DEBUG_FEATURES ? ' (DEBUG)' : ''}
           </Button>
 
           <Button

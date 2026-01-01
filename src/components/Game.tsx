@@ -77,6 +77,7 @@ import {
   POWERUP_FALL_SPEED,
   FINAL_LEVEL,
   FIREBALL_DURATION,
+  ENABLE_DEBUG_FEATURES,
 } from "@/constants/game";
 import { useTutorial } from "@/hooks/useTutorial";
 import { TutorialOverlay } from "./TutorialOverlay";
@@ -125,11 +126,8 @@ interface GameProps {
   onReturnToMenu: () => void;
 }
 export const Game = ({ settings, onReturnToMenu }: GameProps) => {
-  // ═══════════════════════════════════════════════════════════════
-  // ████████╗ DEBUG CONFIGURATION - REMOVE BEFORE PRODUCTION ████████╗
-  // ═══════════════════════════════════════════════════════════════
-  const ENABLE_DEBUG_FEATURES = true; // Set to false for production
-  // ═══════════════════════════════════════════════════════════════
+  // Import debug flag from shared constants
+  // To enable/disable debug features, edit ENABLE_DEBUG_FEATURES in src/constants/game.ts
 
   // Detect updates but don't apply during gameplay - defer until back at menu
   useServiceWorkerUpdate({ shouldApplyUpdate: false });
