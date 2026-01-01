@@ -5277,32 +5277,40 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           });
         }
 
+        // FAIL FAST: Immediately reset boss on ANY missed danger ball
+        if (ballsMissed > 0) {
+          console.log(`[MEGA BOSS DEBUG] ❌ FAIL FAST: ${ballsMissed} danger ball(s) missed → IMMEDIATELY resetting shield + releasing player ball`);
+          console.log(`[MEGA BOSS DEBUG] State before reset: dangerBallsCaught=${megaBoss.dangerBallsCaught}, dangerBallsFired=${megaBoss.dangerBallsFired}, scheduledDangerBalls=${megaBoss.scheduledDangerBalls?.length || 0}`);
+          
+          setBoss((prevBoss) => {
+            if (!prevBoss || !isMegaBoss(prevBoss)) return prevBoss;
+            const currentMegaBoss = prevBoss as MegaBoss;
+            const { boss: resetBoss, releasedBall } = resetMegaBossPhaseProgress(currentMegaBoss);
+            
+            console.log(`[MEGA BOSS DEBUG] Reset complete: outerShieldHP=${resetBoss.outerShieldHP}, coreExposed=${resetBoss.coreExposed}, cannonExtended=${resetBoss.cannonExtended}`);
+            
+            if (releasedBall) {
+              console.log(`[MEGA BOSS DEBUG] Released player ball at (${releasedBall.x.toFixed(1)}, ${releasedBall.y.toFixed(1)})`);
+              setBalls((prev) => [...prev, releasedBall]);
+            }
+            
+            return resetBoss as unknown as Boss;
+          });
+          
+          toast.warning(`Danger ball missed! Shield regenerated to 10 HP.`, { duration: 3000 });
+          soundManager.playBounce();
+          
+          // Clear all remaining danger balls immediately
+          return [];
+        }
+
         return updatedBalls;
       });
       
-      // Check if danger ball phase should end (all danger balls dealt with)
-      if (shouldEndDangerBallPhase(megaBoss) && dangerBalls.length === 0) {
-        console.log(`[MEGA BOSS DEBUG] Danger ball phase ending. Caught: ${megaBoss.dangerBallsCaught}/5`);
-        
-        // All danger balls have been spawned and no more on screen
-        if (megaBoss.dangerBallsCaught >= MEGA_BOSS_CONFIG.dangerBallsToComplete) {
-          console.log(`[MEGA BOSS DEBUG] SUCCESS! All 5 danger balls caught - advancing phase`);
-          // Success! Release ball and advance phase
-          // This is handled by shouldReleaseBall in the existing code
-        } else {
-          console.log(`[MEGA BOSS DEBUG] FAILED! Only caught ${megaBoss.dangerBallsCaught}/5 - resetting shield`);
-          // Failed to catch all 5 - release ball and reset outer shield HP
-          const { boss: resetBoss, releasedBall } = resetMegaBossPhaseProgress(megaBoss);
-          setBoss(resetBoss as unknown as Boss);
-          
-          if (releasedBall) {
-            console.log(`[MEGA BOSS DEBUG] Released player ball at (${releasedBall.x.toFixed(1)}, ${releasedBall.y.toFixed(1)})`);
-            setBalls((prev) => [...prev, releasedBall]);
-          }
-          
-          toast.warning(`Only caught ${megaBoss.dangerBallsCaught}/5 danger balls. Shield regenerated!`, { duration: 3000 });
-          soundManager.playBounce();
-        }
+      // Check if danger ball phase should end successfully (all 5 caught)
+      if (shouldEndDangerBallPhase(megaBoss) && dangerBalls.length === 0 && megaBoss.dangerBallsCaught >= MEGA_BOSS_CONFIG.dangerBallsToComplete) {
+        console.log(`[MEGA BOSS DEBUG] SUCCESS! All 5 danger balls caught - phase will advance via shouldReleaseBall`);
+        // Success path is handled by shouldReleaseBall in the existing ball update code
       }
     }
 
