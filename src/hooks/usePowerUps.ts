@@ -189,15 +189,22 @@ export const usePowerUps = (
               break;
             
             case "life":
-              const levelGroup = Math.floor(currentLevel / 5);
-              // Safeguard: check again (should be marked on creation, but double-check)
-              if (!extraLifeUsedLevels.includes(levelGroup)) {
+              // Mercy lives bypass the per-5-levels limit
+              if (powerUp.isMercyLife) {
                 soundManager.playExtraLifeSound();
                 setLives(prev => prev + 1);
-                setExtraLifeUsedLevels(prev => [...prev, levelGroup]);
-                toast.success("Extra life!");
+                toast.success("Mercy Extra Life!");
               } else {
-                console.warn("[Power-Up] Extra life collected but already used for this level group");
+                const levelGroup = Math.floor(currentLevel / 5);
+                // Safeguard: check again (should be marked on creation, but double-check)
+                if (!extraLifeUsedLevels.includes(levelGroup)) {
+                  soundManager.playExtraLifeSound();
+                  setLives(prev => prev + 1);
+                  setExtraLifeUsedLevels(prev => [...prev, levelGroup]);
+                  toast.success("Extra life!");
+                } else {
+                  console.warn("[Power-Up] Extra life collected but already used for this level group");
+                }
               }
               break;
             

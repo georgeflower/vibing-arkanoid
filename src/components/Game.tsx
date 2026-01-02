@@ -571,6 +571,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bricksHit, setBricksHit] = useState(0);
   const [levelSkipped, setLevelSkipped] = useState(false);
   const [livesLostOnCurrentLevel, setLivesLostOnCurrentLevel] = useState(0);
+  const [bossFirstHitShieldDropped, setBossFirstHitShieldDropped] = useState(false);
   const [bossIntroActive, setBossIntroActive] = useState(false);
   // Use refs for particles to avoid state churn - render trigger via counter
   const gameOverParticlesRef = useRef<Particle[]>([]);
@@ -914,7 +915,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         soundManager.playExplosion();
         soundManager.playBossDefeatSound();
         setScore((s) => s + BOSS_CONFIG.cube.points);
-        toast.success(`CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points`);
+        setLives((prev) => prev + 1); // Bonus life for defeating boss
+        toast.success(`CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points + BONUS LIFE!`);
         setExplosions((e) => [
           ...e,
           {
@@ -948,7 +950,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         soundManager.playExplosion();
         soundManager.playBossDefeatSound();
         setScore((s) => s + BOSS_CONFIG.sphere.points);
-        toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points`);
+        setLives((prev) => prev + 1); // Bonus life for defeating boss
+        toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points + BONUS LIFE!`);
         setExplosions((e) => [
           ...e,
           {
@@ -1019,7 +1022,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         // Check if all defeated
         if (remaining.length === 0) {
-          toast.success("ALL PYRAMIDS DEFEATED!");
+          setLives((prev) => prev + 1); // Bonus life for defeating all pyramids
+          toast.success("ALL PYRAMIDS DEFEATED! + BONUS LIFE!");
           setBossActive(false);
           setBossesKilled((k) => k + 1);
           setBossDefeatedTransitioning(true);
@@ -1513,6 +1517,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setLives(3);
     setLevel(startLevel);
     setLivesLostOnCurrentLevel(0); // Reset mercy power-up counter
+    setBossFirstHitShieldDropped(false); // Reset shield drop for new game
     // Set speed multiplier (already calculated above)
     setSpeedMultiplier(startingSpeedMultiplier);
     setGameState("ready");
@@ -1607,6 +1612,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const newSpeedMultiplier = calculateSpeedForLevel(newLevel, settings.difficulty);
     setLevel(newLevel);
     setLivesLostOnCurrentLevel(0); // Reset mercy power-up counter for new level
+    setBossFirstHitShieldDropped(false); // Reset shield drop for new boss level
     setSpeedMultiplier(newSpeedMultiplier);
 
     // Update max level reached in localStorage
@@ -2612,6 +2618,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
 
           if (canDamage) {
+            // Drop shield on first boss hit
+            if (!bossFirstHitShieldDropped) {
+              setBossFirstHitShieldDropped(true);
+              const shieldPowerUp: PowerUp = {
+                type: 'shield',
+                x: bossTarget.x + bossTarget.width / 2 - POWERUP_SIZE / 2,
+                y: bossTarget.y + bossTarget.height,
+                width: POWERUP_SIZE,
+                height: POWERUP_SIZE,
+                speed: POWERUP_FALL_SPEED,
+                active: true
+              };
+              setPowerUps(currentPowerUps => [...currentPowerUps, shieldPowerUp]);
+              toast.info("🛡️ Shield incoming!");
+            }
+            
             // Apply damage, update boss.lastHitAt with frameTick
             const isBoss = bossTarget === boss;
             const isResurrected = !isBoss;
@@ -2679,7 +2701,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     soundManager.playExplosion();
                     soundManager.playBossDefeatSound();
                     setScore((s) => s + BOSS_CONFIG.cube.points);
-                    toast.success(`CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points`);
+                    setLives((prev) => prev + 1); // Bonus life for defeating boss
+                    toast.success(`CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points + BONUS LIFE!`);
                     setExplosions((e) => [
                       ...e,
                       {
@@ -2744,7 +2767,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       soundManager.playExplosion();
                       soundManager.playBossDefeatSound();
                       setScore((s) => s + BOSS_CONFIG.sphere.points);
-                      toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points`);
+                      setLives((prev) => prev + 1); // Bonus life for defeating boss
+                      toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points + BONUS LIFE!`);
                       setExplosions((e) => [
                         ...e,
                         {
@@ -2866,7 +2890,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                     // Check if all defeated
                     if (newBosses.length === 0) {
-                      toast.success("ALL PYRAMIDS DEFEATED!");
+                      setLives((prev) => prev + 1); // Bonus life for defeating all pyramids
+                      toast.success("ALL PYRAMIDS DEFEATED! + BONUS LIFE!");
                       setBossActive(false);
                       setBossesKilled((k) => k + 1);
                       setBossDefeatedTransitioning(true);
@@ -4191,7 +4216,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 width: POWERUP_SIZE,
                 height: POWERUP_SIZE,
                 speed: POWERUP_FALL_SPEED,
-                active: true
+                active: true,
+                isMercyLife: mercyType === 'life' // Mark mercy lives to bypass per-5-levels limit
               };
               setPowerUps([mercyPowerUp]);
               
@@ -5217,7 +5243,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // MEGA BOSS DEFEATED! Victory with confetti!
           soundManager.playMegaBossVictorySound();
           setScore((s) => s + MEGA_BOSS_CONFIG.points);
-          toast.success(`🎉 MEGA BOSS DEFEATED! +${MEGA_BOSS_CONFIG.points} points!`, { duration: 5000 });
+          setLives((prev) => prev + 1); // Bonus life for defeating Mega Boss
+          toast.success(`🎉 MEGA BOSS DEFEATED! +${MEGA_BOSS_CONFIG.points} points + BONUS LIFE!`, { duration: 5000 });
           
           // Multiple explosion waves for dramatic effect
           const bossCenter = { x: megaBoss.x + megaBoss.width / 2, y: megaBoss.y + megaBoss.height / 2 };
