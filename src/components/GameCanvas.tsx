@@ -860,16 +860,19 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           }
         }
         
+        // Visual radius is 2px larger than collision radius for better visibility
+        const visualRadius = ball.radius + 2;
+        
         // ═══ CHAOS-AWARE VISIBILITY ENHANCEMENTS ═══
         // Dynamic glow when screen gets busy (chaosLevel > 0.2)
         if (chaosLevel > 0.2 && !ball.isFireball && qualitySettings.glowEnabled) {
           ctx.save();
           const chaosPulse = 1 + Math.sin(Date.now() / 200) * 0.2;
-          const chaosGlowRadius = ball.radius * (2 + chaosLevel * 2) * chaosPulse;
+          const chaosGlowRadius = visualRadius * (2 + chaosLevel * 2) * chaosPulse;
           const chaosGlowOpacity = (chaosLevel - 0.2) * 0.875; // Scale 0.2-1.0 to 0-0.7
           
           const chaosGradient = ctx.createRadialGradient(
-            ball.x, ball.y, ball.radius * 0.5,
+            ball.x, ball.y, visualRadius * 0.5,
             ball.x, ball.y, chaosGlowRadius
           );
           chaosGradient.addColorStop(0, `rgba(150, 230, 255, ${chaosGlowOpacity})`);
@@ -888,7 +891,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.save();
           ctx.fillStyle = `rgba(0, 0, 0, ${0.5 + chaosLevel * 0.2})`;
           ctx.beginPath();
-          ctx.arc(ball.x, ball.y, ball.radius + 2 + chaosLevel, 0, Math.PI * 2);
+          ctx.arc(ball.x, ball.y, visualRadius + 2 + chaosLevel, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
@@ -898,12 +901,12 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         
         // Create 3D sphere with gradient
         const gradient = ctx.createRadialGradient(
-          -ball.radius * 0.3,
-          -ball.radius * 0.3,
+          -visualRadius * 0.3,
+          -visualRadius * 0.3,
           0,
           0,
           0,
-          ball.radius
+          visualRadius
         );
         
         if (ball.isFireball) {
@@ -931,7 +934,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         }
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
+        ctx.arc(0, 0, visualRadius, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
         
@@ -940,8 +943,8 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.shadowBlur = 0;
           ctx.rotate((ballRotation * Math.PI) / 180);
           ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-          for (let i = -ball.radius; i < ball.radius; i += 4) {
-            const lineWidth = Math.sqrt(ball.radius * ball.radius - i * i) * 2;
+          for (let i = -visualRadius; i < visualRadius; i += 4) {
+            const lineWidth = Math.sqrt(visualRadius * visualRadius - i * i) * 2;
             ctx.fillRect(-lineWidth / 2, i, lineWidth, 2);
           }
         }
