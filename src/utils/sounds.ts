@@ -304,6 +304,58 @@ class SoundManager {
     });
   }
 
+  playPhaseCompleteJingle() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Triumphant ascending fanfare
+    const notes = [
+      { freq: 392, time: 0, duration: 0.15 },      // G4
+      { freq: 494, time: 0.12, duration: 0.15 },   // B4
+      { freq: 587, time: 0.24, duration: 0.15 },   // D5
+      { freq: 784, time: 0.36, duration: 0.35 },   // G5 (held)
+      { freq: 659, time: 0.5, duration: 0.2 },     // E5
+      { freq: 784, time: 0.65, duration: 0.4 },    // G5 (final, longer)
+    ];
+    
+    notes.forEach(({ freq, time, duration }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      
+      gain.gain.setValueAtTime(0, ctx.currentTime + time);
+      gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + time + 0.03);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime + time + duration - 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + time + duration);
+      
+      osc.start(ctx.currentTime + time);
+      osc.stop(ctx.currentTime + time + duration);
+    });
+    
+    // Add a harmonic layer for richness
+    [0, 0.36].forEach((time, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.type = 'triangle';
+      osc.frequency.value = i === 0 ? 196 : 392; // G3, G4 bass notes
+      
+      gain.gain.setValueAtTime(0.1, ctx.currentTime + time);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + time + 0.4);
+      
+      osc.start(ctx.currentTime + time);
+      osc.stop(ctx.currentTime + time + 0.4);
+    });
+  }
+
   playExplosion() {
     if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
