@@ -5236,38 +5236,47 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Phase transition - not defeated yet
           setBoss(updatedBoss as unknown as Boss);
           if (releasedBall) {
-            setBalls((prev) => [...prev, releasedBall]);
+            // Apply slow motion by reducing ball speed, then ramp back up
+            const slowMoBall = {
+              ...releasedBall,
+              dx: releasedBall.dx * 0.25,
+              dy: releasedBall.dy * 0.25,
+              speed: releasedBall.speed * 0.25,
+            };
+            setBalls([slowMoBall]);
             
-            // Start ball release highlight with slow motion ramp
+            // Start ball release highlight
             setBallReleaseHighlight({ active: true, startTime: Date.now() });
             
-            // Start at slow motion (0.25x speed)
-            if (gameLoopRef.current) {
-              gameLoopRef.current.setTimeScale(0.25);
-            }
-            
-            // Ramp up to normal speed over 1.5 seconds
+            // Ramp up ball speed to normal over 1.5 seconds
             const rampDuration = 1500;
             const rampSteps = 20;
             const stepInterval = rampDuration / rampSteps;
             let currentStep = 0;
+            const targetSpeed = releasedBall.speed;
+            const targetDy = releasedBall.dy;
             
             const rampInterval = setInterval(() => {
               currentStep++;
               const progress = currentStep / rampSteps;
               // Ease-out curve for smooth ramp
               const easeOut = 1 - Math.pow(1 - progress, 2);
-              const newScale = 0.25 + (0.75 * easeOut);
+              const scaleFactor = 0.25 + (0.75 * easeOut);
               
-              if (gameLoopRef.current) {
-                gameLoopRef.current.setTimeScale(newScale);
-              }
+              setBalls((prev) => prev.map((b) => ({
+                ...b,
+                dy: targetDy * scaleFactor,
+                speed: targetSpeed * scaleFactor,
+              })));
               
               if (currentStep >= rampSteps) {
                 clearInterval(rampInterval);
-                if (gameLoopRef.current) {
-                  gameLoopRef.current.setTimeScale(1.0);
-                }
+                // Ensure final speed is correct
+                setBalls((prev) => prev.map((b) => ({
+                  ...b,
+                  dy: targetDy,
+                  speed: targetSpeed,
+                })));
                 // End highlight effect
                 setBallReleaseHighlight(null);
               }
@@ -5284,22 +5293,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
       }
 
-      // Close core exposure after duration if ball didn't enter
-      if (megaBoss.coreExposed && megaBoss.coreExposedTime) {
-        const exposeDuration = now - megaBoss.coreExposedTime;
-        if (exposeDuration > MEGA_BOSS_CONFIG.hatchOpenDuration && !megaBoss.trappedBall) {
-          setBoss((prev) => {
-            if (!prev || !isMegaBoss(prev)) return prev;
-            return {
-              ...prev,
-              coreExposed: false,
-              coreExposedTime: null,
-              hatchOpen: false,
-            } as unknown as Boss;
-          });
-          toast.warning("Core closed! Hit outer shield again.", { duration: 2000 });
-        }
-      }
+      // Core stays exposed permanently until ball enters - no timer!
 
       // Phase 3: Spawn swarm enemies every 5 seconds (max 8 total)
       if (shouldSpawnSwarm(megaBoss)) {
