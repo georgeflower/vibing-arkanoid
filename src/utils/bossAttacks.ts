@@ -1,5 +1,5 @@
 import type { Boss, BossAttack, BossAttackType } from "@/types/game";
-import { BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
+import { BOSS_CONFIG, ATTACK_PATTERNS, EMP_BOSS_CONFIG } from "@/constants/bossConfig";
 import { soundManager } from "@/utils/sounds";
 import { toast } from "sonner";
 
@@ -9,7 +9,9 @@ export function performBossAttack(
   paddleY: number,
   setBossAttacks: React.Dispatch<React.SetStateAction<BossAttack[]>>,
   setLaserWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; startTime: number }>>>,
-  setSuperWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; y: number; startTime: number }>>>
+  setSuperWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; y: number; startTime: number }>>>,
+  setEmpActive?: (active: boolean) => void,
+  setEmpPulseStartTime?: (time: number | null) => void
 ): void {
   const config = BOSS_CONFIG[boss.type];
   
@@ -175,5 +177,26 @@ export function performBossAttack(
     setBossAttacks(prev => [...prev, ...attacks]);
     toast.warning(`${boss.type.toUpperCase()} CROSS ATTACK!`);
     soundManager.playBombDropSound();
+    
+  } else if (attackType === 'empPulse') {
+    // EMP pulse attack - slows paddle movement
+    if (setEmpActive) {
+      const startTime = Date.now();
+      setEmpActive(true);
+      if (setEmpPulseStartTime) {
+        setEmpPulseStartTime(startTime);
+      }
+      toast.error(`⚡ ${boss.type.toUpperCase()} EMP PULSE!`);
+      soundManager.playEMPPulseSound();
+      
+      // Auto-deactivate after duration
+      setTimeout(() => {
+        setEmpActive(false);
+        if (setEmpPulseStartTime) {
+          setEmpPulseStartTime(null);
+        }
+        toast.info("EMP effect ended");
+      }, EMP_BOSS_CONFIG.duration);
+    }
   }
 }

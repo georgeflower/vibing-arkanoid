@@ -5157,7 +5157,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         );
       } else {
         // Regular boss attack
-        performBossAttack(boss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings, setSuperWarnings);
+        performBossAttack(boss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings, setSuperWarnings, setEmpSlowActive, setEmpPulseStartTime);
       }
       const nextIndex = (boss.currentPositionIndex + 1) % boss.positions.length;
       setBoss((prev) =>
@@ -5596,7 +5596,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         Date.now() - resBoss.lastAttackTime >= resBoss.attackCooldown &&
         paddle
       ) {
-        performBossAttack(resBoss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings, setSuperWarnings);
+        performBossAttack(resBoss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings, setSuperWarnings, setEmpSlowActive, setEmpPulseStartTime);
         const nextIdx = (resBoss.currentPositionIndex + 1) % resBoss.positions.length;
         setResurrectedBosses((prev) =>
           prev.map((b, i) =>
