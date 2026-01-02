@@ -33,6 +33,7 @@ export interface Ball {
   isHoming?: boolean; // Ball curves toward boss
   previousY?: number; // Y position before CCD pass (for anti-rescue check)
   lastHitTick?: number; // Frame tick of last paddle hit (for cooldown)
+  releasedFromBossTime?: number; // Timestamp when ball was released from Mega Boss
 }
 
 export interface Paddle {

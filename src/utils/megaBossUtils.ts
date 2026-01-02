@@ -249,7 +249,8 @@ export function releaseBallAndNextPhase(boss: MegaBoss): { boss: MegaBoss; relea
     y: boss.y + boss.height + 15,
     dx: 0,
     dy: 4,
-    waitingToLaunch: false
+    waitingToLaunch: false,
+    releasedFromBossTime: Date.now() // Track when ball was released for paddle collision grace period
   };
   
   const nextPhase = (boss.corePhase + 1) as MegaBossCorePhase;
@@ -453,7 +454,8 @@ export function resetMegaBossPhaseProgress(boss: MegaBoss): { boss: MegaBoss; re
     y: boss.y + boss.height + 15,
     dx: 0,
     dy: 4,
-    waitingToLaunch: false
+    waitingToLaunch: false,
+    releasedFromBossTime: Date.now() // Track when ball was released for paddle collision grace period
   };
   
   // Reset shield HP for another attempt - use inner shield if outer is removed
