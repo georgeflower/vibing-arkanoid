@@ -7075,6 +7075,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (!waitingBall || gameState !== "playing") return;
 
+    // Dismiss boss victory overlay when launching ball
+    if (bossVictoryOverlayActive) {
+      setBossVictoryOverlayActive(false);
+    }
+
     setShowInstructions(false);
 
     if (!timerStartedRef.current) {
@@ -7112,7 +7117,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         return ball;
       }),
     );
-  }, [balls, gameState, launchAngle]);
+  }, [balls, gameState, launchAngle, bossVictoryOverlayActive]);
 
   // Keyboard controls: A/D/LEFT/RIGHT stop oscillation and switch to manual aim mode
   // Mousewheel scroll also stops oscillation and adjusts angle
