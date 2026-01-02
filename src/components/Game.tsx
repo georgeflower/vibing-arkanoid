@@ -5250,51 +5250,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           
           setBoss(updatedBoss as unknown as Boss);
           if (releasedBall) {
-            // Apply slow motion by reducing ball speed, then ramp back up
-            const slowMoBall = {
-              ...releasedBall,
-              dx: releasedBall.dx * 0.25,
-              dy: releasedBall.dy * 0.25,
-              speed: releasedBall.speed * 0.25,
-            };
-            setBalls([slowMoBall]);
+            // Release ball at normal speed (no slow motion)
+            setBalls([releasedBall]);
             
-            // Start ball release highlight
+            // Start ball release highlight (visual only)
             setBallReleaseHighlight({ active: true, startTime: Date.now() });
             
-            // Ramp up ball speed to normal over 1.5 seconds
-            const rampDuration = 1500;
-            const rampSteps = 20;
-            const stepInterval = rampDuration / rampSteps;
-            let currentStep = 0;
-            const targetSpeed = releasedBall.speed;
-            const targetDy = releasedBall.dy;
-            
-            const rampInterval = setInterval(() => {
-              currentStep++;
-              const progress = currentStep / rampSteps;
-              // Ease-out curve for smooth ramp
-              const easeOut = 1 - Math.pow(1 - progress, 2);
-              const scaleFactor = 0.25 + (0.75 * easeOut);
-              
-              setBalls((prev) => prev.map((b) => ({
-                ...b,
-                dy: targetDy * scaleFactor,
-                speed: targetSpeed * scaleFactor,
-              })));
-              
-              if (currentStep >= rampSteps) {
-                clearInterval(rampInterval);
-                // Ensure final speed is correct
-                setBalls((prev) => prev.map((b) => ({
-                  ...b,
-                  dy: targetDy,
-                  speed: targetSpeed,
-                })));
-                // End highlight effect
-                setBallReleaseHighlight(null);
-              }
-            }, stepInterval);
+            // End highlight after 1.5 seconds
+            setTimeout(() => {
+              setBallReleaseHighlight(null);
+            }, 1500);
           }
           
           const phaseNum = (updatedBoss as MegaBoss).corePhase;
