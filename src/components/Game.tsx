@@ -6,6 +6,7 @@ import { HighScoreEntry } from "./HighScoreEntry";
 import { HighScoreDisplay } from "./HighScoreDisplay";
 import { EndScreen } from "./EndScreen";
 import { GetReadyOverlay } from "./GetReadyOverlay";
+import { BossVictoryOverlay } from "./BossVictoryOverlay";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
@@ -233,6 +234,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [resurrectedBosses, setResurrectedBosses] = useState<Boss[]>([]);
   const [bossAttacks, setBossAttacks] = useState<BossAttack[]>([]);
   const [bossDefeatedTransitioning, setBossDefeatedTransitioning] = useState(false);
+  const [bossVictoryOverlayActive, setBossVictoryOverlayActive] = useState(false);
   const [bossActive, setBossActive] = useState(false);
   const [bossHitCooldown, setBossHitCooldown] = useState(0);
   const [laserWarnings, setLaserWarnings] = useState<Array<{ x: number; startTime: number }>>([]);
@@ -935,6 +937,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setBossesKilled((k) => k + 1);
         setBossActive(false);
         setBossDefeatedTransitioning(true);
+        setBossVictoryOverlayActive(true); // Show victory celebration
         // Clean up game entities
         setBalls([]);
         setEnemies([]);
@@ -970,6 +973,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setBossesKilled((k) => k + 1);
         setBossActive(false);
         setBossDefeatedTransitioning(true);
+        setBossVictoryOverlayActive(true); // Show victory celebration
         // Clean up game entities
         setBalls([]);
         setEnemies([]);
@@ -1027,6 +1031,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBossActive(false);
           setBossesKilled((k) => k + 1);
           setBossDefeatedTransitioning(true);
+          setBossVictoryOverlayActive(true); // Show victory celebration
           // Clean up game entities
           setBalls([]);
           setEnemies([]);
@@ -2721,6 +2726,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     setBossesKilled((k) => k + 1);
                     setBossActive(false);
                     setBossDefeatedTransitioning(true);
+                    setBossVictoryOverlayActive(true); // Show victory celebration
                     // Clean up game entities
                     setBalls([]);
                     setEnemies([]);
@@ -2787,6 +2793,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       setBossesKilled((k) => k + 1);
                       setBossActive(false);
                       setBossDefeatedTransitioning(true);
+                      setBossVictoryOverlayActive(true); // Show victory celebration
                       // Clean up game entities
                       setBalls([]);
                       setEnemies([]);
@@ -2895,6 +2902,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       setBossActive(false);
                       setBossesKilled((k) => k + 1);
                       setBossDefeatedTransitioning(true);
+                      setBossVictoryOverlayActive(true); // Show victory celebration
                       // Clean up game entities
                       setBalls([]);
                       setEnemies([]);
@@ -8003,6 +8011,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       />
                     )}
                   </div>
+
+                  {/* Boss Victory Celebration Overlay */}
+                  <BossVictoryOverlay
+                    active={bossVictoryOverlayActive}
+                    onComplete={() => setBossVictoryOverlayActive(false)}
+                  />
 
                   {/* Pause Overlay - only show when NOT in tutorial mode */}
                   {gameState === "paused" && !showDebugDashboard && !tutorialActive && (
