@@ -66,10 +66,11 @@ interface GameCanvasProps {
   dangerBalls?: DangerBall[];
   empSlowActive?: boolean; // EMP pulse effect active
   empPulseStartTime?: number | null; // For visual animation timing
+  ballReleaseHighlight?: { active: boolean; startTime: number } | null; // Ball release slow-mo highlight
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null, isMobile = false, secondChanceImpact = null, dangerBalls = [], empSlowActive = false, empPulseStartTime = null }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null, isMobile = false, secondChanceImpact = null, dangerBalls = [], empSlowActive = false, empPulseStartTime = null, ballReleaseHighlight = null }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -787,6 +788,54 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.beginPath();
           ctx.arc(ball.x, ball.y, ball.radius * 2, 0, Math.PI * 2);
           ctx.stroke();
+          ctx.restore();
+        }
+        
+        // Ball release highlight effect (Mega Boss phase transition)
+        if (ballReleaseHighlight && ballReleaseHighlight.active) {
+          ctx.save();
+          const elapsed = Date.now() - ballReleaseHighlight.startTime;
+          const duration = 1500;
+          const progress = Math.min(elapsed / duration, 1);
+          
+          // Fade out as we approach normal speed
+          const glowOpacity = 1 - progress;
+          
+          // Pulsing glow effect
+          const pulsePhase = (Date.now() % 400) / 400;
+          const pulseIntensity = 1 + Math.sin(pulsePhase * Math.PI * 2) * 0.3;
+          
+          // Large golden/cyan glow
+          const releaseGlowRadius = ball.radius * 4 * pulseIntensity;
+          const releaseGradient = ctx.createRadialGradient(
+            ball.x, ball.y, ball.radius,
+            ball.x, ball.y, releaseGlowRadius
+          );
+          releaseGradient.addColorStop(0, `rgba(255, 220, 100, ${glowOpacity * 0.8})`);
+          releaseGradient.addColorStop(0.4, `rgba(100, 255, 255, ${glowOpacity * 0.5})`);
+          releaseGradient.addColorStop(1, `rgba(100, 200, 255, 0)`);
+          
+          ctx.fillStyle = releaseGradient;
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, releaseGlowRadius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Pulsing ring
+          ctx.strokeStyle = `rgba(255, 255, 100, ${glowOpacity * 0.9})`;
+          ctx.lineWidth = 3;
+          ctx.shadowColor = 'rgba(255, 220, 100, 1)';
+          ctx.shadowBlur = 25 * glowOpacity;
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, ball.radius * 2.5 * pulseIntensity, 0, Math.PI * 2);
+          ctx.stroke();
+          
+          // Second ring
+          ctx.strokeStyle = `rgba(100, 255, 255, ${glowOpacity * 0.6})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, ball.radius * 3.5 * pulseIntensity, 0, Math.PI * 2);
+          ctx.stroke();
+          
           ctx.restore();
         }
         

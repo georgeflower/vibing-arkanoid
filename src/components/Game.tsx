@@ -294,6 +294,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [empSlowEndTime, setEmpSlowEndTime] = useState<number | null>(null);
   const [empPulseStartTime, setEmpPulseStartTime] = useState<number | null>(null);
   const [nextCannonMissileTime, setNextCannonMissileTime] = useState<number>(0);
+  const [ballReleaseHighlight, setBallReleaseHighlight] = useState<{ active: boolean; startTime: number } | null>(null);
 
   // Boss power-up states
   const [reflectShieldActive, setReflectShieldActive] = useState(false);
@@ -5236,6 +5237,41 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBoss(updatedBoss as unknown as Boss);
           if (releasedBall) {
             setBalls((prev) => [...prev, releasedBall]);
+            
+            // Start ball release highlight with slow motion ramp
+            setBallReleaseHighlight({ active: true, startTime: Date.now() });
+            
+            // Start at slow motion (0.25x speed)
+            if (gameLoopRef.current) {
+              gameLoopRef.current.setTimeScale(0.25);
+            }
+            
+            // Ramp up to normal speed over 1.5 seconds
+            const rampDuration = 1500;
+            const rampSteps = 20;
+            const stepInterval = rampDuration / rampSteps;
+            let currentStep = 0;
+            
+            const rampInterval = setInterval(() => {
+              currentStep++;
+              const progress = currentStep / rampSteps;
+              // Ease-out curve for smooth ramp
+              const easeOut = 1 - Math.pow(1 - progress, 2);
+              const newScale = 0.25 + (0.75 * easeOut);
+              
+              if (gameLoopRef.current) {
+                gameLoopRef.current.setTimeScale(newScale);
+              }
+              
+              if (currentStep >= rampSteps) {
+                clearInterval(rampInterval);
+                if (gameLoopRef.current) {
+                  gameLoopRef.current.setTimeScale(1.0);
+                }
+                // End highlight effect
+                setBallReleaseHighlight(null);
+              }
+            }, stepInterval);
           }
           
           const phaseNum = (updatedBoss as MegaBoss).corePhase;
@@ -7662,6 +7698,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       dangerBalls={dangerBalls}
                       empSlowActive={empSlowActive}
                       empPulseStartTime={empPulseStartTime}
+                      ballReleaseHighlight={ballReleaseHighlight}
                     />
 
                     {/* Boss Power-Up Duration Timers - Mobile responsive positioning */}
