@@ -2275,28 +2275,76 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.arc(-1, -2, bomb.width / 5, 0, Math.PI * 2);
           ctx.fill();
         } else if (bomb.type === "rocket") {
-          // Draw yellow rocket (from sphere)
+          // Draw white rocket with flame trail
+          const rocketLength = bomb.width * 1.8;
+          const rocketWidth = bomb.width * 0.6;
+          
+          // Calculate rotation based on velocity
+          const angle = Math.atan2(bomb.dy || 1, bomb.dx || 0);
+          ctx.rotate(angle + Math.PI / 2);
+          
+          // Flame trail
+          const flameFlicker = 0.7 + Math.random() * 0.3;
+          const flameGrad = ctx.createLinearGradient(0, rocketLength * 0.3, 0, rocketLength * 0.9);
+          flameGrad.addColorStop(0, `rgba(255, 200, 50, ${flameFlicker})`);
+          flameGrad.addColorStop(0.4, `rgba(255, 100, 0, ${flameFlicker * 0.8})`);
+          flameGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
+          
+          ctx.fillStyle = flameGrad;
+          ctx.beginPath();
+          ctx.moveTo(-rocketWidth * 0.5, rocketLength * 0.3);
+          ctx.quadraticCurveTo(0, rocketLength * 1.2, rocketWidth * 0.5, rocketLength * 0.3);
+          ctx.fill();
+          
+          // Rocket body (white)
           if (enableGlow) {
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = "hsl(50, 85%, 55%)";
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
           }
-          ctx.fillStyle = "hsl(50, 85%, 55%)";
+          
+          const bodyGrad = ctx.createLinearGradient(-rocketWidth, 0, rocketWidth, 0);
+          bodyGrad.addColorStop(0, '#cccccc');
+          bodyGrad.addColorStop(0.3, '#ffffff');
+          bodyGrad.addColorStop(0.7, '#ffffff');
+          bodyGrad.addColorStop(1, '#aaaaaa');
+          
+          ctx.fillStyle = bodyGrad;
           ctx.beginPath();
-          ctx.arc(0, 0, bomb.width / 2, 0, Math.PI * 2);
+          ctx.moveTo(0, -rocketLength * 0.5); // Nose
+          ctx.lineTo(rocketWidth * 0.5, -rocketLength * 0.1);
+          ctx.lineTo(rocketWidth * 0.5, rocketLength * 0.3);
+          ctx.lineTo(-rocketWidth * 0.5, rocketLength * 0.3);
+          ctx.lineTo(-rocketWidth * 0.5, -rocketLength * 0.1);
+          ctx.closePath();
           ctx.fill();
           
-          // Pulsing white border
-          const rocketPulse = Math.abs(Math.sin(Date.now() / 120));
-          ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + rocketPulse * 0.5})`;
-          ctx.lineWidth = 1.5 + rocketPulse * 1.5;
-          ctx.stroke();
+          // Rocket nose cone (red tip)
+          ctx.fillStyle = '#ff3333';
+          ctx.beginPath();
+          ctx.moveTo(0, -rocketLength * 0.5);
+          ctx.lineTo(rocketWidth * 0.35, -rocketLength * 0.2);
+          ctx.lineTo(-rocketWidth * 0.35, -rocketLength * 0.2);
+          ctx.closePath();
+          ctx.fill();
           
-          // Rocket highlight
+          // Fins
+          ctx.fillStyle = '#ff4444';
+          // Left fin
+          ctx.beginPath();
+          ctx.moveTo(-rocketWidth * 0.5, rocketLength * 0.1);
+          ctx.lineTo(-rocketWidth * 1.0, rocketLength * 0.4);
+          ctx.lineTo(-rocketWidth * 0.5, rocketLength * 0.3);
+          ctx.closePath();
+          ctx.fill();
+          // Right fin
+          ctx.beginPath();
+          ctx.moveTo(rocketWidth * 0.5, rocketLength * 0.1);
+          ctx.lineTo(rocketWidth * 1.0, rocketLength * 0.4);
+          ctx.lineTo(rocketWidth * 0.5, rocketLength * 0.3);
+          ctx.closePath();
+          ctx.fill();
+          
           ctx.shadowBlur = 0;
-          ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-          ctx.beginPath();
-          ctx.arc(-2, -2, bomb.width / 4, 0, Math.PI * 2);
-          ctx.fill();
         } else {
           // Draw regular bomb (red)
           if (enableGlow) {

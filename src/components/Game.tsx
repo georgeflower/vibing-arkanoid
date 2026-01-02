@@ -5386,7 +5386,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             updatedBall = reflectDangerBall(updatedBall, paddle.x, paddle.width);
             console.log(`[MEGA BOSS DEBUG] ↩️ Danger ball ${ball.id} REFLECTED! Now homing toward core.`);
             toast.info(`↩️ Danger ball reflected!`, { duration: 1000 });
-            soundManager.playBounce();
+            soundManager.playDangerBallCatch();
             updatedBalls.push(updatedBall);
             return;
           }
