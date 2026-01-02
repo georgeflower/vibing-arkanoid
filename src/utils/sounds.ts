@@ -844,6 +844,8 @@ class SoundManager {
       bossTrackUrl = '/Boss_level_sphere.mp3';
     } else if (bossLevel === 15) {
       bossTrackUrl = '/Boss_level_pyramid.mp3';
+    } else if (bossLevel === 20) {
+      bossTrackUrl = '/Boss_level_Hexagon.mp3';
     }
     
     // Stop any existing boss music
