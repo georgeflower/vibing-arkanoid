@@ -43,6 +43,8 @@ export type CollisionEvent = {
   objectId?: number | string;
   point: Vec2;
   brickMeta?: Brick; // Store brick metadata for reflection logic
+  originalDx?: number; // Ball dx at moment of collision (pre-reflection)
+  originalDy?: number; // Ball dy at moment of collision (pre-reflection)
 };
 
 export type CCDConfig = {
@@ -536,6 +538,9 @@ export function processBallCCD(
         n = { x: n.x / nLen, y: n.y / nLen };
       }
 
+      // Capture velocity at the moment of collision BEFORE reflection
+      const velocityAtCollision = { x: ball.dx, y: ball.dy };
+
       // Determine if reflection should apply
       // Walls/paddle/paddleCorner/corners: always reflect
       // Bricks:
@@ -606,6 +611,7 @@ export function processBallCCD(
       pos0 = vAdd(pos0, vScale(n, proportionalEpsilon));
 
       // record event (time is fraction of this substep: (1 - remaining) + remaining * tHit)
+      // NOTE: velocityAtCollision was captured BEFORE reflection was applied above
       const eventT = 1 - remaining + remaining * tHit;
       events.push({
         t: eventT,
@@ -614,6 +620,8 @@ export function processBallCCD(
         objectId: earliest.objectId,
         point: earliest.point,
         brickMeta: earliest.brickMeta,
+        originalDx: velocityAtCollision.x,
+        originalDy: velocityAtCollision.y,
       });
 
       // reduce remaining fraction and continue

@@ -3151,8 +3151,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               }
 
               // Check 4: Ball must be moving into the paddle (dot < 0)
-              const dot = result.ball.dx * event.normal.x + result.ball.dy * event.normal.y;
-              if (dot >= 0) {
+              // Use pre-collision velocity (originalDx/originalDy) if available, as the CCD
+              // system may have already reflected the ball off boss/walls before reaching paddle
+              const checkDx = event.originalDx ?? result.ball.dx;
+              const checkDy = event.originalDy ?? result.ball.dy;
+              const dot = checkDx * event.normal.x + checkDy * event.normal.y;
+              
+              // For balls recently released from Mega Boss, be more lenient (2 second grace period)
+              const isRecentlyReleasedFromBoss = result.ball.releasedFromBossTime && 
+                (Date.now() - result.ball.releasedFromBossTime) < 2000;
+              
+              if (dot >= 0 && !isRecentlyReleasedFromBoss) {
                 if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
                   console.log(`[Collision Debug] PADDLE REJECTED: dot=${dot.toFixed(2)} >= 0 (ball moving away)`);
                 }
