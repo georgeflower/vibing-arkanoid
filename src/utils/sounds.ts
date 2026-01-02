@@ -177,6 +177,44 @@ class SoundManager {
     oscillator.stop(ctx.currentTime + 0.1);
   }
 
+  playDangerBallCatch() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Metallic ping with impact
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    
+    osc1.connect(filter);
+    osc2.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    osc1.type = 'triangle';
+    osc2.type = 'sine';
+    
+    // High metallic ping
+    osc1.frequency.setValueAtTime(1200, ctx.currentTime);
+    osc1.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.15);
+    
+    // Lower harmonic
+    osc2.frequency.setValueAtTime(600, ctx.currentTime);
+    osc2.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.1);
+    
+    filter.type = 'highpass';
+    filter.frequency.value = 300;
+    
+    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+    
+    osc1.start(ctx.currentTime);
+    osc2.start(ctx.currentTime);
+    osc1.stop(ctx.currentTime + 0.2);
+    osc2.stop(ctx.currentTime + 0.15);
+  }
+
   playBrickHit(brickType?: string, hitsRemaining?: number) {
     if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
