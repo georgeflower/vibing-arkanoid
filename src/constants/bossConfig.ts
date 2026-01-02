@@ -8,7 +8,8 @@ export const BOSS_CONFIG = {
     positions: 9,
     moveSpeed: 2.5,
     attackTypes: ['shot', 'super'] as const,
-    attackInterval: 3000,
+    attackInterval: 3500,
+    attackWeights: { shot: 0.70, super: 0.30 },
     points: 5000
   },
   sphere: {
@@ -21,6 +22,7 @@ export const BOSS_CONFIG = {
     angryMoveSpeed: 3.5,
     attackTypes: ['shot', 'laser', 'super'] as const,
     attackInterval: 2500,
+    attackWeights: { shot: 0.45, laser: 0.35, super: 0.20 },
     points: 10000
   },
   pyramid: {
@@ -36,7 +38,8 @@ export const BOSS_CONFIG = {
     angryMoveSpeed: 3.0,
     superAngryMoveSpeed: 4.5,
     attackTypes: ['shot', 'laser', 'super', 'spiral', 'cross'] as const,
-    attackInterval: 1500,
+    attackInterval: 1800,
+    attackWeights: { spiral: 0.35, cross: 0.25, super: 0.20, laser: 0.15, shot: 0.05 },
     points: 20000,
     resurrectedPoints: 3000
   }
@@ -68,7 +71,7 @@ export const ATTACK_PATTERNS = {
     speed: 0
   },
   super: {
-    count: 12,
+    count: 8,
     speed: 3.5,
     size: 10,
     spreadAngle: 360
