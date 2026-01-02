@@ -758,6 +758,11 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         }
       }
 
+      // Calculate chaos level for ball visibility (0-1)
+      const chaosLevel = Math.min(1, 
+        (bombs.length + bossAttacks.length + enemy.length + explosions.length + dangerBalls.length) / 10
+      );
+      
       // Draw balls
       balls.forEach((ball) => {
         const ballColor = ball.isFireball ? "hsl(30, 85%, 55%)" : "hsl(0, 0%, 92%)";
@@ -855,6 +860,39 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           }
         }
         
+        // ═══ CHAOS-AWARE VISIBILITY ENHANCEMENTS ═══
+        // Dynamic glow when screen gets busy (chaosLevel > 0.2)
+        if (chaosLevel > 0.2 && !ball.isFireball && qualitySettings.glowEnabled) {
+          ctx.save();
+          const chaosPulse = 1 + Math.sin(Date.now() / 200) * 0.2;
+          const chaosGlowRadius = ball.radius * (2 + chaosLevel * 2) * chaosPulse;
+          const chaosGlowOpacity = (chaosLevel - 0.2) * 0.875; // Scale 0.2-1.0 to 0-0.7
+          
+          const chaosGradient = ctx.createRadialGradient(
+            ball.x, ball.y, ball.radius * 0.5,
+            ball.x, ball.y, chaosGlowRadius
+          );
+          chaosGradient.addColorStop(0, `rgba(150, 230, 255, ${chaosGlowOpacity})`);
+          chaosGradient.addColorStop(0.5, `rgba(100, 200, 255, ${chaosGlowOpacity * 0.5})`);
+          chaosGradient.addColorStop(1, `rgba(80, 180, 255, 0)`);
+          
+          ctx.fillStyle = chaosGradient;
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, chaosGlowRadius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        
+        // Dark contrasting outline (always-on for non-fireball)
+        if (!ball.isFireball) {
+          ctx.save();
+          ctx.fillStyle = `rgba(0, 0, 0, ${0.5 + chaosLevel * 0.2})`;
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, ball.radius + 2 + chaosLevel, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        
         ctx.save();
         ctx.translate(ball.x, ball.y);
         
@@ -880,9 +918,16 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           gradient.addColorStop(1, "hsl(0, 0%, 60%)");
         }
         
+        // Enhanced shadow based on chaos level
         if (qualitySettings.shadowsEnabled) {
-          ctx.shadowBlur = 14;
-          ctx.shadowColor = ballColor;
+          const dynamicShadowBlur = 14 + chaosLevel * 20;
+          ctx.shadowBlur = dynamicShadowBlur;
+          // Shift shadow color slightly cyan during chaos
+          if (chaosLevel > 0.2 && !ball.isFireball) {
+            ctx.shadowColor = `hsl(190, ${chaosLevel * 50}%, ${70 + chaosLevel * 20}%)`;
+          } else {
+            ctx.shadowColor = ballColor;
+          }
         }
         ctx.fillStyle = gradient;
         ctx.beginPath();
