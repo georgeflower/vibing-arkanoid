@@ -570,6 +570,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [totalShots, setTotalShots] = useState(0);
   const [bricksHit, setBricksHit] = useState(0);
   const [levelSkipped, setLevelSkipped] = useState(false);
+  const [livesLostOnCurrentLevel, setLivesLostOnCurrentLevel] = useState(0);
   const [bossIntroActive, setBossIntroActive] = useState(false);
   // Use refs for particles to avoid state churn - render trigger via counter
   const gameOverParticlesRef = useRef<Particle[]>([]);
@@ -1511,6 +1512,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setScore(0);
     setLives(3);
     setLevel(startLevel);
+    setLivesLostOnCurrentLevel(0); // Reset mercy power-up counter
     // Set speed multiplier (already calculated above)
     setSpeedMultiplier(startingSpeedMultiplier);
     setGameState("ready");
@@ -1604,6 +1606,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     const newSpeedMultiplier = calculateSpeedForLevel(newLevel, settings.difficulty);
     setLevel(newLevel);
+    setLivesLostOnCurrentLevel(0); // Reset mercy power-up counter for new level
     setSpeedMultiplier(newSpeedMultiplier);
 
     // Update max level reached in localStorage
@@ -4166,19 +4169,34 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             launchAngleDirectionRef.current = 1;
             setShowInstructions(true);
             
-            // Drop mercy power-up to help player recover
-            const mercyTypes: PowerUpType[] = ['shield', 'turrets', 'paddleExtend', 'slowdown'];
-            const mercyType = mercyTypes[Math.floor(Math.random() * mercyTypes.length)];
-            const mercyPowerUp: PowerUp = {
-              type: mercyType,
-              x: SCALED_CANVAS_WIDTH / 2 - POWERUP_SIZE / 2,
-              y: 100,
-              width: POWERUP_SIZE,
-              height: POWERUP_SIZE,
-              speed: POWERUP_FALL_SPEED,
-              active: true
-            };
-            setPowerUps([mercyPowerUp]);
+            // Track lives lost on current level for mercy power-up logic
+            setLivesLostOnCurrentLevel(prev => {
+              const newCount = prev + 1;
+              
+              // Drop mercy power-up to help player recover
+              let mercyType: PowerUpType;
+              if (newCount >= 3) {
+                // After 3 ball losses on same level, give extra life
+                mercyType = 'life';
+              } else {
+                // Otherwise give turrets, secondChance (barrier), or shield
+                const mercyTypes: PowerUpType[] = ['turrets', 'secondChance', 'shield'];
+                mercyType = mercyTypes[Math.floor(Math.random() * mercyTypes.length)];
+              }
+              
+              const mercyPowerUp: PowerUp = {
+                type: mercyType,
+                x: SCALED_CANVAS_WIDTH / 2 - POWERUP_SIZE / 2,
+                y: 100,
+                width: POWERUP_SIZE,
+                height: POWERUP_SIZE,
+                speed: POWERUP_FALL_SPEED,
+                active: true
+              };
+              setPowerUps([mercyPowerUp]);
+              
+              return newCount;
+            });
             
             setPaddle((prev) =>
               prev
@@ -7209,6 +7227,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setTotalShots(0);
     setBricksHit(0);
     setLevelSkipped(false);
+    setLivesLostOnCurrentLevel(0); // Reset mercy power-up counter
     setPowerUpsCollectedTypes(new Set());
     setBricksDestroyedByTurrets(0);
     setBossesKilled(0);
