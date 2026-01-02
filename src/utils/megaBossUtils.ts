@@ -16,6 +16,11 @@ export interface MegaBoss extends Boss {
   outerShieldHP: number;
   outerShieldMaxHP: number;
   
+  // Inner shield (smaller octagon, replaces outer after phase transition)
+  innerShieldHP: number;
+  innerShieldMaxHP: number;
+  outerShieldRemoved: boolean; // If true, use inner shield instead
+  
   // Core state
   coreExposed: boolean;
   coreExposedTime: number | null;
@@ -26,8 +31,9 @@ export interface MegaBoss extends Boss {
   cannonExtended: boolean;
   cannonExtendedTime: number | null;
   
-  // Danger ball tracking
-  dangerBallsCaught: number;
+  // Danger ball tracking - now counts core HITS from reflected balls
+  dangerBallsCaught: number; // Legacy - kept for compatibility
+  coreHitsFromDangerBalls: number; // NEW: counts hits on core from reflected danger balls
   dangerBallsFired: number;
   scheduledDangerBalls: number[]; // Timestamps for scheduled danger ball spawns
   
@@ -88,6 +94,9 @@ export function createMegaBoss(canvasWidth: number, canvasHeight: number): MegaB
     corePhase: 1,
     outerShieldHP: config.outerShieldHP,
     outerShieldMaxHP: config.outerShieldHP,
+    innerShieldHP: config.innerShieldHP || 6,
+    innerShieldMaxHP: config.innerShieldHP || 6,
+    outerShieldRemoved: false,
     coreExposed: false,
     coreExposedTime: null,
     coreHit: false,
@@ -95,6 +104,7 @@ export function createMegaBoss(canvasWidth: number, canvasHeight: number): MegaB
     cannonExtended: false,
     cannonExtendedTime: null,
     dangerBallsCaught: 0,
+    coreHitsFromDangerBalls: 0,
     dangerBallsFired: 0,
     scheduledDangerBalls: [],
     hatchOpen: false,
@@ -111,25 +121,56 @@ export function isMegaBoss(boss: Boss | null): boss is MegaBoss {
   return boss !== null && 'isMegaBoss' in boss && (boss as MegaBoss).isMegaBoss === true;
 }
 
-// Handle damage to outer shield - returns new state info
+// Handle damage to outer/inner shield - returns new state info
 export function handleMegaBossOuterDamage(boss: MegaBoss, damage: number): {
   newOuterHP: number;
+  newInnerHP: number;
   shouldExposeCore: boolean;
 } {
   // Check invulnerability
   if (boss.isInvulnerable && Date.now() < boss.invulnerableUntil) {
-    return { newOuterHP: boss.outerShieldHP, shouldExposeCore: false };
+    return { 
+      newOuterHP: boss.outerShieldHP, 
+      newInnerHP: boss.innerShieldHP,
+      shouldExposeCore: false 
+    };
   }
   
   // Don't damage if core is already exposed
   if (boss.coreExposed) {
-    return { newOuterHP: boss.outerShieldHP, shouldExposeCore: false };
+    return { 
+      newOuterHP: boss.outerShieldHP, 
+      newInnerHP: boss.innerShieldHP,
+      shouldExposeCore: false 
+    };
   }
   
+  // Route damage to inner shield if outer is removed
+  if (boss.outerShieldRemoved) {
+    const newInnerHP = Math.max(0, boss.innerShieldHP - damage);
+    const shouldExposeCore = newInnerHP <= 0;
+    return { newOuterHP: boss.outerShieldHP, newInnerHP, shouldExposeCore };
+  }
+  
+  // Otherwise damage outer shield
   const newOuterHP = Math.max(0, boss.outerShieldHP - damage);
   const shouldExposeCore = newOuterHP <= 0;
   
-  return { newOuterHP, shouldExposeCore };
+  return { newOuterHP, newInnerHP: boss.innerShieldHP, shouldExposeCore };
+}
+
+// Increment core hits from reflected danger balls
+export function incrementCoreHit(boss: MegaBoss): MegaBoss {
+  return {
+    ...boss,
+    coreHitsFromDangerBalls: boss.coreHitsFromDangerBalls + 1
+  };
+}
+
+// Check if all core hits are complete
+export function hasSufficientCoreHits(boss: MegaBoss): boolean {
+  const config = MEGA_BOSS_CONFIG;
+  return boss.coreHitsFromDangerBalls >= config.dangerBallsToComplete;
 }
 
 // Expose the core (hatch opens)
@@ -169,6 +210,7 @@ export function handleMegaBossCoreHit(boss: MegaBoss, ball: Ball): MegaBoss {
     scheduledDangerBalls,
     dangerBallsFired: 0,
     dangerBallsCaught: 0,
+    coreHitsFromDangerBalls: 0, // Reset core hits for new danger ball phase
     hatchOpen: false, // Close hatch after ball trapped
     coreExposed: false, // Core no longer exposed
     lastTrapTime: now
@@ -183,12 +225,12 @@ export function catchDangerBall(boss: MegaBoss): MegaBoss {
   };
 }
 
-// Check if all danger balls have been caught and player ball should be released
+// Check if all core hits are complete and player ball should be released
 export function shouldReleaseBall(boss: MegaBoss): boolean {
   const config = MEGA_BOSS_CONFIG;
   return (
     boss.trappedBall !== null &&
-    boss.dangerBallsCaught >= config.dangerBallsToComplete &&
+    boss.coreHitsFromDangerBalls >= config.dangerBallsToComplete &&
     boss.scheduledDangerBalls.length === 0
   );
 }
@@ -226,26 +268,34 @@ export function releaseBallAndNextPhase(boss: MegaBoss): { boss: MegaBoss; relea
     };
   }
   
-  // Transition to next phase
+  // Transition to next phase - outer shield is now REMOVED, inner shield becomes active
   const isAngry = nextPhase >= 2;
   const isVeryAngry = nextPhase >= 3;
   const newSpeed = isVeryAngry ? config.veryAngryMoveSpeed : (isAngry ? config.angryMoveSpeed : config.moveSpeed);
   const newAttackInterval = isVeryAngry ? config.veryAngryAttackInterval : (isAngry ? config.angryAttackInterval : config.attackInterval);
   
+  // After completing phase 1, outer shield is removed and inner shield becomes the target
+  const newInnerShieldHP = config.innerShieldHP || 6;
+  
   return {
     boss: {
       ...boss,
       corePhase: nextPhase,
-      outerShieldHP: config.outerShieldHP,
+      // Outer shield is now removed - inner octagon becomes the shield
+      outerShieldRemoved: true,
+      outerShieldHP: 0,
       outerShieldMaxHP: config.outerShieldHP,
-      currentHealth: config.outerShieldHP, // For health bar display
-      maxHealth: config.outerShieldHP,
+      innerShieldHP: newInnerShieldHP,
+      innerShieldMaxHP: newInnerShieldHP,
+      currentHealth: newInnerShieldHP, // For health bar display
+      maxHealth: newInnerShieldHP,
       coreExposed: false,
       coreHit: false,
       trappedBall: null,
       cannonExtended: false,
       cannonExtendedTime: null,
       dangerBallsCaught: 0,
+      coreHitsFromDangerBalls: 0,
       dangerBallsFired: 0,
       scheduledDangerBalls: [],
       isAngry,
@@ -406,14 +456,18 @@ export function resetMegaBossPhaseProgress(boss: MegaBoss): { boss: MegaBoss; re
     waitingToLaunch: false
   };
   
-  // Reset outer shield HP for another attempt
+  // Reset shield HP for another attempt - use inner shield if outer is removed
+  const shieldHP = boss.outerShieldRemoved ? (config.innerShieldHP || 6) : config.outerShieldHP;
+  
   return {
     boss: {
       ...boss,
-      outerShieldHP: config.outerShieldHP,
+      outerShieldHP: boss.outerShieldRemoved ? 0 : config.outerShieldHP,
       outerShieldMaxHP: config.outerShieldHP,
-      currentHealth: config.outerShieldHP,
-      maxHealth: config.outerShieldHP,
+      innerShieldHP: boss.outerShieldRemoved ? shieldHP : boss.innerShieldHP,
+      innerShieldMaxHP: config.innerShieldHP || 6,
+      currentHealth: shieldHP,
+      maxHealth: shieldHP,
       coreExposed: false,
       coreExposedTime: null,
       coreHit: false,
@@ -421,6 +475,7 @@ export function resetMegaBossPhaseProgress(boss: MegaBoss): { boss: MegaBoss; re
       cannonExtended: false,
       cannonExtendedTime: null,
       dangerBallsCaught: 0,
+      coreHitsFromDangerBalls: 0,
       dangerBallsFired: 0,
       scheduledDangerBalls: [],
       hatchOpen: false

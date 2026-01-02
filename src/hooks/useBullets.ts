@@ -182,7 +182,7 @@ export const useBullets = (
                 }
                 
                 const result = handleMegaBossOuterDamage(megaBoss, damage);
-                console.log(`[MEGA BOSS DEBUG] Outer shield damage: ${megaBoss.outerShieldHP} -> ${result.newOuterHP}`);
+                console.log(`[MEGA BOSS DEBUG] Shield damage: ${megaBoss.outerShieldRemoved ? megaBoss.innerShieldHP : megaBoss.outerShieldHP} -> ${megaBoss.outerShieldRemoved ? result.newInnerHP : result.newOuterHP}`);
                 soundManager.playBossHitSound();
                 
                 if (result.shouldExposeCore) {
@@ -190,18 +190,20 @@ export const useBullets = (
                   // Expose the core!
                   const exposedBoss = exposeMegaBossCore({
                     ...megaBoss,
-                    outerShieldHP: 0,
+                    outerShieldHP: result.newOuterHP,
+                    innerShieldHP: result.newInnerHP,
                     currentHealth: 0
                   } as MegaBoss);
                   toast.success("💥 CORE EXPOSED! Hit the core with the ball!", { duration: 3000 });
                   return exposedBoss as unknown as Boss;
                 }
                 
-                // Update outer shield HP
+                // Update shield HP
                 return {
                   ...megaBoss,
                   outerShieldHP: result.newOuterHP,
-                  currentHealth: result.newOuterHP // For health bar display
+                  innerShieldHP: result.newInnerHP,
+                  currentHealth: megaBoss.outerShieldRemoved ? result.newInnerHP : result.newOuterHP
                 } as unknown as Boss;
               });
             } else {

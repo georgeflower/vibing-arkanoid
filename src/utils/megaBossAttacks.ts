@@ -16,6 +16,8 @@ export interface DangerBall {
   targetCorner: typeof CORNER_TARGETS[number];
   flashPhase: number; // For white/red flashing animation
   spawnTime: number;
+  isReflected: boolean; // Has this ball been reflected by paddle?
+  isHoming: boolean; // Is this ball now homing toward the core?
 }
 
 let nextDangerBallId = 3000;
@@ -46,7 +48,9 @@ export function spawnDangerBall(boss: MegaBoss): DangerBall {
     speed: config.dangerBallSpeed,
     targetCorner,
     flashPhase: 0,
-    spawnTime: Date.now()
+    spawnTime: Date.now(),
+    isReflected: false,
+    isHoming: false
   };
 }
 
@@ -81,20 +85,89 @@ export function isDangerBallIntercepted(
   );
 }
 
-// Reflect danger ball off paddle (legacy - now we catch instead)
+// Reflect danger ball off paddle and enable homing toward core
 export function reflectDangerBall(ball: DangerBall, paddleX: number, paddleWidth: number): DangerBall {
   // Calculate hit position on paddle (-1 to 1)
   const hitPos = ((ball.x - paddleX) / paddleWidth) * 2 - 1;
   
-  // Reflect angle based on hit position
-  const reflectAngle = hitPos * (Math.PI / 4); // ±45 degrees
-  const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+  // Reflect angle based on hit position - steeper angle for better homing
+  const reflectAngle = hitPos * (Math.PI / 3); // ±60 degrees spread
+  const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy) * 1.2; // Speed boost on reflect
   
   return {
     ...ball,
     dx: Math.sin(reflectAngle) * speed,
-    dy: -Math.abs(ball.dy) // Always go up
+    dy: -Math.abs(Math.cos(reflectAngle)) * speed, // Always go up
+    isReflected: true,
+    isHoming: true,
+    speed: speed
   };
+}
+
+// Apply homing steering toward boss core
+export function applyHomingToDangerBall(ball: DangerBall, bossX: number, bossY: number, bossWidth: number, bossHeight: number): DangerBall {
+  if (!ball.isHoming) return ball;
+  
+  // Target the core center
+  const coreX = bossX + bossWidth / 2;
+  const coreY = bossY + bossHeight / 2;
+  
+  // Calculate direction to core
+  const toTargetX = coreX - ball.x;
+  const toTargetY = coreY - ball.y;
+  const distToTarget = Math.sqrt(toTargetX * toTargetX + toTargetY * toTargetY);
+  
+  if (distToTarget < 5) return ball; // Already at target
+  
+  // Normalize target direction
+  const normTargetX = toTargetX / distToTarget;
+  const normTargetY = toTargetY / distToTarget;
+  
+  // Current direction
+  const currentSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+  const normDirX = ball.dx / currentSpeed;
+  const normDirY = ball.dy / currentSpeed;
+  
+  // Steering strength - stronger homing for danger balls
+  const steeringStrength = 0.12;
+  
+  // Blend current direction with target direction
+  let newDx = normDirX * (1 - steeringStrength) + normTargetX * steeringStrength;
+  let newDy = normDirY * (1 - steeringStrength) + normTargetY * steeringStrength;
+  
+  // Normalize and apply speed
+  const newMag = Math.sqrt(newDx * newDx + newDy * newDy);
+  newDx = (newDx / newMag) * ball.speed;
+  newDy = (newDy / newMag) * ball.speed;
+  
+  return {
+    ...ball,
+    dx: newDx,
+    dy: newDy
+  };
+}
+
+// Check if danger ball has hit the boss core
+export function isDangerBallAtCore(ball: DangerBall, bossX: number, bossY: number, bossWidth: number, bossHeight: number): boolean {
+  if (!ball.isReflected) return false;
+  
+  const coreX = bossX + bossWidth / 2;
+  const coreY = bossY + bossHeight / 2;
+  const coreRadius = 50; // Generous hit area for the core
+  
+  const dx = ball.x - coreX;
+  const dy = ball.y - coreY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  
+  return dist < coreRadius + ball.radius;
+}
+
+// Check if reflected danger ball has missed (gone off screen)
+export function hasReflectedBallMissed(ball: DangerBall, canvasWidth: number, canvasHeight: number): boolean {
+  if (!ball.isReflected) return false;
+  
+  // Check if off screen (top, sides)
+  return ball.y < -50 || ball.x < -50 || ball.x > canvasWidth + 50;
 }
 
 // Mega Boss attack types
