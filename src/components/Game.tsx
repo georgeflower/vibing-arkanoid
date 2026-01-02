@@ -1889,6 +1889,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Single tap on ball when waiting launches it (explicit launch)
         if (waitingBall && gameState === "playing" && e.touches.length === 1) {
           setShowInstructions(false);
+          
+          // Dismiss boss victory overlay when launching ball
+          if (bossVictoryOverlayActive) {
+            setBossVictoryOverlayActive(false);
+          }
 
           // Start timer on first ball launch
           if (!timerStartedRef.current) {
@@ -2057,6 +2062,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (waitingBall) {
       // Launch ball in the direction of the current angle
       setShowInstructions(false);
+      
+      // Dismiss boss victory overlay when launching ball
+      if (bossVictoryOverlayActive) {
+        setBossVictoryOverlayActive(false);
+      }
 
       // Start timer on first ball launch
       if (!timerStartedRef.current) {
