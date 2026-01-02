@@ -2783,11 +2783,15 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.restore();
           }
           
-          // Invulnerability flash
+          // Invulnerability glow effect (subtle pulsing outline, not a blinking square)
           if (megaBoss.isInvulnerable && Date.now() < megaBoss.invulnerableUntil) {
-            const flash = Math.sin(Date.now() / 50) > 0 ? 0.5 : 0;
-            ctx.fillStyle = `rgba(255, 255, 255, ${flash})`;
-            ctx.fillRect(-boss.width / 2, -boss.height / 2, boss.width, boss.height);
+            const pulsePhase = (Date.now() % 300) / 300;
+            const pulseIntensity = 0.4 + Math.sin(pulsePhase * Math.PI * 2) * 0.3;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${pulseIntensity})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, boss.width / 2 + 10, 0, Math.PI * 2);
+            ctx.stroke();
           }
           
           ctx.restore();
