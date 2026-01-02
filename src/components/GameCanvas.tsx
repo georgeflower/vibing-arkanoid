@@ -760,7 +760,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
       // Draw balls
       balls.forEach((ball) => {
-        const ballColor = ball.isFireball ? "hsl(30, 85%, 55%)" : "hsl(0, 0%, 70%)";
+        const ballColor = ball.isFireball ? "hsl(30, 85%, 55%)" : "hsl(0, 0%, 92%)";
         const ballRotation = ball.rotation || 0;
         
         // Get Ready glow effect (mobile) - draw BEFORE ball for proper layering
@@ -874,10 +874,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           gradient.addColorStop(0.7, ballColor);
           gradient.addColorStop(1, "hsl(30, 85%, 35%)");
         } else {
-          gradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
-          gradient.addColorStop(0.3, "hsl(0, 0%, 85%)");
+          gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
+          gradient.addColorStop(0.3, "hsl(0, 0%, 95%)");
           gradient.addColorStop(0.7, ballColor);
-          gradient.addColorStop(1, "hsl(0, 0%, 40%)");
+          gradient.addColorStop(1, "hsl(0, 0%, 60%)");
         }
         
         if (qualitySettings.shadowsEnabled) {
@@ -2510,9 +2510,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           
           if (enableBossGlow) {
             ctx.shadowBlur = 10;
-            ctx.shadowColor = attack.type === 'super' ? 'hsl(280, 100%, 60%)' : 'hsl(0, 100%, 60%)';
+            ctx.shadowColor = attack.type === 'super' ? 'hsl(280, 100%, 60%)' : 'hsl(25, 100%, 50%)';
           }
-          ctx.fillStyle = attack.type === 'super' ? 'hsl(280, 80%, 60%)' : 'hsl(0, 80%, 60%)';
+          ctx.fillStyle = attack.type === 'super' ? 'hsl(280, 80%, 60%)' : 'hsl(25, 85%, 50%)';
           ctx.beginPath();
           ctx.arc(0, 0, attack.width / 2, 0, Math.PI * 2);
           ctx.fill();
@@ -2618,6 +2618,77 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           const radius = boss.width / 2;
           const baseHue = megaBoss.corePhase === 3 ? 0 : (megaBoss.corePhase === 2 ? 30 : 220); // Blue -> Orange -> Red
           
+          // DEBUG: Draw collision hit areas
+          if (SHOW_BOSS_HITBOX) {
+            ctx.save();
+            ctx.setLineDash([6, 4]);
+            
+            // Outer shield hitbox (hexagon)
+            if (!megaBoss.outerShieldRemoved) {
+              ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+              ctx.lineWidth = 2;
+              ctx.fillStyle = 'rgba(0, 255, 0, 0.15)';
+              ctx.beginPath();
+              for (let i = 0; i < 6; i++) {
+                const angle = (Math.PI / 3) * i - Math.PI / 2;
+                const hx = Math.cos(angle) * radius;
+                const hy = Math.sin(angle) * radius;
+                if (i === 0) ctx.moveTo(hx, hy);
+                else ctx.lineTo(hx, hy);
+              }
+              ctx.closePath();
+              ctx.stroke();
+              ctx.fill();
+            }
+            
+            // Inner octagon hitbox (when outer is removed)
+            if (megaBoss.outerShieldRemoved && !megaBoss.coreExposed) {
+              const innerOctRadius = 40;
+              ctx.strokeStyle = 'rgba(255, 165, 0, 0.8)';
+              ctx.lineWidth = 2;
+              ctx.fillStyle = 'rgba(255, 165, 0, 0.15)';
+              ctx.beginPath();
+              for (let i = 0; i < 8; i++) {
+                const angle = (Math.PI / 4) * i - Math.PI / 8;
+                const ox = Math.cos(angle) * innerOctRadius;
+                const oy = Math.sin(angle) * innerOctRadius;
+                if (i === 0) ctx.moveTo(ox, oy);
+                else ctx.lineTo(ox, oy);
+              }
+              ctx.closePath();
+              ctx.stroke();
+              ctx.fill();
+            }
+            
+            // Core hitbox (when exposed)
+            if (megaBoss.coreExposed) {
+              const coreHitRadius = 60; // Match isBallInHatchArea radius
+              ctx.strokeStyle = 'rgba(255, 255, 0, 0.9)';
+              ctx.lineWidth = 3;
+              ctx.fillStyle = 'rgba(255, 255, 0, 0.2)';
+              ctx.beginPath();
+              ctx.arc(0, 0, coreHitRadius, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.fill();
+              
+              // Label
+              ctx.fillStyle = '#ffff00';
+              ctx.font = 'bold 10px monospace';
+              ctx.textAlign = 'center';
+              ctx.fillText('CORE HIT AREA', 0, -coreHitRadius - 8);
+            }
+            
+            // Hitbox label
+            ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'center';
+            const stateLabel = megaBoss.coreExposed ? 'EXPOSED' : 
+                              megaBoss.outerShieldRemoved ? 'INNER SHIELD' : 'OUTER SHIELD';
+            ctx.fillText(`MEGA BOSS - ${stateLabel}`, 0, -radius - 20);
+            
+            ctx.setLineDash([]);
+            ctx.restore();
+          }
           // Slow rotation based on time and phase
           const rotationSpeed = megaBoss.corePhase === 3 ? 0.003 : (megaBoss.corePhase === 2 ? 0.002 : 0.001);
           const hexRotation = (Date.now() * rotationSpeed) % (Math.PI * 2);
