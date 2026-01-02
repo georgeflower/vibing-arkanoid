@@ -583,6 +583,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
 
+  // Mega Boss: prevent accidental life loss when ball is trapped (same/next tick race)
+  const megaBossTrapJustHappenedRef = useRef<number>(0);
+
   // Performance optimization refs
   const screenShakeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastToastTimeRef = useRef<Record<string, number>>({});
@@ -4083,9 +4086,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Check if all balls are lost
       // IMPORTANT: Don't count as lost if the ball is trapped by Mega Boss!
-      const megaBossHasTrappedBall = level === MEGA_BOSS_LEVEL && boss && isMegaBoss(boss) && (boss as MegaBoss).trappedBall !== null;
-      
-      if (updatedBalls.length === 0 && !megaBossHasTrappedBall) {
+      // NOTE: The trap happens later in the frame than the ball update pass, so we also
+      // guard against same/next-tick ordering with megaBossTrapJustHappenedRef.
+      const megaBossHasTrappedBall =
+        level === MEGA_BOSS_LEVEL && boss && isMegaBoss(boss) && (boss as MegaBoss).trappedBall !== null;
+
+      const justTrappedRecently =
+        level === MEGA_BOSS_LEVEL && Date.now() - megaBossTrapJustHappenedRef.current < 1500;
+
+      if (updatedBalls.length === 0 && level === MEGA_BOSS_LEVEL) {
+        console.log(`[MEGA BOSS DEBUG] updatedBalls=0 check`, {
+          megaBossHasTrappedBall,
+          justTrappedRecently,
+          bossTrappedBall: boss && isMegaBoss(boss) ? ((boss as MegaBoss).trappedBall ? 'YES' : 'NO') : 'N/A',
+        });
+      }
+
+      if (updatedBalls.length === 0 && !megaBossHasTrappedBall && !justTrappedRecently) {
         setCurrentCombo(0);
 
         setLives((prev) => {
@@ -5061,14 +5078,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           if (!ball.waitingToLaunch && isBallInHatchArea(ball, megaBoss)) {
             console.log(`[MEGA BOSS DEBUG] ★★★ BALL ${ball.id} HIT THE CORE! ★★★`);
             console.log(`[MEGA BOSS DEBUG] Ball position: (${ball.x.toFixed(1)}, ${ball.y.toFixed(1)}), Core position: (${coreX.toFixed(1)}, ${coreY.toFixed(1)})`);
-            
+
+            // Mark trap time immediately so the life-loss pass can't incorrectly deduct a life
+            // if state updates land on the next tick.
+            megaBossTrapJustHappenedRef.current = Date.now();
+
             // Trap the ball in the core!
             const trappedBoss = handleMegaBossCoreHit(megaBoss, ball);
             setBoss(trappedBoss as unknown as Boss);
 
             // Hide the trapped ball
             setBalls((prev) => prev.filter((b) => b.id !== ball.id));
-            
+
             console.log(`[MEGA BOSS DEBUG] Ball trapped, danger balls scheduled: ${(trappedBoss as MegaBoss).scheduledDangerBalls.length}`);
 
             toast.error("🔴 BALL TRAPPED IN CORE! Catch 5 danger balls!", { duration: 3000 });
