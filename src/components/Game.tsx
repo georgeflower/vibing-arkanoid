@@ -1762,6 +1762,60 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
+  // Unified ball launch function - single source of truth for all launch paths
+  const launchBallAtCurrentAngle = useCallback(() => {
+    const waitingBall = balls.find((ball) => ball.waitingToLaunch);
+    if (!waitingBall || gameState !== "playing") return;
+
+    // Dismiss boss victory overlay when launching ball
+    if (bossVictoryOverlayActive) {
+      setBossVictoryOverlayActive(false);
+    }
+
+    setShowInstructions(false);
+
+    // Start timer on first ball launch
+    if (!timerStartedRef.current) {
+      timerStartedRef.current = true;
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+      timerIntervalRef.current = setInterval(() => {
+        setTimer((prev) => prev + 1);
+      }, 1000);
+    }
+
+    // Start total play time on first ball launch
+    if (!totalPlayTimeStartedRef.current) {
+      totalPlayTimeStartedRef.current = true;
+      if (totalPlayTimeIntervalRef.current) {
+        clearInterval(totalPlayTimeIntervalRef.current);
+      }
+      totalPlayTimeIntervalRef.current = setInterval(() => {
+        setTotalPlayTime((prev) => prev + 1);
+      }, 1000);
+    }
+
+    // Track shot fired
+    setTotalShots((prev) => prev + 1);
+
+    setBalls((prev) =>
+      prev.map((ball) => {
+        if (ball.waitingToLaunch) {
+          const speed = ball.speed;
+          const angle = (launchAngle * Math.PI) / 180;
+          return {
+            ...ball,
+            dx: speed * Math.sin(angle),
+            dy: -speed * Math.cos(angle),
+            waitingToLaunch: false,
+          };
+        }
+        return ball;
+      }),
+    );
+  }, [balls, gameState, launchAngle, bossVictoryOverlayActive]);
+
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!canvasRef.current || !paddle || gameState === "paused") return;
@@ -1888,57 +1942,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         // Single tap on ball when waiting launches it (explicit launch)
         if (waitingBall && gameState === "playing" && e.touches.length === 1) {
-          setShowInstructions(false);
-          
-          // Dismiss boss victory overlay when launching ball
-          if (bossVictoryOverlayActive) {
-            setBossVictoryOverlayActive(false);
-          }
-
-          // Start timer on first ball launch
-          if (!timerStartedRef.current) {
-            timerStartedRef.current = true;
-            if (timerIntervalRef.current) {
-              clearInterval(timerIntervalRef.current);
-            }
-            timerIntervalRef.current = setInterval(() => {
-              setTimer((prev) => prev + 1);
-            }, 1000);
-          }
-
-          // Start total play time on first ball launch
-          if (!totalPlayTimeStartedRef.current) {
-            totalPlayTimeStartedRef.current = true;
-            if (totalPlayTimeIntervalRef.current) {
-              clearInterval(totalPlayTimeIntervalRef.current);
-            }
-            totalPlayTimeIntervalRef.current = setInterval(() => {
-              setTotalPlayTime((prev) => prev + 1);
-            }, 1000);
-          }
-          console.log("[Launch Debug] audioAndLaunchMode: applied - Ball launched at angle:", launchAngle);
-          setBalls((prev) =>
-            prev.map((ball) => {
-              if (ball.waitingToLaunch) {
-                const speed = ball.speed;
-                const angle = (launchAngle * Math.PI) / 180;
-                // Track shot fired
-                setTotalShots((prev) => prev + 1);
-
-                return {
-                  ...ball,
-                  dx: speed * Math.sin(angle),
-                  dy: -speed * Math.cos(angle),
-                  waitingToLaunch: false,
-                };
-              }
-              return ball;
-            }),
-          );
+          console.log("[Launch Debug] Touch launch - Ball launched at angle:", launchAngle);
+          launchBallAtCurrentAngle();
         }
       }
     },
-    [paddle, balls, gameState, launchAngle, fireBullets, SCALED_CANVAS_WIDTH, bricks, nextLevel, tutorialActive],
+    [paddle, balls, gameState, launchAngle, fireBullets, SCALED_CANVAS_WIDTH, bricks, nextLevel, tutorialActive, launchBallAtCurrentAngle],
   );
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
@@ -2060,50 +2069,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Check if ball is waiting to launch
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (waitingBall) {
-      // Launch ball in the direction of the current angle
-      setShowInstructions(false);
-      
-      // Dismiss boss victory overlay when launching ball
-      if (bossVictoryOverlayActive) {
-        setBossVictoryOverlayActive(false);
-      }
-
-      // Start timer on first ball launch
-      if (!timerStartedRef.current) {
-        timerStartedRef.current = true;
-        if (timerIntervalRef.current) {
-          clearInterval(timerIntervalRef.current);
-        }
-        timerIntervalRef.current = setInterval(() => {
-          setTimer((prev) => prev + 1);
-        }, 1000);
-      }
-
-      // Start total play time on first ball launch
-      if (!totalPlayTimeStartedRef.current) {
-        totalPlayTimeStartedRef.current = true;
-        if (totalPlayTimeIntervalRef.current) {
-          clearInterval(totalPlayTimeIntervalRef.current);
-        }
-        totalPlayTimeIntervalRef.current = setInterval(() => {
-          setTotalPlayTime((prev) => prev + 1);
-        }, 1000);
-      }
-      setBalls((prev) =>
-        prev.map((ball) => {
-          if (ball.waitingToLaunch) {
-            const speed = ball.speed;
-            const angle = (launchAngle * Math.PI) / 180;
-            return {
-              ...ball,
-              dx: speed * Math.sin(angle),
-              dy: -speed * Math.cos(angle),
-              waitingToLaunch: false,
-            };
-          }
-          return ball;
-        }),
-      );
+      launchBallAtCurrentAngle();
       return;
     }
 
@@ -2111,7 +2077,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (paddle.hasTurrets) {
       fireBullets(paddle);
     }
-  }, [paddle, gameState, fireBullets, bricks, nextLevel, balls, launchAngle, level, tutorialActive, isMobileDevice]);
+  }, [paddle, gameState, fireBullets, bricks, nextLevel, balls, launchAngle, level, tutorialActive, isMobileDevice, launchBallAtCurrentAngle]);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -7080,54 +7046,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     };
   }, [gameState, balls, isManualAimMode]);
 
-  // Launch ball function
-  const launchBallAtCurrentAngle = useCallback(() => {
-    const waitingBall = balls.find((ball) => ball.waitingToLaunch);
-    if (!waitingBall || gameState !== "playing") return;
-
-    // Dismiss boss victory overlay when launching ball
-    if (bossVictoryOverlayActive) {
-      setBossVictoryOverlayActive(false);
-    }
-
-    setShowInstructions(false);
-
-    if (!timerStartedRef.current) {
-      timerStartedRef.current = true;
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-      timerIntervalRef.current = setInterval(() => {
-        setTimer((prev) => prev + 1);
-      }, 1000);
-    }
-
-    if (!totalPlayTimeStartedRef.current) {
-      totalPlayTimeStartedRef.current = true;
-      if (totalPlayTimeIntervalRef.current) {
-        clearInterval(totalPlayTimeIntervalRef.current);
-      }
-      totalPlayTimeIntervalRef.current = setInterval(() => {
-        setTotalPlayTime((prev) => prev + 1);
-      }, 1000);
-    }
-
-    setBalls((prev) =>
-      prev.map((ball) => {
-        if (ball.waitingToLaunch) {
-          const speed = ball.speed;
-          const angle = (launchAngle * Math.PI) / 180;
-          return {
-            ...ball,
-            dx: speed * Math.sin(angle),
-            dy: -speed * Math.cos(angle),
-            waitingToLaunch: false,
-          };
-        }
-        return ball;
-      }),
-    );
-  }, [balls, gameState, launchAngle, bossVictoryOverlayActive]);
 
   // Keyboard controls: A/D/LEFT/RIGHT stop oscillation and switch to manual aim mode
   // Mousewheel scroll also stops oscillation and adjusts angle
