@@ -837,6 +837,21 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.stroke();
           
           ctx.restore();
+          
+          // Draw trajectory line from released ball to paddle center
+          if (paddle) {
+            ctx.save();
+            ctx.strokeStyle = `rgba(100, 255, 200, ${glowOpacity * 0.7})`;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 6]);
+            ctx.lineDashOffset = -Date.now() / 40; // Animated dashes
+            ctx.beginPath();
+            ctx.moveTo(ball.x, ball.y);
+            ctx.lineTo(paddle.x + paddle.width / 2, paddle.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+          }
         }
         
         ctx.save();
