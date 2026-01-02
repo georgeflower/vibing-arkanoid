@@ -4082,7 +4082,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         });
 
       // Check if all balls are lost
-      if (updatedBalls.length === 0) {
+      // IMPORTANT: Don't count as lost if the ball is trapped by Mega Boss!
+      const megaBossHasTrappedBall = level === MEGA_BOSS_LEVEL && boss && isMegaBoss(boss) && (boss as MegaBoss).trappedBall !== null;
+      
+      if (updatedBalls.length === 0 && !megaBossHasTrappedBall) {
         setCurrentCombo(0);
 
         setLives((prev) => {
