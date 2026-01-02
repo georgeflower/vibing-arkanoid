@@ -8,7 +8,8 @@ export function performBossAttack(
   paddleX: number,
   paddleY: number,
   setBossAttacks: React.Dispatch<React.SetStateAction<BossAttack[]>>,
-  setLaserWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; startTime: number }>>>
+  setLaserWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; startTime: number }>>>,
+  setSuperWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; y: number; startTime: number }>>>
 ): void {
   const config = BOSS_CONFIG[boss.type];
   
@@ -88,29 +89,37 @@ export function performBossAttack(
   } else if (attackType === 'super') {
     const centerX = boss.x + boss.width / 2;
     const centerY = boss.y + boss.height / 2;
-    const attacks: BossAttack[] = [];
     
-    for (let i = 0; i < ATTACK_PATTERNS.super.count; i++) {
-      const angle = (i / ATTACK_PATTERNS.super.count) * Math.PI * 2;
-      
-      attacks.push({
-        bossId: boss.id,
-        type: 'super',
-        x: centerX,
-        y: centerY,
-        width: ATTACK_PATTERNS.super.size,
-        height: ATTACK_PATTERNS.super.size,
-        speed: ATTACK_PATTERNS.super.speed,
-        angle: angle,
-        dx: Math.cos(angle) * ATTACK_PATTERNS.super.speed,
-        dy: Math.sin(angle) * ATTACK_PATTERNS.super.speed,
-        damage: 1
-      });
-    }
-    
-    setBossAttacks(prev => [...prev, ...attacks]);
+    // Add super warning
+    setSuperWarnings(prev => [...prev, { x: centerX, y: centerY, startTime: Date.now() }]);
     toast.error(`${boss.type.toUpperCase()} SUPER ATTACK!`);
-    soundManager.playExplosion();
+    soundManager.playLaserChargingSound();
+    
+    // Delay the actual attack
+    setTimeout(() => {
+      const attacks: BossAttack[] = [];
+      
+      for (let i = 0; i < ATTACK_PATTERNS.super.count; i++) {
+        const angle = (i / ATTACK_PATTERNS.super.count) * Math.PI * 2;
+        
+        attacks.push({
+          bossId: boss.id,
+          type: 'super',
+          x: centerX,
+          y: centerY,
+          width: ATTACK_PATTERNS.super.size,
+          height: ATTACK_PATTERNS.super.size,
+          speed: ATTACK_PATTERNS.super.speed,
+          angle: angle,
+          dx: Math.cos(angle) * ATTACK_PATTERNS.super.speed,
+          dy: Math.sin(angle) * ATTACK_PATTERNS.super.speed,
+          damage: 1
+        });
+      }
+      
+      setBossAttacks(prev => [...prev, ...attacks]);
+      soundManager.playExplosion();
+    }, ATTACK_PATTERNS.super.warningDuration);
     
   } else if (attackType === 'spiral') {
     const centerX = boss.x + boss.width / 2;

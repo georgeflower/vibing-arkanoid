@@ -196,6 +196,7 @@ export function performMegaBossAttack(
   paddleY: number,
   setBossAttacks: React.Dispatch<React.SetStateAction<BossAttack[]>>,
   setLaserWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; startTime: number }>>>,
+  setSuperWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; y: number; startTime: number }>>>,
   setEmpActive?: (active: boolean) => void,
   setEmpPulseStartTime?: (time: number | null) => void
 ): MegaBossAttackType {
@@ -231,7 +232,7 @@ export function performMegaBossAttack(
       performPhaseBurst(boss, setBossAttacks);
       break;
     case 'super':
-      performSuperAttack(boss, setBossAttacks);
+      performSuperAttack(boss, setBossAttacks, setSuperWarnings);
       break;
     case 'shot':
     default:
@@ -397,32 +398,41 @@ function performPhaseBurst(
 
 function performSuperAttack(
   boss: MegaBoss,
-  setBossAttacks: React.Dispatch<React.SetStateAction<BossAttack[]>>
+  setBossAttacks: React.Dispatch<React.SetStateAction<BossAttack[]>>,
+  setSuperWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; y: number; startTime: number }>>>
 ) {
-  const attacks: BossAttack[] = [];
   const centerX = boss.x + boss.width / 2;
   const centerY = boss.y + boss.height / 2;
-  const count = 12;
   
-  for (let i = 0; i < count; i++) {
-    const angle = (i / count) * Math.PI * 2;
-    
-    attacks.push({
-      bossId: boss.id,
-      type: 'super',
-      x: centerX,
-      y: centerY,
-      width: 10,
-      height: 10,
-      speed: 3.5,
-      angle,
-      dx: Math.cos(angle) * 3.5,
-      dy: Math.sin(angle) * 3.5,
-      damage: 1
-    });
-  }
-  
-  setBossAttacks(prev => [...prev, ...attacks]);
+  // Add super warning
+  setSuperWarnings(prev => [...prev, { x: centerX, y: centerY, startTime: Date.now() }]);
   toast.error("MEGA BOSS SUPER ATTACK!");
-  soundManager.playExplosion();
+  soundManager.playLaserChargingSound();
+  
+  // Delay the actual attack
+  setTimeout(() => {
+    const attacks: BossAttack[] = [];
+    const count = 8;
+    
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2;
+      
+      attacks.push({
+        bossId: boss.id,
+        type: 'super',
+        x: centerX,
+        y: centerY,
+        width: 10,
+        height: 10,
+        speed: 3.5,
+        angle,
+        dx: Math.cos(angle) * 3.5,
+        dy: Math.sin(angle) * 3.5,
+        damage: 1
+      });
+    }
+    
+    setBossAttacks(prev => [...prev, ...attacks]);
+    soundManager.playExplosion();
+  }, 600);
 }

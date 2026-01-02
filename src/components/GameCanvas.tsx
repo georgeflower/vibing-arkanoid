@@ -50,6 +50,7 @@ interface GameCanvasProps {
   resurrectedBosses: Boss[];
   bossAttacks: BossAttack[];
   laserWarnings: Array<{ x: number; startTime: number }>;
+  superWarnings: Array<{ x: number; y: number; startTime: number }>;
   gameOverParticles: Particle[];
   highScoreParticles: Particle[];
   showHighScoreEntry: boolean;
@@ -70,7 +71,7 @@ interface GameCanvasProps {
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null, isMobile = false, secondChanceImpact = null, dangerBalls = [], empSlowActive = false, empPulseStartTime = null, ballReleaseHighlight = null }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, superWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null, isMobile = false, secondChanceImpact = null, dangerBalls = [], empSlowActive = false, empPulseStartTime = null, ballReleaseHighlight = null }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -2370,6 +2371,68 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.textAlign = 'center';
           ctx.fillText('!! LASER !!', warning.x + 4, height - 80);
         }
+      });
+
+      // Draw super attack warnings with expanding ring effect
+      superWarnings.forEach(warning => {
+        const elapsed = Date.now() - warning.startTime;
+        const progress = elapsed / 600; // 0 to 1 over 600ms
+        
+        // Pulsating effect
+        const pulse = Math.abs(Math.sin(elapsed / 60)); // Fast pulse
+        const alpha = 0.5 + (pulse * 0.5);
+        
+        // Draw expanding rings
+        ctx.save();
+        for (let ring = 0; ring < 3; ring++) {
+          const ringProgress = (progress + ring * 0.15) % 1;
+          const ringRadius = 20 + ringProgress * 60;
+          const ringAlpha = alpha * (1 - ringProgress);
+          
+          ctx.strokeStyle = `rgba(255, ${100 + pulse * 100}, 0, ${ringAlpha})`;
+          ctx.lineWidth = 3 + pulse * 2;
+          ctx.beginPath();
+          ctx.arc(warning.x, warning.y, ringRadius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        
+        // Draw warning indicator lines showing attack spread
+        ctx.strokeStyle = `rgba(255, 200, 50, ${alpha * 0.6})`;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 8]);
+        ctx.lineDashOffset = -Date.now() / 20;
+        
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(warning.x, warning.y);
+          ctx.lineTo(
+            warning.x + Math.cos(angle) * 100,
+            warning.y + Math.sin(angle) * 100
+          );
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        
+        // Central glow
+        const gradient = ctx.createRadialGradient(warning.x, warning.y, 0, warning.x, warning.y, 30);
+        gradient.addColorStop(0, `rgba(255, 200, 100, ${alpha * 0.8})`);
+        gradient.addColorStop(0.5, `rgba(255, 100, 0, ${alpha * 0.4})`);
+        gradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(warning.x, warning.y, 30, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Warning text
+        if (progress > 0.2) {
+          ctx.fillStyle = `rgba(255, 200, 50, ${alpha})`;
+          ctx.font = 'bold 16px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('!! SUPER !!', warning.x, warning.y - 50);
+        }
+        
+        ctx.restore();
       });
 
       // Draw boss attacks

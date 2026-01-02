@@ -236,6 +236,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bossActive, setBossActive] = useState(false);
   const [bossHitCooldown, setBossHitCooldown] = useState(0);
   const [laserWarnings, setLaserWarnings] = useState<Array<{ x: number; startTime: number }>>([]);
+  const [superWarnings, setSuperWarnings] = useState<Array<{ x: number; y: number; startTime: number }>>([]);
   const bossSpawnedEnemiesRef = useRef<Set<number>>(new Set());
   const firstBossMinionKilledRef = useRef(false);
   // Track newly reflected bombs synchronously to avoid stale closure issues
@@ -5032,12 +5033,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           paddle.y,
           setBossAttacks,
           setLaserWarnings,
+          setSuperWarnings,
           setEmpSlowActive,
           setEmpPulseStartTime,
         );
       } else {
         // Regular boss attack
-        performBossAttack(boss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings);
+        performBossAttack(boss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings, setSuperWarnings);
       }
       const nextIndex = (boss.currentPositionIndex + 1) % boss.positions.length;
       setBoss((prev) =>
@@ -5508,7 +5510,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         Date.now() - resBoss.lastAttackTime >= resBoss.attackCooldown &&
         paddle
       ) {
-        performBossAttack(resBoss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings);
+        performBossAttack(resBoss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings, setSuperWarnings);
         const nextIdx = (resBoss.currentPositionIndex + 1) % resBoss.positions.length;
         setResurrectedBosses((prev) =>
           prev.map((b, i) =>
@@ -6397,6 +6399,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Clean up expired laser warnings
     setLaserWarnings((prev) => prev.filter((warning) => Date.now() - warning.startTime < 800));
+    
+    // Clean up expired super warnings
+    setSuperWarnings((prev) => prev.filter((warning) => Date.now() - warning.startTime < 600));
 
     // Boss collisions are now handled via CCD and shape-specific checks in Phase 3.5
     // Old collision code removed to prevent conflicts with unified boss-local cooldown system
@@ -7677,6 +7682,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       resurrectedBosses={resurrectedBosses}
                       bossAttacks={bossAttacks}
                       laserWarnings={laserWarnings}
+                      superWarnings={superWarnings}
                       gameOverParticles={[]}
                       highScoreParticles={[]}
                       showHighScoreEntry={showHighScoreEntry}
