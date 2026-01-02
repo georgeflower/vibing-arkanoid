@@ -69,6 +69,7 @@ export interface PowerUp {
   type: PowerUpType;
   speed: number;
   active: boolean;
+  isMercyLife?: boolean; // Bypass per-5-levels limit for mercy power-ups
 }
 
 export type EnemyType = "cube" | "sphere" | "pyramid";
