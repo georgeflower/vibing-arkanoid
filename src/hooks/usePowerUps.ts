@@ -31,7 +31,7 @@ export const usePowerUps = (
     
     // Boss minions: 50% chance to drop power-up (or forced drop)
     if (isBossMinion && (forceBossPowerUp || Math.random() < 0.5)) {
-      const isBossLevel = [5, 10, 15].includes(currentLevel);
+      const isBossLevel = [5, 10, 15, 20].includes(currentLevel);
       
       // Force boss-exclusive power-up if requested, otherwise 50% chance on boss levels
       const useBossPowerUp = forceBossPowerUp || (isBossLevel && Math.random() < 0.5);

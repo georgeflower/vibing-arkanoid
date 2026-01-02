@@ -292,6 +292,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [dangerBalls, setDangerBalls] = useState<DangerBall[]>([]);
   const [empSlowActive, setEmpSlowActive] = useState(false);
   const [empSlowEndTime, setEmpSlowEndTime] = useState<number | null>(null);
+  const [empPulseStartTime, setEmpPulseStartTime] = useState<number | null>(null);
 
   // Boss power-up states
   const [reflectShieldActive, setReflectShieldActive] = useState(false);
@@ -3909,7 +3910,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (!enemy) return;
 
             const isBossSpawned = bossSpawnedEnemiesRef.current.has(enemy.id || -1);
-            const isBossLevel = [5, 10, 15].includes(level);
+            const isBossLevel = [5, 10, 15, 20].includes(level);
             const isFirstBossMinion = isBossSpawned && isBossLevel && !firstBossMinionKilledRef.current;
 
             // First boss minion on boss level ALWAYS drops a power-up
@@ -5030,6 +5031,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBossAttacks,
           setLaserWarnings,
           setEmpSlowActive,
+          setEmpPulseStartTime,
         );
       } else {
         // Regular boss attack
@@ -5214,46 +5216,62 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
       }
 
-      // Phase 3: Spawn swarm enemies every 5 seconds
+      // Phase 3: Spawn swarm enemies every 5 seconds (max 8 total)
       if (shouldSpawnSwarm(megaBoss)) {
-        const swarmCount = MEGA_BOSS_CONFIG.swarmEnemyCount;
-        const newEnemies: Enemy[] = [];
+        const maxEnemies = MEGA_BOSS_CONFIG.maxSwarmEnemies;
+        const currentEnemyCount = enemies.length;
         
-        for (let i = 0; i < swarmCount; i++) {
-          const spawnX = Math.random() * (SCALED_CANVAS_WIDTH - 40) + 20;
-          const spawnY = 50 + Math.random() * 50;
-          const angle = Math.random() * Math.PI * 2;
-          const speed = 1.5 + Math.random() * 0.5;
-          const enemyId = Date.now() + i;
+        // Only spawn if under max limit
+        if (currentEnemyCount < maxEnemies) {
+          const canSpawn = Math.min(MEGA_BOSS_CONFIG.swarmEnemyCount, maxEnemies - currentEnemyCount);
+          const enemyTypes: Array<"cube" | "sphere" | "pyramid"> = ["cube", "sphere", "pyramid"];
+          const newEnemies: Enemy[] = [];
           
-          newEnemies.push({
-            id: enemyId,
-            type: "cube",
-            x: spawnX,
-            y: spawnY,
-            width: 30,
-            height: 30,
-            dx: Math.cos(angle) * speed,
-            dy: Math.sin(angle) * speed,
-            speed,
-            rotation: 0,
-            rotationX: 0,
-            rotationY: 0,
-            rotationZ: 0,
-            hits: 0,
+          for (let i = 0; i < canSpawn; i++) {
+            const spawnX = Math.random() * (SCALED_CANVAS_WIDTH - 40) + 20;
+            const spawnY = 50 + Math.random() * 50;
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 1.5 + Math.random() * 0.5;
+            const enemyId = Date.now() + i;
+            const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+            
+            newEnemies.push({
+              id: enemyId,
+              type: enemyType,
+              x: spawnX,
+              y: spawnY,
+              width: 30,
+              height: 30,
+              dx: Math.cos(angle) * speed,
+              dy: Math.sin(angle) * speed,
+              speed,
+              rotation: 0,
+              rotationX: 0,
+              rotationY: 0,
+              rotationZ: 0,
+              hits: 0,
+            });
+            
+            // Add to boss spawned enemies for power-up drops
+            bossSpawnedEnemiesRef.current.add(enemyId);
+          }
+          
+          if (newEnemies.length > 0) {
+            setEnemies((prev) => [...prev, ...newEnemies]);
+            setBoss((prev) => {
+              if (!prev || !isMegaBoss(prev)) return prev;
+              return markSwarmSpawned(prev as MegaBoss) as unknown as Boss;
+            });
+            
+            toast.warning(`⚔️ ${newEnemies.length} SWARM ENEMIES SPAWNED!`, { duration: 1500 });
+          }
+        } else {
+          // Mark as spawned even if at max, to reset timer
+          setBoss((prev) => {
+            if (!prev || !isMegaBoss(prev)) return prev;
+            return markSwarmSpawned(prev as MegaBoss) as unknown as Boss;
           });
-          
-          // Add to boss spawned enemies for power-up drops
-          bossSpawnedEnemiesRef.current.add(enemyId);
         }
-        
-        setEnemies((prev) => [...prev, ...newEnemies]);
-        setBoss((prev) => {
-          if (!prev || !isMegaBoss(prev)) return prev;
-          return markSwarmSpawned(prev as MegaBoss) as unknown as Boss;
-        });
-        
-        toast.warning(`⚔️ ${swarmCount} SWARM ENEMIES SPAWNED!`, { duration: 1500 });
       }
     }
 
@@ -7591,6 +7609,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       isMobile={isMobileDevice}
                       secondChanceImpact={secondChanceImpact}
                       dangerBalls={dangerBalls}
+                      empSlowActive={empSlowActive}
+                      empPulseStartTime={empPulseStartTime}
                     />
 
                     {/* Boss Power-Up Duration Timers - Mobile responsive positioning */}
