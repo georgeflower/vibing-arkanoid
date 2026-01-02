@@ -4090,23 +4090,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
 
           // Check if ball is falling below screen
-          if (ball.y > SCALED_CANVAS_HEIGHT + ball.radius) {
-            // DEBUG: Log when ball is lost on level 20
-            if (level === MEGA_BOSS_LEVEL) {
-              console.log(`[MEGA BOSS DEBUG] ⚠️ BALL ${ball.id} LOST! Position: (${ball.x.toFixed(1)}, ${ball.y.toFixed(1)})`);
-              if (boss && isMegaBoss(boss)) {
-                const megaBoss = boss as MegaBoss;
-                console.log(`[MEGA BOSS DEBUG] Boss state at ball loss:`, {
-                  coreExposed: megaBoss.coreExposed,
-                  trappedBall: megaBoss.trappedBall ? 'YES' : 'NO',
-                  bossPosition: { x: megaBoss.x.toFixed(1), y: megaBoss.y.toFixed(1) }
-                });
-              }
-            }
-            return false; // Ball lost
-          }
-
-          // Check for Second Chance save - ball passed safety net line
+          // Check for Second Chance save FIRST - before marking ball as lost
+          // This ensures barrier works on all levels including level 20
           if (paddle?.hasSecondChance && ball.y > SAFETY_NET_Y && ball.dy > 0) {
             // Save the ball! Reflect upward
             ball.dy = -Math.abs(ball.dy);
@@ -4122,6 +4107,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             // Clear impact effect after 500ms
             setTimeout(() => setSecondChanceImpact(null), 500);
+            
+            return true; // Ball was saved, don't check for loss
+          }
+
+          // Now check if ball is lost (after second chance check)
+          if (ball.y > SCALED_CANVAS_HEIGHT + ball.radius) {
+            // DEBUG: Log when ball is lost on level 20
+            if (level === MEGA_BOSS_LEVEL) {
+              console.log(`[MEGA BOSS DEBUG] ⚠️ BALL ${ball.id} LOST! Position: (${ball.x.toFixed(1)}, ${ball.y.toFixed(1)})`);
+              if (boss && isMegaBoss(boss)) {
+                const megaBoss = boss as MegaBoss;
+                console.log(`[MEGA BOSS DEBUG] Boss state at ball loss:`, {
+                  coreExposed: megaBoss.coreExposed,
+                  trappedBall: megaBoss.trappedBall ? 'YES' : 'NO',
+                  bossPosition: { x: megaBoss.x.toFixed(1), y: megaBoss.y.toFixed(1) }
+                });
+              }
+            }
+            return false; // Ball lost
           }
 
           return true;

@@ -653,7 +653,7 @@ class SoundManager {
     const ctx = this.getAudioContext();
     
     // Ominous pulsing buildup with multiple harmonics - distinct from laser
-    // Layer 1: Deep pulsing bass
+    // Layer 1: Deep pulsing bass (reduced volume)
     const bass = ctx.createOscillator();
     const bassGain = ctx.createGain();
     bass.connect(bassGain);
@@ -661,13 +661,13 @@ class SoundManager {
     bass.type = 'sine';
     bass.frequency.setValueAtTime(60, ctx.currentTime);
     bass.frequency.linearRampToValueAtTime(120, ctx.currentTime + 0.8);
-    bassGain.gain.setValueAtTime(0.15, ctx.currentTime);
-    bassGain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.6);
+    bassGain.gain.setValueAtTime(0.06, ctx.currentTime);
+    bassGain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.6);
     bassGain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.9);
     bass.start(ctx.currentTime);
     bass.stop(ctx.currentTime + 0.9);
     
-    // Layer 2: Rising siren sweep
+    // Layer 2: Rising siren sweep (reduced volume)
     const siren = ctx.createOscillator();
     const sirenGain = ctx.createGain();
     siren.connect(sirenGain);
@@ -675,13 +675,13 @@ class SoundManager {
     siren.type = 'square';
     siren.frequency.setValueAtTime(200, ctx.currentTime);
     siren.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.7);
-    sirenGain.gain.setValueAtTime(0.05, ctx.currentTime);
-    sirenGain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.5);
+    sirenGain.gain.setValueAtTime(0.02, ctx.currentTime);
+    sirenGain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.5);
     sirenGain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.8);
     siren.start(ctx.currentTime);
     siren.stop(ctx.currentTime + 0.8);
     
-    // Layer 3: High frequency danger tone
+    // Layer 3: High frequency danger tone (reduced volume)
     const high = ctx.createOscillator();
     const highGain = ctx.createGain();
     const highFilter = ctx.createBiquadFilter();
@@ -693,11 +693,65 @@ class SoundManager {
     high.frequency.exponentialRampToValueAtTime(1600, ctx.currentTime + 0.6);
     highFilter.type = 'bandpass';
     highFilter.frequency.value = 1200;
-    highGain.gain.setValueAtTime(0.08, ctx.currentTime + 0.2);
-    highGain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.5);
+    highGain.gain.setValueAtTime(0.03, ctx.currentTime + 0.2);
+    highGain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.5);
     highGain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.75);
     high.start(ctx.currentTime + 0.2);
     high.stop(ctx.currentTime + 0.75);
+  }
+
+  // EMP pulse activation - electrical/disabling sound
+  playEMPPulseSound() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Electric discharge burst
+    const discharge = ctx.createOscillator();
+    const dischargeGain = ctx.createGain();
+    const dischargeFilter = ctx.createBiquadFilter();
+    discharge.connect(dischargeFilter);
+    dischargeFilter.connect(dischargeGain);
+    dischargeGain.connect(ctx.destination);
+    discharge.type = 'sawtooth';
+    discharge.frequency.setValueAtTime(2000, ctx.currentTime);
+    discharge.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.3);
+    dischargeFilter.type = 'bandpass';
+    dischargeFilter.frequency.setValueAtTime(1500, ctx.currentTime);
+    dischargeFilter.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.3);
+    dischargeGain.gain.setValueAtTime(0.2, ctx.currentTime);
+    dischargeGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    discharge.start(ctx.currentTime);
+    discharge.stop(ctx.currentTime + 0.3);
+    
+    // Low humming shutdown
+    const hum = ctx.createOscillator();
+    const humGain = ctx.createGain();
+    hum.connect(humGain);
+    humGain.connect(ctx.destination);
+    hum.type = 'sine';
+    hum.frequency.setValueAtTime(120, ctx.currentTime);
+    hum.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.5);
+    humGain.gain.setValueAtTime(0.15, ctx.currentTime);
+    humGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    hum.start(ctx.currentTime);
+    hum.stop(ctx.currentTime + 0.5);
+    
+    // Crackling electrical bursts
+    [0, 0.08, 0.15, 0.22].forEach((delay) => {
+      setTimeout(() => {
+        const crackle = ctx.createOscillator();
+        const crackleGain = ctx.createGain();
+        crackle.connect(crackleGain);
+        crackleGain.connect(ctx.destination);
+        crackle.type = 'square';
+        crackle.frequency.setValueAtTime(800 + Math.random() * 600, ctx.currentTime);
+        crackle.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.05);
+        crackleGain.gain.setValueAtTime(0.08, ctx.currentTime);
+        crackleGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+        crackle.start(ctx.currentTime);
+        crackle.stop(ctx.currentTime + 0.05);
+      }, delay * 1000);
+    });
   }
 
   playBossHitSound() {
