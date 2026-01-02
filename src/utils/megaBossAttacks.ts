@@ -350,7 +350,7 @@ function performEmpPulse(
       setEmpPulseStartTime(startTime);
     }
     toast.error("⚡ EMP PULSE! Paddle slowed!");
-    soundManager.playLaserChargingSound();
+    soundManager.playEMPPulseSound();
     
     // Auto-deactivate after duration
     setTimeout(() => {
