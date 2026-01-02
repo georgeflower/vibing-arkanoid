@@ -627,14 +627,21 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         dangerBalls.forEach((dangerBall) => {
           ctx.save();
           
-          // Flashing animation between red and white
+          // Different appearance for reflected (homing) vs normal danger balls
+          const isHoming = dangerBall.isReflected;
+          
+          // Flashing animation between red and white (green for homing)
           const flashPhase = Math.sin(Date.now() / 80);
           const isWhitePhase = flashPhase > 0;
           
           // Outer glow
           if (qualitySettings.glowEnabled) {
             ctx.shadowBlur = 25;
-            ctx.shadowColor = isWhitePhase ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 50, 50, 0.9)';
+            if (isHoming) {
+              ctx.shadowColor = isWhitePhase ? 'rgba(100, 255, 100, 0.9)' : 'rgba(50, 200, 50, 0.9)';
+            } else {
+              ctx.shadowColor = isWhitePhase ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 50, 50, 0.9)';
+            }
           }
           
           // Draw danger ball
@@ -651,30 +658,46 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             dangerBall.radius
           );
           
-          if (isWhitePhase) {
-            grad.addColorStop(0, '#ffffff');
-            grad.addColorStop(0.5, '#ffcccc');
-            grad.addColorStop(1, '#ff6666');
+          if (isHoming) {
+            // Green gradient for homing balls
+            if (isWhitePhase) {
+              grad.addColorStop(0, '#ffffff');
+              grad.addColorStop(0.5, '#aaffaa');
+              grad.addColorStop(1, '#44cc44');
+            } else {
+              grad.addColorStop(0, '#88ff88');
+              grad.addColorStop(0.5, '#22cc22');
+              grad.addColorStop(1, '#006600');
+            }
           } else {
-            grad.addColorStop(0, '#ff8888');
-            grad.addColorStop(0.5, '#ff2222');
-            grad.addColorStop(1, '#aa0000');
+            // Red gradient for normal balls
+            if (isWhitePhase) {
+              grad.addColorStop(0, '#ffffff');
+              grad.addColorStop(0.5, '#ffcccc');
+              grad.addColorStop(1, '#ff6666');
+            } else {
+              grad.addColorStop(0, '#ff8888');
+              grad.addColorStop(0.5, '#ff2222');
+              grad.addColorStop(1, '#aa0000');
+            }
           }
           
           ctx.fillStyle = grad;
           ctx.fill();
           
-          // Inner warning symbol (star)
+          // Inner warning symbol (star for normal, arrow for homing)
           ctx.shadowBlur = 0;
-          ctx.fillStyle = isWhitePhase ? '#ff0000' : '#ffffff';
+          ctx.fillStyle = isWhitePhase ? (isHoming ? '#006600' : '#ff0000') : '#ffffff';
           ctx.font = `bold ${dangerBall.radius * 1.2}px monospace`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText('★', dangerBall.x, dangerBall.y);
+          ctx.fillText(isHoming ? '↑' : '★', dangerBall.x, dangerBall.y);
           
           // Outer ring pulse
           const pulseScale = 1 + Math.sin(Date.now() / 150) * 0.2;
-          ctx.strokeStyle = isWhitePhase ? 'rgba(255, 100, 100, 0.6)' : 'rgba(255, 255, 255, 0.6)';
+          ctx.strokeStyle = isHoming 
+            ? (isWhitePhase ? 'rgba(100, 255, 100, 0.6)' : 'rgba(255, 255, 255, 0.6)')
+            : (isWhitePhase ? 'rgba(255, 100, 100, 0.6)' : 'rgba(255, 255, 255, 0.6)');
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.arc(dangerBall.x, dangerBall.y, dangerBall.radius * pulseScale * 1.3, 0, Math.PI * 2);
@@ -2438,11 +2461,11 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.textAlign = 'center';
           ctx.fillText(megaBoss.coreExposed ? 'CORE EXPOSED!' : phaseLabels[megaBoss.corePhase - 1], boss.x + boss.width / 2, hbY - 5);
           
-          // Danger ball catch counter (when cannon is active)
+          // Danger ball core hit counter (when cannon is active)
           if (megaBoss.cannonExtended && megaBoss.trappedBall) {
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 14px monospace';
-            ctx.fillText(`CATCH: ${megaBoss.dangerBallsCaught}/5`, boss.x + boss.width / 2, hbY + hbHeight + 18);
+            ctx.fillText(`CORE HITS: ${megaBoss.coreHitsFromDangerBalls || 0}/5`, boss.x + boss.width / 2, hbY + hbHeight + 18);
           }
           
           ctx.textAlign = 'left';

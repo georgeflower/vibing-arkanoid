@@ -110,6 +110,8 @@ import {
   resetMegaBossPhaseProgress,
   shouldSpawnSwarm,
   markSwarmSpawned,
+  incrementCoreHit,
+  hasSufficientCoreHits,
   MegaBoss,
 } from "@/utils/megaBossUtils";
 import {
@@ -119,6 +121,9 @@ import {
   isDangerBallAtBottom,
   isDangerBallIntercepted,
   reflectDangerBall,
+  applyHomingToDangerBall,
+  isDangerBallAtCore,
+  hasReflectedBallMissed,
   performMegaBossAttack,
 } from "@/utils/megaBossAttacks";
 interface GameProps {
@@ -5222,40 +5227,65 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     }
 
-    // ═══ DANGER BALL UPDATE LOOP (with catching mechanic) ═══
+    // ═══ DANGER BALL UPDATE LOOP (with reflect + homing mechanic) ═══
     if (dangerBalls.length > 0 && paddle && boss && isMegaBoss(boss)) {
       const megaBoss = boss as MegaBoss;
       
       setDangerBalls((prev) => {
         const updatedBalls: DangerBall[] = [];
-        let livesLost = 0;
-        let ballsCaught = 0;
+        let coreHits = 0;
         let ballsMissed = 0;
 
         prev.forEach((ball) => {
           // Update position
-          const updatedBall = updateDangerBall(ball);
+          let updatedBall = updateDangerBall(ball);
 
-          // Check if CAUGHT by paddle (not reflected)
-          if (isDangerBallIntercepted(updatedBall, paddle.x, paddle.y, paddle.width, paddle.height)) {
-            // Ball is caught! Increment counter
-            ballsCaught++;
-            console.log(`[MEGA BOSS DEBUG] ✅ Danger ball ${ball.id} CAUGHT! Total: ${megaBoss.dangerBallsCaught + ballsCaught}/5`);
-            toast.success(`✅ DANGER BALL CAUGHT! (${megaBoss.dangerBallsCaught + ballsCaught}/5)`, { duration: 1000 });
+          // If ball is homing, apply homing steering toward boss core
+          if (updatedBall.isHoming && boss) {
+            updatedBall = applyHomingToDangerBall(
+              updatedBall, 
+              boss.x, boss.y, boss.width, boss.height
+            );
+          }
+
+          // Check if NOT YET REFLECTED ball hits paddle -> REFLECT it
+          if (!updatedBall.isReflected && isDangerBallIntercepted(updatedBall, paddle.x, paddle.y, paddle.width, paddle.height)) {
+            // Reflect the ball and enable homing
+            updatedBall = reflectDangerBall(updatedBall, paddle.x, paddle.width);
+            console.log(`[MEGA BOSS DEBUG] ↩️ Danger ball ${ball.id} REFLECTED! Now homing toward core.`);
+            toast.info(`↩️ Danger ball reflected!`, { duration: 1000 });
             soundManager.playBounce();
-            return; // Remove caught ball
+            updatedBalls.push(updatedBall);
+            return;
           }
 
-          // Check if reached bottom (count as missed but DON'T lose life)
-          if (isDangerBallAtBottom(updatedBall, SCALED_CANVAS_HEIGHT)) {
+          // Check if REFLECTED ball hits the boss core
+          if (updatedBall.isReflected && boss && isDangerBallAtCore(updatedBall, boss.x, boss.y, boss.width, boss.height)) {
+            coreHits++;
+            console.log(`[MEGA BOSS DEBUG] 💥 Danger ball ${ball.id} HIT CORE! Total hits: ${megaBoss.coreHitsFromDangerBalls + coreHits}/5`);
+            toast.success(`💥 CORE HIT! (${megaBoss.coreHitsFromDangerBalls + coreHits}/5)`, { duration: 1000 });
+            soundManager.playBrickHit('normal', 1);
+            return; // Remove ball after hitting core
+          }
+
+          // Check if NON-REFLECTED ball reached bottom (missed without reflecting)
+          if (!updatedBall.isReflected && isDangerBallAtBottom(updatedBall, SCALED_CANVAS_HEIGHT)) {
             ballsMissed++;
-            console.log(`[MEGA BOSS DEBUG] ⚠️ Danger ball ${ball.id} MISSED! (no life lost)`);
+            console.log(`[MEGA BOSS DEBUG] ⚠️ Danger ball ${ball.id} MISSED (not reflected)!`);
             toast.warning("⚠️ Danger ball missed!", { duration: 1000 });
-            return; // Don't add to updated balls
+            return; // Remove ball
           }
 
-          // Check if off screen (sides or top) - shouldn't happen often but safety
-          if (updatedBall.x < -50 || updatedBall.x > SCALED_CANVAS_WIDTH + 50 || updatedBall.y < -50) {
+          // Check if REFLECTED ball missed (went off screen without hitting core)
+          if (updatedBall.isReflected && hasReflectedBallMissed(updatedBall, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT)) {
+            ballsMissed++;
+            console.log(`[MEGA BOSS DEBUG] ⚠️ Reflected danger ball ${ball.id} MISSED CORE!`);
+            toast.warning("⚠️ Reflected ball missed the core!", { duration: 1000 });
+            return; // Remove ball
+          }
+
+          // Check if off screen (sides when not reflected) - safety
+          if (!updatedBall.isReflected && (updatedBall.x < -50 || updatedBall.x > SCALED_CANVAS_WIDTH + 50 || updatedBall.y < -50)) {
             console.log(`[MEGA BOSS DEBUG] Danger ball ${ball.id} went off screen`);
             return; // Remove from game
           }
@@ -5263,15 +5293,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           updatedBalls.push(updatedBall);
         });
 
-        // NO LIFE LOSS for missed danger balls - removed livesLost logic
-
-        // Update caught count on boss
-        if (ballsCaught > 0) {
+        // Update core hit count on boss
+        if (coreHits > 0) {
           setBoss((prevBoss) => {
             if (!prevBoss || !isMegaBoss(prevBoss)) return prevBoss;
             let mb = prevBoss as MegaBoss;
-            for (let i = 0; i < ballsCaught; i++) {
-              mb = catchDangerBall(mb);
+            for (let i = 0; i < coreHits; i++) {
+              mb = incrementCoreHit(mb);
             }
             return mb as unknown as Boss;
           });
@@ -5280,14 +5308,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // FAIL FAST: Immediately reset boss on ANY missed danger ball
         if (ballsMissed > 0) {
           console.log(`[MEGA BOSS DEBUG] ❌ FAIL FAST: ${ballsMissed} danger ball(s) missed → IMMEDIATELY resetting shield + releasing player ball`);
-          console.log(`[MEGA BOSS DEBUG] State before reset: dangerBallsCaught=${megaBoss.dangerBallsCaught}, dangerBallsFired=${megaBoss.dangerBallsFired}, scheduledDangerBalls=${megaBoss.scheduledDangerBalls?.length || 0}`);
+          console.log(`[MEGA BOSS DEBUG] State before reset: coreHitsFromDangerBalls=${megaBoss.coreHitsFromDangerBalls}, dangerBallsFired=${megaBoss.dangerBallsFired}, scheduledDangerBalls=${megaBoss.scheduledDangerBalls?.length || 0}`);
           
           setBoss((prevBoss) => {
             if (!prevBoss || !isMegaBoss(prevBoss)) return prevBoss;
             const currentMegaBoss = prevBoss as MegaBoss;
             const { boss: resetBoss, releasedBall } = resetMegaBossPhaseProgress(currentMegaBoss);
             
-            console.log(`[MEGA BOSS DEBUG] Reset complete: outerShieldHP=${resetBoss.outerShieldHP}, coreExposed=${resetBoss.coreExposed}, cannonExtended=${resetBoss.cannonExtended}`);
+            console.log(`[MEGA BOSS DEBUG] Reset complete: outerShieldHP=${resetBoss.outerShieldHP}, innerShieldHP=${resetBoss.innerShieldHP}, coreExposed=${resetBoss.coreExposed}, cannonExtended=${resetBoss.cannonExtended}`);
             
             if (releasedBall) {
               console.log(`[MEGA BOSS DEBUG] Released player ball at (${releasedBall.x.toFixed(1)}, ${releasedBall.y.toFixed(1)})`);
@@ -5297,7 +5325,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             return resetBoss as unknown as Boss;
           });
           
-          toast.warning(`Danger ball missed! Shield regenerated to 10 HP.`, { duration: 3000 });
+          const shieldType = megaBoss.outerShieldRemoved ? "Inner shield" : "Shield";
+          toast.warning(`Danger ball missed! ${shieldType} regenerated.`, { duration: 3000 });
           soundManager.playBounce();
           
           // Clear all remaining danger balls immediately
@@ -5307,9 +5336,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         return updatedBalls;
       });
       
-      // Check if danger ball phase should end successfully (all 5 caught)
-      if (shouldEndDangerBallPhase(megaBoss) && dangerBalls.length === 0 && megaBoss.dangerBallsCaught >= MEGA_BOSS_CONFIG.dangerBallsToComplete) {
-        console.log(`[MEGA BOSS DEBUG] SUCCESS! All 5 danger balls caught - phase will advance via shouldReleaseBall`);
+      // Check if danger ball phase should end successfully (all 5 core hits)
+      if (shouldEndDangerBallPhase(megaBoss) && dangerBalls.length === 0 && hasSufficientCoreHits(megaBoss)) {
+        console.log(`[MEGA BOSS DEBUG] SUCCESS! All 5 core hits achieved - phase will advance via shouldReleaseBall`);
         // Success path is handled by shouldReleaseBall in the existing ball update code
       }
     }
