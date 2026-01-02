@@ -293,6 +293,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [empSlowActive, setEmpSlowActive] = useState(false);
   const [empSlowEndTime, setEmpSlowEndTime] = useState<number | null>(null);
   const [empPulseStartTime, setEmpPulseStartTime] = useState<number | null>(null);
+  const [nextCannonMissileTime, setNextCannonMissileTime] = useState<number>(0);
 
   // Boss power-up states
   const [reflectShieldActive, setReflectShieldActive] = useState(false);
@@ -5102,6 +5103,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             toast.error("🔴 BALL TRAPPED IN CORE! Catch 5 danger balls!", { duration: 3000 });
             soundManager.playExplosion();
+            
+            // Initialize first cannon missile time (4-7 seconds from now)
+            setNextCannonMissileTime(Date.now() + 4000 + Math.random() * 3000);
           }
         });
       }
@@ -5129,6 +5133,42 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           toast.warning(`⚡ DANGER BALL ${megaBoss.dangerBallsFired + 1}/5!`, { duration: 1500 });
           soundManager.playBounce();
+        }
+      }
+
+      // ═══ CANNON MISSILE ATTACK (every 4-7 seconds when cannon is visible) ═══
+      if (megaBoss.cannonExtended && megaBoss.trappedBall && paddle) {
+        if (now >= nextCannonMissileTime) {
+          // Fire a fast missile toward the paddle
+          const cannonX = megaBoss.x + megaBoss.width / 2;
+          const cannonY = megaBoss.y + megaBoss.height / 2 + 60; // Cannon muzzle position
+          const paddleCenterX = paddle.x + paddle.width / 2;
+          const paddleCenterY = paddle.y;
+          
+          const angle = Math.atan2(paddleCenterY - cannonY, paddleCenterX - cannonX);
+          const missileSpeed = 8; // Fast missile
+          
+          const missile: BossAttack = {
+            bossId: megaBoss.id,
+            type: 'shot',
+            x: cannonX,
+            y: cannonY,
+            width: 10,
+            height: 18,
+            speed: missileSpeed,
+            angle,
+            dx: Math.cos(angle) * missileSpeed,
+            dy: Math.sin(angle) * missileSpeed,
+            damage: 1
+          };
+          
+          setBossAttacks(prev => [...prev, missile]);
+          soundManager.playShoot();
+          
+          // Schedule next missile in 4-7 seconds
+          const nextDelay = 4000 + Math.random() * 3000;
+          setNextCannonMissileTime(now + nextDelay);
+          console.log(`[MEGA BOSS DEBUG] 🚀 Cannon missile fired! Next in ${(nextDelay / 1000).toFixed(1)}s`);
         }
       }
 
@@ -5294,8 +5334,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         let ballsMissed = 0;
 
         prev.forEach((ball) => {
-          // Update position
-          let updatedBall = updateDangerBall(ball);
+          // Update position with wall bouncing
+          let updatedBall = updateDangerBall(ball, SCALED_CANVAS_WIDTH);
 
           // If ball is homing, apply homing steering toward boss core
           if (updatedBall.isHoming && boss) {

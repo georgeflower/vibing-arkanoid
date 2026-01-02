@@ -54,12 +54,28 @@ export function spawnDangerBall(boss: MegaBoss): DangerBall {
   };
 }
 
-// Update danger ball position and animation
-export function updateDangerBall(ball: DangerBall): DangerBall {
+// Update danger ball position and animation, with wall bouncing
+export function updateDangerBall(ball: DangerBall, canvasWidth: number = 800): DangerBall {
+  let newX = ball.x + ball.dx;
+  let newY = ball.y + ball.dy;
+  let newDx = ball.dx;
+  
+  // Bounce off side walls (only for non-reflected balls to keep them catchable)
+  if (!ball.isReflected) {
+    if (newX - ball.radius < 0) {
+      newX = ball.radius;
+      newDx = Math.abs(ball.dx); // Bounce right
+    } else if (newX + ball.radius > canvasWidth) {
+      newX = canvasWidth - ball.radius;
+      newDx = -Math.abs(ball.dx); // Bounce left
+    }
+  }
+  
   return {
     ...ball,
-    x: ball.x + ball.dx,
-    y: ball.y + ball.dy,
+    x: newX,
+    y: newY,
+    dx: newDx,
     flashPhase: (ball.flashPhase + 0.15) % (Math.PI * 2)
   };
 }
