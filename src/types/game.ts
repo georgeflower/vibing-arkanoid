@@ -150,7 +150,7 @@ export interface Explosion {
 
 export type BossType = "cube" | "sphere" | "pyramid";
 export type BossPhase = "idle" | "moving" | "attacking" | "transitioning" | "defeated";
-export type BossAttackType = "shot" | "laser" | "super" | "spiral" | "cross";
+export type BossAttackType = "shot" | "laser" | "super" | "spiral" | "cross" | "rocket";
 
 export interface Boss {
   id: number;

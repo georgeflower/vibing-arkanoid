@@ -112,8 +112,8 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       return !!(img && img.complete && img.naturalHeight !== 0);
     };
     
-    // Debug flag for boss hitbox
-    const SHOW_BOSS_HITBOX = false;
+    // Debug flag for boss hitbox - now connected to debugEnabled prop
+    const SHOW_BOSS_HITBOX = debugEnabled;
     
     // Helper function to detect adjacent metal bricks for seamless rendering
     const getAdjacentMetalBricks = (brick: Brick, allBricks: Brick[]) => {
