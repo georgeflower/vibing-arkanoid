@@ -2548,6 +2548,79 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.lineWidth = 2 + laserPulse * 2;
           ctx.strokeRect(attack.x, attack.y, attack.width, attack.height);
           ctx.shadowBlur = 0;
+        } else if (attack.type === 'rocket') {
+          // White rocket with red nose cone and flame trail
+          ctx.save();
+          ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
+          
+          const rocketLength = attack.height * 1.2;
+          const rocketWidth = attack.width * 0.8;
+          
+          // Calculate rotation based on velocity (pointing down)
+          const angle = Math.atan2(attack.dy || 1, attack.dx || 0);
+          ctx.rotate(angle + Math.PI / 2);
+          
+          // Flame trail (animated)
+          const flameFlicker = 0.7 + Math.random() * 0.3;
+          const flameGrad = ctx.createLinearGradient(0, rocketLength * 0.3, 0, rocketLength * 0.9);
+          flameGrad.addColorStop(0, `rgba(255, 200, 50, ${flameFlicker})`);
+          flameGrad.addColorStop(0.4, `rgba(255, 100, 0, ${flameFlicker * 0.8})`);
+          flameGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
+          
+          ctx.fillStyle = flameGrad;
+          ctx.beginPath();
+          ctx.moveTo(-rocketWidth * 0.5, rocketLength * 0.3);
+          ctx.quadraticCurveTo(0, rocketLength * 1.2, rocketWidth * 0.5, rocketLength * 0.3);
+          ctx.fill();
+          
+          // Rocket body (white with gradient)
+          if (enableBossGlow) {
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+          }
+          
+          const bodyGrad = ctx.createLinearGradient(-rocketWidth, 0, rocketWidth, 0);
+          bodyGrad.addColorStop(0, '#cccccc');
+          bodyGrad.addColorStop(0.3, '#ffffff');
+          bodyGrad.addColorStop(0.7, '#ffffff');
+          bodyGrad.addColorStop(1, '#aaaaaa');
+          
+          ctx.fillStyle = bodyGrad;
+          ctx.beginPath();
+          ctx.moveTo(0, -rocketLength * 0.5);
+          ctx.lineTo(rocketWidth * 0.5, -rocketLength * 0.1);
+          ctx.lineTo(rocketWidth * 0.5, rocketLength * 0.3);
+          ctx.lineTo(-rocketWidth * 0.5, rocketLength * 0.3);
+          ctx.lineTo(-rocketWidth * 0.5, -rocketLength * 0.1);
+          ctx.closePath();
+          ctx.fill();
+          
+          // Rocket nose cone (red tip)
+          ctx.fillStyle = '#ff3333';
+          ctx.beginPath();
+          ctx.moveTo(0, -rocketLength * 0.5);
+          ctx.lineTo(rocketWidth * 0.35, -rocketLength * 0.2);
+          ctx.lineTo(-rocketWidth * 0.35, -rocketLength * 0.2);
+          ctx.closePath();
+          ctx.fill();
+          
+          // Red fins
+          ctx.fillStyle = '#ff4444';
+          ctx.beginPath();
+          ctx.moveTo(-rocketWidth * 0.5, rocketLength * 0.1);
+          ctx.lineTo(-rocketWidth * 1.0, rocketLength * 0.4);
+          ctx.lineTo(-rocketWidth * 0.5, rocketLength * 0.3);
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(rocketWidth * 0.5, rocketLength * 0.1);
+          ctx.lineTo(rocketWidth * 1.0, rocketLength * 0.4);
+          ctx.lineTo(rocketWidth * 0.5, rocketLength * 0.3);
+          ctx.closePath();
+          ctx.fill();
+          
+          ctx.shadowBlur = 0;
+          ctx.restore();
         } else {
           ctx.save();
           ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
@@ -2668,14 +2741,14 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.save();
             ctx.setLineDash([6, 4]);
             
-            // Outer shield hitbox (hexagon)
+            // Outer shield hitbox (OCTAGON - 8 sides to match visual)
             if (!megaBoss.outerShieldRemoved) {
               ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
               ctx.lineWidth = 2;
               ctx.fillStyle = 'rgba(0, 255, 0, 0.15)';
               ctx.beginPath();
-              for (let i = 0; i < 6; i++) {
-                const angle = (Math.PI / 3) * i - Math.PI / 2;
+              for (let i = 0; i < 8; i++) {
+                const angle = (Math.PI / 4) * i - Math.PI / 8;
                 const hx = Math.cos(angle) * radius;
                 const hy = Math.sin(angle) * radius;
                 if (i === 0) ctx.moveTo(hx, hy);
@@ -2686,21 +2759,14 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
               ctx.fill();
             }
             
-            // Inner octagon hitbox (when outer is removed)
+            // Circle hitbox slightly larger than boss (Phase 2/3)
             if (megaBoss.outerShieldRemoved && !megaBoss.coreExposed) {
-              const innerOctRadius = 40;
+              const circleRadius = radius + 10; // Slightly larger than boss
               ctx.strokeStyle = 'rgba(255, 165, 0, 0.8)';
               ctx.lineWidth = 2;
               ctx.fillStyle = 'rgba(255, 165, 0, 0.15)';
               ctx.beginPath();
-              for (let i = 0; i < 8; i++) {
-                const angle = (Math.PI / 4) * i - Math.PI / 8;
-                const ox = Math.cos(angle) * innerOctRadius;
-                const oy = Math.sin(angle) * innerOctRadius;
-                if (i === 0) ctx.moveTo(ox, oy);
-                else ctx.lineTo(ox, oy);
-              }
-              ctx.closePath();
+              ctx.arc(0, 0, circleRadius, 0, Math.PI * 2);
               ctx.stroke();
               ctx.fill();
             }
