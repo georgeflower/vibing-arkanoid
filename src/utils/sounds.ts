@@ -393,7 +393,8 @@ class SoundManager {
     '/wider.mp3',
     '/smaller.mp3',
     '/shield.mp3',
-    '/barrier.mp3'
+    '/barrier.mp3',
+    '/cannon_mode.mp3'
   ];
 
   async preloadSounds(): Promise<void> {
@@ -464,6 +465,54 @@ class SoundManager {
 
   playCrackedBrickBreakSound() {
     // Sound removed - function kept for compatibility
+  }
+
+  playCannonModeSound() {
+    if (!this.sfxEnabled) return;
+    const buffer = this.audioBuffers['/cannon_mode.mp3'];
+    if (buffer) {
+      this.playAudioBuffer(buffer, 0.7);
+    }
+  }
+
+  playFailureSound() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Dramatic failure sound - descending tones with distortion
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    
+    osc1.connect(filter);
+    osc2.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    osc1.type = 'sawtooth';
+    osc2.type = 'square';
+    
+    // Descending chromatic notes
+    osc1.frequency.setValueAtTime(400, ctx.currentTime);
+    osc1.frequency.setValueAtTime(350, ctx.currentTime + 0.15);
+    osc1.frequency.setValueAtTime(300, ctx.currentTime + 0.3);
+    osc1.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.6);
+    
+    osc2.frequency.setValueAtTime(200, ctx.currentTime);
+    osc2.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.6);
+    
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(2000, ctx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.6);
+    
+    gainNode.gain.setValueAtTime(0.25, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+    
+    osc1.start(ctx.currentTime);
+    osc2.start(ctx.currentTime);
+    osc1.stop(ctx.currentTime + 0.6);
+    osc2.stop(ctx.currentTime + 0.6);
   }
 
   playBombDropSound() {

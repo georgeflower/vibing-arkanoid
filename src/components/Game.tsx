@@ -5105,7 +5105,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             console.log(`[MEGA BOSS DEBUG] Ball trapped, danger balls scheduled: ${(trappedBoss as MegaBoss).scheduledDangerBalls.length}`);
 
             toast.error("🔴 BALL TRAPPED IN CORE! Catch 5 danger balls!", { duration: 3000 });
-            soundManager.playExplosion();
+            soundManager.playCannonModeSound();
             
             // Initialize first cannon missile time (4-7 seconds from now)
             setNextCannonMissileTime(Date.now() + 4000 + Math.random() * 3000);
@@ -5454,9 +5454,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             return resetBoss as unknown as Boss;
           });
           
-          const shieldType = megaBoss.outerShieldRemoved ? "Inner shield" : "Shield";
-          toast.warning(`Danger ball missed! ${shieldType} regenerated.`, { duration: 3000 });
-          soundManager.playBounce();
+          toast.error(`⚠️ Catch all 5 balls to kill enemy!`, { duration: 4000 });
+          soundManager.playFailureSound();
           
           // Clear all remaining danger balls immediately
           return [];
