@@ -74,7 +74,8 @@ export const ATTACK_PATTERNS = {
     count: 8,
     speed: 3.5,
     size: 10,
-    spreadAngle: 360
+    spreadAngle: 360,
+    warningDuration: 600
   },
   spiral: {
     count: 16,
