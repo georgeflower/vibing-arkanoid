@@ -95,7 +95,7 @@ export function performBossAttack(
     // Add super warning
     setSuperWarnings(prev => [...prev, { x: centerX, y: centerY, startTime: Date.now() }]);
     toast.error(`${boss.type.toUpperCase()} SUPER ATTACK!`);
-    soundManager.playSuperAttackChargingSound();
+    soundManager.playShoot();
     
     // Delay the actual attack
     setTimeout(() => {

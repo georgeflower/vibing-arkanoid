@@ -4066,6 +4066,27 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         .filter((ball): ball is NonNullable<typeof ball> => {
           if (!ball) return false;
 
+          // Check for Second Chance save FIRST - before any mega boss logic
+          // This ensures barrier works on all levels including level 20
+          if (paddle?.hasSecondChance && ball.y > SAFETY_NET_Y && ball.dy > 0) {
+            // Save the ball! Reflect upward
+            ball.dy = -Math.abs(ball.dy);
+            ball.y = SAFETY_NET_Y - ball.radius - 5;
+
+            // Remove second chance from paddle
+            setPaddle((prev) => (prev ? { ...prev, hasSecondChance: false } : null));
+
+            // Play save sound and show effect
+            soundManager.playSecondChanceSaveSound();
+            setSecondChanceImpact({ x: ball.x, y: SAFETY_NET_Y, startTime: Date.now() });
+            toast.success("Second Chance saved you!");
+
+            // Clear impact effect after 500ms
+            setTimeout(() => setSecondChanceImpact(null), 500);
+            
+            return true; // Ball was saved, don't check for loss
+          }
+
           // MEGA BOSS: Apply gravity well effect when core is exposed and ball is inside boss
           if (level === MEGA_BOSS_LEVEL && boss && isMegaBoss(boss)) {
             const megaBoss = boss as MegaBoss;
@@ -4090,26 +4111,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
 
           // Check if ball is falling below screen
-          // Check for Second Chance save FIRST - before marking ball as lost
-          // This ensures barrier works on all levels including level 20
-          if (paddle?.hasSecondChance && ball.y > SAFETY_NET_Y && ball.dy > 0) {
-            // Save the ball! Reflect upward
-            ball.dy = -Math.abs(ball.dy);
-            ball.y = SAFETY_NET_Y - ball.radius - 5;
-
-            // Remove second chance from paddle
-            setPaddle((prev) => (prev ? { ...prev, hasSecondChance: false } : null));
-
-            // Play save sound and show effect
-            soundManager.playSecondChanceSaveSound();
-            setSecondChanceImpact({ x: ball.x, y: SAFETY_NET_Y, startTime: Date.now() });
-            toast.success("Second Chance saved you!");
-
-            // Clear impact effect after 500ms
-            setTimeout(() => setSecondChanceImpact(null), 500);
-            
-            return true; // Ball was saved, don't check for loss
-          }
 
           // Now check if ball is lost (after second chance check)
           if (ball.y > SCALED_CANVAS_HEIGHT + ball.radius) {
