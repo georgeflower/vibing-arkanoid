@@ -2308,22 +2308,77 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.stroke();
           ctx.setLineDash([]); // Reset dash pattern
           
-          // Inner hexagon detail
-          ctx.beginPath();
-          for (let i = 0; i < 6; i++) {
-            const angle = (Math.PI / 3) * i - Math.PI / 2;
-            const x = Math.cos(angle) * (radius * 0.65);
-            const y = Math.sin(angle) * (radius * 0.65);
-            if (i === 0) {
-              ctx.moveTo(x, y);
-            } else {
-              ctx.lineTo(x, y);
+          // ═══ INNER OCTAGON SHIELD (visible after outer shield is removed in phase 2+) ═══
+          if (megaBoss.outerShieldRemoved && megaBoss.innerShieldHP > 0) {
+            const innerOctRadius = radius * 0.5; // Smaller octagon around core
+            const innerShieldHue = megaBoss.corePhase === 3 ? 0 : (megaBoss.corePhase === 2 ? 30 : 50); // More orange/red
+            
+            // Draw octagon (8 sides)
+            ctx.beginPath();
+            for (let i = 0; i < 8; i++) {
+              const angle = (Math.PI / 4) * i - Math.PI / 8; // Offset to point up
+              const ox = Math.cos(angle) * innerOctRadius;
+              const oy = Math.sin(angle) * innerOctRadius;
+              if (i === 0) {
+                ctx.moveTo(ox, oy);
+              } else {
+                ctx.lineTo(ox, oy);
+              }
+            }
+            ctx.closePath();
+            
+            // Inner shield gradient fill - more intense color
+            const innerGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, innerOctRadius);
+            innerGrad.addColorStop(0, `hsla(${innerShieldHue}, 90%, 60%, 0.3)`);
+            innerGrad.addColorStop(0.6, `hsla(${innerShieldHue}, 85%, 45%, 0.5)`);
+            innerGrad.addColorStop(1, `hsla(${innerShieldHue}, 80%, 30%, 0.7)`);
+            ctx.fillStyle = innerGrad;
+            ctx.fill();
+            
+            // Pulsing border to indicate active inner shield
+            const innerPulse = Math.sin(Date.now() / 120) * 0.3 + 0.7;
+            ctx.strokeStyle = `hsla(${innerShieldHue}, 100%, 70%, ${innerPulse})`;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            // Shield HP indicator nodes at each vertex
+            const hpRatio = megaBoss.innerShieldHP / megaBoss.innerShieldMaxHP;
+            for (let i = 0; i < 8; i++) {
+              const angle = (Math.PI / 4) * i - Math.PI / 8;
+              const nx = Math.cos(angle) * innerOctRadius;
+              const ny = Math.sin(angle) * innerOctRadius;
+              const nodeActive = (i / 8) < hpRatio;
+              
+              ctx.beginPath();
+              ctx.arc(nx, ny, 5, 0, Math.PI * 2);
+              ctx.fillStyle = nodeActive ? `hsl(${innerShieldHue}, 100%, 60%)` : 'rgba(100, 100, 100, 0.5)';
+              ctx.fill();
+              if (nodeActive) {
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+              }
             }
           }
-          ctx.closePath();
-          ctx.strokeStyle = `hsl(${baseHue}, 70%, 50%)`;
-          ctx.lineWidth = 2;
-          ctx.stroke();
+          
+          // Inner hexagon detail (only show if outer shield NOT removed)
+          if (!megaBoss.outerShieldRemoved) {
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+              const angle = (Math.PI / 3) * i - Math.PI / 2;
+              const x = Math.cos(angle) * (radius * 0.65);
+              const y = Math.sin(angle) * (radius * 0.65);
+              if (i === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                ctx.lineTo(x, y);
+              }
+            }
+            ctx.closePath();
+            ctx.strokeStyle = `hsl(${baseHue}, 70%, 50%)`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
           
           // Outer ring details at each vertex
           ctx.shadowBlur = 0;
