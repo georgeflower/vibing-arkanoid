@@ -5138,27 +5138,37 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const { boss: updatedBoss, releasedBall, isDefeated } = releaseBallAndNextPhase(megaBoss);
         
         if (isDefeated) {
-          // MEGA BOSS DEFEATED! Victory!
-          soundManager.playExplosion();
-          soundManager.playBossDefeatSound();
+          // MEGA BOSS DEFEATED! Victory with confetti!
+          soundManager.playMegaBossVictorySound();
           setScore((s) => s + MEGA_BOSS_CONFIG.points);
           toast.success(`🎉 MEGA BOSS DEFEATED! +${MEGA_BOSS_CONFIG.points} points!`, { duration: 5000 });
           
-          setExplosions((e) => [
-            ...e,
-            {
-              x: megaBoss.x + megaBoss.width / 2,
-              y: megaBoss.y + megaBoss.height / 2,
-              frame: 0,
-              maxFrames: 40,
-              enemyType: "cube" as EnemyType,
-              particles: createExplosionParticles(
-                megaBoss.x + megaBoss.width / 2,
-                megaBoss.y + megaBoss.height / 2,
-                "cube" as EnemyType,
-              ),
-            },
-          ]);
+          // Multiple explosion waves for dramatic effect
+          const bossCenter = { x: megaBoss.x + megaBoss.width / 2, y: megaBoss.y + megaBoss.height / 2 };
+          [0, 150, 300, 500].forEach((delay, i) => {
+            setTimeout(() => {
+              setExplosions((e) => [
+                ...e,
+                {
+                  x: bossCenter.x + (Math.random() - 0.5) * 80,
+                  y: bossCenter.y + (Math.random() - 0.5) * 80,
+                  frame: 0,
+                  maxFrames: 50,
+                  enemyType: "cube" as EnemyType,
+                  particles: createExplosionParticles(
+                    bossCenter.x + (Math.random() - 0.5) * 80,
+                    bossCenter.y + (Math.random() - 0.5) * 80,
+                    "cube" as EnemyType,
+                  ),
+                },
+              ]);
+            }, delay);
+          });
+          
+          // Create victory confetti particles using pool
+          const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
+          particlePool.acquireForHighScore(bossCenter.x, bossCenter.y, particleCount);
+          setParticleRenderTick((t) => t + 1);
           
           setBossesKilled((k) => k + 1);
           setBossActive(false);
@@ -5169,10 +5179,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBombs([]);
           setBullets([]);
           
-          // Release the ball for celebration
-          if (releasedBall) {
-            setBalls([releasedBall]);
-          }
+          // Do NOT release the ball after phase 3 victory - keep it trapped
+          // Ball stays "consumed" for clean transition to victory screen
+          setBalls([]);
           
           soundManager.stopBossMusic();
           
@@ -5181,7 +5190,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             setGameState("won");
             setShowEndScreen(true);
             soundManager.playHighScoreMusic();
-          }, 2000);
+          }, 2500);
         } else {
           // Phase transition - not defeated yet
           setBoss(updatedBoss as unknown as Boss);
@@ -5312,7 +5321,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             coreHits++;
             console.log(`[MEGA BOSS DEBUG] 💥 Danger ball ${ball.id} HIT CORE! Total hits: ${megaBoss.coreHitsFromDangerBalls + coreHits}/5`);
             toast.success(`💥 CORE HIT! (${megaBoss.coreHitsFromDangerBalls + coreHits}/5)`, { duration: 1000 });
-            soundManager.playBrickHit('normal', 1);
+            soundManager.playDangerBallCoreHitSound();
             return; // Remove ball after hitting core
           }
 

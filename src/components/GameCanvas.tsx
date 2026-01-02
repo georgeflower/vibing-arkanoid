@@ -636,9 +636,24 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           const flashPhase = Math.sin(Date.now() / 80);
           const isWhitePhase = flashPhase > 0;
           
-          // Outer glow
+          // Draw targeting line from danger ball to paddle (non-reflected only)
+          if (!isHoming && paddle) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 200, 0, 0.6)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 8]);
+            ctx.lineDashOffset = -Date.now() / 50;
+            ctx.beginPath();
+            ctx.moveTo(dangerBall.x, dangerBall.y);
+            ctx.lineTo(paddle.x + paddle.width / 2, paddle.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+          }
+          
+          // Enhanced outer glow with larger radius
           if (qualitySettings.glowEnabled) {
-            ctx.shadowBlur = 25;
+            ctx.shadowBlur = 35;
             if (isHoming) {
               ctx.shadowColor = isWhitePhase ? 'rgba(100, 255, 100, 0.9)' : 'rgba(50, 200, 50, 0.9)';
             } else {
@@ -705,8 +720,40 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.arc(dangerBall.x, dangerBall.y, dangerBall.radius * pulseScale * 1.3, 0, Math.PI * 2);
           ctx.stroke();
           
+          // Flashing "CATCH!" text above non-reflected danger balls
+          if (!isHoming) {
+            const textFlash = Math.sin(Date.now() / 120) > 0;
+            ctx.fillStyle = textFlash ? '#FFFF00' : '#FF8800';
+            ctx.font = 'bold 16px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            if (qualitySettings.glowEnabled) {
+              ctx.shadowColor = '#FF0000';
+              ctx.shadowBlur = 10;
+            }
+            ctx.fillText('CATCH!', dangerBall.x, dangerBall.y - dangerBall.radius - 8);
+            ctx.shadowBlur = 0;
+          }
+          
           ctx.restore();
         });
+        
+        // Draw paddle highlight when danger balls are incoming (non-reflected)
+        const incomingDangerBalls = dangerBalls.filter(b => !b.isReflected);
+        if (incomingDangerBalls.length > 0 && paddle) {
+          ctx.save();
+          const highlightPulse = Math.sin(Date.now() / 100) * 0.4 + 0.6;
+          ctx.strokeStyle = `rgba(0, 200, 255, ${highlightPulse})`;
+          ctx.lineWidth = 4;
+          if (qualitySettings.glowEnabled) {
+            ctx.shadowColor = 'rgba(0, 200, 255, 0.8)';
+            ctx.shadowBlur = 20;
+          }
+          ctx.beginPath();
+          ctx.roundRect(paddle.x - 4, paddle.y - 4, paddle.width + 8, paddle.height + 8, 6);
+          ctx.stroke();
+          ctx.restore();
+        }
       }
 
       // Draw balls
@@ -2585,34 +2632,101 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.stroke();
           }
           
-          // Cannon extension (when danger balls are being fired)
-          if (megaBoss.cannonExtended && megaBoss.trappedBall) {
+          // Cannon extension (when danger balls are being fired) - tracks paddle
+          if (megaBoss.cannonExtended && megaBoss.trappedBall && paddle) {
             ctx.save();
-            ctx.rotate(-hexRotation); // Counter-rotate to keep cannon pointing down
             
-            // Cannon barrel
-            const cannonWidth = 30;
-            const cannonLength = 50;
-            ctx.fillStyle = `hsl(${baseHue}, 50%, 25%)`;
-            ctx.fillRect(-cannonWidth / 2, radius * 0.5, cannonWidth, cannonLength);
+            // Calculate angle to paddle
+            const paddleCenterX = paddle.x + paddle.width / 2 - (boss.x + boss.width / 2);
+            const paddleCenterY = paddle.y - (boss.y + boss.height / 2);
+            const angleToTarget = Math.atan2(paddleCenterY, paddleCenterX) - Math.PI / 2;
             
-            // Cannon border
-            ctx.strokeStyle = `hsl(${baseHue}, 70%, 50%)`;
-            ctx.lineWidth = 3;
-            ctx.strokeRect(-cannonWidth / 2, radius * 0.5, cannonWidth, cannonLength);
+            // Smooth rotation toward paddle (counter-rotate from hex rotation first)
+            ctx.rotate(-hexRotation + angleToTarget);
             
-            // Cannon muzzle
-            ctx.fillStyle = `hsl(0, 80%, 40%)`;
+            // Hexagonal cannon barrel design
+            const cannonWidth = 36;
+            const cannonLength = 55;
+            const cannonBaseY = radius * 0.5;
+            
+            // Hexagonal mounting plate
             ctx.beginPath();
-            ctx.arc(0, radius * 0.5 + cannonLength, cannonWidth / 2, 0, Math.PI);
+            for (let i = 0; i < 6; i++) {
+              const angle = (Math.PI / 3) * i - Math.PI / 2;
+              const hx = Math.cos(angle) * 22;
+              const hy = Math.sin(angle) * 22 + cannonBaseY - 5;
+              if (i === 0) ctx.moveTo(hx, hy);
+              else ctx.lineTo(hx, hy);
+            }
+            ctx.closePath();
+            const mountGrad = ctx.createLinearGradient(-22, cannonBaseY - 27, 22, cannonBaseY + 17);
+            mountGrad.addColorStop(0, `hsl(${baseHue}, 40%, 45%)`);
+            mountGrad.addColorStop(0.5, `hsl(${baseHue}, 50%, 55%)`);
+            mountGrad.addColorStop(1, `hsl(${baseHue}, 40%, 35%)`);
+            ctx.fillStyle = mountGrad;
             ctx.fill();
+            ctx.strokeStyle = `hsl(${baseHue}, 70%, 60%)`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Main cannon barrel with beveled hexagonal edges
+            const barrelGrad = ctx.createLinearGradient(-cannonWidth / 2, 0, cannonWidth / 2, 0);
+            barrelGrad.addColorStop(0, `hsl(${baseHue}, 30%, 20%)`);
+            barrelGrad.addColorStop(0.3, `hsl(${baseHue}, 40%, 35%)`);
+            barrelGrad.addColorStop(0.5, `hsl(${baseHue}, 50%, 40%)`);
+            barrelGrad.addColorStop(0.7, `hsl(${baseHue}, 40%, 35%)`);
+            barrelGrad.addColorStop(1, `hsl(${baseHue}, 30%, 20%)`);
+            
+            // Draw faceted barrel (hexagonal cross-section look)
+            ctx.fillStyle = barrelGrad;
+            ctx.beginPath();
+            ctx.moveTo(-cannonWidth / 2 + 4, cannonBaseY);
+            ctx.lineTo(-cannonWidth / 2, cannonBaseY + 8);
+            ctx.lineTo(-cannonWidth / 2, cannonBaseY + cannonLength - 8);
+            ctx.lineTo(-cannonWidth / 2 + 4, cannonBaseY + cannonLength);
+            ctx.lineTo(cannonWidth / 2 - 4, cannonBaseY + cannonLength);
+            ctx.lineTo(cannonWidth / 2, cannonBaseY + cannonLength - 8);
+            ctx.lineTo(cannonWidth / 2, cannonBaseY + 8);
+            ctx.lineTo(cannonWidth / 2 - 4, cannonBaseY);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Cannon edge highlights
+            ctx.strokeStyle = `hsl(${baseHue}, 70%, 55%)`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Center energy channel (glowing)
+            const energyPulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
+            const energyGrad = ctx.createLinearGradient(0, cannonBaseY, 0, cannonBaseY + cannonLength);
+            energyGrad.addColorStop(0, `rgba(255, 100, 100, ${energyPulse * 0.3})`);
+            energyGrad.addColorStop(0.5, `rgba(255, 200, 100, ${energyPulse})`);
+            energyGrad.addColorStop(1, `rgba(255, 50, 50, ${energyPulse})`);
+            ctx.fillStyle = energyGrad;
+            ctx.fillRect(-4, cannonBaseY + 5, 8, cannonLength - 10);
+            
+            // Hexagonal muzzle ring
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+              const angle = (Math.PI / 3) * i;
+              const mx = Math.cos(angle) * (cannonWidth / 2 + 2);
+              const my = Math.sin(angle) * (cannonWidth / 2 + 2) + cannonBaseY + cannonLength;
+              if (i === 0) ctx.moveTo(mx, my);
+              else ctx.lineTo(mx, my);
+            }
+            ctx.closePath();
+            ctx.fillStyle = `hsl(0, 70%, 35%)`;
+            ctx.fill();
+            ctx.strokeStyle = `hsl(0, 80%, 50%)`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
             
             // Pulsing glow at muzzle
             const muzzlePulse = Math.sin(Date.now() / 150) * 0.5 + 0.5;
-            ctx.shadowBlur = 15 * muzzlePulse;
-            ctx.shadowColor = 'rgba(255, 100, 100, 0.8)';
+            ctx.shadowBlur = 20 * muzzlePulse;
+            ctx.shadowColor = 'rgba(255, 100, 100, 0.9)';
             ctx.beginPath();
-            ctx.arc(0, radius * 0.5 + cannonLength, 8, 0, Math.PI * 2);
+            ctx.arc(0, cannonBaseY + cannonLength, 10, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(255, 200, 100, ${muzzlePulse})`;
             ctx.fill();
             ctx.shadowBlur = 0;

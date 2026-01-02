@@ -1057,6 +1057,108 @@ class SoundManager {
     relief.stop(ctx.currentTime + 0.3);
   }
 
+  // Danger ball hitting boss core - powerful impact sound
+  playDangerBallCoreHitSound() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Deep bass impact
+    const bass = ctx.createOscillator();
+    const bassGain = ctx.createGain();
+    bass.connect(bassGain);
+    bassGain.connect(ctx.destination);
+    bass.type = 'sine';
+    bass.frequency.setValueAtTime(80, ctx.currentTime);
+    bass.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.3);
+    bassGain.gain.setValueAtTime(0.4, ctx.currentTime);
+    bassGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    bass.start(ctx.currentTime);
+    bass.stop(ctx.currentTime + 0.3);
+    
+    // Electric crackle
+    const crackle = ctx.createOscillator();
+    const crackleGain = ctx.createGain();
+    crackle.connect(crackleGain);
+    crackleGain.connect(ctx.destination);
+    crackle.type = 'sawtooth';
+    crackle.frequency.setValueAtTime(1200, ctx.currentTime);
+    crackle.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.15);
+    crackleGain.gain.setValueAtTime(0.25, ctx.currentTime);
+    crackleGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    crackle.start(ctx.currentTime);
+    crackle.stop(ctx.currentTime + 0.15);
+    
+    // High sparkle
+    setTimeout(() => {
+      const sparkle = ctx.createOscillator();
+      const sparkleGain = ctx.createGain();
+      sparkle.connect(sparkleGain);
+      sparkleGain.connect(ctx.destination);
+      sparkle.type = 'sine';
+      sparkle.frequency.setValueAtTime(2000, ctx.currentTime);
+      sparkle.frequency.exponentialRampToValueAtTime(3000, ctx.currentTime + 0.1);
+      sparkleGain.gain.setValueAtTime(0.15, ctx.currentTime);
+      sparkleGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      sparkle.start(ctx.currentTime);
+      sparkle.stop(ctx.currentTime + 0.1);
+    }, 50);
+  }
+
+  // Mega Boss victory - dramatic explosion + triumphant fanfare
+  playMegaBossVictorySound() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Multiple layered explosions
+    [0, 100, 200, 350].forEach((delay) => {
+      setTimeout(() => {
+        // Bass rumble
+        const bass = ctx.createOscillator();
+        const bassGain = ctx.createGain();
+        bass.connect(bassGain);
+        bassGain.connect(ctx.destination);
+        bass.type = 'sine';
+        bass.frequency.setValueAtTime(60 + Math.random() * 20, ctx.currentTime);
+        bass.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.5);
+        bassGain.gain.setValueAtTime(0.5, ctx.currentTime);
+        bassGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        bass.start(ctx.currentTime);
+        bass.stop(ctx.currentTime + 0.5);
+        
+        // Mid boom
+        const mid = ctx.createOscillator();
+        const midGain = ctx.createGain();
+        mid.connect(midGain);
+        midGain.connect(ctx.destination);
+        mid.type = 'triangle';
+        mid.frequency.setValueAtTime(200 + Math.random() * 100, ctx.currentTime);
+        mid.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.3);
+        midGain.gain.setValueAtTime(0.3, ctx.currentTime);
+        midGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        mid.start(ctx.currentTime);
+        mid.stop(ctx.currentTime + 0.3);
+      }, delay);
+    });
+    
+    // Triumphant ascending chord after explosions
+    setTimeout(() => {
+      [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => { // C5 E5 G5 C6
+        setTimeout(() => {
+          const note = ctx.createOscillator();
+          const noteGain = ctx.createGain();
+          note.connect(noteGain);
+          noteGain.connect(ctx.destination);
+          note.type = 'sine';
+          note.frequency.value = freq;
+          noteGain.gain.setValueAtTime(0.2, ctx.currentTime);
+          noteGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
+          note.start(ctx.currentTime);
+          note.stop(ctx.currentTime + 0.8);
+        }, i * 100);
+      });
+    }, 500);
+  }
+
 }
 
 export const soundManager = new SoundManager();
