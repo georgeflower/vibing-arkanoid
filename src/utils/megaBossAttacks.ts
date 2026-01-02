@@ -407,7 +407,7 @@ function performSuperAttack(
   // Add super warning
   setSuperWarnings(prev => [...prev, { x: centerX, y: centerY, startTime: Date.now() }]);
   toast.error("MEGA BOSS SUPER ATTACK!");
-  soundManager.playLaserChargingSound();
+  soundManager.playSuperAttackChargingSound();
   
   // Delay the actual attack
   setTimeout(() => {

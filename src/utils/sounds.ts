@@ -647,6 +647,59 @@ class SoundManager {
     oscillator.stop(ctx.currentTime + 0.8);
   }
 
+  playSuperAttackChargingSound() {
+    if (!this.sfxEnabled) return;
+    
+    const ctx = this.getAudioContext();
+    
+    // Ominous pulsing buildup with multiple harmonics - distinct from laser
+    // Layer 1: Deep pulsing bass
+    const bass = ctx.createOscillator();
+    const bassGain = ctx.createGain();
+    bass.connect(bassGain);
+    bassGain.connect(ctx.destination);
+    bass.type = 'sine';
+    bass.frequency.setValueAtTime(60, ctx.currentTime);
+    bass.frequency.linearRampToValueAtTime(120, ctx.currentTime + 0.8);
+    bassGain.gain.setValueAtTime(0.15, ctx.currentTime);
+    bassGain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.6);
+    bassGain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.9);
+    bass.start(ctx.currentTime);
+    bass.stop(ctx.currentTime + 0.9);
+    
+    // Layer 2: Rising siren sweep
+    const siren = ctx.createOscillator();
+    const sirenGain = ctx.createGain();
+    siren.connect(sirenGain);
+    sirenGain.connect(ctx.destination);
+    siren.type = 'square';
+    siren.frequency.setValueAtTime(200, ctx.currentTime);
+    siren.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.7);
+    sirenGain.gain.setValueAtTime(0.05, ctx.currentTime);
+    sirenGain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.5);
+    sirenGain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.8);
+    siren.start(ctx.currentTime);
+    siren.stop(ctx.currentTime + 0.8);
+    
+    // Layer 3: High frequency danger tone
+    const high = ctx.createOscillator();
+    const highGain = ctx.createGain();
+    const highFilter = ctx.createBiquadFilter();
+    high.connect(highFilter);
+    highFilter.connect(highGain);
+    highGain.connect(ctx.destination);
+    high.type = 'triangle';
+    high.frequency.setValueAtTime(800, ctx.currentTime);
+    high.frequency.exponentialRampToValueAtTime(1600, ctx.currentTime + 0.6);
+    highFilter.type = 'bandpass';
+    highFilter.frequency.value = 1200;
+    highGain.gain.setValueAtTime(0.08, ctx.currentTime + 0.2);
+    highGain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.5);
+    highGain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.75);
+    high.start(ctx.currentTime + 0.2);
+    high.stop(ctx.currentTime + 0.75);
+  }
+
   playBossHitSound() {
     if (!this.sfxEnabled) return;
     

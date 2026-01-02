@@ -77,7 +77,7 @@ export const MEGA_BOSS_POSITIONS = [
 // EMP Pulse settings
 export const EMP_CONFIG = {
   duration: 1500, // How long paddle is slowed
-  slowFactor: 0.4, // Paddle speed multiplier during EMP
+  slowFactor: 0.1, // Paddle speed multiplier during EMP (90% reduction - very slow)
   pulseRadius: 300,
   cooldown: 10000
 } as const;

@@ -1820,19 +1820,28 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     (e: MouseEvent) => {
       if (!canvasRef.current || !paddle || gameState === "paused") return;
 
-      let newX: number;
+      let targetX: number;
 
       // Use movementX when pointer is locked, otherwise use absolute position
       if (isPointerLocked) {
-        const sensitivity = 1.5;
-        newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, paddle.x + e.movementX * sensitivity));
+        const sensitivity = empSlowActive ? 1.5 * 0.1 : 1.5; // Apply EMP slow to sensitivity
+        targetX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, paddle.x + e.movementX * sensitivity));
       } else if (gameState === "playing" || gameState === "ready") {
         const rect = canvasRef.current.getBoundingClientRect();
         const scaleX = SCALED_CANVAS_WIDTH / rect.width;
         const mouseX = (e.clientX - rect.left) * scaleX;
-        newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, mouseX - paddle.width / 2));
+        targetX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, mouseX - paddle.width / 2));
       } else {
         return;
+      }
+
+      // Apply EMP slow by interpolating towards target instead of snapping
+      let newX: number;
+      if (empSlowActive) {
+        // Lerp towards target at 10% speed (very sluggish)
+        newX = paddle.x + (targetX - paddle.x) * 0.1;
+      } else {
+        newX = targetX;
       }
 
       // Update ref immediately for high-priority collision detection
@@ -1848,7 +1857,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           : null,
       );
     },
-    [gameState, paddle, isPointerLocked, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT],
+    [gameState, paddle, isPointerLocked, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, empSlowActive],
   );
   const activeTouchRef = useRef<number | null>(null);
   const secondTouchRef = useRef<number | null>(null);
@@ -2007,7 +2016,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Map to full paddle range
       const paddleRange = SCALED_CANVAS_WIDTH - paddle.width;
-      const newX = normalizedPosition * paddleRange;
+      const targetX = normalizedPosition * paddleRange;
+
+      // Apply EMP slow by interpolating towards target instead of snapping
+      let newX: number;
+      if (empSlowActive) {
+        // Lerp towards target at 10% speed (very sluggish)
+        newX = paddle.x + (targetX - paddle.x) * 0.1;
+      } else {
+        newX = targetX;
+      }
 
       // Update ref immediately for high-priority collision detection
       paddleXRef.current = newX;
@@ -2022,7 +2040,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           : null,
       );
     },
-    [paddle, balls, SCALED_CANVAS_WIDTH, gameState],
+    [paddle, balls, SCALED_CANVAS_WIDTH, gameState, empSlowActive],
   );
   const handleTouchEnd = useCallback((e: TouchEvent) => {
     // Clear active touches when they end
