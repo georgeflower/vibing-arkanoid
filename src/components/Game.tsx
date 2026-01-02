@@ -5236,6 +5236,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }, 2500);
         } else {
           // Phase transition - not defeated yet
+          soundManager.playPhaseCompleteJingle();
+          toast.success(`✨ PHASE ${megaBoss.corePhase} COMPLETE! Boss entering phase ${megaBoss.corePhase + 1}!`, { duration: 3000 });
+          
           setBoss(updatedBoss as unknown as Boss);
           if (releasedBall) {
             // Apply slow motion by reducing ball speed, then ramp back up
