@@ -2273,40 +2273,42 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.shadowColor = glowColor;
           }
           
-          // Draw hexagon body
-          ctx.beginPath();
-          for (let i = 0; i < 6; i++) {
-            const angle = (Math.PI / 3) * i - Math.PI / 2;
-            const x = Math.cos(angle) * radius;
-            const y = Math.sin(angle) * radius;
-            if (i === 0) {
-              ctx.moveTo(x, y);
-            } else {
-              ctx.lineTo(x, y);
+          // Draw hexagon body (only if outer shield NOT removed)
+          if (!megaBoss.outerShieldRemoved) {
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+              const angle = (Math.PI / 3) * i - Math.PI / 2;
+              const x = Math.cos(angle) * radius;
+              const y = Math.sin(angle) * radius;
+              if (i === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                ctx.lineTo(x, y);
+              }
             }
+            ctx.closePath();
+            
+            // Hexagon gradient fill
+            const hexGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+            hexGrad.addColorStop(0, `hsl(${baseHue}, 60%, 45%)`);
+            hexGrad.addColorStop(0.7, `hsl(${baseHue}, 70%, 30%)`);
+            hexGrad.addColorStop(1, `hsl(${baseHue}, 80%, 20%)`);
+            ctx.fillStyle = hexGrad;
+            ctx.fill();
+            
+            // Hexagon border - dotted when core is exposed (penetrable)
+            if (megaBoss.coreExposed) {
+              ctx.setLineDash([12, 8]); // Dotted line to show penetrability
+              ctx.strokeStyle = `rgba(255, 255, 0, ${0.5 + Math.sin(Date.now() / 100) * 0.3})`; // Pulsing yellow
+              ctx.lineWidth = 3;
+            } else {
+              ctx.setLineDash([]); // Solid line
+              ctx.strokeStyle = `hsl(${baseHue}, 80%, 60%)`;
+              ctx.lineWidth = 4;
+            }
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset dash pattern
           }
-          ctx.closePath();
-          
-          // Hexagon gradient fill
-          const hexGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-          hexGrad.addColorStop(0, `hsl(${baseHue}, 60%, 45%)`);
-          hexGrad.addColorStop(0.7, `hsl(${baseHue}, 70%, 30%)`);
-          hexGrad.addColorStop(1, `hsl(${baseHue}, 80%, 20%)`);
-          ctx.fillStyle = hexGrad;
-          ctx.fill();
-          
-          // Hexagon border - dotted when core is exposed (penetrable)
-          if (megaBoss.coreExposed) {
-            ctx.setLineDash([12, 8]); // Dotted line to show penetrability
-            ctx.strokeStyle = `rgba(255, 255, 0, ${0.5 + Math.sin(Date.now() / 100) * 0.3})`; // Pulsing yellow
-            ctx.lineWidth = 3;
-          } else {
-            ctx.setLineDash([]); // Solid line
-            ctx.strokeStyle = `hsl(${baseHue}, 80%, 60%)`;
-            ctx.lineWidth = 4;
-          }
-          ctx.stroke();
-          ctx.setLineDash([]); // Reset dash pattern
           
           // ═══ INNER OCTAGON SHIELD (visible after outer shield is removed in phase 2+) ═══
           if (megaBoss.outerShieldRemoved && megaBoss.innerShieldHP > 0) {
@@ -2380,19 +2382,21 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.stroke();
           }
           
-          // Outer ring details at each vertex
-          ctx.shadowBlur = 0;
-          for (let i = 0; i < 6; i++) {
-            const angle = (Math.PI / 3) * i - Math.PI / 2;
-            const vx = Math.cos(angle) * (radius * 0.85);
-            const vy = Math.sin(angle) * (radius * 0.85);
-            ctx.beginPath();
-            ctx.arc(vx, vy, 8, 0, Math.PI * 2);
-            ctx.fillStyle = `hsl(${baseHue}, 60%, 40%)`;
-            ctx.fill();
-            ctx.strokeStyle = `hsl(${baseHue}, 80%, 65%)`;
-            ctx.lineWidth = 2;
-            ctx.stroke();
+          // Outer ring details at each vertex (only if outer shield NOT removed)
+          if (!megaBoss.outerShieldRemoved) {
+            ctx.shadowBlur = 0;
+            for (let i = 0; i < 6; i++) {
+              const angle = (Math.PI / 3) * i - Math.PI / 2;
+              const vx = Math.cos(angle) * (radius * 0.85);
+              const vy = Math.sin(angle) * (radius * 0.85);
+              ctx.beginPath();
+              ctx.arc(vx, vy, 8, 0, Math.PI * 2);
+              ctx.fillStyle = `hsl(${baseHue}, 60%, 40%)`;
+              ctx.fill();
+              ctx.strokeStyle = `hsl(${baseHue}, 80%, 65%)`;
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
           }
           
           // Central core/eye - changes based on state
