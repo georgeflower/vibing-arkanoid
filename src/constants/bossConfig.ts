@@ -1,5 +1,11 @@
 export const BOSS_LEVELS = [5, 10, 15, 20];
 
+// EMP effect configuration for regular bosses
+export const EMP_BOSS_CONFIG = {
+  slowFactor: 0.15, // Less severe than mega boss (0.1)
+  duration: 1200, // Slightly shorter than mega boss
+} as const;
+
 export const BOSS_CONFIG = {
   cube: {
     level: 5,
@@ -7,9 +13,9 @@ export const BOSS_CONFIG = {
     health: 10,
     positions: 9,
     moveSpeed: 2.5,
-    attackTypes: ['shot', 'super'] as const,
+    attackTypes: ['shot', 'super', 'empPulse'] as const,
     attackInterval: 3500,
-    attackWeights: { shot: 0.70, super: 0.30 },
+    attackWeights: { shot: 0.68, super: 0.27, empPulse: 0.05 }, // 5% EMP chance
     points: 5000
   },
   sphere: {
@@ -20,9 +26,9 @@ export const BOSS_CONFIG = {
     positions: 9,
     moveSpeed: 2.0,
     angryMoveSpeed: 3.5,
-    attackTypes: ['shot', 'laser', 'super'] as const,
+    attackTypes: ['shot', 'laser', 'super', 'empPulse'] as const,
     attackInterval: 2500,
-    attackWeights: { shot: 0.45, laser: 0.35, super: 0.20 },
+    attackWeights: { shot: 0.42, laser: 0.33, super: 0.17, empPulse: 0.08 }, // 8% EMP chance
     points: 10000
   },
   pyramid: {
@@ -37,9 +43,9 @@ export const BOSS_CONFIG = {
     moveSpeed: 1.8,
     angryMoveSpeed: 3.0,
     superAngryMoveSpeed: 4.5,
-    attackTypes: ['shot', 'laser', 'super', 'spiral', 'cross'] as const,
+    attackTypes: ['shot', 'laser', 'super', 'spiral', 'cross', 'empPulse'] as const,
     attackInterval: 1800,
-    attackWeights: { spiral: 0.35, cross: 0.25, super: 0.20, laser: 0.15, shot: 0.05 },
+    attackWeights: { spiral: 0.32, cross: 0.22, super: 0.18, laser: 0.13, empPulse: 0.10, shot: 0.05 }, // 10% EMP chance
     points: 20000,
     resurrectedPoints: 3000
   }
