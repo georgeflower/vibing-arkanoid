@@ -3151,11 +3151,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               }
 
               // Check 4: Ball must be moving into the paddle (dot < 0)
-              // EXCEPTION: During ball release phase (slow-mo ramp-up), skip this check
-              // because the slow speed can cause false "moving away" detection
               const dot = result.ball.dx * event.normal.x + result.ball.dy * event.normal.y;
-              const isBallReleasePhase = ballReleaseHighlight?.active === true;
-              if (dot >= 0 && !isBallReleasePhase) {
+              if (dot >= 0) {
                 if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
                   console.log(`[Collision Debug] PADDLE REJECTED: dot=${dot.toFixed(2)} >= 0 (ball moving away)`);
                 }
