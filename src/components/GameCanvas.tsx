@@ -2874,40 +2874,101 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           
           ctx.restore();
           
-          // Draw Mega Boss health bar (outer shield HP)
-          const hbWidth = boss.width + 60;
-          const hbHeight = 14;
-          const hbX = boss.x + boss.width / 2 - hbWidth / 2;
-          const hbY = boss.y - 35;
-          
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-          ctx.fillRect(hbX, hbY, hbWidth, hbHeight);
-          
-          const hpPercent = megaBoss.outerShieldHP / megaBoss.outerShieldMaxHP;
-          const hpHue = megaBoss.corePhase === 3 ? 0 : (megaBoss.corePhase === 2 ? 30 : 280);
-          ctx.fillStyle = megaBoss.coreExposed ? 'hsl(60, 100%, 50%)' : `hsl(${hpHue}, 80%, 50%)`;
-          ctx.fillRect(hbX + 2, hbY + 2, (hbWidth - 4) * hpPercent, hbHeight - 4);
-          
-          ctx.strokeStyle = megaBoss.corePhase >= 2 ? 'rgba(255, 100, 100, 0.8)' : 'rgba(200, 150, 255, 0.8)';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(hbX, hbY, hbWidth, hbHeight);
-          
-          // Phase label
-          const phaseLabels = ['MEGA BOSS', 'ANGRY!', 'VERY ANGRY!'];
-          const phaseColors = ['#aa77ff', '#ff8844', '#ff4444'];
-          ctx.fillStyle = megaBoss.coreExposed ? '#ffff00' : phaseColors[megaBoss.corePhase - 1];
-          ctx.font = 'bold 12px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText(megaBoss.coreExposed ? 'CORE EXPOSED!' : phaseLabels[megaBoss.corePhase - 1], boss.x + boss.width / 2, hbY - 5);
-          
-          // Danger ball core hit counter (when cannon is active)
-          if (megaBoss.cannonExtended && megaBoss.trappedBall) {
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 14px monospace';
-            ctx.fillText(`CORE HITS: ${megaBoss.coreHitsFromDangerBalls || 0}/5`, boss.x + boss.width / 2, hbY + hbHeight + 18);
+          // Only show HP bar in phase 1 (before outer shield is removed)
+          if (megaBoss.corePhase === 1 && !megaBoss.outerShieldRemoved) {
+            // Draw Mega Boss health bar (outer shield HP)
+            const hbWidth = boss.width + 60;
+            const hbHeight = 14;
+            const hbX = boss.x + boss.width / 2 - hbWidth / 2;
+            const hbY = boss.y - 35;
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+            ctx.fillRect(hbX, hbY, hbWidth, hbHeight);
+            
+            const hpPercent = megaBoss.outerShieldHP / megaBoss.outerShieldMaxHP;
+            ctx.fillStyle = megaBoss.coreExposed ? 'hsl(60, 100%, 50%)' : 'hsl(280, 80%, 50%)';
+            ctx.fillRect(hbX + 2, hbY + 2, (hbWidth - 4) * hpPercent, hbHeight - 4);
+            
+            ctx.strokeStyle = 'rgba(200, 150, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(hbX, hbY, hbWidth, hbHeight);
+            
+            // Phase label
+            ctx.fillStyle = megaBoss.coreExposed ? '#ffff00' : '#aa77ff';
+            ctx.font = 'bold 12px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(megaBoss.coreExposed ? 'CORE EXPOSED!' : 'MEGA BOSS', boss.x + boss.width / 2, hbY - 5);
+            ctx.textAlign = 'left';
           }
           
-          ctx.textAlign = 'left';
+          // Dramatic cannon mode transition effect
+          if (megaBoss.cannonExtended && megaBoss.cannonExtendedTime) {
+            const timeSinceExtend = Date.now() - megaBoss.cannonExtendedTime;
+            const transitionDuration = 1200; // 1.2 second dramatic transition
+            
+            if (timeSinceExtend < transitionDuration) {
+              const progress = timeSinceExtend / transitionDuration;
+              
+              // Screen flash effect (fades out)
+              if (progress < 0.3) {
+                const flashIntensity = (1 - progress / 0.3) * 0.6;
+                ctx.save();
+                ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to draw over entire canvas
+                ctx.fillStyle = `rgba(255, 100, 50, ${flashIntensity})`;
+                ctx.fillRect(0, 0, canvas.current?.width || 0, canvas.current?.height || 0);
+                ctx.restore();
+              }
+              
+              // Expanding shockwave rings
+              const ringCount = 3;
+              for (let i = 0; i < ringCount; i++) {
+                const ringProgress = Math.max(0, progress - i * 0.15);
+                if (ringProgress > 0 && ringProgress < 1) {
+                  const ringRadius = ringProgress * 200;
+                  const ringAlpha = (1 - ringProgress) * 0.8;
+                  
+                  ctx.save();
+                  ctx.translate(boss.x + boss.width / 2, boss.y + boss.height / 2);
+                  ctx.beginPath();
+                  ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+                  ctx.strokeStyle = `rgba(255, ${150 + i * 30}, 50, ${ringAlpha})`;
+                  ctx.lineWidth = 4 - i;
+                  ctx.stroke();
+                  ctx.restore();
+                }
+              }
+              
+              // "CANNON MODE" dramatic text
+              if (progress > 0.2 && progress < 0.9) {
+                const textAlpha = progress < 0.4 ? (progress - 0.2) / 0.2 : (0.9 - progress) / 0.5;
+                const textScale = 1 + Math.sin(progress * Math.PI * 4) * 0.1;
+                
+                ctx.save();
+                ctx.translate(boss.x + boss.width / 2, boss.y - 60);
+                ctx.scale(textScale, textScale);
+                ctx.fillStyle = `rgba(255, 100, 50, ${textAlpha})`;
+                ctx.font = 'bold 18px monospace';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = 'rgba(255, 50, 0, 0.8)';
+                ctx.shadowBlur = 15;
+                ctx.fillText('⚠ CANNON MODE ⚠', 0, 0);
+                ctx.restore();
+              }
+            }
+          }
+          
+          // Danger ball core hit counter (when cannon is active, after transition)
+          if (megaBoss.cannonExtended && megaBoss.trappedBall && megaBoss.cannonExtendedTime) {
+            const timeSinceExtend = Date.now() - megaBoss.cannonExtendedTime;
+            if (timeSinceExtend > 1200) {
+              const hbY = boss.y - 35;
+              ctx.fillStyle = '#ffffff';
+              ctx.font = 'bold 14px monospace';
+              ctx.textAlign = 'center';
+              ctx.fillText(`CORE HITS: ${megaBoss.coreHitsFromDangerBalls || 0}/5`, boss.x + boss.width / 2, hbY + 25);
+              ctx.textAlign = 'left';
+            }
+          }
         } else if (boss.type === 'cube') {
           // 2D isometric cube that emulates 3D
           const size = boss.width / 2;
