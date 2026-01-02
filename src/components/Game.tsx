@@ -5162,7 +5162,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           
           const missile: BossAttack = {
             bossId: megaBoss.id,
-            type: 'shot',
+            type: 'rocket',
             x: cannonX,
             y: cannonY,
             width: 10,
