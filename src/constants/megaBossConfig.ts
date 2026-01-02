@@ -39,6 +39,7 @@ export const MEGA_BOSS_CONFIG = {
   // Swarming enemies in phase 3
   swarmSpawnInterval: 5000, // Every 5 seconds
   swarmEnemyCount: 3,
+  maxSwarmEnemies: 8, // Maximum total swarm enemies on screen
   
   // Visual timing
   cannonExtendDuration: 1000, // Time for cannon to visually extend

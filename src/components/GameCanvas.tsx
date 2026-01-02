@@ -64,10 +64,12 @@ interface GameCanvasProps {
   secondChanceImpact?: { x: number; y: number; startTime: number } | null;
   // Mega Boss (Level 20) props
   dangerBalls?: DangerBall[];
+  empSlowActive?: boolean; // EMP pulse effect active
+  empPulseStartTime?: number | null; // For visual animation timing
 }
 
 export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
-  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null, isMobile = false, secondChanceImpact = null, dangerBalls = [] }, ref) => {
+  ({ width, height, bricks, balls, paddle, gameState, powerUps, bullets, enemy, bombs, level, backgroundPhase, explosions, launchAngle, bonusLetters, collectedLetters, screenShake, backgroundFlash, highlightFlash = 0, qualitySettings, boss, resurrectedBosses, bossAttacks, laserWarnings, gameOverParticles, highScoreParticles, showHighScoreEntry, bossIntroActive, bossSpawnAnimation, shieldImpacts, bulletImpacts = [], tutorialHighlight = null, debugEnabled = false, getReadyGlow = null, isMobile = false, secondChanceImpact = null, dangerBalls = [], empSlowActive = false, empPulseStartTime = null }, ref) => {
     const loadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const bonusLetterImagesRef = useRef<Record<string, HTMLImageElement>>({});
     const paddleImageRef = useRef<HTMLImageElement | null>(null);
@@ -1482,6 +1484,139 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         }
       }
       
+      // ═══ EMP PULSE VISUAL EFFECT (Mega Boss Level 20) ═══
+      if (empSlowActive && empPulseStartTime && boss && level === 20) {
+        const elapsed = Date.now() - empPulseStartTime;
+        const empDuration = 1500; // Match EMP_CONFIG.duration
+        
+        if (elapsed < empDuration) {
+          const progress = elapsed / empDuration;
+          
+          ctx.save();
+          
+          // Screen-wide blue/purple tint overlay with pulsing intensity
+          const pulseIntensity = 0.15 + Math.sin(elapsed / 100) * 0.08;
+          ctx.fillStyle = `rgba(50, 100, 255, ${pulseIntensity * (1 - progress * 0.5)})`;
+          ctx.fillRect(0, 0, width, height);
+          
+          // Expanding shockwave ring from boss center
+          const bossX = boss.x + boss.width / 2;
+          const bossY = boss.y + boss.height / 2;
+          const maxRadius = Math.max(width, height);
+          const waveRadius = progress * maxRadius * 1.5;
+          const waveFade = Math.max(0, 1 - progress * 1.2);
+          
+          if (waveRadius < maxRadius * 1.2) {
+            ctx.strokeStyle = `rgba(100, 180, 255, ${waveFade * 0.8})`;
+            ctx.lineWidth = 8 - progress * 6;
+            ctx.beginPath();
+            ctx.arc(bossX, bossY, waveRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Inner glow ring
+            ctx.strokeStyle = `rgba(150, 220, 255, ${waveFade * 0.5})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(bossX, bossY, waveRadius * 0.9, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          
+          // Radial distortion lines spreading outward
+          if (qualitySettings.level !== 'low') {
+            const lineCount = 16;
+            for (let i = 0; i < lineCount; i++) {
+              const angle = (i / lineCount) * Math.PI * 2 + elapsed * 0.002;
+              const innerDist = 40 + progress * 80;
+              const outerDist = 100 + progress * maxRadius * 0.8;
+              const lineAlpha = waveFade * 0.6;
+              
+              const startX = bossX + Math.cos(angle) * innerDist;
+              const startY = bossY + Math.sin(angle) * innerDist;
+              const endX = bossX + Math.cos(angle) * outerDist;
+              const endY = bossY + Math.sin(angle) * outerDist;
+              
+              ctx.strokeStyle = `rgba(100, 200, 255, ${lineAlpha})`;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(startX, startY);
+              ctx.lineTo(endX, endY);
+              ctx.stroke();
+            }
+          }
+          
+          // Electric sparks on the paddle (slowed effect indicator)
+          if (paddle) {
+            const sparkCount = 6;
+            const paddleCenterX = paddle.x + paddle.width / 2;
+            const paddleCenterY = paddle.y + paddle.height / 2;
+            
+            for (let i = 0; i < sparkCount; i++) {
+              const sparkPhase = (elapsed + i * 150) % 300;
+              const sparkProgress = sparkPhase / 300;
+              const sparkAlpha = Math.sin(sparkProgress * Math.PI) * 0.9;
+              
+              if (sparkAlpha > 0.1) {
+                const offsetX = (Math.random() - 0.5) * paddle.width * 1.2;
+                const offsetY = (Math.random() - 0.5) * paddle.height * 2;
+                
+                ctx.strokeStyle = `rgba(100, 220, 255, ${sparkAlpha})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(paddleCenterX + offsetX, paddleCenterY);
+                
+                // Jagged lightning path
+                const midX = paddleCenterX + offsetX + (Math.random() - 0.5) * 15;
+                const midY = paddleCenterY + offsetY * 0.5;
+                ctx.lineTo(midX, midY);
+                ctx.lineTo(paddleCenterX + offsetX + (Math.random() - 0.5) * 20, paddleCenterY + offsetY);
+                ctx.stroke();
+              }
+            }
+            
+            // Blue "stunned" glow around paddle
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = `rgba(50, 150, 255, ${0.5 + Math.sin(elapsed / 80) * 0.3})`;
+            ctx.strokeStyle = `rgba(100, 200, 255, ${0.4 + Math.sin(elapsed / 80) * 0.2})`;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(paddle.x - 3, paddle.y - 3, paddle.width + 6, paddle.height + 6);
+            ctx.shadowBlur = 0;
+          }
+          
+          // Edge flashes (electrical arcs at screen corners)
+          if (!isMobile && qualitySettings.level !== 'low') {
+            const flashIntensity = Math.sin(elapsed / 50) * 0.5 + 0.5;
+            const corners = [
+              { x: 0, y: 0 },
+              { x: width, y: 0 },
+              { x: 0, y: height },
+              { x: width, y: height }
+            ];
+            
+            corners.forEach((corner, idx) => {
+              const arcAlpha = flashIntensity * 0.4 * (1 - progress);
+              const arcRadius = 60 + Math.sin(elapsed / 100 + idx) * 20;
+              
+              const gradient = ctx.createRadialGradient(
+                corner.x, corner.y, 0,
+                corner.x, corner.y, arcRadius
+              );
+              gradient.addColorStop(0, `rgba(100, 180, 255, ${arcAlpha})`);
+              gradient.addColorStop(0.5, `rgba(50, 100, 200, ${arcAlpha * 0.5})`);
+              gradient.addColorStop(1, 'rgba(50, 100, 200, 0)');
+              
+              ctx.fillStyle = gradient;
+              ctx.fillRect(
+                corner.x - arcRadius, 
+                corner.y - arcRadius, 
+                arcRadius * 2, 
+                arcRadius * 2
+              );
+            });
+          }
+          
+          ctx.restore();
+        }
+      }
 
       // Reflect shield visual effect (smaller/thinner)
       if (paddle?.hasReflectShield) {

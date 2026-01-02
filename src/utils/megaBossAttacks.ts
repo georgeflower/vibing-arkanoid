@@ -180,7 +180,8 @@ export function performMegaBossAttack(
   paddleY: number,
   setBossAttacks: React.Dispatch<React.SetStateAction<BossAttack[]>>,
   setLaserWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; startTime: number }>>>,
-  setEmpActive?: (active: boolean) => void
+  setEmpActive?: (active: boolean) => void,
+  setEmpPulseStartTime?: (time: number | null) => void
 ): MegaBossAttackType {
   const phase = getMegaBossPhase(boss);
   const weights = MEGA_BOSS_CONFIG.attackWeights[`phase${phase}` as keyof typeof MEGA_BOSS_CONFIG.attackWeights];
@@ -208,7 +209,7 @@ export function performMegaBossAttack(
       performSweepTurret(boss, paddleX, paddleY, setBossAttacks);
       break;
     case 'empPulse':
-      performEmpPulse(boss, setEmpActive);
+      performEmpPulse(boss, setEmpActive, setEmpPulseStartTime);
       break;
     case 'phaseBurst':
       performPhaseBurst(boss, setBossAttacks);
@@ -322,16 +323,24 @@ function performSweepTurret(
 
 function performEmpPulse(
   boss: MegaBoss,
-  setEmpActive?: (active: boolean) => void
+  setEmpActive?: (active: boolean) => void,
+  setEmpPulseStartTime?: (time: number | null) => void
 ) {
   if (setEmpActive) {
+    const startTime = Date.now();
     setEmpActive(true);
+    if (setEmpPulseStartTime) {
+      setEmpPulseStartTime(startTime);
+    }
     toast.error("⚡ EMP PULSE! Paddle slowed!");
     soundManager.playLaserChargingSound();
     
     // Auto-deactivate after duration
     setTimeout(() => {
       setEmpActive(false);
+      if (setEmpPulseStartTime) {
+        setEmpPulseStartTime(null);
+      }
       toast.info("EMP effect ended");
     }, 1500);
   }
