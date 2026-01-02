@@ -21,9 +21,9 @@ export const MEGA_BOSS_CONFIG = {
   moveSpeed: 2.0,
   angryMoveSpeed: 3.0,
   veryAngryMoveSpeed: 4.0,
-  attackInterval: 2500,
-  angryAttackInterval: 2000,
-  veryAngryAttackInterval: 1500,
+  attackInterval: 3000,
+  angryAttackInterval: 2500,
+  veryAngryAttackInterval: 2000,
   points: 100000, // Final boss victory points
   
   // Hatch mechanics
@@ -47,9 +47,9 @@ export const MEGA_BOSS_CONFIG = {
   
   // Attack weights by phase
   attackWeights: {
-    phase1: { hatchSalvo: 0.15, sweepTurret: 0.25, shot: 0.35, super: 0.25 },
-    phase2: { hatchSalvo: 0.2, sweepTurret: 0.25, shot: 0.25, super: 0.2, empPulse: 0.1 },
-    phase3: { hatchSalvo: 0.15, sweepTurret: 0.2, shot: 0.2, super: 0.2, empPulse: 0.1, phaseBurst: 0.15 }
+    phase1: { shot: 0.45, sweepTurret: 0.30, hatchSalvo: 0.15, super: 0.10 },
+    phase2: { shot: 0.30, sweepTurret: 0.25, hatchSalvo: 0.20, super: 0.15, empPulse: 0.10 },
+    phase3: { sweepTurret: 0.25, shot: 0.20, phaseBurst: 0.20, super: 0.15, hatchSalvo: 0.10, empPulse: 0.10 }
   }
 } as const;
 

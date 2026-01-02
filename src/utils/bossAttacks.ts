@@ -11,22 +11,24 @@ export function performBossAttack(
   setLaserWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; startTime: number }>>>
 ): void {
   const config = BOSS_CONFIG[boss.type];
-  const attackTypes = config.attackTypes;
   
-  // Pyramid boss uses weighted attack selection
+  // All bosses use weighted attack selection
   let attackType: BossAttackType;
+  const rand = Math.random();
+  const weights = config.attackWeights;
   
-  if (boss.type === 'pyramid') {
-    const rand = Math.random();
-    // Weighted selection: 40% super, 30% spiral, 15% cross, 10% laser, 5% shot
-    if (rand < 0.40) attackType = 'super';
-    else if (rand < 0.70) attackType = 'spiral';
-    else if (rand < 0.85) attackType = 'cross';
-    else if (rand < 0.95) attackType = 'laser';
-    else attackType = 'shot';
-  } else {
-    // Other bosses use random selection
-    attackType = attackTypes[Math.floor(Math.random() * attackTypes.length)] as BossAttackType;
+  let cumulative = 0;
+  for (const [type, weight] of Object.entries(weights)) {
+    cumulative += weight;
+    if (rand < cumulative) {
+      attackType = type as BossAttackType;
+      break;
+    }
+  }
+  
+  // Fallback to first attack type if weights don't add up
+  if (!attackType!) {
+    attackType = Object.keys(weights)[0] as BossAttackType;
   }
   
   soundManager.playBombDropSound();
