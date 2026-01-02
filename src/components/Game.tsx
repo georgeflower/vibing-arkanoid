@@ -2625,33 +2625,39 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     return prev;
                   }
                   
-                  // Damage outer shield
-                  const { newOuterHP, shouldExposeCore } = handleMegaBossOuterDamage(megaBoss, 1);
-                  console.log(`[MEGA BOSS DEBUG] Ball hit outer shield! HP: ${megaBoss.outerShieldHP} -> ${newOuterHP}`);
+                  // Damage shield (outer or inner depending on phase)
+                  const { newOuterHP, newInnerHP, shouldExposeCore } = handleMegaBossOuterDamage(megaBoss, 1);
+                  const activeShieldHP = megaBoss.outerShieldRemoved ? newInnerHP : newOuterHP;
+                  const activeShieldMaxHP = megaBoss.outerShieldRemoved ? megaBoss.innerShieldMaxHP : megaBoss.outerShieldMaxHP;
+                  console.log(`[MEGA BOSS DEBUG] Ball hit ${megaBoss.outerShieldRemoved ? 'INNER' : 'OUTER'} shield! HP: ${megaBoss.outerShieldRemoved ? megaBoss.innerShieldHP : megaBoss.outerShieldHP} -> ${activeShieldHP}`);
                   
                   if (shouldExposeCore) {
                     console.log(`[MEGA BOSS DEBUG] ★★★ BALL EXPOSED THE CORE! ★★★`);
                     // Core is now exposed! Player must hit core
-                    const exposedBoss = exposeMegaBossCore(megaBoss);
+                    const exposedBoss = exposeMegaBossCore({
+                      ...megaBoss,
+                      outerShieldHP: newOuterHP,
+                      innerShieldHP: newInnerHP,
+                    });
                     toast.warning(`⚠️ CORE EXPOSED! Hit the core!`, { duration: 3000 });
                     soundManager.playExplosion();
                     triggerScreenShake(12, 600);
                     return {
                       ...exposedBoss,
-                      outerShieldHP: 0,
                       currentHealth: 0, // For health bar to show empty
                       lastHitAt: nowMs,
                     } as unknown as Boss;
                   } else {
-                    // Just damaged outer shield
-                    toast.info(`MEGA BOSS: ${newOuterHP}/${megaBoss.outerShieldMaxHP} Shield`, {
+                    // Just damaged shield
+                    toast.info(`MEGA BOSS: ${activeShieldHP}/${activeShieldMaxHP} ${megaBoss.outerShieldRemoved ? 'Inner' : 'Outer'} Shield`, {
                       duration: 1000,
                       style: { background: "#ff0000", color: "#fff" },
                     });
                     return {
                       ...megaBoss,
                       outerShieldHP: newOuterHP,
-                      currentHealth: newOuterHP, // Sync for health bar
+                      innerShieldHP: newInnerHP,
+                      currentHealth: activeShieldHP, // Sync for health bar
                       lastHitAt: nowMs,
                     } as unknown as Boss;
                   }
