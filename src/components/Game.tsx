@@ -6694,7 +6694,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       for (let i = 0; i < enemiesToSpawn; i++) {
         const enemyId = nextEnemyId.current++;
-        const enemyType = boss.type;
+        // For level 20 Mega Boss, spawn mixed enemy types instead of just cubes
+        const enemyTypes: Array<"cube" | "sphere" | "pyramid"> = ["cube", "sphere", "pyramid"];
+        const enemyType = level === 20 ? enemyTypes[Math.floor(Math.random() * enemyTypes.length)] : boss.type;
 
         // Track that this enemy was spawned by the boss
         bossSpawnedEnemiesRef.current.add(enemyId);
