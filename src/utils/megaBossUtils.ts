@@ -246,9 +246,9 @@ export function releaseBallAndNextPhase(boss: MegaBoss): { boss: MegaBoss; relea
   const releasedBall: Ball = {
     ...boss.trappedBall,
     x: boss.x + boss.width / 2,
-    y: boss.y + boss.height + 15,
+    y: boss.y - 15, // Release above the boss
     dx: 0,
-    dy: 4,
+    dy: -4, // Release upwards
     waitingToLaunch: false,
     releasedFromBossTime: Date.now() // Track when ball was released for paddle collision grace period
   };
