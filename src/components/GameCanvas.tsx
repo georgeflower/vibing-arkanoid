@@ -2689,8 +2689,18 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           if (boss.type === 'cube') {
             ctx.rotate(boss.rotationY);
             const halfSize = (boss.width + 2 * HITBOX_EXPAND) / 2;
-            ctx.strokeRect(-halfSize, -halfSize, halfSize * 2, halfSize * 2);
-            ctx.fillRect(-halfSize, -halfSize, halfSize * 2, halfSize * 2);
+            // Draw octagon instead of square
+            ctx.beginPath();
+            for (let i = 0; i < 8; i++) {
+              const angle = (Math.PI / 4) * i - Math.PI / 8;
+              const ox = Math.cos(angle) * halfSize;
+              const oy = Math.sin(angle) * halfSize;
+              if (i === 0) ctx.moveTo(ox, oy);
+              else ctx.lineTo(ox, oy);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            ctx.fill();
           } else if (boss.type === 'sphere') {
             const radius = boss.width / 2 + HITBOX_EXPAND;
             ctx.beginPath();
@@ -2759,9 +2769,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
               ctx.fill();
             }
             
-            // Circle hitbox slightly larger than boss (Phase 2/3)
+            // Circle hitbox tightly around the boss core (Phase 2/3)
             if (megaBoss.outerShieldRemoved && !megaBoss.coreExposed) {
-              const circleRadius = radius + 10; // Slightly larger than boss
+              const circleRadius = 45; // Tight circle around the visible boss core
               ctx.strokeStyle = 'rgba(255, 165, 0, 0.8)';
               ctx.lineWidth = 2;
               ctx.fillStyle = 'rgba(255, 165, 0, 0.15)';
