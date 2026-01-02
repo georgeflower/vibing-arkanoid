@@ -569,7 +569,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [totalBricksDestroyed, setTotalBricksDestroyed] = useState(0);
   const [totalShots, setTotalShots] = useState(0);
   const [bricksHit, setBricksHit] = useState(0);
-  const [currentCombo, setCurrentCombo] = useState(0);
   const [levelSkipped, setLevelSkipped] = useState(false);
   const [bossIntroActive, setBossIntroActive] = useState(false);
   // Use refs for particles to avoid state churn - render trigger via counter
@@ -3004,7 +3003,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const brickUpdates = new Map<number, { hitsRemaining: number; visible: boolean }>();
       let scoreIncrease = 0;
       let bricksDestroyedCount = 0;
-      let comboIncrease = 0;
       const powerUpsToCreate: Brick[] = [];
       const explosiveBricksToDetonate: Brick[] = [];
 
@@ -3464,7 +3462,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 // Fireballs bounce off metal bricks via CCD logic
                 if (!isDuplicate) {
                   soundManager.playBounce();
-                  setCurrentCombo(0);
                 }
                 break;
               }
@@ -3533,7 +3530,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 if (!isDuplicate) {
                   scoreIncrease += brick.points;
                   bricksDestroyedCount += 1;
-                  comboIncrease += 1;
                 }
 
                 // Power-up drop
@@ -3617,11 +3613,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   // Mark brick for destruction
                   brickUpdates.set(brick.id, { visible: false, hitsRemaining: 0 });
 
-                  // Only add score/combo once per brick
+                  // Only add score once per brick
                   if (!isDuplicate) {
                     scoreIncrease += brick.points;
                     bricksDestroyedCount += 1;
-                    comboIncrease += 1;
                   }
 
                   // Speed increase - cap based on total speed (150% normal, 175% godlike)
@@ -3854,7 +3849,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setTotalBricksDestroyed((t) => t + bricksDestroyedCount);
         setBricksHit((b) => b + bricksDestroyedCount);
       }
-      if (comboIncrease > 0) setCurrentCombo((c) => c + comboIncrease);
 
       // Apply enemy updates
       setEnemies((prev) => {
@@ -4122,8 +4116,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
 
       if (updatedBalls.length === 0 && !megaBossHasTrappedBall && !justTrappedRecently) {
-        setCurrentCombo(0);
-
         setLives((prev) => {
           const newLives = prev - 1;
           soundManager.playLoseLife();
@@ -4173,7 +4165,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             setLaunchAngle(-20);
             launchAngleDirectionRef.current = 1;
             setShowInstructions(true);
-            setPowerUps([]);
+            
+            // Drop mercy power-up to help player recover
+            const mercyTypes: PowerUpType[] = ['shield', 'turrets', 'paddleExtend', 'slowdown'];
+            const mercyType = mercyTypes[Math.floor(Math.random() * mercyTypes.length)];
+            const mercyPowerUp: PowerUp = {
+              type: mercyType,
+              x: SCALED_CANVAS_WIDTH / 2 - POWERUP_SIZE / 2,
+              y: 100,
+              width: POWERUP_SIZE,
+              height: POWERUP_SIZE,
+              speed: POWERUP_FALL_SPEED,
+              active: true
+            };
+            setPowerUps([mercyPowerUp]);
+            
             setPaddle((prev) =>
               prev
                 ? {
@@ -4215,7 +4221,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
             bombIntervalsRef.current.clear();
             setGameState("ready");
-            toast(`Life lost! ${newLives} lives remaining. Click to continue.`);
+            toast(`Life lost! ${newLives} lives remaining. Here's some help!`);
           }
           return newLives;
         });
@@ -7202,7 +7208,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setTotalBricksDestroyed(0);
     setTotalShots(0);
     setBricksHit(0);
-    setCurrentCombo(0);
     setLevelSkipped(false);
     setPowerUpsCollectedTypes(new Set());
     setBricksDestroyedByTurrets(0);
