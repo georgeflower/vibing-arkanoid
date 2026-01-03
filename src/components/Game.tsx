@@ -639,6 +639,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
+  
+  // Track bricks destroyed this level for level 1 multiball rule
+  const bricksDestroyedThisLevelRef = useRef(0);
 
   // Mega Boss: prevent accidental life loss when ball is trapped (same/next tick race)
   const megaBossTrapJustHappenedRef = useRef<number>(0);
@@ -1567,6 +1570,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Reset power-up drop counts for new game
     setPowerUpDropCounts({});
     initPowerUpAssignments(initialBricks, startLevel, {});
+    bricksDestroyedThisLevelRef.current = 0; // Reset level 1 multiball tracking
     setScore(0);
     setLives(3);
     setLevel(startLevel);
@@ -1707,6 +1711,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Reset power-up drop counts for new level
     setPowerUpDropCounts({});
     initPowerUpAssignments(newLevelBricks, newLevel, {});
+    bricksDestroyedThisLevelRef.current = 0; // Reset brick counter for new level
     setPowerUps([]);
     setBullets([]);
     setTimer(0);
@@ -3748,18 +3753,40 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const createdPowerUps: PowerUp[] = [];
 
       powerUpsToCreate.forEach((brick) => {
-        const powerUp = createPowerUp(brick);
-        if (powerUp) {
-          createdPowerUps.push(powerUp);
+        // Track bricks destroyed this level for level 1 multiball rule
+        bricksDestroyedThisLevelRef.current += 1;
+        
+        // Level 1: Force multiball on exactly the 3rd brick destroyed
+        if (level === 1 && bricksDestroyedThisLevelRef.current === 3) {
+          const forcedPowerUp: PowerUp = {
+            x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
+            y: brick.y,
+            width: POWERUP_SIZE,
+            height: POWERUP_SIZE,
+            type: "multiball",
+            speed: POWERUP_FALL_SPEED,
+            active: true,
+          };
+          createdPowerUps.push(forcedPowerUp);
           if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
             console.log(
-              `[${performance.now().toFixed(2)}ms] [PowerUp Debug] Created power-up type=${powerUp.type} at (${powerUp.x}, ${powerUp.y})`,
+              `[${performance.now().toFixed(2)}ms] [PowerUp Debug] FORCED multiball on level 1 third brick at (${forcedPowerUp.x}, ${forcedPowerUp.y})`,
             );
           }
-        } else if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
-          console.log(
-            `[${performance.now().toFixed(2)}ms] [PowerUp Debug] FAILED to create power-up from brick ${brick.id}`,
-          );
+        } else {
+          const powerUp = createPowerUp(brick);
+          if (powerUp) {
+            createdPowerUps.push(powerUp);
+            if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
+              console.log(
+                `[${performance.now().toFixed(2)}ms] [PowerUp Debug] Created power-up type=${powerUp.type} at (${powerUp.x}, ${powerUp.y})`,
+              );
+            }
+          } else if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
+            console.log(
+              `[${performance.now().toFixed(2)}ms] [PowerUp Debug] FAILED to create power-up from brick ${brick.id}`,
+            );
+          }
         }
       });
 
