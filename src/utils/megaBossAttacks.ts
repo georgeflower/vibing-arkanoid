@@ -187,7 +187,7 @@ export function hasReflectedBallMissed(ball: DangerBall, canvasWidth: number, ca
 }
 
 // Mega Boss attack types
-export type MegaBossAttackType = 'hatchSalvo' | 'sweepTurret' | 'empPulse' | 'phaseBurst' | 'shot' | 'super';
+export type MegaBossAttackType = 'hatchSalvo' | 'sweepTurret' | 'phaseBurst' | 'shot' | 'super';
 
 // Perform a Mega Boss attack
 export function performMegaBossAttack(
@@ -196,9 +196,7 @@ export function performMegaBossAttack(
   paddleY: number,
   setBossAttacks: React.Dispatch<React.SetStateAction<BossAttack[]>>,
   setLaserWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; startTime: number }>>>,
-  setSuperWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; y: number; startTime: number }>>>,
-  setEmpActive?: (active: boolean) => void,
-  setEmpPulseStartTime?: (time: number | null) => void
+  setSuperWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; y: number; startTime: number }>>>
 ): MegaBossAttackType {
   const phase = getMegaBossPhase(boss);
   const weights = MEGA_BOSS_CONFIG.attackWeights[`phase${phase}` as keyof typeof MEGA_BOSS_CONFIG.attackWeights];
@@ -224,9 +222,6 @@ export function performMegaBossAttack(
       break;
     case 'sweepTurret':
       performSweepTurret(boss, paddleX, paddleY, setBossAttacks);
-      break;
-    case 'empPulse':
-      performEmpPulse(boss, setEmpActive, setEmpPulseStartTime);
       break;
     case 'phaseBurst':
       performPhaseBurst(boss, setBossAttacks);
@@ -338,30 +333,6 @@ function performSweepTurret(
   toast.warning("MEGA BOSS SWEEP!");
 }
 
-function performEmpPulse(
-  boss: MegaBoss,
-  setEmpActive?: (active: boolean) => void,
-  setEmpPulseStartTime?: (time: number | null) => void
-) {
-  if (setEmpActive) {
-    const startTime = Date.now();
-    setEmpActive(true);
-    if (setEmpPulseStartTime) {
-      setEmpPulseStartTime(startTime);
-    }
-    toast.error("⚡ EMP PULSE! Paddle slowed!");
-    soundManager.playEMPPulseSound();
-    
-    // Auto-deactivate after duration
-    setTimeout(() => {
-      setEmpActive(false);
-      if (setEmpPulseStartTime) {
-        setEmpPulseStartTime(null);
-      }
-      toast.info("EMP effect ended");
-    }, 1500);
-  }
-}
 
 function performPhaseBurst(
   boss: MegaBoss,
