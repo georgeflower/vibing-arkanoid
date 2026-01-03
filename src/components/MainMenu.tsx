@@ -454,7 +454,6 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 <li><span className="text-[hsl(30,100%,60%)] font-bold">Boss battles on levels 5, 10, and 15!</span> Defeat powerful bosses with unique attacks</li>
                 <li>Ball bounces only from top half of paddle</li>
                 <li>If ball doesn't touch paddle for 15s, it auto-diverts</li>
-                <li>After 25s without paddle, closest enemy kamikazes the ball</li>
                 <li>Powerup drops every 3 enemies destroyed</li>
                 <li>Game automatically adjusts visual quality based on performance</li>
               </ul>
