@@ -1,6 +1,17 @@
-export const GAME_VERSION = "0.9.5";
+export const GAME_VERSION = "0.9.6";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.6",
+    changes: [
+      "NEW: Mega Boss on Level 20 - Ultimate final boss with 4 phases, orb swarm attacks, and devastating super attack",
+      "NEW: Second Chance power-up - Creates a barrier at the bottom of the screen that saves your ball once",
+      "Mega Boss captures and releases balls in later phases for unpredictable gameplay",
+      "Mega Boss spawns protective orbs that must be destroyed before damaging the core",
+      "Epic victory screen when defeating the Mega Boss to complete the game",
+      "Codebase cleanup: removed debug console.logs, converted tick-based cooldowns to milliseconds",
+    ],
+  },
   {
     version: "0.9.5",
     changes: [

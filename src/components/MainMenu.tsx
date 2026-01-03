@@ -185,25 +185,26 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           </h2>
 
           <div className="space-y-2 sm:space-y-3 text-white">
-            <div className="bg-gradient-to-r from-[hsl(45,100%,50%)]/20 to-[hsl(280,90%,60%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(45,100%,50%)]/50">
-              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(45,100%,50%)]">
-                🎮 Starting Level Selector
+            <div className="bg-gradient-to-r from-[hsl(0,85%,55%)]/20 to-[hsl(45,100%,50%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(0,85%,55%)]/50">
+              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(0,85%,55%)]">
+                👹 MEGA BOSS - Level 20
               </h3>
               <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-xs">
-                <li>Choose any level you've previously reached from the main menu</li>
-                <li>Your progress is <span className="text-[hsl(45,100%,50%)] font-bold">saved locally</span> between sessions</li>
-                <li>Locked levels display a warning when selected</li>
+                <li>Ultimate final boss with <span className="text-[hsl(45,100%,50%)] font-bold">4 challenging phases</span></li>
+                <li>Spawns protective orbs that shield the core</li>
+                <li>Captures and releases balls for unpredictable gameplay</li>
+                <li>Devastating super attack in final phase</li>
               </ul>
             </div>
 
             <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(120,60%,50%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(120,60%,50%)]/50">
               <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(120,60%,50%)]">
-                ✨ Visual Improvements
+                🛡️ Second Chance Power-up
               </h3>
               <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-xs">
-                <li>New darker sci-fi backgrounds for levels 1-4 with dynamic flash effects</li>
-                <li>Overhauled tutorial system with pulsating glow highlights</li>
-                <li>Unique fitted backgrounds for all boss levels</li>
+                <li>Creates an <span className="text-[hsl(200,70%,50%)] font-bold">energy barrier</span> at the bottom of the screen</li>
+                <li>Saves your ball once before disappearing</li>
+                <li>Gives you a second chance when you miss a paddle hit</li>
               </ul>
             </div>
           </div>
@@ -267,9 +268,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 ⚔️ Epic Boss Battles
               </h3>
               <p className="text-xs sm:text-sm leading-relaxed">
-                Face off against massive bosses on <span className="text-[hsl(200,70%,50%)] font-bold">levels 5, 10, and 15</span>! 
+                Face off against massive bosses on <span className="text-[hsl(200,70%,50%)] font-bold">levels 5, 10, 15, and the ultimate Mega Boss on level 20</span>! 
                 Each boss features unique attack patterns including shots, lasers, spiral attacks, and cross patterns. 
-                The Pyramid Boss even <span className="text-[hsl(330,100%,65%)] font-bold">resurrects into 3 smaller bosses</span> for the ultimate challenge!
+                The Pyramid Boss <span className="text-[hsl(330,100%,65%)] font-bold">resurrects into 3 smaller bosses</span>, while the 
+                Mega Boss has <span className="text-[hsl(0,85%,55%)] font-bold">4 devastating phases</span> with orb swarms and ball capture mechanics!
               </p>
             </div>
 
@@ -451,7 +453,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 <li>Collect power-ups for special abilities</li>
                 <li>Collect bonus letters Q-U-M-R-A-N for massive rewards (5 extra lives)</li>
                 <li>Watch out for enemies and their projectiles</li>
-                <li><span className="text-[hsl(30,100%,60%)] font-bold">Boss battles on levels 5, 10, and 15!</span> Defeat powerful bosses with unique attacks</li>
+                <li><span className="text-[hsl(30,100%,60%)] font-bold">Boss battles on levels 5, 10, 15, and the ultimate Mega Boss on level 20!</span></li>
                 <li>Ball bounces only from top half of paddle</li>
                 <li>If ball doesn't touch paddle for 15s, it auto-diverts</li>
                 <li>Powerup drops every 3 enemies destroyed</li>
@@ -477,6 +479,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 <li><span className="text-[hsl(30,100%,60%)] font-bold">CUBE BOSS (Level 5)</span> - First boss encounter with unique attack patterns</li>
                 <li><span className="text-[hsl(330,100%,65%)] font-bold">SPHERE BOSS (Level 10)</span> - Multi-phase boss with escalating difficulty</li>
                 <li><span className="text-[hsl(280,80%,60%)] font-bold">PYRAMID BOSS (Level 15)</span> - Ultimate challenge! Splits into 3 smaller bosses</li>
+                <li><span className="text-[hsl(0,85%,55%)] font-bold">MEGA BOSS (Level 20)</span> - Final boss with 4 phases, orb swarms, and ball capture mechanics</li>
                 <li>Bosses attack with shots, lasers, spiral patterns, and cross patterns</li>
                 <li>Boss health bars show current phase HP</li>
               </ul>
@@ -516,7 +519,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   <span className="text-[hsl(280,90%,60%)] font-bold">Reflect Shield</span> - Reflects boss attacks back for 15 seconds (boss minions only)
                 </li>
                 <li>
-                  <span className="text-[hsl(0,100%,50%)] font-bold">Homing Ball</span> - Ball curves toward boss for 8 seconds with red trail (boss minions only)
+                  <span className="text-[hsl(0,100%,50%)] font-bold">Homing Ball</span> - Ball curves toward boss for 8 seconds with red trail (boss levels only)
+                </li>
+                <li>
+                  <span className="text-[hsl(180,70%,50%)] font-bold">Second Chance</span> - Creates a barrier at the bottom that saves your ball once
                 </li>
               </ul>
             </div>
