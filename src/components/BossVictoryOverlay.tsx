@@ -17,10 +17,16 @@ export const BossVictoryOverlay = ({ active, onComplete }: BossVictoryOverlayPro
     // Show text after short delay
     const textTimer = setTimeout(() => setTextVisible(true), 200);
 
+    // Auto-close after 4 seconds
+    const autoCloseTimer = setTimeout(() => {
+      onComplete();
+    }, 4000);
+
     return () => {
       clearTimeout(textTimer);
+      clearTimeout(autoCloseTimer);
     };
-  }, [active]);
+  }, [active, onComplete]);
 
   if (!active) return null;
 

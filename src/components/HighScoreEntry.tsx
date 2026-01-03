@@ -76,7 +76,7 @@ export const HighScoreEntry = ({ score, level, onSubmit, qualifiedLeaderboards }
   }, [score]);
 
   return (
-    <div className="retro-border bg-slate-900/95 rounded-lg p-12 w-full max-w-2xl text-center animate-scale-in relative overflow-hidden">
+    <div className="retro-border bg-slate-900/95 rounded-lg p-6 sm:p-12 w-full max-w-2xl max-h-[85vh] overflow-y-auto text-center animate-scale-in relative">
       {/* Animated glow background */}
       <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-purple-500/20 to-pink-500/20 animate-pulse pointer-events-none" />
       
