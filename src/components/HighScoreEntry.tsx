@@ -156,6 +156,9 @@ export const HighScoreEntry = ({ score, level, onSubmit, qualifiedLeaderboards }
         >
           SUBMIT SCORE
         </Button>
+        
+        {/* Extra space for mobile keyboard scrolling */}
+        <div className="h-[50vh] sm:h-0" />
       </div>
     </div>
   );
