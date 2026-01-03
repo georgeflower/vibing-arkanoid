@@ -1345,10 +1345,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setLaserWarnings([]);
       setDangerBalls([]);
 
-      // Center paddle at bottom (normal behavior)
+      // Center paddle at bottom (same Y as other levels for consistent barrier positioning)
       setPaddle((prev) => ({
         x: SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2,
-        y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_HEIGHT - 10,
+        y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
         width: SCALED_PADDLE_WIDTH,
         height: SCALED_PADDLE_HEIGHT,
         hasTurrets: prev?.hasTurrets || false,
