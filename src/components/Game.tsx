@@ -5404,11 +5404,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           
           soundManager.stopBossMusic();
           
-          // Show victory screen
+          // Show victory screen - check for high score first!
           setTimeout(() => {
             setGameState("won");
-            setShowEndScreen(true);
-            soundManager.playHighScoreMusic();
+            // Check for high score qualification on victory too
+            getQualifiedLeaderboards(score + MEGA_BOSS_CONFIG.points).then((qualification) => {
+              if (qualification.daily || qualification.weekly || qualification.allTime) {
+                setQualifiedLeaderboards(qualification);
+                setShowHighScoreEntry(true);
+                soundManager.playHighScoreMusic();
+              } else {
+                setShowEndScreen(true);
+                soundManager.playHighScoreMusic();
+              }
+            });
           }, 2500);
         } else {
           // Phase transition - not defeated yet
