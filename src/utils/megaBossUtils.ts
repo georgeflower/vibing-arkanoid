@@ -243,15 +243,37 @@ export function releaseBallAndNextPhase(boss: MegaBoss): { boss: MegaBoss; relea
     return { boss, releasedBall: null, isDefeated: false };
   }
   
-  const releasedBall: Ball = {
-    ...boss.trappedBall,
-    x: boss.x + boss.width / 2,
-    y: boss.y - 15, // Release above the boss
-    dx: 0,
-    dy: -4, // Release upwards
-    waitingToLaunch: false,
-    releasedFromBossTime: Date.now() // Track when ball was released for paddle collision grace period
-  };
+  // Check if boss is in top third of screen - if so, release ball downward
+  const canvasHeight = boss.y + boss.height + 200; // Estimate canvas height from boss position
+  const isInTopThird = boss.y < canvasHeight / 3;
+  
+  let releasedBall: Ball;
+  
+  if (isInTopThird) {
+    // Release downward with random angle to avoid getting stuck
+    const randomAngle = (Math.random() - 0.5) * Math.PI / 3; // Random angle ±30 degrees from vertical
+    const speed = 4;
+    releasedBall = {
+      ...boss.trappedBall,
+      x: boss.x + boss.width / 2,
+      y: boss.y + boss.height + 15, // Release below the boss
+      dx: Math.sin(randomAngle) * speed,
+      dy: Math.cos(randomAngle) * speed, // Positive = downward
+      waitingToLaunch: false,
+      releasedFromBossTime: Date.now()
+    };
+  } else {
+    // Release upward normally
+    releasedBall = {
+      ...boss.trappedBall,
+      x: boss.x + boss.width / 2,
+      y: boss.y - 15, // Release above the boss
+      dx: 0,
+      dy: -4, // Release upwards
+      waitingToLaunch: false,
+      releasedFromBossTime: Date.now()
+    };
+  }
   
   const nextPhase = (boss.corePhase + 1) as MegaBossCorePhase;
   
