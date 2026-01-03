@@ -32,7 +32,7 @@ export interface Ball {
   skipRemainingSubsteps?: boolean; // Exit substep loop after brick hit to prevent tunneling
   isHoming?: boolean; // Ball curves toward boss
   previousY?: number; // Y position before CCD pass (for anti-rescue check)
-  lastHitTick?: number; // Frame tick of last paddle hit (for cooldown)
+  lastHitTick?: number; // Timestamp (ms) of last paddle hit (for cooldown)
   releasedFromBossTime?: number; // Timestamp when ball was released from Mega Boss
 }
 

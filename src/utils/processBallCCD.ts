@@ -5,8 +5,8 @@
 // UNITS EXPECTED:
 // - ball.dx, ball.dy: px/sec (pixels per second)
 // - dt: seconds (fraction of a second for the frame)
-// - currentTick: integer frame counter (deterministic)
-// - lastHitTick: integer frame counter
+// - currentTick: frame counter for paddle cooldown (ms-based)
+// - lastHitTick: timestamp of last paddle hit (ms)
 
 export type Vec2 = { x: number; y: number };
 

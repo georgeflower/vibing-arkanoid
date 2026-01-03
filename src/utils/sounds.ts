@@ -54,7 +54,7 @@ class SoundManager {
     }
 
     // Play current track
-    this.musicTracks[this.currentTrackIndex]?.play().catch(err => console.log('Audio play failed:', err));
+    this.musicTracks[this.currentTrackIndex]?.play().catch(() => {});
   }
 
   private handleTrackEnd() {
@@ -148,7 +148,7 @@ class SoundManager {
       this.highScoreMusic.loop = true;
       this.highScoreMusic.volume = 0.4;
     }
-    this.highScoreMusic.play().catch(err => console.log('High score audio play failed:', err));
+    this.highScoreMusic.play().catch(() => {});
   }
 
   stopHighScoreMusic() {
@@ -509,9 +509,8 @@ class SoundManager {
 
       await Promise.all(loadPromises);
       this.soundsLoaded = true;
-      console.log('Power-up sounds preloaded successfully');
     } catch (err) {
-      console.error('Error preloading sounds:', err);
+      // Silent fail for sound preloading - not critical
     }
   }
 
@@ -557,7 +556,7 @@ class SoundManager {
   }
 
   playCrackedBrickBreakSound() {
-    // Sound removed - function kept for compatibility
+    // Empty - handled by main brick hit sound
   }
 
   playCannonModeSound() {
@@ -1107,7 +1106,7 @@ class SoundManager {
     this.bossMusic = new Audio(bossTrackUrl);
     this.bossMusic.loop = true;
     this.bossMusic.volume = 0.3;
-    this.bossMusic.play().catch(err => console.log('Boss music play failed:', err));
+    this.bossMusic.play().catch(() => {});
   }
 
   stopBossMusic() {
@@ -1135,7 +1134,7 @@ class SoundManager {
     const track = this.musicTracks[this.currentTrackIndex];
     if (track) {
       track.currentTime = this.savedBackgroundMusicPosition;
-      track.play().catch(err => console.log('Resume music failed:', err));
+      track.play().catch(() => {});
     }
     
     // Reset saved position
