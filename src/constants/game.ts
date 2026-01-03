@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
 // ████████╗ DEBUG CONFIGURATION - SET TO FALSE FOR PRODUCTION ████████╗
 // ═══════════════════════════════════════════════════════════════
-export const ENABLE_DEBUG_FEATURES = true;
+export const ENABLE_DEBUG_FEATURES = false;
 // ═══════════════════════════════════════════════════════════════
 
 export const CANVAS_WIDTH = 850;
@@ -19,7 +19,7 @@ export const BRICK_OFFSET_LEFT = (CANVAS_WIDTH - (BRICK_COLS * BRICK_WIDTH + (BR
 
 export const POWERUP_SIZE = 61; // Same as brick width
 export const POWERUP_FALL_SPEED = 2;
-export const POWERUP_DROP_CHANCE = 0.20; // 20%
+export const POWERUP_DROP_CHANCE = 0.2; // 20%
 export const FIREBALL_DURATION = 5000; // 5 seconds
 
 // Final level - game ends after this level
@@ -113,10 +113,10 @@ export const PHYSICS_CONFIG = {
 } as const;
 
 // Boss-exclusive power-up durations
-export const BOSS_STUNNER_DURATION = 5000;     // 5 seconds
-export const REFLECT_SHIELD_DURATION = 15000;  // 15 seconds  
-export const HOMING_BALL_DURATION = 8000;      // 8 seconds
+export const BOSS_STUNNER_DURATION = 5000; // 5 seconds
+export const REFLECT_SHIELD_DURATION = 15000; // 15 seconds
+export const HOMING_BALL_DURATION = 8000; // 8 seconds
 
 // Homing ball physics
-export const HOMING_STRENGTH = 0.15;           // How strongly ball curves toward boss
-export const HOMING_MAX_TURN = 0.1;            // Maximum turn rate per frame (radians)
+export const HOMING_STRENGTH = 0.15; // How strongly ball curves toward boss
+export const HOMING_MAX_TURN = 0.1; // Maximum turn rate per frame (radians)
