@@ -141,6 +141,12 @@ export const HighScoreEntry = ({ score, level, onSubmit, qualifiedLeaderboards }
             onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             onKeyDown={handleKeyDown}
+            onFocus={(e) => {
+              // Auto-scroll input into view on mobile when keyboard appears
+              setTimeout(() => {
+                e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 300);
+            }}
             maxLength={3}
             placeholder="___"
             autoFocus
