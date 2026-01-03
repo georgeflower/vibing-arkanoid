@@ -2425,9 +2425,33 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           const angle = Math.atan2(attack.dy || 1, attack.dx || 0);
           ctx.rotate(angle + Math.PI / 2);
           
-          // Draw flame trail (animated) behind the missile
           const rocketLength = attack.height * 1.5;
           const rocketWidth = attack.width * 1.2;
+          
+          // Draw smoke trail particles behind the missile
+          const smokeCount = 8;
+          const time = Date.now();
+          for (let i = 0; i < smokeCount; i++) {
+            const smokeOffset = rocketLength * 0.5 + i * 12;
+            const smokeAge = (time + i * 50) % 400;
+            const smokeProgress = smokeAge / 400;
+            const smokeAlpha = Math.max(0, 0.4 - smokeProgress * 0.5);
+            const smokeSize = 4 + smokeProgress * 8 + i * 2;
+            const wobbleX = Math.sin(time * 0.01 + i * 1.5) * (3 + i * 0.5);
+            
+            ctx.fillStyle = `rgba(180, 180, 190, ${smokeAlpha})`;
+            ctx.beginPath();
+            ctx.arc(wobbleX, smokeOffset + smokeProgress * 15, smokeSize, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Inner lighter smoke
+            ctx.fillStyle = `rgba(220, 220, 230, ${smokeAlpha * 0.6})`;
+            ctx.beginPath();
+            ctx.arc(wobbleX, smokeOffset + smokeProgress * 15, smokeSize * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          
+          // Draw flame trail (animated) behind the missile
           const flameFlicker = 0.7 + Math.random() * 0.3;
           const flameGrad = ctx.createLinearGradient(0, rocketLength * 0.4, 0, rocketLength * 1.2);
           flameGrad.addColorStop(0, `rgba(255, 200, 50, ${flameFlicker})`);
@@ -2436,8 +2460,8 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           
           ctx.fillStyle = flameGrad;
           ctx.beginPath();
-          ctx.moveTo(-rocketWidth * 0.3, rocketLength * 0.4);
-          ctx.quadraticCurveTo(0, rocketLength * 1.3, rocketWidth * 0.3, rocketLength * 0.4);
+          ctx.moveTo(-rocketWidth * 0.4, rocketLength * 0.4);
+          ctx.quadraticCurveTo(0, rocketLength * 1.5, rocketWidth * 0.4, rocketLength * 0.4);
           ctx.fill();
           
           // Draw the missile image
