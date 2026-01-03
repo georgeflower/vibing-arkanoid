@@ -108,7 +108,7 @@ export const PHYSICS_CONFIG = {
   PADDLE_SAFETY_MARGIN: 2,
   BOSS_HITBOX_EXPAND: 1,
   BOSS_SAFETY_MARGIN: 2,
-  BOSS_HIT_COOLDOWN_TICKS: 60, // At 60Hz = 1 second
+  PADDLE_HIT_COOLDOWN_MS: 50, // ~3 ticks at 60Hz
   EPS_TOI: 0.01, // Tolerance for duplicate collision events
 } as const;
 
