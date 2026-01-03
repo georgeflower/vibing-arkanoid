@@ -6810,8 +6810,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 height: 10,
                 speed: 3,
                 enemyId: enemyId,
-                type: currentEnemy.type === "sphere" ? "rocket" : "bomb",
-                dx: 0, // Initialize horizontal velocity for rockets
+                type: "bomb", // Both cube and sphere enemies drop bombs
               };
               soundManager.playBombDropSound();
               setBombs((prev) => [...prev, newProjectile]);
