@@ -123,20 +123,6 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
         performanceLogRef.current.shift();
       }
       
-      // Console log current performance (disabled on mobile for better performance)
-      if (enableLogging && !(/Mobi|Android/i.test(navigator.userAgent))) {
-        const avgFps = stats.samples > 0 ? (stats.sum / stats.samples).toFixed(1) : '0.0';
-        const baseLog = `[Performance Monitor] FPS: ${fps.toFixed(1)} | Quality: ${quality.toUpperCase()} | ` +
-          `Avg: ${avgFps} | Min: ${stats.min.toFixed(0)} | Max: ${stats.max.toFixed(0)}`;
-        
-        // If detailed metrics are available (from performance profiler), include them
-        if ((window as any).performanceProfiler) {
-          const summary = (window as any).performanceProfiler.getFrameSummary();
-          console.log(baseLog + ` | Objects: ${summary.totalObjects}`);
-        } else {
-          console.log(baseLog);
-        }
-      }
       
       lastPerformanceLogMs.current = now;
     }
@@ -153,20 +139,6 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
 
     // Only adjust if enough samples and cooldown has passed
     if (fpsHistoryRef.current.length < 30 || now - lastAdjustmentTimeRef.current < adjustmentCooldownMs) {
-      // Early warning system
-      if (fpsHistoryRef.current.length >= 10) {
-        const recentAvg = fpsHistoryRef.current.slice(-10).reduce((sum, f) => sum + f, 0) / 10;
-        const threshold = quality === 'high' ? mediumFpsThreshold : lowFpsThreshold;
-        
-        if (recentAvg < threshold && now - warningThresholdRef.current > 5000) {
-          const timeToDowngrade = ((adjustmentCooldownMs - (now - lastAdjustmentTimeRef.current)) / 1000).toFixed(1);
-          console.warn(
-            `[Performance Warning] FPS dropped to ${recentAvg.toFixed(1)} (threshold: ${threshold}) - ` +
-            `will downgrade in ${timeToDowngrade}s if sustained`
-          );
-          warningThresholdRef.current = now;
-        }
-      }
       return;
     }
 
@@ -195,22 +167,13 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
       // Track drops to low quality
       if (targetQuality === 'low' && isDowngrade) {
         lowQualityDropCountRef.current++;
-        console.log(`[Performance] Dropped to LOW quality (count: ${lowQualityDropCountRef.current})`);
         
         // Lock to low if we've dropped twice
         if (lowQualityDropCountRef.current >= 2 && !lockedToLow) {
           setLockedToLow(true);
-          console.log('[Performance] Quality LOCKED to LOW for remainder of game session');
           toast.info('Quality locked to LOW for this game session', { duration: 4000 });
         }
       }
-
-      // Log quality change
-      const timeSinceStart = (now / 1000).toFixed(1);
-      console.log(
-        `[Performance] Quality: ${quality.toUpperCase()} → ${targetQuality.toUpperCase()} | ` +
-        `Avg FPS: ${avgFps.toFixed(1)} | Time: ${timeSinceStart}s`
-      );
 
       setQuality(targetQuality);
       lastAdjustmentTimeRef.current = now;
@@ -253,7 +216,6 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
     setLockedToLow(false);
     setQuality(initialQuality);
     fpsHistoryRef.current = [];
-    console.log('[Performance] Quality lockout reset for new game');
   }, [initialQuality]);
 
   // Get performance log for analysis

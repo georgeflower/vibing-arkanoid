@@ -325,14 +325,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     return false;
   }, []);
 
-  // Debug: Track screen shake duration
+  // Track screen shake state
   useEffect(() => {
     if (screenShake > 0 && screenShakeStartRef.current === null) {
       screenShakeStartRef.current = Date.now();
-      console.log(`[ScreenShake] ON - intensity: ${screenShake}`);
     } else if (screenShake === 0 && screenShakeStartRef.current !== null) {
-      const duration = Date.now() - screenShakeStartRef.current;
-      console.log(`[ScreenShake] OFF - duration: ${duration}ms`);
       screenShakeStartRef.current = null;
     }
   }, [screenShake]);
@@ -837,7 +834,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Handle second chance power-up activation
   const handleSecondChance = useCallback(() => {
     // Just for tracking - the paddle state is set in usePowerUps
-    console.log("[PowerUp] Second Chance activated!");
   }, []);
 
   // Trigger highlight flash for background effects (levels 1-4)
@@ -3111,16 +3107,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const now = Date.now();
           const objectKey = `${event.objectType}-${event.objectId}`;
 
-          // Debug log for boss-related IDs (only when boss present, excludes paddle objectId 0)
-          if (boss && typeof event.objectId === "number" && event.objectId < 0) {
-            console.log("[CCD] Negative objectId event", {
-              objectType: event.objectType,
-              objectId: event.objectId,
-              point: event.point,
-              bossPresent: !!boss,
-              bossRect: boss ? { x: boss.x, y: boss.y, w: boss.width, h: boss.height } : null,
-            });
-          }
 
           // Check if this event is a duplicate (same object hit within EPS_TOI)
           const lastTOI = processedObjects.get(objectKey);
@@ -4169,18 +4155,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           // Now check if ball is lost (after second chance check)
           if (ball.y > SCALED_CANVAS_HEIGHT + ball.radius) {
-            // DEBUG: Log when ball is lost on level 20
-            if (level === MEGA_BOSS_LEVEL) {
-              console.log(`[MEGA BOSS DEBUG] ⚠️ BALL ${ball.id} LOST! Position: (${ball.x.toFixed(1)}, ${ball.y.toFixed(1)})`);
-              if (boss && isMegaBoss(boss)) {
-                const megaBoss = boss as MegaBoss;
-                console.log(`[MEGA BOSS DEBUG] Boss state at ball loss:`, {
-                  coreExposed: megaBoss.coreExposed,
-                  trappedBall: megaBoss.trappedBall ? 'YES' : 'NO',
-                  bossPosition: { x: megaBoss.x.toFixed(1), y: megaBoss.y.toFixed(1) }
-                });
-              }
-            }
             return false; // Ball lost
           }
 
@@ -5238,37 +5212,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const megaBoss = boss as MegaBoss;
       const now = Date.now();
 
-      // DEBUG: Log Mega Boss state every 60 frames (~1 second)
-      if (frameCountRef.current % 60 === 0) {
-        console.log(`[MEGA BOSS DEBUG] State:`, {
-          corePhase: megaBoss.corePhase,
-          outerShieldHP: megaBoss.outerShieldHP,
-          coreExposed: megaBoss.coreExposed,
-          trappedBall: megaBoss.trappedBall ? 'YES' : 'NO',
-          dangerBallsCaught: megaBoss.dangerBallsCaught,
-          dangerBallsFired: megaBoss.dangerBallsFired,
-          scheduledDangerBalls: megaBoss.scheduledDangerBalls.length,
-          isInvulnerable: megaBoss.isInvulnerable,
-          position: { x: megaBoss.x.toFixed(1), y: megaBoss.y.toFixed(1) }
-        });
-      }
 
       // Check if player ball enters exposed core
       if (megaBoss.coreExposed && !megaBoss.trappedBall) {
         balls.forEach((ball) => {
-          // DEBUG: Log ball position relative to core when core is exposed
-          const coreX = megaBoss.x + megaBoss.width / 2;
-          const coreY = megaBoss.y + megaBoss.height / 2;
-          const distToCore = Math.sqrt(Math.pow(ball.x - coreX, 2) + Math.pow(ball.y - coreY, 2));
-          
-          if (frameCountRef.current % 10 === 0) {
-            console.log(`[MEGA BOSS DEBUG] Ball ${ball.id} distance to core: ${distToCore.toFixed(1)}px, inside boss: ${isBallInsideMegaBoss(ball, megaBoss)}, in hatch area: ${isBallInHatchArea(ball, megaBoss)}`);
-          }
-          
           if (!ball.waitingToLaunch && isBallInHatchArea(ball, megaBoss)) {
-            console.log(`[MEGA BOSS DEBUG] ★★★ BALL ${ball.id} HIT THE CORE! ★★★`);
-            console.log(`[MEGA BOSS DEBUG] Ball position: (${ball.x.toFixed(1)}, ${ball.y.toFixed(1)}), Core position: (${coreX.toFixed(1)}, ${coreY.toFixed(1)})`);
-
             // Mark trap time immediately so the life-loss pass can't incorrectly deduct a life
             // if state updates land on the next tick.
             megaBossTrapJustHappenedRef.current = Date.now();
@@ -5279,8 +5227,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             // Hide the trapped ball
             setBalls((prev) => prev.filter((b) => b.id !== ball.id));
-
-            console.log(`[MEGA BOSS DEBUG] Ball trapped, danger balls scheduled: ${(trappedBoss as MegaBoss).scheduledDangerBalls.length}`);
 
             toast.error("🔴 BALL TRAPPED IN CORE! Catch 5 danger balls!", { duration: 3000 });
             soundManager.playCannonModeSound();

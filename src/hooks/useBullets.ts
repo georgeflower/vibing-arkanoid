@@ -169,24 +169,19 @@ export const useBullets = (
             
             // Check if this is a Mega Boss - route damage to outer shield HP
             if (isMegaBoss(boss)) {
-              console.log(`[MEGA BOSS DEBUG] Turret bullet hit! Damage: ${damage}`);
-              
               setBoss(prev => {
                 if (!prev || !isMegaBoss(prev)) return prev;
                 const megaBoss = prev as MegaBoss;
                 
                 // Don't damage if core is already exposed (should hit core with ball)
                 if (megaBoss.coreExposed) {
-                  console.log(`[MEGA BOSS DEBUG] Core exposed - bullets blocked, hit core with ball!`);
                   return prev;
                 }
                 
                 const result = handleMegaBossOuterDamage(megaBoss, damage);
-                console.log(`[MEGA BOSS DEBUG] Shield damage: ${megaBoss.outerShieldRemoved ? megaBoss.innerShieldHP : megaBoss.outerShieldHP} -> ${megaBoss.outerShieldRemoved ? result.newInnerHP : result.newOuterHP}`);
                 soundManager.playBossHitSound();
                 
                 if (result.shouldExposeCore) {
-                  console.log(`[MEGA BOSS DEBUG] ★★★ CORE EXPOSED VIA TURRET! ★★★`);
                   // Expose the core!
                   const exposedBoss = exposeMegaBossCore({
                     ...megaBoss,

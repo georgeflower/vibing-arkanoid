@@ -98,12 +98,10 @@ class FrameProfiler {
 
   enable() {
     this.enabled = true;
-    console.log('[FrameProfiler] Enabled');
   }
 
   disable() {
     this.enabled = false;
-    console.log('[FrameProfiler] Disabled');
   }
 
   isEnabled(): boolean {
@@ -154,13 +152,8 @@ class FrameProfiler {
       }
     });
 
-    // Log warning if bottlenecks detected and cooldown passed
+    // Track bottleneck cooldown (for overlay display)
     if (bottlenecks.length > 0 && now - this.bottleneckWarningCooldown > 5000) {
-      console.warn(
-        `[FrameProfiler] ⚠️ Performance Bottlenecks Detected:\n` +
-        bottlenecks.map(b => `  - ${b}`).join('\n') +
-        `\n  Total Objects: ${this.counters.bricks + this.counters.enemies + this.counters.bullets + this.counters.particles}`
-      );
       this.bottleneckWarningCooldown = now;
     }
   }
@@ -204,16 +197,7 @@ class FrameProfiler {
   }
 
   logStats() {
-    if (!this.enabled) return;
-
-    const stats = this.getStats();
-    console.log(
-      `[FrameProfiler] FPS: ${stats.fps} | Frame: ${stats.frameTime.toFixed(2)}ms | ` +
-      `Physics: ${stats.timings.physics.toFixed(2)}ms | ` +
-      `Particles: ${stats.timings.particles.toFixed(2)}ms | ` +
-      `Rendering: ${stats.timings.rendering.toFixed(2)}ms | ` +
-      `Events: ${stats.counters.collisions} collisions`
-    );
+    // Reserved for debug overlay display
   }
 }
 
