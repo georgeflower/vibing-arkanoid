@@ -48,8 +48,8 @@ export const MEGA_BOSS_CONFIG = {
   // Attack weights by phase
   attackWeights: {
     phase1: { shot: 0.45, sweepTurret: 0.30, hatchSalvo: 0.15, super: 0.10 },
-    phase2: { shot: 0.30, sweepTurret: 0.25, hatchSalvo: 0.20, super: 0.15, empPulse: 0.10 },
-    phase3: { sweepTurret: 0.25, shot: 0.20, phaseBurst: 0.20, super: 0.15, hatchSalvo: 0.10, empPulse: 0.10 }
+    phase2: { shot: 0.35, sweepTurret: 0.30, hatchSalvo: 0.20, super: 0.15 },
+    phase3: { sweepTurret: 0.30, shot: 0.25, phaseBurst: 0.25, super: 0.10, hatchSalvo: 0.10 }
   }
 } as const;
 
@@ -73,11 +73,3 @@ export const MEGA_BOSS_POSITIONS = [
   { x: 0.5, y: 0.42 },
   { x: 0.85, y: 0.48 }
 ] as const;
-
-// EMP Pulse settings
-export const EMP_CONFIG = {
-  duration: 1500, // How long paddle is slowed
-  slowFactor: 0.1, // Paddle speed multiplier during EMP (90% reduction - very slow)
-  pulseRadius: 300,
-  cooldown: 10000
-} as const;

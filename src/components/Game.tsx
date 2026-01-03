@@ -349,9 +349,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // ═══ MEGA BOSS (Level 20) State ═══
   const [dangerBalls, setDangerBalls] = useState<DangerBall[]>([]);
-  const [empSlowActive, setEmpSlowActive] = useState(false);
-  const [empSlowEndTime, setEmpSlowEndTime] = useState<number | null>(null);
-  const [empPulseStartTime, setEmpPulseStartTime] = useState<number | null>(null);
   const [nextCannonMissileTime, setNextCannonMissileTime] = useState<number>(0);
   const [ballReleaseHighlight, setBallReleaseHighlight] = useState<{ active: boolean; startTime: number } | null>(null);
 
@@ -1880,7 +1877,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Use movementX when pointer is locked, otherwise use absolute position
       if (isPointerLocked) {
-        const sensitivity = empSlowActive ? 1.5 * 0.1 : 1.5; // Apply EMP slow to sensitivity
+        const sensitivity = 1.5;
         targetX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - paddle.width, paddle.x + e.movementX * sensitivity));
       } else if (gameState === "playing" || gameState === "ready") {
         const rect = canvasRef.current.getBoundingClientRect();
@@ -1891,14 +1888,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         return;
       }
 
-      // Apply EMP slow by interpolating towards target instead of snapping
-      let newX: number;
-      if (empSlowActive) {
-        // Lerp towards target at 10% speed (very sluggish)
-        newX = paddle.x + (targetX - paddle.x) * 0.1;
-      } else {
-        newX = targetX;
-      }
+      const newX = targetX;
 
       // Update ref immediately for high-priority collision detection
       paddleXRef.current = newX;
@@ -1913,7 +1903,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           : null,
       );
     },
-    [gameState, paddle, isPointerLocked, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, empSlowActive],
+    [gameState, paddle, isPointerLocked, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT],
   );
   const activeTouchRef = useRef<number | null>(null);
   const secondTouchRef = useRef<number | null>(null);
@@ -2074,14 +2064,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const paddleRange = SCALED_CANVAS_WIDTH - paddle.width;
       const targetX = normalizedPosition * paddleRange;
 
-      // Apply EMP slow by interpolating towards target instead of snapping
-      let newX: number;
-      if (empSlowActive) {
-        // Lerp towards target at 10% speed (very sluggish)
-        newX = paddle.x + (targetX - paddle.x) * 0.1;
-      } else {
-        newX = targetX;
-      }
+      const newX = targetX;
 
       // Update ref immediately for high-priority collision detection
       paddleXRef.current = newX;
@@ -2096,7 +2079,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           : null,
       );
     },
-    [paddle, balls, SCALED_CANVAS_WIDTH, gameState, empSlowActive],
+    [paddle, balls, SCALED_CANVAS_WIDTH, gameState],
   );
   const handleTouchEnd = useCallback((e: TouchEvent) => {
     // Clear active touches when they end
@@ -5228,12 +5211,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBossAttacks,
           setLaserWarnings,
           setSuperWarnings,
-          setEmpSlowActive,
-          setEmpPulseStartTime,
         );
       } else {
         // Regular boss attack
-        performBossAttack(boss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings, setSuperWarnings, setEmpSlowActive, setEmpPulseStartTime);
+        performBossAttack(boss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings, setSuperWarnings);
       }
       const nextIndex = (boss.currentPositionIndex + 1) % boss.positions.length;
       setBoss((prev) =>
@@ -5634,12 +5615,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     }
 
-    // ═══ EMP SLOW EFFECT ═══
-    if (empSlowActive && empSlowEndTime && Date.now() >= empSlowEndTime) {
-      setEmpSlowActive(false);
-      setEmpSlowEndTime(null);
-      toast.info("EMP effect ended");
-    }
 
     // Update resurrected bosses
     resurrectedBosses.forEach((resBoss, idx) => {
@@ -5672,7 +5647,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         Date.now() - resBoss.lastAttackTime >= resBoss.attackCooldown &&
         paddle
       ) {
-        performBossAttack(resBoss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings, setSuperWarnings, setEmpSlowActive, setEmpPulseStartTime);
+        performBossAttack(resBoss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings, setSuperWarnings);
         const nextIdx = (resBoss.currentPositionIndex + 1) % resBoss.positions.length;
         setResurrectedBosses((prev) =>
           prev.map((b, i) =>
@@ -7815,8 +7790,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       isMobile={isMobileDevice}
                       secondChanceImpact={secondChanceImpact}
                       dangerBalls={dangerBalls}
-                      empSlowActive={empSlowActive}
-                      empPulseStartTime={empPulseStartTime}
                       ballReleaseHighlight={ballReleaseHighlight}
                     />
 
