@@ -2442,8 +2442,8 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           
           // Draw the missile image
           if (isImageValid(missileImageRef.current)) {
-            const imgWidth = attack.width * 2.5;
-            const imgHeight = attack.height * 2.5;
+            const imgWidth = attack.width * 4.5;
+            const imgHeight = attack.height * 4;
             ctx.drawImage(
               missileImageRef.current,
               -imgWidth / 2,
