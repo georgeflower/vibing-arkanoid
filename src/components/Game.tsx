@@ -4263,6 +4263,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             setLivesLostOnCurrentLevel(prev => {
               const newCount = prev + 1;
               
+              // In godlike mode, no mercy power-ups - just clear all power-ups
+              if (settings.difficulty === "godlike") {
+                setPowerUps([]);
+                return newCount;
+              }
+              
               // Drop mercy power-up to help player recover
               let mercyType: PowerUpType;
               if (newCount >= 3) {
