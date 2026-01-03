@@ -270,6 +270,62 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [screenShake, setScreenShake] = useState(0);
   const screenShakeStartRef = useRef<number | null>(null);
 
+  // ═══ SMART LOOP DETECTION ═══
+  // Track bounce angles to detect repetitive horizontal/vertical/diagonal loops
+  const trajectoryHistoryRef = useRef<number[]>([]);
+  const LOOP_HISTORY_SIZE = 8; // Track last 8 bounces
+  const LOOP_ANGLE_TOLERANCE = 0.09; // ~5 degrees in radians
+  const LOOP_MIN_REPEATS = 3; // Pattern must repeat 3+ times
+
+  // Function to detect if ball is stuck in a loop
+  const detectStuckLoop = useCallback((angles: number[]): boolean => {
+    if (angles.length < 6) return false;
+    
+    // Check for alternating pattern (horizontal/vertical loop)
+    // Angles alternate between 2 values
+    const lastAngles = angles.slice(-6);
+    let alternating = true;
+    for (let i = 2; i < lastAngles.length; i++) {
+      const angleDiff = Math.abs(lastAngles[i] - lastAngles[i - 2]);
+      // Normalize angle difference to [0, PI]
+      const normalizedDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
+      if (normalizedDiff > LOOP_ANGLE_TOLERANCE) {
+        alternating = false;
+        break;
+      }
+    }
+    if (alternating) return true;
+    
+    // Check for same-angle repetition (pure horizontal/vertical)
+    let sameAngle = true;
+    for (let i = 1; i < lastAngles.length; i++) {
+      const angleDiff = Math.abs(lastAngles[i] - lastAngles[0]);
+      const normalizedDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
+      if (normalizedDiff > LOOP_ANGLE_TOLERANCE) {
+        sameAngle = false;
+        break;
+      }
+    }
+    if (sameAngle) return true;
+    
+    // Check for 3-angle repeating pattern
+    if (angles.length >= 9) {
+      const last9 = angles.slice(-9);
+      let threePattern = true;
+      for (let i = 3; i < last9.length; i++) {
+        const angleDiff = Math.abs(last9[i] - last9[i % 3]);
+        const normalizedDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
+        if (normalizedDiff > LOOP_ANGLE_TOLERANCE) {
+          threePattern = false;
+          break;
+        }
+      }
+      if (threePattern) return true;
+    }
+    
+    return false;
+  }, []);
+
   // Debug: Track screen shake duration
   useEffect(() => {
     if (screenShake > 0 && screenShakeStartRef.current === null) {
@@ -3138,6 +3194,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   soundManager.playBounce();
                   lastWallBounceSfxMs.current = now;
                 }
+                // Record trajectory for loop detection
+                const bounceAngle = Math.atan2(result.ball.dy, result.ball.dx);
+                trajectoryHistoryRef.current.push(bounceAngle);
+                if (trajectoryHistoryRef.current.length > LOOP_HISTORY_SIZE) {
+                  trajectoryHistoryRef.current.shift();
+                }
               }
               break;
 
@@ -3254,6 +3316,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   lastWallBounceSfxMs.current = now;
                 }
                 setLastPaddleHitTime(now);
+                // Clear trajectory history - paddle hit breaks any potential loop
+                trajectoryHistoryRef.current = [];
               }
               break;
             }
@@ -3328,6 +3392,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   lastWallBounceSfxMs.current = now;
                 }
                 setLastPaddleHitTime(now);
+                // Clear trajectory history - paddle hit breaks any potential loop
+                trajectoryHistoryRef.current = [];
               }
               break;
             }
@@ -3679,6 +3745,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 } else {
                   // Brick damaged but not destroyed
                   brickUpdates.set(brick.id, { visible: true, hitsRemaining: newHitsRemaining });
+                }
+                
+                // Record trajectory for loop detection (brick bounces count as potential loop)
+                if (!isDuplicate) {
+                  const bounceAngle = Math.atan2(result.ball.dy, result.ball.dx);
+                  trajectoryHistoryRef.current.push(bounceAngle);
+                  if (trajectoryHistoryRef.current.length > LOOP_HISTORY_SIZE) {
+                    trajectoryHistoryRef.current.shift();
+                  }
                 }
                 break;
               }
@@ -6499,14 +6574,33 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       checkPowerUpCollision(paddle, balls, setBalls, setPaddle, setSpeedMultiplier);
     }
 
-    // Check ball timeout without paddle hit (15s and 25s)
+    // Check for stuck ball loops (smart detection replaces 15s timer)
+    // Only divert when ball is genuinely stuck in a repetitive pattern
+    if (detectStuckLoop(trajectoryHistoryRef.current)) {
+      setBalls((prev) =>
+        prev.map((ball) => {
+          if (!ball.waitingToLaunch) {
+            const currentAngle = Math.atan2(ball.dy, ball.dx);
+            const divertAngle = currentAngle + (10 * Math.PI) / 180;
+            const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+            return {
+              ...ball,
+              dx: Math.cos(divertAngle) * speed,
+              dy: Math.sin(divertAngle) * speed,
+            };
+          }
+          return ball;
+        }),
+      );
+      trajectoryHistoryRef.current = []; // Clear history after diversion
+    }
+
+    // 25s fallback - enemy kamikaze (kept as last resort)
     if (lastPaddleHitTime > 0) {
       const timeSinceHit = (Date.now() - lastPaddleHitTime) / 1000;
       if (timeSinceHit >= 25 && enemies.length > 0) {
-        // 25s - nearest enemy kamikaze
         const activeBall = balls.find((b) => !b.waitingToLaunch);
         if (activeBall) {
-          // Find closest enemy
           let closestEnemy = enemies[0];
           let minDistance = Infinity;
           for (const enemy of enemies) {
@@ -6519,7 +6613,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             }
           }
 
-          // Make closest enemy go kamikaze towards ball
           setEnemies((prev) =>
             prev.map((e) =>
               e.id === closestEnemy.id
@@ -6532,26 +6625,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             ),
           );
           toast.warning("Enemy kamikaze attack!");
-          setLastPaddleHitTime(Date.now()); // Reset timer
+          setLastPaddleHitTime(Date.now());
         }
-      } else if (timeSinceHit >= 15) {
-        // 15s - divert ball by 10 degrees
-        setBalls((prev) =>
-          prev.map((ball) => {
-            if (!ball.waitingToLaunch) {
-              const currentAngle = Math.atan2(ball.dy, ball.dx);
-              const divertAngle = currentAngle + (10 * Math.PI) / 180;
-              const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-              return {
-                ...ball,
-                dx: Math.cos(divertAngle) * speed,
-                dy: Math.sin(divertAngle) * speed,
-              };
-            }
-            return ball;
-          }),
-        );
-        setLastPaddleHitTime(Date.now()); // Reset timer
       }
     }
 
