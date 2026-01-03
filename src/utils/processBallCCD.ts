@@ -5,8 +5,8 @@
 // UNITS EXPECTED:
 // - ball.dx, ball.dy: px/sec (pixels per second)
 // - dt: seconds (fraction of a second for the frame)
-// - currentTick: frame counter for paddle cooldown (ms-based)
-// - lastHitTick: timestamp of last paddle hit (ms)
+// - currentTick: timestamp (ms) for paddle cooldown
+// - lastPaddleHitTime: timestamp of last paddle hit (ms)
 
 export type Vec2 = { x: number; y: number };
 
@@ -17,7 +17,7 @@ export type Ball = {
   dx: number; // px/sec
   dy: number; // px/sec
   radius: number;
-  lastHitTick?: number; // optional integer tick for cooldowns
+  lastPaddleHitTime?: number; // optional timestamp (ms) for cooldowns
   isFireball?: boolean; // if true, passes through bricks without reflection
   // any other fields are preserved and returned
   [k: string]: any;
@@ -628,7 +628,7 @@ export function processBallCCD(
       remaining = remaining * (1 - tHit);
 
       // optional cooldown set using tick if provided
-      if (currentTick !== undefined) ball.lastHitTick = currentTick;
+      if (currentTick !== undefined) ball.lastPaddleHitTime = currentTick;
 
       // If hit paddle or brick, break depending on game rules: here we continue to resolve remaining fraction (multiple collisions allowed),
       // but game may want to break on paddle to avoid multiple reflections; caller can inspect events for that.
