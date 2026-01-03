@@ -79,6 +79,7 @@ import {
   FINAL_LEVEL,
   FIREBALL_DURATION,
   ENABLE_DEBUG_FEATURES,
+  PHYSICS_CONFIG,
 } from "@/constants/game";
 import { useTutorial } from "@/hooks/useTutorial";
 import { TutorialOverlay } from "./TutorialOverlay";
@@ -3173,7 +3174,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             case "paddle": {
               // Anti-rescue paddle collision validation
-              const PADDLE_HIT_COOLDOWN_TICKS = 3;
               const TOP_NORMAL_THRESHOLD = -0.5;
               const normalY = event.normal.y ?? 0;
 
@@ -3226,14 +3226,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 break;
               }
 
-              // Check 5: Cooldown - prevent repeated hits
+              // Check 5: Cooldown - prevent repeated hits (millisecond-based)
+              const now = performance.now();
               if (
-                result.ball.lastHitTick !== undefined &&
-                frameTick - result.ball.lastHitTick < PADDLE_HIT_COOLDOWN_TICKS
+                result.ball.lastPaddleHitTime !== undefined &&
+                now - result.ball.lastPaddleHitTime < PHYSICS_CONFIG.PADDLE_HIT_COOLDOWN_MS
               ) {
                 if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
                   console.log(
-                    `[Collision Debug] PADDLE REJECTED: cooldown (${frameTick - result.ball.lastHitTick} < ${PADDLE_HIT_COOLDOWN_TICKS} ticks)`,
+                    `[Collision Debug] PADDLE REJECTED: cooldown (${(now - result.ball.lastPaddleHitTime).toFixed(1)}ms < ${PHYSICS_CONFIG.PADDLE_HIT_COOLDOWN_MS}ms)`,
                   );
                 }
                 break;
@@ -3245,7 +3246,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               const speedBefore = Math.sqrt(result.ball.dx * result.ball.dx + result.ball.dy * result.ball.dy);
               result.ball.dx = speedBefore * Math.sin(angle);
               result.ball.dy = -Math.abs(speedBefore * Math.cos(angle));
-              result.ball.lastHitTick = frameTick; // Set cooldown
+              result.ball.lastPaddleHitTime = performance.now(); // Set cooldown
 
               if (!isDuplicate) {
                 if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
@@ -3292,7 +3293,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             case "paddleCorner": {
               // Paddle corner collision - natural reflection already applied by CCD
               // Just need to validate and play sound
-              const PADDLE_HIT_COOLDOWN_TICKS = 3;
 
               // Check: Ball must be moving into the paddle corner (dot < 0)
               const dotCorner = result.ball.dx * event.normal.x + result.ball.dy * event.normal.y;
@@ -3305,21 +3305,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 break;
               }
 
-              // Check: Cooldown - prevent repeated hits
+              // Check: Cooldown - prevent repeated hits (millisecond-based)
+              const nowCorner = performance.now();
               if (
-                result.ball.lastHitTick !== undefined &&
-                frameTick - result.ball.lastHitTick < PADDLE_HIT_COOLDOWN_TICKS
+                result.ball.lastPaddleHitTime !== undefined &&
+                nowCorner - result.ball.lastPaddleHitTime < PHYSICS_CONFIG.PADDLE_HIT_COOLDOWN_MS
               ) {
                 if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
                   console.log(
-                    `[Collision Debug] PADDLE CORNER REJECTED: cooldown (${frameTick - result.ball.lastHitTick} < ${PADDLE_HIT_COOLDOWN_TICKS} ticks)`,
+                    `[Collision Debug] PADDLE CORNER REJECTED: cooldown (${(nowCorner - result.ball.lastPaddleHitTime).toFixed(1)}ms < ${PHYSICS_CONFIG.PADDLE_HIT_COOLDOWN_MS}ms)`,
                   );
                 }
                 break;
               }
 
               // CCD already applied natural reflection - just set cooldown
-              result.ball.lastHitTick = frameTick;
+              result.ball.lastPaddleHitTime = nowCorner;
 
               if (!isDuplicate) {
                 if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
