@@ -266,7 +266,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [disableAutoZoom, setDisableAutoZoom] = useState(false);
   const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
   const [enemiesKilled, setEnemiesKilled] = useState(0);
-  const [lastPaddleHitTime, setLastPaddleHitTime] = useState(0);
   const [screenShake, setScreenShake] = useState(0);
   const screenShakeStartRef = useRef<number | null>(null);
 
@@ -3298,7 +3297,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   soundManager.playBounce();
                   lastWallBounceSfxMs.current = now;
                 }
-                setLastPaddleHitTime(now);
                 // Clear trajectory history - paddle hit breaks any potential loop
                 trajectoryHistoryRef.current = [];
               }
@@ -3374,7 +3372,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   soundManager.playBounce();
                   lastWallBounceSfxMs.current = now;
                 }
-                setLastPaddleHitTime(now);
                 // Clear trajectory history - paddle hit breaks any potential loop
                 trajectoryHistoryRef.current = [];
               }
@@ -6585,40 +6582,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       trajectoryHistoryRef.current = []; // Clear history after diversion
     }
 
-    // 25s fallback - enemy kamikaze (kept as last resort)
-    if (lastPaddleHitTime > 0) {
-      const timeSinceHit = (Date.now() - lastPaddleHitTime) / 1000;
-      if (timeSinceHit >= 25 && enemies.length > 0) {
-        const activeBall = balls.find((b) => !b.waitingToLaunch);
-        if (activeBall) {
-          let closestEnemy = enemies[0];
-          let minDistance = Infinity;
-          for (const enemy of enemies) {
-            const dx = enemy.x + enemy.width / 2 - activeBall.x;
-            const dy = enemy.y + enemy.height / 2 - activeBall.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance < minDistance) {
-              minDistance = distance;
-              closestEnemy = enemy;
-            }
-          }
-
-          setEnemies((prev) =>
-            prev.map((e) =>
-              e.id === closestEnemy.id
-                ? {
-                    ...e,
-                    dx: ((activeBall.x - (e.x + e.width / 2)) / minDistance) * e.speed * 3,
-                    dy: ((activeBall.y - (e.y + e.height / 2)) / minDistance) * e.speed * 3,
-                  }
-                : e,
-            ),
-          );
-          toast.warning("Enemy kamikaze attack!");
-          setLastPaddleHitTime(Date.now());
-        }
-      }
-    }
 
     // ═══ PHASE 1: End Frame Profiling ═══
     frameProfiler.endFrame();
@@ -6660,7 +6623,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     score,
     isHighScore,
     explosions,
-    lastPaddleHitTime,
     lastScoreMilestone,
     updateFps,
     debugSettings,
