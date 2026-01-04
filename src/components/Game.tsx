@@ -1249,24 +1249,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Create random letter assignments for a new game
   const createRandomLetterAssignments = useCallback((startLevel: number = 1) => {
-    const allAvailableLevels = [4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19, 20];
+    // All levels where letters can drop from enemies
+    const allAvailableLevels = [4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19];
 
     // Filter to only include levels >= starting level
     const availableLevels = allAvailableLevels.filter((lvl) => lvl >= startLevel);
 
     const allLetters: BonusLetterType[] = ["Q", "U", "M", "R", "A", "N"];
 
-    // Shuffle letters
+    // Shuffle letters for variety
     const shuffledLetters = [...allLetters].sort(() => Math.random() - 0.5);
 
-    // Shuffle available levels and pick up to 6 random ones
-    const shuffledLevels = [...availableLevels].sort(() => Math.random() - 0.5);
-    const selectedLevels = shuffledLevels.slice(0, Math.min(6, shuffledLevels.length));
-
-    // Assign letters to randomly selected levels
+    // Assign letters to ALL available levels (cycling through the 6 letters)
     const assignments: Record<number, BonusLetterType> = {};
-    for (let i = 0; i < selectedLevels.length; i++) {
-      assignments[selectedLevels[i]] = shuffledLetters[i];
+    for (let i = 0; i < availableLevels.length; i++) {
+      // Cycle through letters: level 0 gets letter 0, level 6 gets letter 0 again, etc.
+      assignments[availableLevels[i]] = shuffledLetters[i % shuffledLetters.length];
     }
 
     return assignments;
