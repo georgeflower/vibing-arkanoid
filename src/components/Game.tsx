@@ -642,6 +642,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   
   // Track bricks destroyed this level for level 1 multiball rule
   const bricksDestroyedThisLevelRef = useRef(0);
+  
+  // Track when boss victory overlay was activated (for minimum display time)
+  const bossVictoryOverlayActivatedAtRef = useRef<number>(0);
 
   // Mega Boss: prevent accidental life loss when ball is trapped (same/next tick race)
   const megaBossTrapJustHappenedRef = useRef<number>(0);
@@ -989,6 +992,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setBossesKilled((k) => k + 1);
         setBossActive(false);
         setBossDefeatedTransitioning(true);
+        bossVictoryOverlayActivatedAtRef.current = Date.now();
         setBossVictoryOverlayActive(true); // Show victory celebration
         // Clean up game entities
         setBalls([]);
@@ -1025,6 +1029,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setBossesKilled((k) => k + 1);
         setBossActive(false);
         setBossDefeatedTransitioning(true);
+        bossVictoryOverlayActivatedAtRef.current = Date.now();
         setBossVictoryOverlayActive(true); // Show victory celebration
         // Clean up game entities
         setBalls([]);
@@ -1083,6 +1088,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBossActive(false);
           setBossesKilled((k) => k + 1);
           setBossDefeatedTransitioning(true);
+          bossVictoryOverlayActivatedAtRef.current = Date.now();
           setBossVictoryOverlayActive(true); // Show victory celebration
           // Clean up game entities
           setBalls([]);
@@ -1248,25 +1254,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, []);
 
   // Create random letter assignments for a new game
+  // Letters are assigned to ALL eligible levels (cycling through the 6 letters)
   const createRandomLetterAssignments = useCallback((startLevel: number = 1) => {
-    const allAvailableLevels = [4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19, 20];
+    // All levels where letters can drop from enemies
+    const allAvailableLevels = [4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19];
 
     // Filter to only include levels >= starting level
     const availableLevels = allAvailableLevels.filter((lvl) => lvl >= startLevel);
 
     const allLetters: BonusLetterType[] = ["Q", "U", "M", "R", "A", "N"];
 
-    // Shuffle letters
+    // Shuffle letters for variety
     const shuffledLetters = [...allLetters].sort(() => Math.random() - 0.5);
 
-    // Shuffle available levels and pick up to 6 random ones
-    const shuffledLevels = [...availableLevels].sort(() => Math.random() - 0.5);
-    const selectedLevels = shuffledLevels.slice(0, Math.min(6, shuffledLevels.length));
-
-    // Assign letters to randomly selected levels
+    // Assign letters to ALL available levels (cycling through the 6 letters)
     const assignments: Record<number, BonusLetterType> = {};
-    for (let i = 0; i < selectedLevels.length; i++) {
-      assignments[selectedLevels[i]] = shuffledLetters[i];
+    for (let i = 0; i < availableLevels.length; i++) {
+      // Cycle through letters: level 0 gets letter 0, level 6 gets letter 0 again, etc.
+      assignments[availableLevels[i]] = shuffledLetters[i % shuffledLetters.length];
     }
 
     return assignments;
@@ -1821,9 +1826,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (!waitingBall || gameState !== "playing") return;
 
-    // Dismiss boss victory overlay when launching ball
+    // Dismiss boss victory overlay when launching ball (with minimum display time)
     if (bossVictoryOverlayActive) {
-      setBossVictoryOverlayActive(false);
+      const timeSinceActivation = Date.now() - bossVictoryOverlayActivatedAtRef.current;
+      const MIN_OVERLAY_DISPLAY_MS = 500; // Minimum 500ms display time
+      
+      if (timeSinceActivation >= MIN_OVERLAY_DISPLAY_MS) {
+        setBossVictoryOverlayActive(false);
+      }
     }
 
     setShowInstructions(false);
