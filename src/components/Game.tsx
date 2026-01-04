@@ -2772,6 +2772,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     setBossesKilled((k) => k + 1);
                     setBossActive(false);
                     setBossDefeatedTransitioning(true);
+                    bossVictoryOverlayActivatedAtRef.current = Date.now();
                     setBossVictoryOverlayActive(true); // Show victory celebration
                     // Clean up game entities
                     setBalls([]);
@@ -2839,6 +2840,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       setBossesKilled((k) => k + 1);
                       setBossActive(false);
                       setBossDefeatedTransitioning(true);
+                      bossVictoryOverlayActivatedAtRef.current = Date.now();
                       setBossVictoryOverlayActive(true); // Show victory celebration
                       // Clean up game entities
                       setBalls([]);
@@ -2948,6 +2950,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       setBossActive(false);
                       setBossesKilled((k) => k + 1);
                       setBossDefeatedTransitioning(true);
+                      bossVictoryOverlayActivatedAtRef.current = Date.now();
                       setBossVictoryOverlayActive(true); // Show victory celebration
                       // Clean up game entities
                       setBalls([]);
