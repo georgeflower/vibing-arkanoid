@@ -15,7 +15,6 @@ export interface DebugSettings {
   enableDetailedFrameLogging: boolean;
   enablePaddleLogging: boolean;
   enableBossLogging: boolean;
-  enableBossVictoryOverlayLogging: boolean;
   enableFrameProfilerLogging: boolean;
   enableScreenShakeLogging: boolean;
   enablePointerLockLogging: boolean;
@@ -42,7 +41,6 @@ const DEFAULT_SETTINGS: DebugSettings = {
   enableDetailedFrameLogging: false, // Off by default (verbose)
   enablePaddleLogging: false,
   enableBossLogging: false,
-  enableBossVictoryOverlayLogging: false, // Boss victory overlay state logging
   enableFrameProfilerLogging: false,
   enableScreenShakeLogging: false, // Screen shake logging off by default
   enablePointerLockLogging: false, // Pointer lock logging off by default
