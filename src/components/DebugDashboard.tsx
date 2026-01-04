@@ -157,6 +157,12 @@ export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }:
               onChange={() => onToggle("enableLagLogging")}
               description="Log frame gap lag events (>50ms)"
             />
+            <DebugToggle
+              label="Boss Victory Overlay Logging"
+              checked={settings.enableBossVictoryOverlayLogging}
+              onChange={() => onToggle("enableBossVictoryOverlayLogging")}
+              description="Log boss victory overlay state changes"
+            />
           </div>
         </section>
 

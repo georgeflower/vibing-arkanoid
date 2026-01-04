@@ -1010,7 +1010,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Stop boss music and resume background music
         soundManager.stopBossMusic();
         soundManager.resumeBackgroundMusic();
-        setTimeout(() => nextLevel(), 3000);
+        // Don't auto-advance - let overlay onComplete handle it
       } else if (bossType === "sphere") {
         // Sphere phase 2 defeat
         soundManager.playExplosion();
@@ -1054,7 +1054,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Stop boss music and resume background music
         soundManager.stopBossMusic();
         soundManager.resumeBackgroundMusic();
-        setTimeout(() => nextLevel(), 3000);
+        // Don't auto-advance - let overlay onComplete handle it
       }
     },
     // Resurrected boss defeat callback
@@ -1120,7 +1120,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Stop boss music and resume background music
           soundManager.stopBossMusic();
           soundManager.resumeBackgroundMusic();
-          setTimeout(() => nextLevel(), 3000);
+          // Don't auto-advance - let overlay onComplete handle it
         }
 
         return remaining;
@@ -1669,6 +1669,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     resetQualityLockout,
   ]);
   const nextLevel = useCallback(() => {
+    // Clear any active boss victory overlay when transitioning
+    setBossVictoryOverlayActive(false);
+    
     // Stop game loop before starting new level
     if (gameLoopRef.current) {
       gameLoopRef.current.stop();
@@ -2832,7 +2835,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     soundManager.stopBossMusic();
                     soundManager.resumeBackgroundMusic();
                     // Proceed to next level after 3 seconds
-                    setTimeout(() => nextLevel(), 3000);
+                    // Don't auto-advance - let overlay onComplete handle it
                     return null;
                   } else if (prev.type === "sphere") {
                     // Sphere boss - check phase
@@ -2906,7 +2909,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       // Stop boss music and resume background music
                       soundManager.stopBossMusic();
                       soundManager.resumeBackgroundMusic();
-                      setTimeout(() => nextLevel(), 3000);
+                      // Don't auto-advance - let overlay onComplete handle it
                       return null;
                     }
                   } else if (prev.type === "pyramid") {
@@ -3023,7 +3026,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       // Stop boss music and resume background music
                       soundManager.stopBossMusic();
                       soundManager.resumeBackgroundMusic();
-                      setTimeout(() => nextLevel(), 3000);
+                      // Don't auto-advance - let overlay onComplete handle it
                     }
                   } else {
                     toast.info(`PYRAMID: ${newHealth} HP`);
@@ -8099,7 +8102,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   {/* Boss Victory Celebration Overlay */}
                   <BossVictoryOverlay
                     active={bossVictoryOverlayActive}
-                    onComplete={() => setBossVictoryOverlayActive(false)}
+                    onComplete={() => {
+                      setBossVictoryOverlayActive(false);
+                      nextLevel();
+                    }}
                   />
 
                   {/* Pause Overlay - only show when NOT in tutorial mode */}
