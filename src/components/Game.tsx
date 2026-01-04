@@ -994,6 +994,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setBossDefeatedTransitioning(true);
         bossVictoryOverlayActivatedAtRef.current = Date.now();
         setBossVictoryOverlayActive(true); // Show victory celebration
+        if (debugSettings.enableBossVictoryOverlayLogging) {
+          debugLogger.log('[BOSS_VICTORY_OVERLAY] Cube boss defeated by turret - overlay activated', {
+            bossType: 'cube',
+            killMethod: 'turret',
+            activatedAt: bossVictoryOverlayActivatedAtRef.current
+          });
+        }
         // Clean up game entities
         setBalls([]);
         setEnemies([]);
@@ -1031,6 +1038,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setBossDefeatedTransitioning(true);
         bossVictoryOverlayActivatedAtRef.current = Date.now();
         setBossVictoryOverlayActive(true); // Show victory celebration
+        if (debugSettings.enableBossVictoryOverlayLogging) {
+          debugLogger.log('[BOSS_VICTORY_OVERLAY] Sphere boss defeated by turret - overlay activated', {
+            bossType: 'sphere',
+            killMethod: 'turret',
+            activatedAt: bossVictoryOverlayActivatedAtRef.current
+          });
+        }
         // Clean up game entities
         setBalls([]);
         setEnemies([]);
@@ -1090,6 +1104,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBossDefeatedTransitioning(true);
           bossVictoryOverlayActivatedAtRef.current = Date.now();
           setBossVictoryOverlayActive(true); // Show victory celebration
+          if (debugSettings.enableBossVictoryOverlayLogging) {
+            debugLogger.log('[BOSS_VICTORY_OVERLAY] Pyramid boss defeated by turret - overlay activated', {
+              bossType: 'pyramid',
+              killMethod: 'turret',
+              activatedAt: bossVictoryOverlayActivatedAtRef.current
+            });
+          }
           // Clean up game entities
           setBalls([]);
           setEnemies([]);
@@ -1832,7 +1853,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const timeSinceActivation = Date.now() - bossVictoryOverlayActivatedAtRef.current;
       const MIN_OVERLAY_DISPLAY_MS = 500; // Minimum 500ms display time
       
+      if (debugSettings.enableBossVictoryOverlayLogging) {
+        debugLogger.log('[BOSS_VICTORY_OVERLAY] Click/touch while overlay active', {
+          overlayActive: true,
+          timeSinceActivation,
+          minDisplayTime: MIN_OVERLAY_DISPLAY_MS,
+          willDismiss: timeSinceActivation >= MIN_OVERLAY_DISPLAY_MS
+        });
+      }
+      
       if (timeSinceActivation >= MIN_OVERLAY_DISPLAY_MS) {
+        if (debugSettings.enableBossVictoryOverlayLogging) {
+          debugLogger.log('[BOSS_VICTORY_OVERLAY] Dismissing overlay - next click will launch ball');
+        }
         setBossVictoryOverlayActive(false);
       }
       return; // Don't launch ball - require a separate click
@@ -1865,6 +1898,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Track shot fired
     setTotalShots((prev) => prev + 1);
 
+    if (debugSettings.enableBossVictoryOverlayLogging) {
+      debugLogger.log('[BOSS_VICTORY_OVERLAY] Launching ball', {
+        overlayActive: bossVictoryOverlayActive,
+        level,
+        launchAngle
+      });
+    }
+
     setBalls((prev) =>
       prev.map((ball) => {
         if (ball.waitingToLaunch) {
@@ -1880,7 +1921,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         return ball;
       }),
     );
-  }, [balls, gameState, launchAngle, bossVictoryOverlayActive]);
+  }, [balls, gameState, launchAngle, bossVictoryOverlayActive, debugSettings.enableBossVictoryOverlayLogging, level]);
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
@@ -2774,6 +2815,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     setBossDefeatedTransitioning(true);
                     bossVictoryOverlayActivatedAtRef.current = Date.now();
                     setBossVictoryOverlayActive(true); // Show victory celebration
+                    if (debugSettings.enableBossVictoryOverlayLogging) {
+                      debugLogger.log('[BOSS_VICTORY_OVERLAY] Cube boss defeated by ball - overlay activated', {
+                        bossType: 'cube',
+                        killMethod: 'player_ball',
+                        activatedAt: bossVictoryOverlayActivatedAtRef.current
+                      });
+                    }
                     // Clean up game entities
                     setBalls([]);
                     setEnemies([]);
@@ -2842,6 +2890,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       setBossDefeatedTransitioning(true);
                       bossVictoryOverlayActivatedAtRef.current = Date.now();
                       setBossVictoryOverlayActive(true); // Show victory celebration
+                      if (debugSettings.enableBossVictoryOverlayLogging) {
+                        debugLogger.log('[BOSS_VICTORY_OVERLAY] Sphere boss defeated by ball - overlay activated', {
+                          bossType: 'sphere',
+                          killMethod: 'player_ball',
+                          activatedAt: bossVictoryOverlayActivatedAtRef.current
+                        });
+                      }
                       // Clean up game entities
                       setBalls([]);
                       setEnemies([]);
@@ -2952,6 +3007,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       setBossDefeatedTransitioning(true);
                       bossVictoryOverlayActivatedAtRef.current = Date.now();
                       setBossVictoryOverlayActive(true); // Show victory celebration
+                      if (debugSettings.enableBossVictoryOverlayLogging) {
+                        debugLogger.log('[BOSS_VICTORY_OVERLAY] Pyramid boss defeated by ball - overlay activated', {
+                          bossType: 'pyramid',
+                          killMethod: 'player_ball',
+                          activatedAt: bossVictoryOverlayActivatedAtRef.current
+                        });
+                      }
                       // Clean up game entities
                       setBalls([]);
                       setEnemies([]);
