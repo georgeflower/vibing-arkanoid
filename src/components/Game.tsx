@@ -1827,6 +1827,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (!waitingBall || gameState !== "playing") return;
 
     // Dismiss boss victory overlay when launching ball (with minimum display time)
+    // First click only dismisses the overlay, second click launches the ball
     if (bossVictoryOverlayActive) {
       const timeSinceActivation = Date.now() - bossVictoryOverlayActivatedAtRef.current;
       const MIN_OVERLAY_DISPLAY_MS = 500; // Minimum 500ms display time
@@ -1834,6 +1835,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (timeSinceActivation >= MIN_OVERLAY_DISPLAY_MS) {
         setBossVictoryOverlayActive(false);
       }
+      return; // Don't launch ball - require a separate click
     }
 
     setShowInstructions(false);
