@@ -4238,7 +4238,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             });
           } else {
             // Reset ball and continue
-            const baseSpeed = 5.175;
+            const baseSpeed = 4.5;
             const initialAngle = (-20 * Math.PI) / 180;
             const resetBall: Ball = {
               x: SCALED_CANVAS_WIDTH / 2,
@@ -4934,7 +4934,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               });
             } else {
               // Reset ball and clear power-ups, but wait for click to continue
-              const baseSpeed = 5.175; // 50% faster base speed
+              const baseSpeed = 4.5; // Match fresh game start speed
               const resetBall: Ball = {
                 x: SCALED_CANVAS_WIDTH / 2,
                 y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
@@ -7243,7 +7243,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     paddleXRef.current = initialPaddleX;
 
     // Initialize ball with level speed - waiting to launch
-    const baseSpeed = 5.175 * Math.min(levelSpeedMultiplier, 1.75);
+    const baseSpeed = 4.5 * Math.min(levelSpeedMultiplier, 1.75);
     const initialBall: Ball = {
       x: SCALED_CANVAS_WIDTH / 2,
       y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
