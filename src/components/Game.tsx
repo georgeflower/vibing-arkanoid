@@ -7742,10 +7742,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     />
 
                     {/* Boss Power-Up Duration Timers - Mobile responsive positioning */}
-                    {paddle && (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime) && (
+                    {paddle && (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
                       <div
-                        className="absolute inset-0 pointer-events-none"
-                        style={{ transform: `scale(${gameScale})`, transformOrigin: "top center" }}
+                        className="absolute pointer-events-none"
+                        style={{
+                          top: 0,
+                          left: 0,
+                          width: `${SCALED_CANVAS_WIDTH}px`,
+                          height: isMobileDevice ? `${SCALED_CANVAS_HEIGHT + 100}px` : `${SCALED_CANVAS_HEIGHT}px`,
+                          transform: `scale(${gameScale})`,
+                          transformOrigin: "top center",
+                          overflow: "visible",
+                        }}
                       >
                         {bossStunnerEndTime && Date.now() < bossStunnerEndTime && (
                           <div
