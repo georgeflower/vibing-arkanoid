@@ -7741,28 +7741,27 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       ballReleaseHighlight={ballReleaseHighlight}
                     />
 
-                    {/* Boss Power-Up Duration Timers - Mobile responsive positioning */}
-                    {paddle && (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
+                    {/* Boss Power-Up Duration Timers - Desktop only (paddle-relative positioning) */}
+                    {!isMobileDevice && paddle && (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
                       <div
                         className="absolute pointer-events-none"
                         style={{
                           top: 0,
                           left: 0,
                           width: `${SCALED_CANVAS_WIDTH}px`,
-                          height: isMobileDevice ? `${SCALED_CANVAS_HEIGHT + 100}px` : `${SCALED_CANVAS_HEIGHT}px`,
-                          overflow: "visible",
+                          height: `${SCALED_CANVAS_HEIGHT}px`,
                         }}
                       >
                         {bossStunnerEndTime && Date.now() < bossStunnerEndTime && (
                           <div
                             className="absolute retro-pixel-text"
                             style={{
-                              left: isMobileDevice ? `${SCALED_CANVAS_WIDTH / 2}px` : `${paddle.x + paddle.width / 2}px`,
-                              top: isMobileDevice ? `${SCALED_CANVAS_HEIGHT + 15}px` : `${paddle.y - 45}px`,
+                              left: `${paddle.x + paddle.width / 2}px`,
+                              top: `${paddle.y - 45}px`,
                               transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                               color: `hsl(${Math.max(0, 50 - (1 - (bossStunnerEndTime - Date.now()) / 5000) * 50)}, 100%, 50%)`,
                               textShadow: `0 0 10px currentColor`,
-                              fontSize: isMobileDevice ? "10px" : "12px",
+                              fontSize: "12px",
                               fontWeight: "bold",
                             }}
                           >
@@ -7773,12 +7772,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           <div
                             className="absolute retro-pixel-text"
                             style={{
-                              left: isMobileDevice ? `${SCALED_CANVAS_WIDTH / 2}px` : `${paddle.x + paddle.width / 2}px`,
-                              top: isMobileDevice ? `${SCALED_CANVAS_HEIGHT + 30}px` : `${paddle.y - 60}px`,
+                              left: `${paddle.x + paddle.width / 2}px`,
+                              top: `${paddle.y - 60}px`,
                               transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                               color: `hsl(${Math.max(0, 50 - (1 - (reflectShieldEndTime - Date.now()) / 15000) * 50)}, 100%, 50%)`,
                               textShadow: `0 0 10px currentColor`,
-                              fontSize: isMobileDevice ? "10px" : "12px",
+                              fontSize: "12px",
                               fontWeight: "bold",
                             }}
                           >
@@ -7789,12 +7788,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           <div
                             className="absolute retro-pixel-text"
                             style={{
-                              left: isMobileDevice ? `${SCALED_CANVAS_WIDTH / 2}px` : `${paddle.x + paddle.width / 2}px`,
-                              top: isMobileDevice ? `${SCALED_CANVAS_HEIGHT + 45}px` : `${paddle.y - 75}px`,
+                              left: `${paddle.x + paddle.width / 2}px`,
+                              top: `${paddle.y - 75}px`,
                               transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                               color: `hsl(${Math.max(0, 50 - (1 - (homingBallEndTime - Date.now()) / 8000) * 50)}, 100%, 50%)`,
                               textShadow: `0 0 10px currentColor`,
-                              fontSize: isMobileDevice ? "10px" : "12px",
+                              fontSize: "12px",
                               fontWeight: "bold",
                             }}
                           >
@@ -7805,12 +7804,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           <div
                             className="absolute retro-pixel-text"
                             style={{
-                              left: isMobileDevice ? `${SCALED_CANVAS_WIDTH / 2}px` : `${paddle.x + paddle.width / 2}px`,
-                              top: isMobileDevice ? `${SCALED_CANVAS_HEIGHT + 60}px` : `${paddle.y - 90}px`,
+                              left: `${paddle.x + paddle.width / 2}px`,
+                              top: `${paddle.y - 90}px`,
                               transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                               color: `hsl(${Math.max(0, 30 - (1 - (fireballEndTime - Date.now()) / FIREBALL_DURATION) * 30)}, 100%, 50%)`,
                               textShadow: `0 0 10px currentColor`,
-                              fontSize: isMobileDevice ? "10px" : "12px",
+                              fontSize: "12px",
                               fontWeight: "bold",
                             }}
                           >
@@ -7820,27 +7819,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       </div>
                     )}
 
-                    {/* Bonus Letter Floating Text Tutorial */}
-                    {bonusLetterFloatingText?.active && bonusLetters.length > 0 && (
-                      <div
-                        className="absolute inset-0 pointer-events-none z-[150]"
-                        style={{
-                          transform: `scale(${gameScale})`,
-                          transformOrigin: "top center",
-                        }}
-                      >
+                    {/* Bonus Letter Floating Text Tutorial - Desktop only */}
+                    {!isMobileDevice && bonusLetterFloatingText?.active && bonusLetters.length > 0 && (
+                      <div className="absolute inset-0 pointer-events-none z-[150]">
                         {(() => {
                           const letter = bonusLetters[0];
                           const elapsed = Date.now() - bonusLetterFloatingText.startTime;
-                          const duration = 4000; // 4 seconds
+                          const duration = 4000;
 
-                          // Auto-dismiss after duration
                           if (elapsed >= duration) {
                             setTimeout(() => setBonusLetterFloatingText(null), 0);
                             return null;
                           }
 
-                          // Zoom in/out animation
                           const zoomPhase = (elapsed / 500) * Math.PI;
                           const zoomScale = 1 + Math.sin(zoomPhase) * 0.3;
                           const opacity =
@@ -7850,12 +7841,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             <div
                               className="absolute retro-pixel-text text-center whitespace-nowrap"
                               style={{
-                                left: isMobileDevice ? `${SCALED_CANVAS_WIDTH / 2}px` : `${letter.x + letter.width / 2}px`,
-                                top: isMobileDevice ? `${SCALED_CANVAS_HEIGHT + 80}px` : `${letter.y - 35}px`,
+                                left: `${letter.x + letter.width / 2}px`,
+                                top: `${letter.y - 35}px`,
                                 transform: `translateX(-50%) scale(${zoomScale})`,
                                 color: "hsl(48, 100%, 60%)",
                                 textShadow: "0 0 10px hsl(48, 100%, 60%), 0 0 20px hsl(48, 100%, 50%)",
-                                fontSize: isMobileDevice ? "10px" : "14px",
+                                fontSize: "14px",
                                 fontWeight: "bold",
                                 opacity,
                               }}
@@ -8390,6 +8381,92 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   </div>
                 </div>
               </div>
+
+              {/* Mobile Power-Up Timers - Outside scaled container for correct positioning */}
+              {isMobileDevice && paddle && (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
+                <div className="flex justify-center items-center gap-3 py-2 retro-pixel-text text-xs font-bold pointer-events-none">
+                  {bossStunnerEndTime && Date.now() < bossStunnerEndTime && (
+                    <span
+                      style={{
+                        color: `hsl(${Math.max(0, 50 - (1 - (bossStunnerEndTime - Date.now()) / 5000) * 50)}, 100%, 50%)`,
+                        textShadow: "0 0 8px currentColor",
+                        transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
+                        display: "inline-block",
+                      }}
+                    >
+                      STUN: {((bossStunnerEndTime - Date.now()) / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                  {reflectShieldEndTime && Date.now() < reflectShieldEndTime && (
+                    <span
+                      style={{
+                        color: `hsl(${Math.max(0, 50 - (1 - (reflectShieldEndTime - Date.now()) / 15000) * 50)}, 100%, 50%)`,
+                        textShadow: "0 0 8px currentColor",
+                        transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
+                        display: "inline-block",
+                      }}
+                    >
+                      REFLECT: {((reflectShieldEndTime - Date.now()) / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                  {homingBallEndTime && Date.now() < homingBallEndTime && (
+                    <span
+                      style={{
+                        color: `hsl(${Math.max(0, 50 - (1 - (homingBallEndTime - Date.now()) / 8000) * 50)}, 100%, 50%)`,
+                        textShadow: "0 0 8px currentColor",
+                        transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
+                        display: "inline-block",
+                      }}
+                    >
+                      HOMING: {((homingBallEndTime - Date.now()) / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                  {fireballEndTime && Date.now() < fireballEndTime && (
+                    <span
+                      style={{
+                        color: `hsl(${Math.max(0, 30 - (1 - (fireballEndTime - Date.now()) / FIREBALL_DURATION) * 30)}, 100%, 50%)`,
+                        textShadow: "0 0 8px currentColor",
+                        transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
+                        display: "inline-block",
+                      }}
+                    >
+                      FIREBALL: {((fireballEndTime - Date.now()) / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Mobile Bonus Letter Tutorial - Outside scaled container */}
+              {isMobileDevice && bonusLetterFloatingText?.active && bonusLetters.length > 0 && (
+                (() => {
+                  const elapsed = Date.now() - bonusLetterFloatingText.startTime;
+                  const duration = 4000;
+
+                  if (elapsed >= duration) {
+                    setTimeout(() => setBonusLetterFloatingText(null), 0);
+                    return null;
+                  }
+
+                  const zoomPhase = (elapsed / 500) * Math.PI;
+                  const zoomScale = 1 + Math.sin(zoomPhase) * 0.3;
+                  const opacity =
+                    elapsed < 500 ? elapsed / 500 : elapsed > duration - 500 ? (duration - elapsed) / 500 : 1;
+
+                  return (
+                    <div
+                      className="flex justify-center py-1 retro-pixel-text text-xs font-bold pointer-events-none"
+                      style={{
+                        color: "hsl(48, 100%, 60%)",
+                        textShadow: "0 0 10px hsl(48, 100%, 60%), 0 0 20px hsl(48, 100%, 50%)",
+                        transform: `scale(${zoomScale})`,
+                        opacity,
+                      }}
+                    >
+                      Catch all letters for megabonus!
+                    </div>
+                  );
+                })()
+              )}
 
               {/* Compact HUD Overlay - Shown when frames are hidden */}
               {!framesVisible && (
