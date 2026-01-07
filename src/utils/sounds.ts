@@ -1007,8 +1007,16 @@ class SoundManager {
     this.musicEnabled = !this.musicEnabled;
     if (!this.musicEnabled) {
       this.pauseBackgroundMusic();
+      // Also pause boss music if playing
+      if (this.bossMusic) {
+        this.bossMusic.pause();
+      }
     } else {
       this.playBackgroundMusic();
+      // Resume boss music if it exists (was paused mid-boss fight)
+      if (this.bossMusic) {
+        this.bossMusic.play().catch(() => {});
+      }
     }
     return this.musicEnabled;
   }

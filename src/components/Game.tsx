@@ -7751,11 +7751,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           <div
                             className="absolute retro-pixel-text"
                             style={{
-                              left: isMobileDevice ? `${paddle.x - 10}px` : `${paddle.x + paddle.width / 2}px`,
-                              top: isMobileDevice ? `${paddle.y - 22}px` : `${paddle.y - 45}px`,
-                              transform: isMobileDevice
-                                ? `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`
-                                : `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              left: isMobileDevice ? `${SCALED_CANVAS_WIDTH / 2}px` : `${paddle.x + paddle.width / 2}px`,
+                              top: isMobileDevice ? `${SCALED_CANVAS_HEIGHT + 15}px` : `${paddle.y - 45}px`,
+                              transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                               color: `hsl(${Math.max(0, 50 - (1 - (bossStunnerEndTime - Date.now()) / 5000) * 50)}, 100%, 50%)`,
                               textShadow: `0 0 10px currentColor`,
                               fontSize: isMobileDevice ? "10px" : "12px",
@@ -7769,11 +7767,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           <div
                             className="absolute retro-pixel-text"
                             style={{
-                              left: isMobileDevice ? `${paddle.x - 10}px` : `${paddle.x + paddle.width / 2}px`,
-                              top: isMobileDevice ? `${paddle.y - 34}px` : `${paddle.y - 60}px`,
-                              transform: isMobileDevice
-                                ? `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`
-                                : `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              left: isMobileDevice ? `${SCALED_CANVAS_WIDTH / 2}px` : `${paddle.x + paddle.width / 2}px`,
+                              top: isMobileDevice ? `${SCALED_CANVAS_HEIGHT + 30}px` : `${paddle.y - 60}px`,
+                              transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                               color: `hsl(${Math.max(0, 50 - (1 - (reflectShieldEndTime - Date.now()) / 15000) * 50)}, 100%, 50%)`,
                               textShadow: `0 0 10px currentColor`,
                               fontSize: isMobileDevice ? "10px" : "12px",
@@ -7787,11 +7783,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           <div
                             className="absolute retro-pixel-text"
                             style={{
-                              left: isMobileDevice ? `${paddle.x - 10}px` : `${paddle.x + paddle.width / 2}px`,
-                              top: isMobileDevice ? `${paddle.y - 46}px` : `${paddle.y - 75}px`,
-                              transform: isMobileDevice
-                                ? `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`
-                                : `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              left: isMobileDevice ? `${SCALED_CANVAS_WIDTH / 2}px` : `${paddle.x + paddle.width / 2}px`,
+                              top: isMobileDevice ? `${SCALED_CANVAS_HEIGHT + 45}px` : `${paddle.y - 75}px`,
+                              transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                               color: `hsl(${Math.max(0, 50 - (1 - (homingBallEndTime - Date.now()) / 8000) * 50)}, 100%, 50%)`,
                               textShadow: `0 0 10px currentColor`,
                               fontSize: isMobileDevice ? "10px" : "12px",
@@ -7805,11 +7799,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           <div
                             className="absolute retro-pixel-text"
                             style={{
-                              left: isMobileDevice ? `${paddle.x - 10}px` : `${paddle.x + paddle.width / 2}px`,
-                              top: isMobileDevice ? `${paddle.y - 58}px` : `${paddle.y - 90}px`,
-                              transform: isMobileDevice
-                                ? `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`
-                                : `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              left: isMobileDevice ? `${SCALED_CANVAS_WIDTH / 2}px` : `${paddle.x + paddle.width / 2}px`,
+                              top: isMobileDevice ? `${SCALED_CANVAS_HEIGHT + 60}px` : `${paddle.y - 90}px`,
+                              transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                               color: `hsl(${Math.max(0, 30 - (1 - (fireballEndTime - Date.now()) / FIREBALL_DURATION) * 30)}, 100%, 50%)`,
                               textShadow: `0 0 10px currentColor`,
                               fontSize: isMobileDevice ? "10px" : "12px",
@@ -7852,8 +7844,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             <div
                               className="absolute retro-pixel-text text-center whitespace-nowrap"
                               style={{
-                                left: `${letter.x + letter.width / 2}px`,
-                                top: `${letter.y - 35}px`,
+                                left: isMobileDevice ? `${SCALED_CANVAS_WIDTH / 2}px` : `${letter.x + letter.width / 2}px`,
+                                top: isMobileDevice ? `${SCALED_CANVAS_HEIGHT + 80}px` : `${letter.y - 35}px`,
                                 transform: `translateX(-50%) scale(${zoomScale})`,
                                 color: "hsl(48, 100%, 60%)",
                                 textShadow: "0 0 10px hsl(48, 100%, 60%), 0 0 20px hsl(48, 100%, 50%)",
@@ -8169,7 +8161,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 )}
 
                 {/* Music Toggle Button - right side */}
-                {gameState === "playing" && (
+                {gameState === "playing" && isMobileDevice && (
                   <div className="fixed right-4 top-[116px] z-[100]">
                     <button
                       onTouchStart={(e) => {
