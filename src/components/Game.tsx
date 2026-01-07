@@ -7750,8 +7750,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           left: 0,
                           width: `${SCALED_CANVAS_WIDTH}px`,
                           height: isMobileDevice ? `${SCALED_CANVAS_HEIGHT + 100}px` : `${SCALED_CANVAS_HEIGHT}px`,
-                          transform: `scale(${gameScale})`,
-                          transformOrigin: "top center",
                           overflow: "visible",
                         }}
                       >
