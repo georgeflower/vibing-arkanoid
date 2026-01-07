@@ -266,7 +266,7 @@ export const usePowerUps = (
             case "homingBall":
               soundManager.playHomingBallSound();
               onHomingBall?.();
-              toast.success("Homing Ball! Ball seeks the boss for 8 seconds!");
+              toast.success("Magnet! Ball seeks the boss for 8 seconds!");
               break;
 
             case "secondChance":

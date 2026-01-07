@@ -7797,7 +7797,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                               fontWeight: "bold",
                             }}
                           >
-                            HOMING: {((homingBallEndTime - Date.now()) / 1000).toFixed(1)}s
+                            MAGNET: {((homingBallEndTime - Date.now()) / 1000).toFixed(1)}s
                           </div>
                         )}
                         {fireballEndTime && Date.now() < fireballEndTime && (
@@ -8418,7 +8418,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         display: "inline-block",
                       }}
                     >
-                      HOMING: {((homingBallEndTime - Date.now()) / 1000).toFixed(1)}s
+                      MAGNET: {((homingBallEndTime - Date.now()) / 1000).toFixed(1)}s
                     </span>
                   )}
                   {fireballEndTime && Date.now() < fireballEndTime && (
