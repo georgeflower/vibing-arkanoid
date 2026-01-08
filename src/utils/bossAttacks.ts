@@ -1,7 +1,7 @@
 import type { Boss, BossAttack, BossAttackType } from "@/types/game";
 import { BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
 import { soundManager } from "@/utils/sounds";
-import { toast } from "sonner";
+import { debugToast as toast } from "@/utils/debugToast";
 
 export function performBossAttack(
   boss: Boss,

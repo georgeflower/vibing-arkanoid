@@ -3,7 +3,7 @@ import type { Boss, BossAttack, Ball } from "@/types/game";
 import { MEGA_BOSS_CONFIG, CORNER_TARGETS } from "@/constants/megaBossConfig";
 import { MegaBoss, getMegaBossPhase, isMegaBoss } from "./megaBossUtils";
 import { soundManager } from "./sounds";
-import { toast } from "sonner";
+import { debugToast as toast } from "@/utils/debugToast";
 
 export interface DangerBall {
   id: number;
