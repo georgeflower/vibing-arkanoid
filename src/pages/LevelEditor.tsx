@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { levelLayouts } from "@/constants/levelLayouts";
-import { toast } from "sonner";
+import { alwaysToast as toast } from "@/utils/debugToast";
 import crackedBrick3 from "@/assets/brick-cracked-3.png";
 
 type CellValue = boolean | number;

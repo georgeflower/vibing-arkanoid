@@ -8,7 +8,7 @@ import { EndScreen } from "./EndScreen";
 import { GetReadyOverlay } from "./GetReadyOverlay";
 import { BossVictoryOverlay } from "./BossVictoryOverlay";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { debugToast as toast } from "@/utils/debugToast";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useScaledConstants } from "@/hooks/useScaledConstants";

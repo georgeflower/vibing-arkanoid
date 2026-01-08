@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { toast } from 'sonner';
+import { debugToast as toast } from '@/utils/debugToast';
 
 interface UseServiceWorkerUpdateOptions {
   shouldApplyUpdate?: boolean;

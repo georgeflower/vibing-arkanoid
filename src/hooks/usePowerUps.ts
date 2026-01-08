@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import type { PowerUp, PowerUpType, Ball, Paddle, Brick, Difficulty } from "@/types/game";
 import { POWERUP_SIZE, POWERUP_FALL_SPEED, POWERUP_DROP_CHANCE, CANVAS_HEIGHT, FIREBALL_DURATION } from "@/constants/game";
-import { toast } from "sonner";
+import { debugToast as toast } from "@/utils/debugToast";
 import { soundManager } from "@/utils/sounds";
 
 const regularPowerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life", "slowdown", "paddleExtend", "paddleShrink", "shield", "secondChance"];
