@@ -17,6 +17,7 @@ export type Database = {
       high_scores: {
         Row: {
           beat_level_50: boolean | null
+          collected_all_letters: boolean | null
           created_at: string
           difficulty: string | null
           id: string
@@ -27,6 +28,7 @@ export type Database = {
         }
         Insert: {
           beat_level_50?: boolean | null
+          collected_all_letters?: boolean | null
           created_at?: string
           difficulty?: string | null
           id?: string
@@ -37,6 +39,7 @@ export type Database = {
         }
         Update: {
           beat_level_50?: boolean | null
+          collected_all_letters?: boolean | null
           created_at?: string
           difficulty?: string | null
           id?: string

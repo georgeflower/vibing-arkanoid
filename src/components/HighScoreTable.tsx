@@ -1,5 +1,5 @@
 interface HighScoreTableProps {
-  scores: Array<{ name: string; score: number; level: number; difficulty?: string; beatLevel50?: boolean; startingLives?: number }>;
+  scores: Array<{ name: string; score: number; level: number; difficulty?: string; beatLevel50?: boolean; collectedAllLetters?: boolean; startingLives?: number }>;
 }
 
 export const HighScoreTable = ({ scores }: HighScoreTableProps) => {
@@ -17,6 +17,7 @@ export const HighScoreTable = ({ scores }: HighScoreTableProps) => {
             <span className="text-cyan-300 w-8">{index + 1}.</span>
             <span className="text-pink-400 font-bold text-center flex items-center gap-1">
               {entry.beatLevel50 && <span>👑</span>}
+              {entry.collectedAllLetters && <span className="text-yellow-400">⭐</span>}
               <span>{entry.name}</span>
               {entry.difficulty === "godlike" && (
                 <span className="text-red-500 text-[10px] font-bold" style={{ fontFamily: 'monospace' }}>

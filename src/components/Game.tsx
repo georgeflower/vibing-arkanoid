@@ -7161,7 +7161,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setBackgroundFlash(1);
       setTimeout(() => setBackgroundFlash(0), 200);
 
-      await addHighScore(name, score, level, settings.difficulty, beatLevel50Completed, settings.startingLives);
+      await addHighScore(name, score, level, settings.difficulty, beatLevel50Completed, collectedLetters.size === 6, settings.startingLives);
 
       toast.success("🎉 HIGH SCORE SAVED! 🎉", {
         duration: 3000,

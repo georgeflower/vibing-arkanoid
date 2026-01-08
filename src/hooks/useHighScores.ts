@@ -11,6 +11,7 @@ export interface HighScore {
   level: number;
   difficulty?: string;
   beatLevel50?: boolean;
+  collectedAllLetters?: boolean;
   startingLives?: number;
   createdAt?: string;
 }
@@ -56,6 +57,7 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => 
         level: row.level,
         difficulty: row.difficulty || undefined,
         beatLevel50: row.beat_level_50 || undefined,
+        collectedAllLetters: row.collected_all_letters || undefined,
         startingLives: row.starting_lives || undefined,
         createdAt: row.created_at,
       }));
@@ -247,6 +249,7 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => 
     level: number,
     difficulty?: string,
     beatLevel50?: boolean,
+    collectedAllLetters?: boolean,
     startingLives?: number
   ) => {
     try {
@@ -274,6 +277,7 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => 
           level,
           difficulty,
           beat_level_50: beatLevel50,
+          collected_all_letters: collectedAllLetters,
           starting_lives: startingLives,
         });
 
