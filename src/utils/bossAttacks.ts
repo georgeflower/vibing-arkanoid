@@ -161,6 +161,8 @@ export function performBossAttack(
     const coneSpread = (ATTACK_PATTERNS.cross.coneAngle * Math.PI) / 180;
     const offsets = [-coneSpread / 2, 0, coneSpread / 2];
     const now = Date.now();
+    // 75% up the playable area = 25% from top
+    const apexY = 650 * 0.25; // ~162px from top
     
     offsets.forEach(offset => {
       // Calculate horizontal spread based on angle offset
@@ -180,7 +182,7 @@ export function performBossAttack(
         damage: 1,
         isStopped: false,
         isLaunchingUp: true, // Start in launch phase
-        launchApexTime: now + 400, // Reach apex after 400ms
+        launchApexY: apexY, // Reach apex at 75% up (25% from top)
         nextCourseChangeTime: now + 1500 + Math.random() * 1000, // First course change after falling
         spawnTime: now // Track spawn time for merge cooldown
       });
