@@ -5764,10 +5764,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (attack.type === 'cross' && !attack.isReflected) {
           const now = Date.now();
           
-          // Handle upward launch phase - transition to falling
+          // Handle upward launch phase - transition to falling when reaching 75% up
           if (attack.isLaunchingUp) {
-            if (now >= (attack.launchApexTime || 0)) {
-              // Reached apex - pause briefly then start falling
+            // Position-based apex: reached 75% up (25% from top)?
+            const apexY = attack.launchApexY || SCALED_CANVAS_HEIGHT * 0.25;
+            if (attack.y <= apexY) {
+              // Reached apex position - pause briefly then start falling
               attack.isLaunchingUp = false;
               attack.isStopped = true;
               attack.stopStartTime = now;

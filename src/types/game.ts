@@ -226,7 +226,7 @@ export interface BossAttack {
   spawnTime?: number; // When the attack was spawned (for merge cooldown)
   // Cross attack launch phase properties
   isLaunchingUp?: boolean;       // Currently in upward launch phase
-  launchApexTime?: number;       // When the projectile reaches apex and starts falling
+  launchApexY?: number;          // Y position to reach before apex (75% up = 25% from top)
   // Stun properties
   isStunned?: boolean;           // Currently frozen by stun power-up
 }
