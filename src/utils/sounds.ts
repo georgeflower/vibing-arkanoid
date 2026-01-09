@@ -469,6 +469,51 @@ class SoundManager {
     high.stop(ctx.currentTime + 0.2);
   }
 
+  // Merge sound effect - magical fusion sound
+  playMergeSound() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
+    
+    // Layer 1: Rising sweep
+    const sweep = ctx.createOscillator();
+    const sweepGain = ctx.createGain();
+    sweep.connect(sweepGain);
+    sweepGain.connect(ctx.destination);
+    sweep.type = 'sine';
+    sweep.frequency.setValueAtTime(200, ctx.currentTime);
+    sweep.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.25);
+    sweepGain.gain.setValueAtTime(0.2, ctx.currentTime);
+    sweepGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    sweep.start(ctx.currentTime);
+    sweep.stop(ctx.currentTime + 0.3);
+    
+    // Layer 2: Sparkle/shimmer effect
+    const sparkle = ctx.createOscillator();
+    const sparkleGain = ctx.createGain();
+    sparkle.connect(sparkleGain);
+    sparkleGain.connect(ctx.destination);
+    sparkle.type = 'triangle';
+    sparkle.frequency.setValueAtTime(1200, ctx.currentTime);
+    sparkle.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.2);
+    sparkleGain.gain.setValueAtTime(0.15, ctx.currentTime);
+    sparkleGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+    sparkle.start(ctx.currentTime + 0.05);
+    sparkle.stop(ctx.currentTime + 0.25);
+    
+    // Layer 3: Bass impact
+    const bass = ctx.createOscillator();
+    const bassGain = ctx.createGain();
+    bass.connect(bassGain);
+    bassGain.connect(ctx.destination);
+    bass.type = 'sawtooth';
+    bass.frequency.setValueAtTime(100, ctx.currentTime);
+    bass.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.15);
+    bassGain.gain.setValueAtTime(0.18, ctx.currentTime);
+    bassGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    bass.start(ctx.currentTime);
+    bass.stop(ctx.currentTime + 0.15);
+  }
+
   // Power-up specific sounds
   // AudioBuffer cache for preloaded sounds
   private audioBuffers: { [key: string]: AudioBuffer } = {};

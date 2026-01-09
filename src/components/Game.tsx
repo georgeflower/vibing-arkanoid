@@ -3097,6 +3097,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const enemiesToDestroy = new Set<number>();
       const explosionsToCreate: Array<{ x: number; y: number; type: EnemyType }> = [];
       const bonusLetterDrops: Array<{ x: number; y: number }> = [];
+      const largeSphereDrops: Array<{ x: number; y: number }> = []; // Large sphere power-up drops
       const bombIntervalsToClean: number[] = [];
       let enemiesKilledIncrease = 0;
 
@@ -3488,6 +3489,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       soundManager.playExplosion();
                       enemiesKilledIncrease++;
                       bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
+
+                      // Large sphere drops a random power-up when destroyed
+                      if (enemy.isLargeSphere) {
+                        largeSphereDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
+                      }
 
                       if (enemy.id !== undefined) {
                         bombIntervalsToClean.push(enemy.id);
@@ -4030,6 +4036,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Handle bonus letter drops
       bonusLetterDrops.forEach((drop) => {
         dropBonusLetter(drop.x, drop.y);
+      });
+
+      // Handle large sphere power-up drops (random power-up)
+      largeSphereDrops.forEach((drop) => {
+        const powerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life", "slowdown", "shield"];
+        const randomType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+        const powerUp: PowerUp = {
+          x: drop.x - POWERUP_SIZE / 2,
+          y: drop.y,
+          width: POWERUP_SIZE,
+          height: POWERUP_SIZE,
+          type: randomType,
+          speed: POWERUP_FALL_SPEED,
+          active: true,
+        };
+        setPowerUps((prev) => [...prev, powerUp]);
       });
 
       // Clean up bomb intervals
@@ -6181,8 +6203,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // ═══ CROSS PROJECTILE COLLISION DETECTION ═══
     // Check for collisions between non-reflected cross projectiles to spawn crossBall enemies
+    const MERGE_COOLDOWN_MS = 1000; // 1 second before projectiles can merge
+    const nowForMerge = Date.now();
+    
     const crossProjectiles = bossAttacks.filter(
-      (attack) => attack.type === "cross" && !attack.isReflected
+      (attack) => attack.type === "cross" && !attack.isReflected && 
+      // Only allow merging after 1 second since spawn
+      (attack.spawnTime ? nowForMerge - attack.spawnTime >= MERGE_COOLDOWN_MS : true)
     );
 
     if (crossProjectiles.length >= 2) {
@@ -6215,6 +6242,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (crossCollisions.length > 0) {
         const attacksToRemove = new Set<BossAttack>();
         const newCrossBallEnemies: Enemy[] = [];
+        const mergeExplosions: Array<{ x: number; y: number }> = [];
 
         for (const collision of crossCollisions) {
           // Skip if already processed
@@ -6226,8 +6254,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           attacksToRemove.add(collision.attack2);
 
           // Calculate midpoint for new enemy
-          const midX = (collision.attack1.x + collision.attack2.x) / 2;
-          const midY = (collision.attack1.y + collision.attack2.y) / 2;
+          const midX = (collision.attack1.x + collision.attack2.x) / 2 + collision.attack1.width / 2;
+          const midY = (collision.attack1.y + collision.attack2.y) / 2 + collision.attack1.height / 2;
+
+          // Add merge explosion effect
+          mergeExplosions.push({ x: midX, y: midY });
 
           // Create crossBall enemy
           const speed = 2.5;
@@ -6235,8 +6266,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const crossBallEnemy: Enemy = {
             id: Date.now() + Math.random() * 1000,
             type: "crossBall",
-            x: midX,
-            y: midY,
+            x: midX - 17.5, // Center the 35x35 enemy
+            y: midY - 17.5,
             width: 35,
             height: 35,
             rotation: 0,
@@ -6249,11 +6280,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             hits: 0,
             isAngry: false,
             isCrossBall: true,
+            spawnTime: nowForMerge, // Track spawn time for merge cooldown
           };
 
           newCrossBallEnemies.push(crossBallEnemy);
-          soundManager.playBounce();
-          toast.warning("Cross projectiles merged into CrossBall enemy!");
         }
 
         // Remove collided projectiles
@@ -6264,13 +6294,35 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Spawn new crossBall enemies
         if (newCrossBallEnemies.length > 0) {
           setEnemies((prev) => [...prev, ...newCrossBallEnemies]);
+          
+          // Create merge particle effects
+          for (const explosion of mergeExplosions) {
+            setExplosions((e) => [
+              ...e,
+              {
+                x: explosion.x,
+                y: explosion.y,
+                frame: 0,
+                maxFrames: 25,
+                enemyType: "crossBall" as EnemyType,
+                particles: createExplosionParticles(explosion.x, explosion.y, "crossBall" as EnemyType),
+              },
+            ]);
+          }
+          
+          soundManager.playMergeSound();
+          toast.warning("Cross projectiles merged into CrossBall enemy!");
         }
       }
     }
 
     // ═══ CROSSBALL ENEMY COLLISION DETECTION ═══
     // Check for collisions between crossBall enemies to spawn large spheres
-    const crossBallEnemies = enemies.filter((e) => e.type === "crossBall" && e.isCrossBall);
+    const crossBallEnemies = enemies.filter(
+      (e) => e.type === "crossBall" && e.isCrossBall &&
+      // Only allow merging after 1 second since spawn
+      (e.spawnTime ? nowForMerge - e.spawnTime >= MERGE_COOLDOWN_MS : true)
+    );
 
     if (crossBallEnemies.length >= 2) {
       const crossBallCollisions: Array<{ enemy1: Enemy; enemy2: Enemy }> = [];
@@ -6302,6 +6354,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (crossBallCollisions.length > 0) {
         const enemiesToRemove = new Set<number>();
         const newLargeSpheres: Enemy[] = [];
+        const largeSphereExplosions: Array<{ x: number; y: number }> = [];
 
         for (const collision of crossBallCollisions) {
           // Skip if already processed
@@ -6316,8 +6369,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           enemiesToRemove.add(collision.enemy2.id!);
 
           // Calculate midpoint for new enemy
-          const midX = (collision.enemy1.x + collision.enemy2.x) / 2;
-          const midY = (collision.enemy1.y + collision.enemy2.y) / 2;
+          const midX = (collision.enemy1.x + collision.enemy2.x) / 2 + collision.enemy1.width / 2;
+          const midY = (collision.enemy1.y + collision.enemy2.y) / 2 + collision.enemy1.height / 2;
+
+          // Add merge explosion effect
+          largeSphereExplosions.push({ x: midX, y: midY });
 
           // Create large sphere enemy
           const speed = 3.0;
@@ -6325,8 +6381,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const largeSphereEnemy: Enemy = {
             id: Date.now() + Math.random() * 1000,
             type: "sphere",
-            x: midX - 10, // Center larger sprite
-            y: midY - 10,
+            x: midX - 27.5, // Center larger sprite (55/2)
+            y: midY - 27.5,
             width: 55,
             height: 55,
             rotation: 0,
@@ -6342,9 +6398,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           };
 
           newLargeSpheres.push(largeSphereEnemy);
-          soundManager.playExplosion();
-          toast.warning("CrossBall enemies merged into Large Sphere!");
-          triggerScreenShake(8, 400);
         }
 
         // Remove collided crossBall enemies
@@ -6355,6 +6408,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Spawn new large sphere enemies (add separately to avoid filter interference)
         if (newLargeSpheres.length > 0) {
           setEnemies((prev) => [...prev, ...newLargeSpheres]);
+          
+          // Create merge particle effects
+          for (const explosion of largeSphereExplosions) {
+            setExplosions((e) => [
+              ...e,
+              {
+                x: explosion.x,
+                y: explosion.y,
+                frame: 0,
+                maxFrames: 30,
+                enemyType: "sphere" as EnemyType,
+                particles: createExplosionParticles(explosion.x, explosion.y, "sphere" as EnemyType),
+              },
+            ]);
+          }
+          
+          soundManager.playMergeSound();
+          toast.warning("CrossBall enemies merged into Large Sphere!");
+          triggerScreenShake(8, 400);
         }
       }
     }
