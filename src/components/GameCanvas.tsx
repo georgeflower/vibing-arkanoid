@@ -2558,7 +2558,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           
           ctx.restore();
           
-          // Draw yellow eye direction indicator when stopped
+          // Draw white arrow direction indicator when stopped
           if (attack.isStopped && attack.pendingDirection) {
             ctx.save();
             ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
@@ -2567,29 +2567,22 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             const dirAngle = Math.atan2(attack.pendingDirection.dy, attack.pendingDirection.dx);
             ctx.rotate(dirAngle);
             
-            // Pulsing yellow glow
-            const eyePulse = 0.7 + Math.sin(Date.now() / 80) * 0.3;
-            ctx.fillStyle = `rgba(255, 255, 0, ${eyePulse})`;
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = 'rgba(255, 255, 0, 0.9)';
+            // Pulsing white arrow
+            const arrowPulse = 0.7 + Math.sin(Date.now() / 80) * 0.3;
+            ctx.fillStyle = `rgba(255, 255, 255, ${arrowPulse})`;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${arrowPulse})`;
+            ctx.lineWidth = 2;
             
-            // Draw eye circle offset toward direction
-            const eyeRadius = attack.width * 0.22;
-            const eyeOffset = attack.width * 0.2;
+            // Draw arrow pointing in direction
+            const arrowSize = attack.width * 0.35;
             ctx.beginPath();
-            ctx.arc(eyeOffset, 0, eyeRadius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Draw direction arrow extending from eye
-            ctx.fillStyle = `rgba(255, 255, 0, ${eyePulse * 0.9})`;
-            ctx.beginPath();
-            ctx.moveTo(eyeOffset + eyeRadius, 0);
-            ctx.lineTo(eyeOffset + eyeRadius + 8, -5);
-            ctx.lineTo(eyeOffset + eyeRadius + 8, 5);
+            ctx.moveTo(arrowSize, 0); // Arrow tip
+            ctx.lineTo(-arrowSize * 0.3, -arrowSize * 0.5); // Top back
+            ctx.lineTo(-arrowSize * 0.1, 0); // Center notch
+            ctx.lineTo(-arrowSize * 0.3, arrowSize * 0.5); // Bottom back
             ctx.closePath();
             ctx.fill();
             
-            ctx.shadowBlur = 0;
             ctx.restore();
           }
         } else {
