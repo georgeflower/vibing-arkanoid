@@ -179,7 +179,8 @@ export function performBossAttack(
         damage: 1,
         isStopped: false,
         nextCourseChangeTime: now + ATTACK_PATTERNS.cross.courseChangeMinInterval + 
-          Math.random() * (ATTACK_PATTERNS.cross.courseChangeMaxInterval - ATTACK_PATTERNS.cross.courseChangeMinInterval)
+          Math.random() * (ATTACK_PATTERNS.cross.courseChangeMaxInterval - ATTACK_PATTERNS.cross.courseChangeMinInterval),
+        spawnTime: now // Track spawn time for merge cooldown
       });
     });
     

@@ -92,6 +92,7 @@ export interface Enemy {
   isAngry?: boolean; // For sphere enemies after first hit
   isCrossBall?: boolean; // Created from merged cross projectiles
   isLargeSphere?: boolean; // Created from merged crossBall enemies (3 hits)
+  spawnTime?: number; // Time when enemy was spawned (for merge cooldown)
 }
 
 export type ProjectileType = "bomb" | "rocket" | "pyramidBullet";
@@ -219,6 +220,7 @@ export interface BossAttack {
   stopStartTime?: number;        // When the stop began (for 1 second pause)
   nextCourseChangeTime?: number; // When the next course change will occur
   pendingDirection?: { dx: number; dy: number }; // Pre-calculated next direction for visual indicator
+  spawnTime?: number; // When the attack was spawned (for merge cooldown)
 }
 
 export type GameState = "ready" | "playing" | "paused" | "gameOver" | "won";

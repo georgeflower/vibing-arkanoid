@@ -1774,30 +1774,42 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         if (singleEnemy.type === "crossBall") {
           // Draw crossBall enemy - sphere with cross projectile color cycling
           const radius = singleEnemy.width / 2;
+          const hits = singleEnemy.hits || 0;
           
-          // Color cycle: red → orange → yellow → orange → red (same as cross projectile)
-          const cycleSpeed = 200;
-          const t = (Date.now() % (cycleSpeed * 4)) / (cycleSpeed * 4);
-          
+          // Color changes based on hits: 0 hits = normal color cycle, 1 hit = red/angry
           let hue: number;
-          if (t < 0.25) {
-            hue = t * 4 * 30;
-          } else if (t < 0.5) {
-            hue = 30 + (t - 0.25) * 4 * 30;
-          } else if (t < 0.75) {
-            hue = 60 - (t - 0.5) * 4 * 30;
+          let saturation = 100;
+          let lightness = 50;
+          
+          if (hits === 0) {
+            // Normal color cycle: red → orange → yellow → orange → red
+            const cycleSpeed = 200;
+            const t = (Date.now() % (cycleSpeed * 4)) / (cycleSpeed * 4);
+            
+            if (t < 0.25) {
+              hue = t * 4 * 30;
+            } else if (t < 0.5) {
+              hue = 30 + (t - 0.25) * 4 * 30;
+            } else if (t < 0.75) {
+              hue = 60 - (t - 0.5) * 4 * 30;
+            } else {
+              hue = 30 - (t - 0.75) * 4 * 30;
+            }
           } else {
-            hue = 30 - (t - 0.75) * 4 * 30;
+            // 1 hit = red/angry, blinking faster
+            hue = 0; // Pure red
+            saturation = 90;
+            lightness = 45;
           }
           
-          let baseColor = `hsl(${hue}, 100%, 50%)`;
-          let highlightColor = `hsl(${hue}, 100%, 70%)`;
+          let baseColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+          let highlightColor = `hsl(${hue}, ${saturation}%, ${lightness + 20}%)`;
           
           if (singleEnemy.isAngry) {
             // Faster blinking when angry
             const blinkPhase = Math.floor(Date.now() / 100) % 2;
-            baseColor = blinkPhase === 0 ? `hsl(${hue}, 100%, 60%)` : `hsl(${hue}, 80%, 35%)`;
-            highlightColor = `hsl(${hue}, 100%, 80%)`;
+            baseColor = blinkPhase === 0 ? `hsl(${hue}, ${saturation}%, ${lightness + 10}%)` : `hsl(${hue}, ${saturation - 20}%, ${lightness - 15}%)`;
+            highlightColor = `hsl(${hue}, ${saturation}%, ${lightness + 30}%)`;
           }
           
           // Calculate light position based on rotation for 3D effect
@@ -1894,16 +1906,33 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           let darkColor: string;
           
           if (singleEnemy.isLargeSphere) {
-            // Large sphere - purple/magenta color scheme
-            if (singleEnemy.isAngry) {
-              const blinkPhase = Math.floor(Date.now() / 120) % 2;
-              baseColor = blinkPhase === 0 ? "hsl(280, 90%, 55%)" : "hsl(280, 70%, 35%)";
-              highlightColor = "hsl(280, 100%, 75%)";
-              darkColor = "hsl(280, 60%, 20%)";
+            // Large sphere - color changes based on hits (0 = purple, 1 = orange, 2 = red)
+            const hits = singleEnemy.hits || 0;
+            
+            if (hits === 0) {
+              // No hits - purple/magenta
+              if (singleEnemy.isAngry) {
+                const blinkPhase = Math.floor(Date.now() / 120) % 2;
+                baseColor = blinkPhase === 0 ? "hsl(280, 90%, 55%)" : "hsl(280, 70%, 35%)";
+                highlightColor = "hsl(280, 100%, 75%)";
+                darkColor = "hsl(280, 60%, 20%)";
+              } else {
+                baseColor = "hsl(280, 80%, 50%)";
+                highlightColor = "hsl(280, 90%, 70%)";
+                darkColor = "hsl(280, 60%, 25%)";
+              }
+            } else if (hits === 1) {
+              // 1 hit - orange/yellow
+              const blinkPhase = Math.floor(Date.now() / 110) % 2;
+              baseColor = blinkPhase === 0 ? "hsl(30, 95%, 50%)" : "hsl(30, 80%, 35%)";
+              highlightColor = "hsl(45, 100%, 70%)";
+              darkColor = "hsl(20, 70%, 25%)";
             } else {
-              baseColor = "hsl(280, 80%, 50%)";
-              highlightColor = "hsl(280, 90%, 70%)";
-              darkColor = "hsl(280, 60%, 25%)";
+              // 2 hits - red/angry (about to die)
+              const blinkPhase = Math.floor(Date.now() / 80) % 2;
+              baseColor = blinkPhase === 0 ? "hsl(0, 95%, 55%)" : "hsl(0, 80%, 35%)";
+              highlightColor = "hsl(0, 100%, 75%)";
+              darkColor = "hsl(0, 70%, 20%)";
             }
           } else {
             // Normal sphere - cyan/blue color scheme
