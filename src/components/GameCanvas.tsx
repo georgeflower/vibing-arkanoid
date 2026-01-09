@@ -960,6 +960,27 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
         // Fireball trail effect
         if (ball.isFireball && qualitySettings.glowEnabled) {
+          // Draw trailing particles behind the fireball
+          const trailLength = 5;
+          const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+          if (speed > 0) {
+            for (let i = trailLength; i >= 1; i--) {
+              const trailX = ball.x - (ball.dx / speed) * ball.radius * i * 0.8;
+              const trailY = ball.y - (ball.dy / speed) * ball.radius * i * 0.8;
+              const trailOpacity = 0.5 * (1 - i / (trailLength + 1));
+              const trailSize = ball.radius * (1 - i / (trailLength + 2));
+              
+              ctx.save();
+              ctx.globalAlpha = trailOpacity;
+              ctx.fillStyle = `hsl(${30 - i * 5}, 85%, ${55 - i * 5}%)`;
+              ctx.beginPath();
+              ctx.arc(trailX, trailY, trailSize, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          }
+          
+          // Glow effect
           ctx.shadowBlur = 10;
           ctx.shadowColor = "hsl(30, 85%, 55%)";
           ctx.fillStyle = "hsla(30, 85%, 55%, 0.25)";
@@ -2558,7 +2579,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           
           ctx.restore();
           
-          // Draw white arrow direction indicator when stopped
+          // Draw white arrow outside ball when stopped to indicate direction
           if (attack.isStopped && attack.pendingDirection) {
             ctx.save();
             ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
@@ -2567,22 +2588,24 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             const dirAngle = Math.atan2(attack.pendingDirection.dy, attack.pendingDirection.dx);
             ctx.rotate(dirAngle);
             
-            // Pulsing black arrow
+            // Pulsing white arrow outside the ball
             const arrowPulse = 0.7 + Math.sin(Date.now() / 80) * 0.3;
-            ctx.fillStyle = `rgba(0, 0, 0, ${arrowPulse})`;
-            ctx.strokeStyle = `rgba(0, 0, 0, ${arrowPulse})`;
-            ctx.lineWidth = 2;
+            ctx.fillStyle = `rgba(255, 255, 255, ${arrowPulse})`;
+            ctx.shadowBlur = 6;
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
             
-            // Draw arrow pointing in direction
-            const arrowSize = attack.width * 0.35;
+            // Position arrow outside the ball
+            const arrowOffset = attack.width / 2 + 4;
+            const arrowSize = 8;
             ctx.beginPath();
-            ctx.moveTo(arrowSize, 0); // Arrow tip
-            ctx.lineTo(-arrowSize * 0.3, -arrowSize * 0.5); // Top back
-            ctx.lineTo(-arrowSize * 0.1, 0); // Center notch
-            ctx.lineTo(-arrowSize * 0.3, arrowSize * 0.5); // Bottom back
+            ctx.moveTo(arrowOffset + arrowSize, 0); // Arrow tip
+            ctx.lineTo(arrowOffset, -arrowSize * 0.6); // Top back
+            ctx.lineTo(arrowOffset + arrowSize * 0.3, 0); // Center notch
+            ctx.lineTo(arrowOffset, arrowSize * 0.6); // Bottom back
             ctx.closePath();
             ctx.fill();
             
+            ctx.shadowBlur = 0;
             ctx.restore();
           }
         } else {
