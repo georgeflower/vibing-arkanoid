@@ -5680,11 +5680,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             // Pre-calculate the new direction for visual indicator
             const currentAngle = Math.atan2(attack.dy || 0, attack.dx || 0);
             const directionChange = (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 6); // ±30° change
-            const newAngle = currentAngle + directionChange;
+            let newAngle = currentAngle + directionChange;
+            
+            // Ensure projectile never goes upward (dy must be positive)
+            // Clamp angle to range [0, PI] which gives positive dy values
+            let newDy = Math.sin(newAngle) * attack.speed;
+            if (newDy < 0) {
+              // Flip the direction change to keep going downward
+              newAngle = currentAngle - directionChange;
+              newDy = Math.sin(newAngle) * attack.speed;
+              // If still negative, force horizontal movement with slight downward
+              if (newDy < 0) {
+                newDy = Math.abs(newDy);
+              }
+            }
             
             attack.pendingDirection = {
               dx: Math.cos(newAngle) * attack.speed,
-              dy: Math.sin(newAngle) * attack.speed
+              dy: newDy
             };
             return true;
           }
