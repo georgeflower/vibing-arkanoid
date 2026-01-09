@@ -961,12 +961,12 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         // Fireball trail effect
         if (ball.isFireball && qualitySettings.glowEnabled) {
           // Draw trailing particles behind the fireball
-          const trailLength = 5;
+          const trailLength = 8;
           const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
           if (speed > 0) {
             for (let i = trailLength; i >= 1; i--) {
-              const trailX = ball.x - (ball.dx / speed) * ball.radius * i * 0.8;
-              const trailY = ball.y - (ball.dy / speed) * ball.radius * i * 0.8;
+              const trailX = ball.x - (ball.dx / speed) * ball.radius * i * 1.0;
+              const trailY = ball.y - (ball.dy / speed) * ball.radius * i * 1.0;
               const trailOpacity = 0.5 * (1 - i / (trailLength + 1));
               const trailSize = ball.radius * (1 - i / (trailLength + 2));
               
