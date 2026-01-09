@@ -93,6 +93,9 @@ export interface Enemy {
   isCrossBall?: boolean; // Created from merged cross projectiles
   isLargeSphere?: boolean; // Created from merged crossBall enemies (3 hits)
   spawnTime?: number; // Time when enemy was spawned (for merge cooldown)
+  // Stun properties
+  isStunned?: boolean; // Currently frozen by stun power-up
+  stunnedUntil?: number; // When the stun wears off
 }
 
 export type ProjectileType = "bomb" | "rocket" | "pyramidBullet";
@@ -221,6 +224,11 @@ export interface BossAttack {
   nextCourseChangeTime?: number; // When the next course change will occur
   pendingDirection?: { dx: number; dy: number }; // Pre-calculated next direction for visual indicator
   spawnTime?: number; // When the attack was spawned (for merge cooldown)
+  // Cross attack launch phase properties
+  isLaunchingUp?: boolean;       // Currently in upward launch phase
+  launchApexTime?: number;       // When the projectile reaches apex and starts falling
+  // Stun properties
+  isStunned?: boolean;           // Currently frozen by stun power-up
 }
 
 export type GameState = "ready" | "playing" | "paused" | "gameOver" | "won";
