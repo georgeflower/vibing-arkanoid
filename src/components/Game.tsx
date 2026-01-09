@@ -244,6 +244,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const firstBossMinionKilledRef = useRef(false);
   // Track newly reflected bombs synchronously to avoid stale closure issues
   const newlyReflectedBombIdsRef = useRef<Set<number>>(new Set());
+  // Track last reflected attack hit time synchronously to prevent multi-hit in same frame
+  const reflectedAttackLastHitRef = useRef<number>(0);
   // Track pending chain explosions for explosive bricks (delayed by 200ms)
   const pendingChainExplosionsRef = useRef<Array<{ brick: Brick; triggerTime: number }>>([]);
   const [isMobileDevice] = useState(() => {
@@ -5803,7 +5805,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             // Damage the boss with proper cooldown, defeat detection, and logging
             const REFLECTED_ATTACK_COOLDOWN_MS = 1000;
             const nowMs = Date.now();
-            const lastHitMs = boss.lastHitAt || 0;
+            
+            // Use ref for synchronous cooldown check to prevent multiple hits in same frame
+            const lastHitMs = reflectedAttackLastHitRef.current;
             const canDamage = nowMs - lastHitMs >= REFLECTED_ATTACK_COOLDOWN_MS;
 
             if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
@@ -5815,6 +5819,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (!canDamage) {
               return false; // Remove attack but don't damage (on cooldown)
             }
+            
+            // Update ref immediately to prevent other attacks in same frame from dealing damage
+            reflectedAttackLastHitRef.current = nowMs;
 
             setBoss((prevBoss) => {
               if (!prevBoss) return null;
