@@ -5661,22 +5661,31 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           if (attack.isStopped) {
             // Check if stop duration has elapsed (1 second)
             if (now - (attack.stopStartTime || 0) >= 1000) {
-              // Resume with new random direction (left or right shift)
-              const currentAngle = Math.atan2(attack.dy || 0, attack.dx || 0);
-              const directionChange = (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 6); // ±30° change
-              const newAngle = currentAngle + directionChange;
-              
-              attack.dx = Math.cos(newAngle) * attack.speed;
-              attack.dy = Math.sin(newAngle) * attack.speed;
+              // Apply pre-calculated direction
+              if (attack.pendingDirection) {
+                attack.dx = attack.pendingDirection.dx;
+                attack.dy = attack.pendingDirection.dy;
+                attack.pendingDirection = undefined;
+              }
               attack.isStopped = false;
               attack.nextCourseChangeTime = now + 500 + Math.random() * 1000;
             }
             // When stopped, don't update position but keep the attack
             return true;
           } else if (attack.nextCourseChangeTime && now >= attack.nextCourseChangeTime) {
-            // Time for a course change - stop the projectile
+            // Time for a course change - stop and pre-calculate new direction
             attack.isStopped = true;
             attack.stopStartTime = now;
+            
+            // Pre-calculate the new direction for visual indicator
+            const currentAngle = Math.atan2(attack.dy || 0, attack.dx || 0);
+            const directionChange = (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 6); // ±30° change
+            const newAngle = currentAngle + directionChange;
+            
+            attack.pendingDirection = {
+              dx: Math.cos(newAngle) * attack.speed,
+              dy: Math.sin(newAngle) * attack.speed
+            };
             return true;
           }
         }
