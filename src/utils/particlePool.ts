@@ -7,6 +7,7 @@ const COLOR_PALETTES: Record<EnemyType | 'brick' | 'default', string[]> = {
   cube: ["hsl(200, 100%, 60%)", "hsl(180, 100%, 50%)", "hsl(220, 100%, 70%)"],
   sphere: ["hsl(330, 100%, 60%)", "hsl(350, 100%, 65%)", "hsl(310, 100%, 55%)"],
   pyramid: ["hsl(280, 100%, 60%)", "hsl(260, 100%, 65%)", "hsl(300, 100%, 55%)"],
+  crossBall: ["hsl(30, 100%, 60%)", "hsl(15, 100%, 55%)", "hsl(45, 100%, 65%)"], // Red/orange/yellow like cross projectiles
   brick: ["hsl(40, 100%, 60%)", "hsl(30, 100%, 55%)", "hsl(50, 100%, 65%)"],
   default: ["hsl(0, 0%, 100%)", "hsl(0, 0%, 80%)", "hsl(0, 0%, 90%)"]
 };

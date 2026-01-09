@@ -1771,18 +1771,33 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         const centerX = singleEnemy.x + singleEnemy.width / 2;
         const centerY = singleEnemy.y + singleEnemy.height / 2;
         
-        if (singleEnemy.type === "sphere") {
-          // Draw 3D spinning sphere with enhanced depth
+        if (singleEnemy.type === "crossBall") {
+          // Draw crossBall enemy - sphere with cross projectile color cycling
           const radius = singleEnemy.width / 2;
           
-          // Determine color based on state
-          let baseColor = "hsl(200, 70%, 50%)";
-          let highlightColor = "hsl(200, 80%, 70%)";
+          // Color cycle: red → orange → yellow → orange → red (same as cross projectile)
+          const cycleSpeed = 200;
+          const t = (Date.now() % (cycleSpeed * 4)) / (cycleSpeed * 4);
+          
+          let hue: number;
+          if (t < 0.25) {
+            hue = t * 4 * 30;
+          } else if (t < 0.5) {
+            hue = 30 + (t - 0.25) * 4 * 30;
+          } else if (t < 0.75) {
+            hue = 60 - (t - 0.5) * 4 * 30;
+          } else {
+            hue = 30 - (t - 0.75) * 4 * 30;
+          }
+          
+          let baseColor = `hsl(${hue}, 100%, 50%)`;
+          let highlightColor = `hsl(${hue}, 100%, 70%)`;
+          
           if (singleEnemy.isAngry) {
-            // Blinking red when angry
-            const blinkPhase = Math.floor(Date.now() / 150) % 2;
-            baseColor = blinkPhase === 0 ? "hsl(0, 85%, 55%)" : "hsl(0, 75%, 40%)";
-            highlightColor = "hsl(0, 90%, 75%)";
+            // Faster blinking when angry
+            const blinkPhase = Math.floor(Date.now() / 100) % 2;
+            baseColor = blinkPhase === 0 ? `hsl(${hue}, 100%, 60%)` : `hsl(${hue}, 80%, 35%)`;
+            highlightColor = `hsl(${hue}, 100%, 80%)`;
           }
           
           // Calculate light position based on rotation for 3D effect
@@ -1800,11 +1815,130 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           );
           gradient.addColorStop(0, highlightColor);
           gradient.addColorStop(0.3, baseColor);
-          gradient.addColorStop(0.7, `hsl(${singleEnemy.isAngry ? 0 : 200}, 60%, 30%)`);
+          gradient.addColorStop(0.7, `hsl(${hue}, 60%, 25%)`);
           gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
           
           if (qualitySettings.glowEnabled) {
-            ctx.shadowBlur = 20;
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = baseColor;
+          }
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          
+          // Pulsing border (like cross projectile)
+          const pulse = Math.abs(Math.sin(Date.now() / 100));
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + pulse * 0.5})`;
+          ctx.lineWidth = 2 + pulse * 2;
+          ctx.stroke();
+          
+          // Draw rotating latitude/longitude lines for spinning effect
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+          ctx.lineWidth = 1.5;
+          
+          // Latitude lines
+          for (let i = -2; i <= 2; i++) {
+            const latY = centerY + i * radius * 0.3;
+            const latRadius = Math.sqrt(radius * radius - (i * radius * 0.3) * (i * radius * 0.3));
+            const squeeze = Math.abs(Math.cos(singleEnemy.rotationX + i * 0.5));
+            
+            ctx.beginPath();
+            ctx.ellipse(centerX, latY, latRadius * squeeze, latRadius * 0.3, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          
+          // Add specular highlight
+          const specGradient = ctx.createRadialGradient(
+            centerX + lightX * 0.7,
+            centerY + lightY * 0.7,
+            0,
+            centerX + lightX * 0.7,
+            centerY + lightY * 0.7,
+            radius * 0.4
+          );
+          specGradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+          specGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+          ctx.fillStyle = specGradient;
+          ctx.beginPath();
+          ctx.arc(centerX + lightX * 0.7, centerY + lightY * 0.7, radius * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Draw angry expression if angry
+          if (singleEnemy.isAngry) {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+            ctx.lineWidth = 2;
+            
+            // Angry eyes (V shape)
+            ctx.beginPath();
+            ctx.moveTo(centerX - 8, centerY - 5);
+            ctx.lineTo(centerX - 5, centerY);
+            ctx.moveTo(centerX + 8, centerY - 5);
+            ctx.lineTo(centerX + 5, centerY);
+            ctx.stroke();
+            
+            // Angry mouth (down curve)
+            ctx.beginPath();
+            ctx.arc(centerX, centerY + 8, 6, 0.2 * Math.PI, 0.8 * Math.PI);
+            ctx.stroke();
+          }
+        } else if (singleEnemy.type === "sphere") {
+          // Draw 3D spinning sphere with enhanced depth
+          const radius = singleEnemy.width / 2;
+          
+          // Large sphere has distinct purple/magenta color
+          let baseColor: string;
+          let highlightColor: string;
+          let darkColor: string;
+          
+          if (singleEnemy.isLargeSphere) {
+            // Large sphere - purple/magenta color scheme
+            if (singleEnemy.isAngry) {
+              const blinkPhase = Math.floor(Date.now() / 120) % 2;
+              baseColor = blinkPhase === 0 ? "hsl(280, 90%, 55%)" : "hsl(280, 70%, 35%)";
+              highlightColor = "hsl(280, 100%, 75%)";
+              darkColor = "hsl(280, 60%, 20%)";
+            } else {
+              baseColor = "hsl(280, 80%, 50%)";
+              highlightColor = "hsl(280, 90%, 70%)";
+              darkColor = "hsl(280, 60%, 25%)";
+            }
+          } else {
+            // Normal sphere - cyan/blue color scheme
+            baseColor = "hsl(200, 70%, 50%)";
+            highlightColor = "hsl(200, 80%, 70%)";
+            darkColor = "hsl(200, 60%, 30%)";
+            if (singleEnemy.isAngry) {
+              // Blinking red when angry
+              const blinkPhase = Math.floor(Date.now() / 150) % 2;
+              baseColor = blinkPhase === 0 ? "hsl(0, 85%, 55%)" : "hsl(0, 75%, 40%)";
+              highlightColor = "hsl(0, 90%, 75%)";
+              darkColor = "hsl(0, 60%, 30%)";
+            }
+          }
+          
+          // Calculate light position based on rotation for 3D effect
+          const lightX = Math.cos(singleEnemy.rotationY) * radius * 0.4;
+          const lightY = Math.sin(singleEnemy.rotationX) * radius * 0.4;
+          
+          // Draw sphere with enhanced 3D gradient
+          const gradient = ctx.createRadialGradient(
+            centerX + lightX,
+            centerY + lightY,
+            radius * 0.1,
+            centerX,
+            centerY,
+            radius * 1.2
+          );
+          gradient.addColorStop(0, highlightColor);
+          gradient.addColorStop(0.3, baseColor);
+          gradient.addColorStop(0.7, darkColor);
+          gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
+          
+          if (qualitySettings.glowEnabled) {
+            ctx.shadowBlur = singleEnemy.isLargeSphere ? 30 : 20;
             ctx.shadowColor = baseColor;
           }
           ctx.fillStyle = gradient;

@@ -72,7 +72,7 @@ export interface PowerUp {
   isMercyLife?: boolean; // Bypass per-5-levels limit for mercy power-ups
 }
 
-export type EnemyType = "cube" | "sphere" | "pyramid";
+export type EnemyType = "cube" | "sphere" | "pyramid" | "crossBall";
 
 export interface Enemy {
   id?: number;
@@ -90,6 +90,8 @@ export interface Enemy {
   dy: number;
   hits?: number; // For sphere enemies (2 hits to destroy)
   isAngry?: boolean; // For sphere enemies after first hit
+  isCrossBall?: boolean; // Created from merged cross projectiles
+  isLargeSphere?: boolean; // Created from merged crossBall enemies (3 hits)
 }
 
 export type ProjectileType = "bomb" | "rocket" | "pyramidBullet";
