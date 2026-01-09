@@ -5654,6 +5654,33 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       prev.filter((attack) => {
         if (attack.type === "laser") return true;
 
+        // Special handling for cross attack course changes
+        if (attack.type === 'cross' && !attack.isReflected) {
+          const now = Date.now();
+          
+          if (attack.isStopped) {
+            // Check if stop duration has elapsed (1 second)
+            if (now - (attack.stopStartTime || 0) >= 1000) {
+              // Resume with new random direction (left or right shift)
+              const currentAngle = Math.atan2(attack.dy || 0, attack.dx || 0);
+              const directionChange = (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 6); // ±30° change
+              const newAngle = currentAngle + directionChange;
+              
+              attack.dx = Math.cos(newAngle) * attack.speed;
+              attack.dy = Math.sin(newAngle) * attack.speed;
+              attack.isStopped = false;
+              attack.nextCourseChangeTime = now + 2000 + Math.random() * 2000;
+            }
+            // When stopped, don't update position but keep the attack
+            return true;
+          } else if (attack.nextCourseChangeTime && now >= attack.nextCourseChangeTime) {
+            // Time for a course change - stop the projectile
+            attack.isStopped = true;
+            attack.stopStartTime = now;
+            return true;
+          }
+        }
+
         // Apply homing behavior to reflected attacks
         if (attack.isReflected) {
           // Find closest target (boss or enemy)
@@ -5728,6 +5755,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               }
             }
           }
+        }
+
+        // Skip position update if cross attack is stopped
+        if (attack.type === 'cross' && attack.isStopped) {
+          return true;
         }
 
         const newX = attack.x + (attack.dx || 0);

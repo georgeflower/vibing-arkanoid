@@ -84,9 +84,12 @@ export const ATTACK_PATTERNS = {
     rotationSpeed: 0.3
   },
   cross: {
-    count: 4,
+    count: 3,
     speed: 4.5,
-    size: 12,
-    directions: [0, 90, 180, 270]
+    size: 18,
+    coneAngle: 60,
+    courseChangeMinInterval: 2000,
+    courseChangeMaxInterval: 4000,
+    stopDuration: 1000
   }
 } as const;

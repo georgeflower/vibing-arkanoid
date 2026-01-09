@@ -2487,6 +2487,56 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           }
           
           ctx.restore();
+        } else if (attack.type === 'cross') {
+          // Special rendering for cross attacks with red/orange/yellow blinking
+          ctx.save();
+          ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
+          
+          // Slower rotation when stopped
+          const rotationSpeed = attack.isStopped ? 100 : 30;
+          ctx.rotate((Date.now() / rotationSpeed) * Math.PI / 180);
+          
+          // Color cycle: red → orange → yellow → orange → red
+          const cycleSpeed = 200; // ms per color phase
+          const t = (Date.now() % (cycleSpeed * 4)) / (cycleSpeed * 4);
+          
+          let hue: number;
+          if (t < 0.25) {
+            hue = t * 4 * 30; // 0° to 30° (red to orange)
+          } else if (t < 0.5) {
+            hue = 30 + (t - 0.25) * 4 * 30; // 30° to 60° (orange to yellow)
+          } else if (t < 0.75) {
+            hue = 60 - (t - 0.5) * 4 * 30; // 60° to 30° (yellow to orange)
+          } else {
+            hue = 30 - (t - 0.75) * 4 * 30; // 30° to 0° (orange to red)
+          }
+          
+          const fillColor = `hsl(${hue}, 100%, 50%)`;
+          
+          if (enableBossGlow) {
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = fillColor;
+          }
+          
+          ctx.fillStyle = fillColor;
+          ctx.beginPath();
+          ctx.arc(0, 0, attack.width / 2, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Pulsing border
+          const pulse = Math.abs(Math.sin(Date.now() / 100));
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + pulse * 0.5})`;
+          ctx.lineWidth = 2 + pulse * 2;
+          ctx.stroke();
+          
+          // Highlight
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.beginPath();
+          ctx.arc(-3, -3, attack.width / 5, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.restore();
         } else {
           ctx.save();
           ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
