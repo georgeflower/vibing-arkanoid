@@ -2567,10 +2567,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             const dirAngle = Math.atan2(attack.pendingDirection.dy, attack.pendingDirection.dx);
             ctx.rotate(dirAngle);
             
-            // Pulsing white arrow
+            // Pulsing black arrow
             const arrowPulse = 0.7 + Math.sin(Date.now() / 80) * 0.3;
-            ctx.fillStyle = `rgba(255, 255, 255, ${arrowPulse})`;
-            ctx.strokeStyle = `rgba(255, 255, 255, ${arrowPulse})`;
+            ctx.fillStyle = `rgba(0, 0, 0, ${arrowPulse})`;
+            ctx.strokeStyle = `rgba(0, 0, 0, ${arrowPulse})`;
             ctx.lineWidth = 2;
             
             // Draw arrow pointing in direction
