@@ -212,6 +212,10 @@ export interface BossAttack {
   dx?: number;
   dy?: number;
   isReflected?: boolean; // Marked as reflected by reflect shield
+  // Cross attack course-change properties
+  isStopped?: boolean;           // Currently paused for course change
+  stopStartTime?: number;        // When the stop began (for 1 second pause)
+  nextCourseChangeTime?: number; // When the next course change will occur
 }
 
 export type GameState = "ready" | "playing" | "paused" | "gameOver" | "won";

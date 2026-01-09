@@ -154,8 +154,16 @@ export function performBossAttack(
     const centerY = boss.y + boss.height / 2;
     const attacks: BossAttack[] = [];
     
-    ATTACK_PATTERNS.cross.directions.forEach(degree => {
-      const angle = (degree * Math.PI) / 180;
+    // Calculate base angle toward paddle
+    const baseAngle = Math.atan2(paddleY - centerY, paddleX - centerX);
+    
+    // Create 3 shots in a cone pattern
+    const coneSpread = (ATTACK_PATTERNS.cross.coneAngle * Math.PI) / 180;
+    const offsets = [-coneSpread / 2, 0, coneSpread / 2];
+    const now = Date.now();
+    
+    offsets.forEach(offset => {
+      const angle = baseAngle + offset;
       
       attacks.push({
         bossId: boss.id,
@@ -168,7 +176,10 @@ export function performBossAttack(
         angle: angle,
         dx: Math.cos(angle) * ATTACK_PATTERNS.cross.speed,
         dy: Math.sin(angle) * ATTACK_PATTERNS.cross.speed,
-        damage: 1
+        damage: 1,
+        isStopped: false,
+        nextCourseChangeTime: now + ATTACK_PATTERNS.cross.courseChangeMinInterval + 
+          Math.random() * (ATTACK_PATTERNS.cross.courseChangeMaxInterval - ATTACK_PATTERNS.cross.courseChangeMinInterval)
       });
     });
     
