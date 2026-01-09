@@ -2557,6 +2557,41 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.fill();
           
           ctx.restore();
+          
+          // Draw yellow eye direction indicator when stopped
+          if (attack.isStopped && attack.pendingDirection) {
+            ctx.save();
+            ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
+            
+            // Calculate angle for the pending direction
+            const dirAngle = Math.atan2(attack.pendingDirection.dy, attack.pendingDirection.dx);
+            ctx.rotate(dirAngle);
+            
+            // Pulsing yellow glow
+            const eyePulse = 0.7 + Math.sin(Date.now() / 80) * 0.3;
+            ctx.fillStyle = `rgba(255, 255, 0, ${eyePulse})`;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'rgba(255, 255, 0, 0.9)';
+            
+            // Draw eye circle offset toward direction
+            const eyeRadius = attack.width * 0.22;
+            const eyeOffset = attack.width * 0.2;
+            ctx.beginPath();
+            ctx.arc(eyeOffset, 0, eyeRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw direction arrow extending from eye
+            ctx.fillStyle = `rgba(255, 255, 0, ${eyePulse * 0.9})`;
+            ctx.beginPath();
+            ctx.moveTo(eyeOffset + eyeRadius, 0);
+            ctx.lineTo(eyeOffset + eyeRadius + 8, -5);
+            ctx.lineTo(eyeOffset + eyeRadius + 8, 5);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.shadowBlur = 0;
+            ctx.restore();
+          }
         } else {
           ctx.save();
           ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);

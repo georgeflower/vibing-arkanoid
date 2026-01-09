@@ -216,6 +216,7 @@ export interface BossAttack {
   isStopped?: boolean;           // Currently paused for course change
   stopStartTime?: number;        // When the stop began (for 1 second pause)
   nextCourseChangeTime?: number; // When the next course change will occur
+  pendingDirection?: { dx: number; dy: number }; // Pre-calculated next direction for visual indicator
 }
 
 export type GameState = "ready" | "playing" | "paused" | "gameOver" | "won";
