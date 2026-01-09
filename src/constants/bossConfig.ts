@@ -88,8 +88,8 @@ export const ATTACK_PATTERNS = {
     speed: 4.5,
     size: 18,
     coneAngle: 60,
-    courseChangeMinInterval: 2000,
-    courseChangeMaxInterval: 4000,
+    courseChangeMinInterval: 500,
+    courseChangeMaxInterval: 1500,
     stopDuration: 1000
   }
 } as const;

@@ -5669,7 +5669,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               attack.dx = Math.cos(newAngle) * attack.speed;
               attack.dy = Math.sin(newAngle) * attack.speed;
               attack.isStopped = false;
-              attack.nextCourseChangeTime = now + 2000 + Math.random() * 2000;
+              attack.nextCourseChangeTime = now + 500 + Math.random() * 1000;
             }
             // When stopped, don't update position but keep the attack
             return true;
