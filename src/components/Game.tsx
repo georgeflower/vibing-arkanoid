@@ -6281,7 +6281,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // ═══ CROSS PROJECTILE COLLISION DETECTION ═══
     // Check for collisions between non-reflected cross projectiles to spawn crossBall enemies
-    const MERGE_COOLDOWN_MS = 1000; // 1 second before projectiles can merge
+    const MERGE_COOLDOWN_MS = 3000; // 3 seconds before projectiles can merge
     const nowForMerge = Date.now();
     
     const crossProjectiles = bossAttacks.filter(
