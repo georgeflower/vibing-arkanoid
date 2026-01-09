@@ -3459,6 +3459,43 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     }
                   } else if (enemy.type === "sphere") {
                     const currentHits = enemy.hits || 0;
+                    const maxHits = enemy.isLargeSphere ? 2 : 1; // Large sphere needs 3 hits (0,1,2), normal sphere needs 2 (0,1)
+
+                    if (currentHits < maxHits) {
+                      // Not final hit - make angry and speed up
+                      soundManager.playBounce();
+                      enemiesToUpdate.set(enemy.id!, {
+                        hits: currentHits + 1,
+                        isAngry: true,
+                        speed: enemy.speed * 1.3,
+                        dx: enemy.dx * 1.3,
+                        dy: enemy.dy * 1.3,
+                      });
+                      const hitsLeft = maxHits - currentHits;
+                      throttledToast("warning", enemy.isLargeSphere ? `Large sphere hit! ${hitsLeft} more hits!` : "Sphere enemy is angry!", "sphere_hit");
+                      triggerScreenShake(5, 500);
+                    } else {
+                      // Final hit - destroy sphere
+                      enemiesToDestroy.add(enemyIndex);
+                      explosionsToCreate.push({
+                        x: enemy.x + enemy.width / 2,
+                        y: enemy.y + enemy.height / 2,
+                        type: enemy.type,
+                      });
+                      const points = enemy.isLargeSphere ? 400 : 200;
+                      scoreIncrease += points;
+                      throttledToast("success", `${enemy.isLargeSphere ? "Large sphere" : "Sphere enemy"} destroyed! +${points} points`, "enemy_destroyed");
+                      soundManager.playExplosion();
+                      enemiesKilledIncrease++;
+                      bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
+
+                      if (enemy.id !== undefined) {
+                        bombIntervalsToClean.push(enemy.id);
+                      }
+                    }
+                  } else if (enemy.type === "crossBall") {
+                    // CrossBall enemy - behaves like sphere (2 hits to destroy)
+                    const currentHits = enemy.hits || 0;
 
                     if (currentHits === 0) {
                       // First hit - make angry
@@ -3470,18 +3507,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         dx: enemy.dx * 1.3,
                         dy: enemy.dy * 1.3,
                       });
-                      throttledToast("warning", "Sphere enemy is angry!", "sphere_hit");
+                      throttledToast("warning", "CrossBall is angry!", "crossball_hit");
                       triggerScreenShake(5, 500);
                     } else {
-                      // Second hit - destroy sphere
+                      // Second hit - destroy crossBall
                       enemiesToDestroy.add(enemyIndex);
                       explosionsToCreate.push({
                         x: enemy.x + enemy.width / 2,
                         y: enemy.y + enemy.height / 2,
                         type: enemy.type,
                       });
-                      scoreIncrease += 200;
-                      throttledToast("success", "Sphere enemy destroyed! +200 points", "enemy_destroyed");
+                      scoreIncrease += 250;
+                      throttledToast("success", "CrossBall destroyed! +250 points", "enemy_destroyed");
                       soundManager.playExplosion();
                       enemiesKilledIncrease++;
                       bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
@@ -4609,10 +4646,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         let newX = enemy.x + enemy.dx;
         let newY = enemy.y + enemy.dy;
 
-        // Sphere and Pyramid enemies have more random movement
-        if (enemy.type === "sphere" || enemy.type === "pyramid") {
+        // Sphere, Pyramid, and CrossBall enemies have more random movement
+        if (enemy.type === "sphere" || enemy.type === "pyramid" || enemy.type === "crossBall") {
           // Add some randomness to movement
-          if (Math.random() < (enemy.type === "pyramid" ? 0.08 : 0.05)) {
+          const randomChance = enemy.type === "pyramid" ? 0.08 : enemy.type === "crossBall" ? 0.06 : 0.05;
+          if (Math.random() < randomChance) {
             const randomAngle = ((Math.random() - 0.5) * Math.PI) / 4;
             const currentAngle = Math.atan2(enemy.dy, enemy.dx);
             const newAngle = currentAngle + randomAngle;
@@ -4637,9 +4675,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Update in place
         enemy.x = newX;
         enemy.y = newY;
-        enemy.rotationX += enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" ? 0.08 : 0.05;
-        enemy.rotationY += enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" ? 0.12 : 0.08;
-        enemy.rotationZ += enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" ? 0.06 : 0.03;
+        enemy.rotationX += enemy.type === "pyramid" ? 0.06 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.08 : 0.05;
+        enemy.rotationY += enemy.type === "pyramid" ? 0.09 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.12 : 0.08;
+        enemy.rotationZ += enemy.type === "pyramid" ? 0.04 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.06 : 0.03;
       }
       return [...prev]; // New array reference for React
     });
@@ -6140,6 +6178,186 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         return true;
       }),
     );
+
+    // ═══ CROSS PROJECTILE COLLISION DETECTION ═══
+    // Check for collisions between non-reflected cross projectiles to spawn crossBall enemies
+    const crossProjectiles = bossAttacks.filter(
+      (attack) => attack.type === "cross" && !attack.isReflected
+    );
+
+    if (crossProjectiles.length >= 2) {
+      const crossCollisions: Array<{ attack1: BossAttack; attack2: BossAttack }> = [];
+
+      for (let i = 0; i < crossProjectiles.length; i++) {
+        for (let j = i + 1; j < crossProjectiles.length; j++) {
+          const a1 = crossProjectiles[i];
+          const a2 = crossProjectiles[j];
+
+          // Circle-circle collision
+          const cx1 = a1.x + a1.width / 2;
+          const cy1 = a1.y + a1.height / 2;
+          const cx2 = a2.x + a2.width / 2;
+          const cy2 = a2.y + a2.height / 2;
+          const r1 = a1.width / 2;
+          const r2 = a2.width / 2;
+
+          const dx = cx2 - cx1;
+          const dy = cy2 - cy1;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < r1 + r2) {
+            crossCollisions.push({ attack1: a1, attack2: a2 });
+          }
+        }
+      }
+
+      // Process collisions: remove both projectiles and spawn crossBall enemy
+      if (crossCollisions.length > 0) {
+        const attacksToRemove = new Set<BossAttack>();
+        const newCrossBallEnemies: Enemy[] = [];
+
+        for (const collision of crossCollisions) {
+          // Skip if already processed
+          if (attacksToRemove.has(collision.attack1) || attacksToRemove.has(collision.attack2)) {
+            continue;
+          }
+
+          attacksToRemove.add(collision.attack1);
+          attacksToRemove.add(collision.attack2);
+
+          // Calculate midpoint for new enemy
+          const midX = (collision.attack1.x + collision.attack2.x) / 2;
+          const midY = (collision.attack1.y + collision.attack2.y) / 2;
+
+          // Create crossBall enemy
+          const speed = 2.5;
+          const angle = Math.random() * Math.PI * 2;
+          const crossBallEnemy: Enemy = {
+            id: Date.now() + Math.random() * 1000,
+            type: "crossBall",
+            x: midX,
+            y: midY,
+            width: 35,
+            height: 35,
+            rotation: 0,
+            rotationX: Math.random() * Math.PI,
+            rotationY: Math.random() * Math.PI,
+            rotationZ: Math.random() * Math.PI,
+            speed: speed,
+            dx: Math.cos(angle) * speed,
+            dy: Math.sin(angle) * speed,
+            hits: 0,
+            isAngry: false,
+            isCrossBall: true,
+          };
+
+          newCrossBallEnemies.push(crossBallEnemy);
+          soundManager.playBounce();
+          toast.warning("Cross projectiles merged into CrossBall enemy!");
+        }
+
+        // Remove collided projectiles
+        if (attacksToRemove.size > 0) {
+          setBossAttacks((prev) => prev.filter((a) => !attacksToRemove.has(a)));
+        }
+
+        // Spawn new crossBall enemies
+        if (newCrossBallEnemies.length > 0) {
+          setEnemies((prev) => [...prev, ...newCrossBallEnemies]);
+        }
+      }
+    }
+
+    // ═══ CROSSBALL ENEMY COLLISION DETECTION ═══
+    // Check for collisions between crossBall enemies to spawn large spheres
+    const crossBallEnemies = enemies.filter((e) => e.type === "crossBall" && e.isCrossBall);
+
+    if (crossBallEnemies.length >= 2) {
+      const crossBallCollisions: Array<{ enemy1: Enemy; enemy2: Enemy }> = [];
+
+      for (let i = 0; i < crossBallEnemies.length; i++) {
+        for (let j = i + 1; j < crossBallEnemies.length; j++) {
+          const e1 = crossBallEnemies[i];
+          const e2 = crossBallEnemies[j];
+
+          // Circle-circle collision
+          const cx1 = e1.x + e1.width / 2;
+          const cy1 = e1.y + e1.height / 2;
+          const cx2 = e2.x + e2.width / 2;
+          const cy2 = e2.y + e2.height / 2;
+          const r1 = e1.width / 2;
+          const r2 = e2.width / 2;
+
+          const dx = cx2 - cx1;
+          const dy = cy2 - cy1;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < r1 + r2) {
+            crossBallCollisions.push({ enemy1: e1, enemy2: e2 });
+          }
+        }
+      }
+
+      // Process collisions: remove both crossBalls and spawn large sphere
+      if (crossBallCollisions.length > 0) {
+        const enemiesToRemove = new Set<number>();
+        const newLargeSpheres: Enemy[] = [];
+
+        for (const collision of crossBallCollisions) {
+          // Skip if already processed
+          if (
+            enemiesToRemove.has(collision.enemy1.id!) ||
+            enemiesToRemove.has(collision.enemy2.id!)
+          ) {
+            continue;
+          }
+
+          enemiesToRemove.add(collision.enemy1.id!);
+          enemiesToRemove.add(collision.enemy2.id!);
+
+          // Calculate midpoint for new enemy
+          const midX = (collision.enemy1.x + collision.enemy2.x) / 2;
+          const midY = (collision.enemy1.y + collision.enemy2.y) / 2;
+
+          // Create large sphere enemy
+          const speed = 3.0;
+          const angle = Math.random() * Math.PI * 2;
+          const largeSphereEnemy: Enemy = {
+            id: Date.now() + Math.random() * 1000,
+            type: "sphere",
+            x: midX - 10, // Center larger sprite
+            y: midY - 10,
+            width: 55,
+            height: 55,
+            rotation: 0,
+            rotationX: Math.random() * Math.PI,
+            rotationY: Math.random() * Math.PI,
+            rotationZ: Math.random() * Math.PI,
+            speed: speed,
+            dx: Math.cos(angle) * speed,
+            dy: Math.sin(angle) * speed,
+            hits: 0,
+            isAngry: false,
+            isLargeSphere: true,
+          };
+
+          newLargeSpheres.push(largeSphereEnemy);
+          soundManager.playExplosion();
+          toast.warning("CrossBall enemies merged into Large Sphere!");
+          triggerScreenShake(8, 400);
+        }
+
+        // Remove collided crossBall enemies
+        if (enemiesToRemove.size > 0) {
+          setEnemies((prev) => prev.filter((e) => !enemiesToRemove.has(e.id!)));
+        }
+
+        // Spawn new large sphere enemies (add separately to avoid filter interference)
+        if (newLargeSpheres.length > 0) {
+          setEnemies((prev) => [...prev, ...newLargeSpheres]);
+        }
+      }
+    }
 
     // Check reflected bomb collisions with boss and enemies
     const reflectedBombNow = Date.now();
