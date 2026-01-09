@@ -154,16 +154,17 @@ export function performBossAttack(
     const centerY = boss.y + boss.height / 2;
     const attacks: BossAttack[] = [];
     
-    // Calculate base angle toward paddle
+    // Calculate base angle toward paddle (but we'll launch upward first)
     const baseAngle = Math.atan2(paddleY - centerY, paddleX - centerX);
     
-    // Create 3 shots in a cone pattern
+    // Create 3 shots in a cone pattern - launching UPWARD initially
     const coneSpread = (ATTACK_PATTERNS.cross.coneAngle * Math.PI) / 180;
     const offsets = [-coneSpread / 2, 0, coneSpread / 2];
     const now = Date.now();
     
     offsets.forEach(offset => {
-      const angle = baseAngle + offset;
+      // Calculate horizontal spread based on angle offset
+      const horizontalSpread = Math.sin(offset) * ATTACK_PATTERNS.cross.speed * 0.5;
       
       attacks.push({
         bossId: boss.id,
@@ -173,13 +174,14 @@ export function performBossAttack(
         width: ATTACK_PATTERNS.cross.size,
         height: ATTACK_PATTERNS.cross.size,
         speed: ATTACK_PATTERNS.cross.speed,
-        angle: angle,
-        dx: Math.cos(angle) * ATTACK_PATTERNS.cross.speed,
-        dy: Math.sin(angle) * ATTACK_PATTERNS.cross.speed,
+        angle: baseAngle + offset,
+        dx: horizontalSpread, // Slight horizontal movement during launch
+        dy: -ATTACK_PATTERNS.cross.speed * 0.7, // Launch UPWARD (negative = up)
         damage: 1,
         isStopped: false,
-        nextCourseChangeTime: now + ATTACK_PATTERNS.cross.courseChangeMinInterval + 
-          Math.random() * (ATTACK_PATTERNS.cross.courseChangeMaxInterval - ATTACK_PATTERNS.cross.courseChangeMinInterval),
+        isLaunchingUp: true, // Start in launch phase
+        launchApexTime: now + 400, // Reach apex after 400ms
+        nextCourseChangeTime: now + 1500 + Math.random() * 1000, // First course change after falling
         spawnTime: now // Track spawn time for merge cooldown
       });
     });
