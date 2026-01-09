@@ -5766,6 +5766,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           
           // Handle upward launch phase - transition to falling when reaching 75% up
           if (attack.isLaunchingUp) {
+            // Update position during launch phase (move upward)
+            attack.x += attack.dx || 0;
+            attack.y += attack.dy || 0;
+            
             // Position-based apex: reached 75% up (25% from top)?
             const apexY = attack.launchApexY || SCALED_CANVAS_HEIGHT * 0.25;
             if (attack.y <= apexY) {
@@ -5786,7 +5790,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 dy: Math.abs(Math.sin(targetAngle) * attack.speed) // Always positive (downward)
               };
             }
-            // Continue upward movement during launch phase
+            // Skip normal position update (already moved above)
             return true;
           }
           
