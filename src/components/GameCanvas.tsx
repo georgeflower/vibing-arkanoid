@@ -2488,28 +2488,48 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           
           ctx.restore();
         } else if (attack.type === 'cross') {
-          // Special rendering for cross attacks with red/orange/yellow blinking
-          ctx.save();
-          ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
-          
-          // Slower rotation when stopped
-          const rotationSpeed = attack.isStopped ? 100 : 30;
-          ctx.rotate((Date.now() / rotationSpeed) * Math.PI / 180);
+          // Special rendering for cross attacks with red/orange/yellow blinking and trail
           
           // Color cycle: red → orange → yellow → orange → red
-          const cycleSpeed = 200; // ms per color phase
+          const cycleSpeed = 200;
           const t = (Date.now() % (cycleSpeed * 4)) / (cycleSpeed * 4);
           
           let hue: number;
           if (t < 0.25) {
-            hue = t * 4 * 30; // 0° to 30° (red to orange)
+            hue = t * 4 * 30;
           } else if (t < 0.5) {
-            hue = 30 + (t - 0.25) * 4 * 30; // 30° to 60° (orange to yellow)
+            hue = 30 + (t - 0.25) * 4 * 30;
           } else if (t < 0.75) {
-            hue = 60 - (t - 0.5) * 4 * 30; // 60° to 30° (yellow to orange)
+            hue = 60 - (t - 0.5) * 4 * 30;
           } else {
-            hue = 30 - (t - 0.75) * 4 * 30; // 30° to 0° (orange to red)
+            hue = 30 - (t - 0.75) * 4 * 30;
           }
+          
+          // Draw trail effect (only when moving)
+          if (!attack.isStopped && attack.dx !== undefined && attack.dy !== undefined) {
+            const trailLength = 6;
+            for (let i = trailLength; i >= 1; i--) {
+              const trailX = attack.x - (attack.dx * i * 2.5);
+              const trailY = attack.y - (attack.dy * i * 2.5);
+              const trailOpacity = 0.4 * (1 - i / (trailLength + 1));
+              const trailSize = (attack.width / 2) * (1 - i / (trailLength + 2));
+              
+              ctx.save();
+              ctx.globalAlpha = trailOpacity;
+              ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+              ctx.beginPath();
+              ctx.arc(trailX + attack.width / 2, trailY + attack.height / 2, trailSize, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          }
+          
+          // Draw main projectile
+          ctx.save();
+          ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
+          
+          const rotationSpeed = attack.isStopped ? 100 : 30;
+          ctx.rotate((Date.now() / rotationSpeed) * Math.PI / 180);
           
           const fillColor = `hsl(${hue}, 100%, 50%)`;
           
