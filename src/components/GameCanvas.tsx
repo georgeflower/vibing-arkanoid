@@ -1796,10 +1796,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
               hue = 30 - (t - 0.75) * 4 * 30;
             }
           } else {
-            // 1 hit = red/angry, blinking faster
-            hue = 0; // Pure red
-            saturation = 90;
-            lightness = 45;
+            // 1 hit = yellow/angry, blinking faster
+            hue = 60; // Yellow
+            saturation = 100;
+            lightness = 50;
           }
           
           let baseColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
