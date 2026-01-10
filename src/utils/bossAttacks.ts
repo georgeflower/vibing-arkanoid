@@ -16,7 +16,35 @@ export function performBossAttack(
   // All bosses use weighted attack selection
   let attackType: BossAttackType;
   const rand = Math.random();
-  const weights = config.attackWeights;
+  
+  // Create a mutable copy of weights for potential position-based adjustments
+  const baseWeights = config.attackWeights as Record<string, number>;
+  let weights: Record<string, number> = { ...baseWeights };
+  
+  // Position-based attack weight adjustment for pyramid boss
+  if (boss.type === 'pyramid') {
+    const canvasHeight = 650;
+    const screenMidpoint = canvasHeight * 0.5;
+    const bossY = boss.y + boss.height / 2; // Boss center
+    
+    if (bossY < screenMidpoint) {
+      // Boss in upper half: increase cross chance (25% instead of 18%)
+      weights = { 
+        ...weights, 
+        cross: 0.25,
+        shot: (weights.shot || 0) - 0.04,  // Reduce shot slightly
+        super: (weights.super || 0) - 0.03  // Reduce super slightly
+      };
+    } else {
+      // Boss in lower half: decrease cross chance (10% instead of 18%)
+      weights = { 
+        ...weights, 
+        cross: 0.10,
+        shot: (weights.shot || 0) + 0.04,  // Increase shot
+        super: (weights.super || 0) + 0.04  // Increase super
+      };
+    }
+  }
   
   let cumulative = 0;
   for (const [type, weight] of Object.entries(weights)) {

@@ -5748,48 +5748,64 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (attack.type === 'cross' && !attack.isReflected) {
           const now = Date.now();
           
+          // Check if in paddle danger zone - never stop in this area
+          const isInPaddleZone = attack.y >= paddleDangerZoneY;
+          
           if (attack.isStopped) {
-            // Check if stop duration has elapsed (1 second)
-            if (now - (attack.stopStartTime || 0) >= 1000) {
-              // Apply pre-calculated direction
-              if (attack.pendingDirection) {
-                attack.dx = attack.pendingDirection.dx;
-                attack.dy = attack.pendingDirection.dy;
-                attack.pendingDirection = undefined;
-              }
+            // If currently stopped but now in danger zone, resume immediately
+            if (isInPaddleZone) {
               attack.isStopped = false;
-              attack.nextCourseChangeTime = now + 500 + Math.random() * 1000;
-            }
-            // When stopped, don't update position but keep the attack
-            return true;
-          } else if (attack.nextCourseChangeTime && now >= attack.nextCourseChangeTime) {
-            // Time for a course change - stop and pre-calculate new direction
-            attack.isStopped = true;
-            attack.stopStartTime = now;
-            
-            // Pre-calculate the new direction for visual indicator
-            const currentAngle = Math.atan2(attack.dy || 0, attack.dx || 0);
-            const directionChange = (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 6); // ±30° change
-            let newAngle = currentAngle + directionChange;
-            
-            // Ensure projectile never goes upward (dy must be positive)
-            // Clamp angle to range [0, PI] which gives positive dy values
-            let newDy = Math.sin(newAngle) * attack.speed;
-            if (newDy < 0) {
-              // Flip the direction change to keep going downward
-              newAngle = currentAngle - directionChange;
-              newDy = Math.sin(newAngle) * attack.speed;
-              // If still negative, force horizontal movement with slight downward
-              if (newDy < 0) {
-                newDy = Math.abs(newDy);
+              attack.nextCourseChangeTime = undefined; // Prevent future stops
+              // Continue with current direction, don't return early
+            } else {
+              // Check if stop duration has elapsed (1 second)
+              if (now - (attack.stopStartTime || 0) >= 1000) {
+                // Apply pre-calculated direction
+                if (attack.pendingDirection) {
+                  attack.dx = attack.pendingDirection.dx;
+                  attack.dy = attack.pendingDirection.dy;
+                  attack.pendingDirection = undefined;
+                }
+                attack.isStopped = false;
+                attack.nextCourseChangeTime = now + 500 + Math.random() * 1000;
               }
+              // When stopped, don't update position but keep the attack
+              return true;
             }
-            
-            attack.pendingDirection = {
-              dx: Math.cos(newAngle) * attack.speed,
-              dy: newDy
-            };
-            return true;
+          } else if (attack.nextCourseChangeTime && now >= attack.nextCourseChangeTime) {
+            // In danger zone - don't stop, continue off screen
+            if (isInPaddleZone) {
+              attack.nextCourseChangeTime = undefined; // Prevent future stops
+              // Continue moving, don't return early
+            } else {
+              // Time for a course change - stop and pre-calculate new direction
+              attack.isStopped = true;
+              attack.stopStartTime = now;
+              
+              // Pre-calculate the new direction for visual indicator
+              const currentAngle = Math.atan2(attack.dy || 0, attack.dx || 0);
+              const directionChange = (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 6); // ±30° change
+              let newAngle = currentAngle + directionChange;
+              
+              // Ensure projectile never goes upward (dy must be positive)
+              // Clamp angle to range [0, PI] which gives positive dy values
+              let newDy = Math.sin(newAngle) * attack.speed;
+              if (newDy < 0) {
+                // Flip the direction change to keep going downward
+                newAngle = currentAngle - directionChange;
+                newDy = Math.sin(newAngle) * attack.speed;
+                // If still negative, force horizontal movement with slight downward
+                if (newDy < 0) {
+                  newDy = Math.abs(newDy);
+                }
+              }
+              
+              attack.pendingDirection = {
+                dx: Math.cos(newAngle) * attack.speed,
+                dy: newDy
+              };
+              return true;
+            }
           }
         }
 
