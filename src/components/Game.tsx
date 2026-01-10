@@ -781,6 +781,26 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     bossStunnerTimeoutRef.current = setTimeout(() => {
       setBossStunnerEndTime(null);
+      
+      // Reset isStunned on main boss
+      setBoss((prev) =>
+        prev
+          ? {
+              ...prev,
+              isStunned: false,
+              stunnedUntil: undefined,
+            }
+          : null,
+      );
+      
+      // Reset isStunned on resurrected bosses
+      setResurrectedBosses((prev) =>
+        prev.map((rb) => ({
+          ...rb,
+          isStunned: false,
+          stunnedUntil: undefined,
+        })),
+      );
     }, duration);
   }, []);
 
