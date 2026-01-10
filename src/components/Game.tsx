@@ -2376,6 +2376,28 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           setPowerUps((prev) => [...prev, newPowerUp]);
           toast.warning(`Debug: ${type} power-up dropped - DISQUALIFIED from high scores!`);
+        } else if ((e.key === "u" || e.key === "U") && paddle) {
+          // Drop a random bonus letter for testing - disqualifies from high scores
+          setLevelSkipped(true);
+          const letterTypes: BonusLetterType[] = ["Q", "U", "M", "R", "A", "N"];
+          const randomLetter = letterTypes[Math.floor(Math.random() * letterTypes.length)];
+          const originX = paddle.x + paddle.width / 2 - 15;
+          
+          setBonusLetters((prev) => [
+            ...prev,
+            {
+              x: originX,
+              y: paddle.y - 50, // Drop from above paddle
+              originX: originX,
+              spawnTime: Date.now(),
+              width: 30,
+              height: 30,
+              type: randomLetter,
+              speed: 2,
+              active: true,
+            },
+          ]);
+          toast.warning(`Debug: Bonus letter "${randomLetter}" dropped - DISQUALIFIED from high scores!`);
         }
       }
       // ═══════════════════════════════════════════════════════════════
