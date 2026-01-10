@@ -774,24 +774,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       })),
     );
 
-    // Stun all enemies
-    setEnemies((prev) =>
-      prev.map((enemy) => ({
-        ...enemy,
-        isStunned: true,
-        stunnedUntil: endTime,
-      })),
-    );
-
-    // Stun all projectiles (except those near paddle - in paddle zone)
-    const PADDLE_ZONE_Y = SCALED_CANVAS_HEIGHT - 100;
-    setBossAttacks((prev) =>
-      prev.map((attack) => ({
-        ...attack,
-        isStunned: attack.y < PADDLE_ZONE_Y, // Only stun if NOT near paddle
-      })),
-    );
-
     // Clear existing timeout before setting new one
     if (bossStunnerTimeoutRef.current) {
       clearTimeout(bossStunnerTimeoutRef.current);
@@ -799,25 +781,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     bossStunnerTimeoutRef.current = setTimeout(() => {
       setBossStunnerEndTime(null);
-      
-      // Unstun enemies
-      setEnemies((prev) =>
-        prev.map((enemy) => ({
-          ...enemy,
-          isStunned: false,
-          stunnedUntil: undefined,
-        })),
-      );
-      
-      // Unstun projectiles
-      setBossAttacks((prev) =>
-        prev.map((attack) => ({
-          ...attack,
-          isStunned: false,
-        })),
-      );
     }, duration);
-  }, [SCALED_CANVAS_HEIGHT]);
+  }, []);
 
   const handleReflectShield = useCallback(() => {
     const endTime = Date.now() + 15000;
@@ -4700,15 +4665,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Update enemies - OPTIMIZED: In-place mutation
     setEnemies((prev) => {
       for (const enemy of prev) {
-        // Skip movement if enemy is stunned
-        if (enemy.isStunned) {
-          // Still update rotation for visual interest
-          enemy.rotationX += (enemy.type === "pyramid" ? 0.02 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.03 : 0.02);
-          enemy.rotationY += (enemy.type === "pyramid" ? 0.03 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.04 : 0.03);
-          enemy.rotationZ += (enemy.type === "pyramid" ? 0.01 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.02 : 0.01);
-          continue;
-        }
-        
         let newX = enemy.x + enemy.dx;
         let newY = enemy.y + enemy.dy;
 
@@ -5760,39 +5716,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       prev.filter((attack) => {
         if (attack.type === "laser") return true;
 
-        // Special handling for cross attack launch phase and course changes
+        // Special handling for cross attack course changes
         if (attack.type === 'cross' && !attack.isReflected) {
           const now = Date.now();
-          
-          // Handle upward launch phase - transition to falling when reaching 75% up
-          if (attack.isLaunchingUp) {
-            // Update position during launch phase (move upward)
-            attack.x += attack.dx || 0;
-            attack.y += attack.dy || 0;
-            
-            // Position-based apex: reached 75% up (25% from top)?
-            const apexY = attack.launchApexY || SCALED_CANVAS_HEIGHT * 0.25;
-            if (attack.y <= apexY) {
-              // Reached apex position - pause briefly then start falling
-              attack.isLaunchingUp = false;
-              attack.isStopped = true;
-              attack.stopStartTime = now;
-              
-              // Calculate new direction towards paddle (always falling down)
-              const targetPaddleX = paddle ? paddle.x + paddle.width / 2 : SCALED_CANVAS_WIDTH / 2;
-              const targetPaddleY = paddle ? paddle.y : SCALED_CANVAS_HEIGHT - 50;
-              const targetAngle = Math.atan2(
-                targetPaddleY - attack.y,
-                targetPaddleX - attack.x
-              );
-              attack.pendingDirection = {
-                dx: Math.cos(targetAngle) * attack.speed,
-                dy: Math.abs(Math.sin(targetAngle) * attack.speed) // Always positive (downward)
-              };
-            }
-            // Skip normal position update (already moved above)
-            return true;
-          }
           
           if (attack.isStopped) {
             // Check if stop duration has elapsed (1 second)
@@ -5918,16 +5844,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Skip position update if cross attack is stopped
         if (attack.type === 'cross' && attack.isStopped) {
           return true;
-        }
-
-        // Handle stunned projectiles - unstun if they enter paddle zone
-        if (attack.isStunned) {
-          const PADDLE_ZONE_Y = SCALED_CANVAS_HEIGHT - 100;
-          if (attack.y >= PADDLE_ZONE_Y) {
-            attack.isStunned = false; // Unstun so it can fall
-          } else {
-            return true; // Keep but don't move
-          }
         }
 
         const newX = attack.x + (attack.dx || 0);
@@ -6287,7 +6203,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // ═══ CROSS PROJECTILE COLLISION DETECTION ═══
     // Check for collisions between non-reflected cross projectiles to spawn crossBall enemies
-    const MERGE_COOLDOWN_MS = 3000; // 3 seconds before projectiles can merge
+    const MERGE_COOLDOWN_MS = 1000; // 1 second before projectiles can merge
     const nowForMerge = Date.now();
     
     const crossProjectiles = bossAttacks.filter(

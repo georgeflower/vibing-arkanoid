@@ -154,19 +154,16 @@ export function performBossAttack(
     const centerY = boss.y + boss.height / 2;
     const attacks: BossAttack[] = [];
     
-    // Calculate base angle toward paddle (but we'll launch upward first)
+    // Calculate base angle toward paddle
     const baseAngle = Math.atan2(paddleY - centerY, paddleX - centerX);
     
-    // Create 3 shots in a cone pattern - launching UPWARD initially
+    // Create 3 shots in a cone pattern
     const coneSpread = (ATTACK_PATTERNS.cross.coneAngle * Math.PI) / 180;
     const offsets = [-coneSpread / 2, 0, coneSpread / 2];
     const now = Date.now();
-    // 75% up the playable area = 25% from top
-    const apexY = 650 * 0.25; // ~162px from top
     
     offsets.forEach(offset => {
-      // Calculate horizontal spread based on angle offset
-      const horizontalSpread = Math.sin(offset) * ATTACK_PATTERNS.cross.speed * 0.5;
+      const angle = baseAngle + offset;
       
       attacks.push({
         bossId: boss.id,
@@ -176,14 +173,13 @@ export function performBossAttack(
         width: ATTACK_PATTERNS.cross.size,
         height: ATTACK_PATTERNS.cross.size,
         speed: ATTACK_PATTERNS.cross.speed,
-        angle: baseAngle + offset,
-        dx: horizontalSpread, // Slight horizontal movement during launch
-        dy: -ATTACK_PATTERNS.cross.speed * 0.7, // Launch UPWARD (negative = up)
+        angle: angle,
+        dx: Math.cos(angle) * ATTACK_PATTERNS.cross.speed,
+        dy: Math.sin(angle) * ATTACK_PATTERNS.cross.speed,
         damage: 1,
         isStopped: false,
-        isLaunchingUp: true, // Start in launch phase
-        launchApexY: apexY, // Reach apex at 75% up (25% from top)
-        nextCourseChangeTime: now + 1500 + Math.random() * 1000, // First course change after falling
+        nextCourseChangeTime: now + ATTACK_PATTERNS.cross.courseChangeMinInterval + 
+          Math.random() * (ATTACK_PATTERNS.cross.courseChangeMaxInterval - ATTACK_PATTERNS.cross.courseChangeMinInterval),
         spawnTime: now // Track spawn time for merge cooldown
       });
     });
