@@ -4662,47 +4662,52 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Update enemies
     frameProfiler.startTiming("enemies");
-    // Update enemies - OPTIMIZED: In-place mutation
-    setEnemies((prev) => {
-      for (const enemy of prev) {
-        let newX = enemy.x + enemy.dx;
-        let newY = enemy.y + enemy.dy;
+    // Check if stun is active (applies to all enemies)
+    const isStunActive = bossStunnerEndTime !== null && Date.now() < bossStunnerEndTime;
+    
+    // Update enemies - OPTIMIZED: In-place mutation (skip if stunned)
+    if (!isStunActive) {
+      setEnemies((prev) => {
+        for (const enemy of prev) {
+          let newX = enemy.x + enemy.dx;
+          let newY = enemy.y + enemy.dy;
 
-        // Sphere, Pyramid, and CrossBall enemies have more random movement
-        if (enemy.type === "sphere" || enemy.type === "pyramid" || enemy.type === "crossBall") {
-          // Add some randomness to movement
-          const randomChance = enemy.type === "pyramid" ? 0.08 : enemy.type === "crossBall" ? 0.06 : 0.05;
-          if (Math.random() < randomChance) {
-            const randomAngle = ((Math.random() - 0.5) * Math.PI) / 4;
-            const currentAngle = Math.atan2(enemy.dy, enemy.dx);
-            const newAngle = currentAngle + randomAngle;
-            enemy.dx = Math.cos(newAngle) * enemy.speed;
-            enemy.dy = Math.sin(newAngle) * enemy.speed;
+          // Sphere, Pyramid, and CrossBall enemies have more random movement
+          if (enemy.type === "sphere" || enemy.type === "pyramid" || enemy.type === "crossBall") {
+            // Add some randomness to movement
+            const randomChance = enemy.type === "pyramid" ? 0.08 : enemy.type === "crossBall" ? 0.06 : 0.05;
+            if (Math.random() < randomChance) {
+              const randomAngle = ((Math.random() - 0.5) * Math.PI) / 4;
+              const currentAngle = Math.atan2(enemy.dy, enemy.dx);
+              const newAngle = currentAngle + randomAngle;
+              enemy.dx = Math.cos(newAngle) * enemy.speed;
+              enemy.dy = Math.sin(newAngle) * enemy.speed;
+            }
           }
-        }
 
-        // Bounce off walls
-        if (newX <= 0 || newX >= SCALED_CANVAS_WIDTH - enemy.width) {
-          enemy.dx = -enemy.dx;
-          newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - enemy.width, newX));
-        }
+          // Bounce off walls
+          if (newX <= 0 || newX >= SCALED_CANVAS_WIDTH - enemy.width) {
+            enemy.dx = -enemy.dx;
+            newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - enemy.width, newX));
+          }
 
-        // Bounce off top and 60% boundary
-        const maxY = SCALED_CANVAS_HEIGHT * 0.6;
-        if (newY <= 0 || newY >= maxY - enemy.height) {
-          enemy.dy = -enemy.dy;
-          newY = Math.max(0, Math.min(maxY - enemy.height, newY));
-        }
+          // Bounce off top and 60% boundary
+          const maxY = SCALED_CANVAS_HEIGHT * 0.6;
+          if (newY <= 0 || newY >= maxY - enemy.height) {
+            enemy.dy = -enemy.dy;
+            newY = Math.max(0, Math.min(maxY - enemy.height, newY));
+          }
 
-        // Update in place
-        enemy.x = newX;
-        enemy.y = newY;
-        enemy.rotationX += enemy.type === "pyramid" ? 0.06 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.08 : 0.05;
-        enemy.rotationY += enemy.type === "pyramid" ? 0.09 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.12 : 0.08;
-        enemy.rotationZ += enemy.type === "pyramid" ? 0.04 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.06 : 0.03;
-      }
-      return [...prev]; // New array reference for React
-    });
+          // Update in place
+          enemy.x = newX;
+          enemy.y = newY;
+          enemy.rotationX += enemy.type === "pyramid" ? 0.06 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.08 : 0.05;
+          enemy.rotationY += enemy.type === "pyramid" ? 0.09 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.12 : 0.08;
+          enemy.rotationZ += enemy.type === "pyramid" ? 0.04 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.06 : 0.03;
+        }
+        return [...prev]; // New array reference for React
+      });
+    }
     frameProfiler.endTiming("enemies");
 
     // Update explosions and their particles - OPTIMIZED: Use particle pool
@@ -4794,9 +4799,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
 
     // Update bombs and rockets - OPTIMIZED: In-place mutation with backwards iteration
+    // Define paddle danger zone for stun freezing
+    const bombPaddleDangerZoneY = paddle ? paddle.y - 100 : SCALED_CANVAS_HEIGHT - 100;
+    
     setBombs((prev) => {
       for (let i = prev.length - 1; i >= 0; i--) {
         const bomb = prev[i];
+        
+        // Check if bomb should be frozen during stun (except near paddle)
+        const bombInDangerZone = bomb.y >= bombPaddleDangerZoneY;
+        const shouldFreezeBomb = isStunActive && !bomb.isReflected && !bombInDangerZone;
+        
+        if (shouldFreezeBomb) {
+          // Skip movement update but keep bomb
+          continue;
+        }
 
         // Check if should be removed first
         let shouldRemove = false;
@@ -5712,9 +5729,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     });
 
     // Update boss attacks
+    // Define paddle danger zone - projectiles within this Y range keep moving during stun
+    const paddleDangerZoneY = paddle ? paddle.y - 100 : SCALED_CANVAS_HEIGHT - 100;
+    
     setBossAttacks((prev) =>
       prev.filter((attack) => {
         if (attack.type === "laser") return true;
+        
+        // Check if stun is active and projectile should be frozen
+        // Exception: projectiles near paddle level (within danger zone) keep moving
+        const isInDangerZone = attack.y >= paddleDangerZoneY;
+        if (isStunActive && !attack.isReflected && !isInDangerZone) {
+          // Frozen during stun - keep attack but don't update position
+          return true;
+        }
 
         // Special handling for cross attack course changes
         if (attack.type === 'cross' && !attack.isReflected) {
