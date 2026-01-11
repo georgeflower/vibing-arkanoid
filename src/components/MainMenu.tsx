@@ -5,7 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { GameSettings, Difficulty } from "@/types/game";
+import type { GameSettings, Difficulty, GameMode } from "@/types/game";
 import startScreenImg from "@/assets/start-screen-new.png";
 import startScreenWebp from "@/assets/start-screen-new.webp";
 import { HighScoreDisplay } from "./HighScoreDisplay";
@@ -22,6 +22,7 @@ import { X, ChevronUp, ChevronDown } from "lucide-react";
 import { useTutorial } from "@/hooks/useTutorial";
 import { useLevelProgress } from "@/hooks/useLevelProgress";
 import { FINAL_LEVEL, ENABLE_DEBUG_FEATURES } from "@/constants/game";
+import { BOSS_RUSH_CONFIG } from "@/constants/bossRushConfig";
 
 interface MainMenuProps {
   onStartGame: (settings: GameSettings) => void;
@@ -30,6 +31,7 @@ interface MainMenuProps {
 export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const navigate = useNavigate();
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
+  const [gameMode, setGameMode] = useState<GameMode>("normal");
   const { tutorialEnabled, setTutorialEnabled, resetTutorials, skipAllTutorials } = useTutorial();
   const [showInstructions, setShowInstructions] = useState(false);
   const [showHighScores, setShowHighScores] = useState(false);
@@ -79,9 +81,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   const handleStart = () => {
     const settings: GameSettings = {
-      startingLives: 3,
+      startingLives: gameMode === "bossRush" ? BOSS_RUSH_CONFIG.startingLives : 3,
       difficulty,
-      startingLevel,
+      startingLevel: gameMode === "bossRush" ? BOSS_RUSH_CONFIG.bossOrder[0] : startingLevel,
+      gameMode,
     };
     onStartGame(settings);
   };
@@ -595,47 +598,79 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             </RadioGroup>
           </div>
 
-          {/* Starting Level Selector */}
-          <div className="pt-2 border-t border-[hsl(200,70%,50%)]/30 relative">
-            <div className="flex items-center justify-between">
-              <Label className="text-white text-base">Starting Level</Label>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleLevelChange(-1)}
-                  onMouseEnter={() => soundManager.playMenuHover()}
-                  disabled={startingLevel <= 1}
-                  className="p-1 rounded bg-[hsl(220,20%,20%)] hover:bg-[hsl(220,20%,30%)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronDown className="w-4 h-4 text-[hsl(200,70%,50%)]" />
-                </button>
-                <span 
-                  className={`text-sm font-mono min-w-[28px] text-center transition-colors ${
-                    (ENABLE_DEBUG_FEATURES || isLevelUnlocked(startingLevel))
-                      ? 'text-white' 
-                      : 'text-gray-500'
-                  }`}
-                  style={{ fontFamily: "'Press Start 2P', monospace" }}
-                >
-                  {startingLevel.toString().padStart(2, '0')}
-                </span>
-                <button
-                  onClick={() => handleLevelChange(1)}
-                  onMouseEnter={() => soundManager.playMenuHover()}
-                  disabled={startingLevel >= FINAL_LEVEL}
-                  className="p-1 rounded bg-[hsl(220,20%,20%)] hover:bg-[hsl(220,20%,30%)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronUp className="w-4 h-4 text-[hsl(200,70%,50%)]" />
-                </button>
+          {/* Game Mode */}
+          <div className="space-y-2 pt-2 border-t border-[hsl(200,70%,50%)]/30">
+            <Label className="text-white text-base">Game Mode</Label>
+            <RadioGroup
+              value={gameMode}
+              onValueChange={(value) => {
+                setGameMode(value as GameMode);
+                soundManager.playMenuClick();
+              }}
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="normal" id="mode-normal" />
+                <Label htmlFor="mode-normal" className="text-white cursor-pointer">
+                  Normal (20 levels)
+                </Label>
               </div>
-            </div>
-            
-            {/* Locked level floating message */}
-            {showLockedMessage && (
-              <div className="absolute right-0 top-full mt-1 px-3 py-1.5 bg-[hsl(0,85%,45%)] text-white text-xs rounded-lg shadow-lg animate-pulse whitespace-nowrap z-10">
-                You have not made it to this level yet!
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="bossRush" id="mode-bossRush" />
+                <Label htmlFor="mode-bossRush" className="text-[hsl(30,100%,60%)] cursor-pointer font-bold">
+                  Boss Rush (4 bosses only)
+                </Label>
               </div>
+            </RadioGroup>
+            {gameMode === "bossRush" && (
+              <p className="text-xs text-gray-400 mt-1">
+                Fight all 4 bosses consecutively! Start with {BOSS_RUSH_CONFIG.startingLives} lives.
+              </p>
             )}
           </div>
+
+          {/* Starting Level Selector - hidden in Boss Rush mode */}
+          {gameMode === "normal" && (
+            <div className="pt-2 border-t border-[hsl(200,70%,50%)]/30 relative">
+              <div className="flex items-center justify-between">
+                <Label className="text-white text-base">Starting Level</Label>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleLevelChange(-1)}
+                    onMouseEnter={() => soundManager.playMenuHover()}
+                    disabled={startingLevel <= 1}
+                    className="p-1 rounded bg-[hsl(220,20%,20%)] hover:bg-[hsl(220,20%,30%)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronDown className="w-4 h-4 text-[hsl(200,70%,50%)]" />
+                  </button>
+                  <span 
+                    className={`text-sm font-mono min-w-[28px] text-center transition-colors ${
+                      (ENABLE_DEBUG_FEATURES || isLevelUnlocked(startingLevel))
+                        ? 'text-white' 
+                        : 'text-gray-500'
+                    }`}
+                    style={{ fontFamily: "'Press Start 2P', monospace" }}
+                  >
+                    {startingLevel.toString().padStart(2, '0')}
+                  </span>
+                  <button
+                    onClick={() => handleLevelChange(1)}
+                    onMouseEnter={() => soundManager.playMenuHover()}
+                    disabled={startingLevel >= FINAL_LEVEL}
+                    className="p-1 rounded bg-[hsl(220,20%,20%)] hover:bg-[hsl(220,20%,30%)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronUp className="w-4 h-4 text-[hsl(200,70%,50%)]" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Locked level floating message */}
+              {showLockedMessage && (
+                <div className="absolute right-0 top-full mt-1 px-3 py-1.5 bg-[hsl(0,85%,45%)] text-white text-xs rounded-lg shadow-lg animate-pulse whitespace-nowrap z-10">
+                  You have not made it to this level yet!
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
 
@@ -643,8 +678,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
         <div className="space-y-2 mt-6">
           <Button
             onClick={() => {
-              // In debug mode, all levels are unlocked
-              if (!ENABLE_DEBUG_FEATURES && !isLevelUnlocked(startingLevel)) {
+              // In normal mode, check level unlock; in Boss Rush mode, always allow
+              if (gameMode === "normal" && !ENABLE_DEBUG_FEATURES && !isLevelUnlocked(startingLevel)) {
                 soundManager.playMenuClick();
                 if (lockedMessageTimeoutRef.current) {
                   clearTimeout(lockedMessageTimeoutRef.current);
@@ -660,12 +695,14 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             }}
             onMouseEnter={() => soundManager.playMenuHover()}
             className={`w-full text-white text-lg py-4 ${
-              (ENABLE_DEBUG_FEATURES || isLevelUnlocked(startingLevel))
-                ? 'bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)]'
-                : 'bg-gray-600 cursor-not-allowed'
+              gameMode === "bossRush"
+                ? 'bg-[hsl(30,100%,50%)] hover:bg-[hsl(30,100%,60%)]'
+                : (ENABLE_DEBUG_FEATURES || isLevelUnlocked(startingLevel))
+                  ? 'bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)]'
+                  : 'bg-gray-600 cursor-not-allowed'
             }`}
           >
-            Start Game{ENABLE_DEBUG_FEATURES ? ' (DEBUG)' : ''}
+            {gameMode === "bossRush" ? 'Start Boss Rush' : `Start Game${ENABLE_DEBUG_FEATURES ? ' (DEBUG)' : ''}`}
           </Button>
 
           <Button
