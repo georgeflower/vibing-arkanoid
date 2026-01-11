@@ -7,12 +7,14 @@ import { HighScoreDisplay } from "./HighScoreDisplay";
 import { EndScreen } from "./EndScreen";
 import { GetReadyOverlay } from "./GetReadyOverlay";
 import { BossVictoryOverlay } from "./BossVictoryOverlay";
+import { BossRushVictoryOverlay } from "./BossRushVictoryOverlay";
 import { Button } from "@/components/ui/button";
 import { debugToast as toast } from "@/utils/debugToast";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useScaledConstants } from "@/hooks/useScaledConstants";
 import CRTOverlay from "./CRTOverlay";
+import { BOSS_RUSH_CONFIG, BossRushLevel } from "@/constants/bossRushConfig";
 
 // ═══════════════════════════════════════════════════════════════
 // ████████╗ DEBUG IMPORTS - REMOVE BEFORE PRODUCTION ████████╗
@@ -160,6 +162,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [lives, setLives] = useState(settings.startingLives);
   const [level, setLevel] = useState(settings.startingLevel);
 
+  // Boss Rush mode state
+  const isBossRush = settings.gameMode === "bossRush";
+  const [bossRushIndex, setBossRushIndex] = useState(0); // 0-3 for 4 bosses
+  const [showBossRushVictory, setShowBossRushVictory] = useState(false);
+
   // Level progress tracking
   const { updateMaxLevel } = useLevelProgress();
   const [gameState, setGameState] = useState<GameState>("ready");
@@ -171,7 +178,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const MAX_TOTAL_SPEED_NORMAL = 1.5;
   const MAX_TOTAL_SPEED_GODLIKE = 1.75;
 
-  const calculateSpeedForLevel = useCallback((levelNum: number, difficulty: string) => {
+  const calculateSpeedForLevel = useCallback((levelNum: number, difficulty: string, gameMode?: string, rushIndex?: number) => {
+    // Boss Rush mode uses fixed speeds per boss
+    if (gameMode === "bossRush" && rushIndex !== undefined) {
+      const bossLevel = BOSS_RUSH_CONFIG.bossOrder[rushIndex] as BossRushLevel;
+      return BOSS_RUSH_CONFIG.speedMultipliers[bossLevel];
+    }
+    
     // 105% base for normal, 137.5% for godlike
     const baseMultiplier = difficulty === "godlike" ? 1.375 : 1.05;
     // Level-based caps (before brick hit bonuses): 155% godlike, 140% normal
@@ -189,6 +202,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, []);
 
   const [speedMultiplier, setSpeedMultiplier] = useState(() => {
+    // Boss Rush mode uses fixed speed for first boss
+    if (settings.gameMode === "bossRush") {
+      return BOSS_RUSH_CONFIG.speedMultipliers[5]; // First boss is level 5
+    }
+    
     // Calculate speed for starting level
     const startLevel = settings.startingLevel;
     // 105% base for normal, 137.5% for godlike
@@ -1677,6 +1695,101 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     bombIntervalsRef.current.clear();
     setBonusLetters([]);
     setDroppedLettersThisLevel(new Set());
+    
+    // Boss Rush mode: progress through boss order
+    if (isBossRush) {
+      const nextBossIndex = bossRushIndex + 1;
+      
+      // Check if all bosses defeated
+      if (nextBossIndex >= BOSS_RUSH_CONFIG.bossOrder.length) {
+        // Boss Rush complete!
+        setScore((s) => s + BOSS_RUSH_CONFIG.completionBonus);
+        setShowBossRushVictory(true);
+        soundManager.stopBossMusic();
+        soundManager.resumeBackgroundMusic();
+        return;
+      }
+      
+      // Next boss in Boss Rush
+      setBossRushIndex(nextBossIndex);
+      const nextBossLevel = BOSS_RUSH_CONFIG.bossOrder[nextBossIndex] as BossRushLevel;
+      const newSpeedMultiplier = BOSS_RUSH_CONFIG.speedMultipliers[nextBossLevel];
+      
+      setLevel(nextBossLevel);
+      setLivesLostOnCurrentLevel(0);
+      setBossFirstHitShieldDropped(false);
+      setSpeedMultiplier(newSpeedMultiplier);
+      
+      setPaddle((prev) => ({
+        x: SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2,
+        y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
+        width: SCALED_PADDLE_WIDTH,
+        height: SCALED_PADDLE_HEIGHT,
+        hasTurrets: prev?.hasTurrets || false,
+        turretShots: prev?.turretShots || 0,
+        hasSuperTurrets: prev?.hasSuperTurrets || false,
+        hasShield: prev?.hasShield || false,
+        hasSecondChance: prev?.hasSecondChance || false,
+      }));
+
+      const baseSpeed = 5.175 * Math.min(newSpeedMultiplier, 1.55);
+      const initialBall: Ball = {
+        x: SCALED_CANVAS_WIDTH / 2,
+        y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
+        dx: baseSpeed,
+        dy: -baseSpeed,
+        radius: SCALED_BALL_RADIUS,
+        speed: baseSpeed,
+        id: nextBallId.current++,
+        isFireball: false,
+        waitingToLaunch: true,
+      };
+      setBalls([initialBall]);
+      setLaunchAngle(-20);
+      launchAngleDirectionRef.current = 1;
+      setShowInstructions(true);
+
+      // Initialize boss for next Boss Rush level
+      const newLevelBricks = initBricksForLevel(nextBossLevel);
+      setBricks(newLevelBricks);
+      setPowerUpDropCounts({});
+      initPowerUpAssignments(newLevelBricks, nextBossLevel, {});
+      bricksDestroyedThisLevelRef.current = 0;
+      setPowerUps([]);
+      setBullets([]);
+      setTimer(0);
+      setEnemies([]);
+      setBombs([]);
+      setExplosions([]);
+      setEnemySpawnCount(0);
+      setLastEnemySpawnTime(0);
+      setBrickHitSpeedAccumulated(0);
+      setLastBossSpawnTime(0);
+      setBossSpawnAnimation(null);
+      
+      // Boss Rush always has bosses
+      setBossIntroActive(true);
+      soundManager.playBossIntroSound();
+      firstBossMinionKilledRef.current = false;
+
+      setTimeout(() => {
+        soundManager.playBossMusic(nextBossLevel);
+        const bossName = BOSS_RUSH_CONFIG.bossNames[nextBossLevel];
+        toast.error(`⚠️ BOSS ${nextBossIndex + 1}/4: ${bossName} ⚠️`, { duration: 3000 });
+      }, 1000);
+
+      setTimeout(() => {
+        setBossIntroActive(false);
+      }, 3000);
+
+      bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
+      bombIntervalsRef.current.clear();
+      setGameState("playing");
+      toast.success(`Boss ${nextBossIndex + 1}/4! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
+      return;
+    }
+    
+    // Normal mode progression
     const newLevel = level + 1;
 
     // Reassign missed letters to the new level if it's a valid letter level
@@ -1790,7 +1903,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     } else {
       toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
     }
-  }, [level, initBricksForLevel, setPowerUps, initPowerUpAssignments, updateMaxLevel, missedLetters]);
+  }, [level, initBricksForLevel, setPowerUps, initPowerUpAssignments, updateMaxLevel, missedLetters, isBossRush, bossRushIndex, settings.difficulty, calculateSpeedForLevel]);
 
   // Update nextLevel ref whenever nextLevel function changes
   nextLevelRef.current = nextLevel;
@@ -8447,6 +8560,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   <BossVictoryOverlay
                     active={bossVictoryOverlayActive}
                     onComplete={() => setBossVictoryOverlayActive(false)}
+                  />
+
+                  {/* Boss Rush Victory Overlay */}
+                  <BossRushVictoryOverlay
+                    active={showBossRushVictory}
+                    score={score - BOSS_RUSH_CONFIG.completionBonus}
+                    onComplete={() => {
+                      setShowBossRushVictory(false);
+                      setGameState("gameOver");
+                      setShowEndScreen(true);
+                    }}
                   />
 
                   {/* Pause Overlay - only show when NOT in tutorial mode */}
