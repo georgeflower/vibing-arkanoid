@@ -524,3 +524,38 @@ export function markSwarmSpawned(boss: MegaBoss): MegaBoss {
     lastSwarmSpawnTime: Date.now()
   };
 }
+
+// Forcefully eject ball from inside boss when core is NOT exposed
+// This catches edge cases where the ball penetrates the collision boundary
+export function ejectBallFromMegaBoss(ball: Ball, boss: MegaBoss): Ball {
+  const centerX = boss.x + boss.width / 2;
+  const centerY = boss.y + boss.height / 2;
+  
+  const dx = ball.x - centerX;
+  const dy = ball.y - centerY;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+  
+  // Calculate ejection direction (away from center)
+  const normalX = dx / dist;
+  const normalY = dy / dist;
+  
+  // Place ball outside boss with safety margin
+  const ejectRadius = boss.width / 2 + ball.radius + 10;
+  const newX = centerX + normalX * ejectRadius;
+  const newY = centerY + normalY * ejectRadius;
+  
+  // Reflect velocity away from boss
+  const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+  const newDx = normalX * speed;
+  const newDy = normalY * speed;
+  
+  console.log(`[MEGA BOSS DEBUG] Ejecting ball from inside boss (core not exposed) - distance from center: ${dist.toFixed(1)}`);
+  
+  return {
+    ...ball,
+    x: newX,
+    y: newY,
+    dx: newDx,
+    dy: newDy
+  };
+}

@@ -118,6 +118,7 @@ import {
   markSwarmSpawned,
   incrementCoreHit,
   hasSufficientCoreHits,
+  ejectBallFromMegaBoss,
   MegaBoss,
 } from "@/utils/megaBossUtils";
 import {
@@ -2666,10 +2667,26 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           if (distSq <= sampleBall.radius * sampleBall.radius) {
             const dist = Math.sqrt(distSq) || 1e-6;
+            
+            // SAFETY: If ball center is essentially AT the closest point,
+            // use direction from boss center to ball as fallback normal
+            let localNormalX: number, localNormalY: number;
+            if (dist < 0.1) {
+              // Use direction from boss center to ball as ejection normal
+              const toBallX = ux;
+              const toBallY = uy;
+              const toBallDist = Math.sqrt(toBallX * toBallX + toBallY * toBallY) || 1;
+              localNormalX = toBallX / toBallDist;
+              localNormalY = toBallY / toBallDist;
+            } else {
+              localNormalX = distX / dist;
+              localNormalY = distY / dist;
+            }
+            
             const penetration = sampleBall.radius - dist;
-            const correctionDist = penetration + 2; // +2 pixel safety margin
-            const pushX = ux + (distX / dist) * correctionDist;
-            const pushY = uy + (distY / dist) * correctionDist;
+            const correctionDist = penetration + 5; // +5 pixel safety margin (increased from 2)
+            const pushX = ux + localNormalX * correctionDist;
+            const pushY = uy + localNormalY * correctionDist;
 
             // Rotate corrected position back to world space
             const worldPushX = pushX * Math.cos(bossTarget.rotationY) - pushY * Math.sin(bossTarget.rotationY);
@@ -2678,8 +2695,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             const newY = centerY + worldPushY;
 
             // Normal in world space
-            const worldNormalX = Math.abs(dist) < 1e-6 ? 0 : (distX / dist) * cos + (distY / dist) * sin;
-            const worldNormalY = Math.abs(dist) < 1e-6 ? -1 : -(distX / dist) * sin + (distY / dist) * cos;
+            const worldNormalX = localNormalX * cos + localNormalY * sin;
+            const worldNormalY = -localNormalX * sin + localNormalY * cos;
             const dot = sampleBall.dx * worldNormalX + sampleBall.dy * worldNormalY;
             const newVx = sampleBall.dx - 2 * dot * worldNormalX;
             const newVy = sampleBall.dy - 2 * dot * worldNormalY;
@@ -4383,6 +4400,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             setTimeout(() => setSecondChanceImpact(null), 500);
             
             return true; // Ball was saved, don't check for loss
+          }
+
+          // MEGA BOSS: EJECT ball if inside boss but core is NOT exposed
+          // This catches edge cases where the ball penetrates the collision boundary
+          if (level === MEGA_BOSS_LEVEL && boss && isMegaBoss(boss)) {
+            const megaBoss = boss as MegaBoss;
+            if (!megaBoss.coreExposed && !megaBoss.trappedBall && isBallInsideMegaBoss(ball, megaBoss)) {
+              console.log(`[MEGA BOSS DEBUG] ⚠️ Ball ${ball.id} inside boss but core NOT exposed - EJECTING`);
+              const ejectedBall = ejectBallFromMegaBoss(ball, megaBoss);
+              ball.x = ejectedBall.x;
+              ball.y = ejectedBall.y;
+              ball.dx = ejectedBall.dx;
+              ball.dy = ejectedBall.dy;
+              return true; // Ball was ejected, keep it alive
+            }
           }
 
           // MEGA BOSS: Apply gravity well effect when core is exposed and ball is inside boss
