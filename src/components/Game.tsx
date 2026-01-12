@@ -2642,9 +2642,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         // Shape-specific collision checks (inlined for performance)
         if (bossTarget.type === "cube") {
-          // Rotated rectangle collision logic
-          const centerX = bossTarget.x + bossTarget.width / 2;
-          const centerY = bossTarget.y + bossTarget.height / 2;
+          // Rotated rectangle collision logic with isometric 3D offset
+          // The cube visual has isometric faces extending right (+X) and up (-Y)
+          const size = bossTarget.width / 2;
+          const isoOffset = size * 0.5; // Same offset used in GameCanvas.tsx for 3D effect
+          
+          // Shift center to account for visual isometric offset
+          // Cube extends right and up, so center shifts (+isoOffset/2, -isoOffset/2)
+          const centerX = bossTarget.x + bossTarget.width / 2 + isoOffset / 2;
+          const centerY = bossTarget.y + bossTarget.height / 2 - isoOffset / 2;
           const HITBOX_EXPAND = 1;
 
           const dx = sampleBall.x - centerX;
@@ -2655,8 +2661,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const ux = dx * cos - dy * sin;
           const uy = dx * sin + dy * cos;
 
-          const halfW = (bossTarget.width + 2 * HITBOX_EXPAND) / 2;
-          const halfH = (bossTarget.height + 2 * HITBOX_EXPAND) / 2;
+          // Expand hitbox to include isometric extrusion
+          const halfW = (bossTarget.width + isoOffset + 2 * HITBOX_EXPAND) / 2;
+          const halfH = (bossTarget.height + isoOffset + 2 * HITBOX_EXPAND) / 2;
 
           const closestX = Math.max(-halfW, Math.min(ux, halfW));
           const closestY = Math.max(-halfH, Math.min(uy, halfH));
