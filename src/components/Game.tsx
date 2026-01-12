@@ -2066,8 +2066,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (isLevelComplete) {
           nextLevel();
         } else {
-          // Start game - start music only if not already playing (and not boss music)
+        // Start game - start music only if not already playing (and not boss music)
           setGameState("playing");
+          // Start Boss Rush timer on first game start
+          if (isBossRush && bossRushStartTime === null) {
+            setBossRushStartTime(Date.now());
+          }
           if (!soundManager.isMusicPlaying() && !soundManager.isBossMusicPlaying()) {
             soundManager.playBackgroundMusic();
           }
@@ -2253,8 +2257,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (isLevelComplete) {
         nextLevel();
       } else {
-        // Start game - start music only if not already playing (and not boss music)
+      // Start game - start music only if not already playing (and not boss music)
         setGameState("playing");
+        // Start Boss Rush timer on first game start
+        if (isBossRush && bossRushStartTime === null) {
+          setBossRushStartTime(Date.now());
+        }
         if (!soundManager.isMusicPlaying() && !soundManager.isBossMusicPlaying()) {
           soundManager.playBackgroundMusic(level);
         }
@@ -7684,8 +7692,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Start next level
         nextLevel();
       } else {
-        // Continue current level - start music only if not already playing (and not boss music)
+      // Continue current level - start music only if not already playing (and not boss music)
         setGameState("playing");
+        // Start Boss Rush timer on first game start
+        if (isBossRush && bossRushStartTime === null) {
+          setBossRushStartTime(Date.now());
+        }
         if (!soundManager.isMusicPlaying() && !soundManager.isBossMusicPlaying()) {
           soundManager.playBackgroundMusic(level);
         }
