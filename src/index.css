@@ -758,3 +758,50 @@ All colors MUST be HSL.
   -webkit-user-select: none !important;
 }
 
+/* Smooth scroll with momentum for mobile */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+/* Custom scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: hsl(210, 20%, 15%);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, hsl(200, 70%, 50%) 0%, hsl(200, 70%, 35%) 100%);
+  border-radius: 4px;
+  border: 1px solid hsl(200, 70%, 60%);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, hsl(200, 70%, 60%) 0%, hsl(200, 70%, 45%) 100%);
+}
+
+/* Firefox scrollbar styling */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(200, 70%, 50%) hsl(210, 20%, 15%);
+}
+
+/* Boss Rush themed scrollbar */
+.boss-rush-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, hsl(0, 70%, 50%) 0%, hsl(30, 70%, 50%) 100%);
+  border: 1px solid hsl(15, 70%, 60%);
+}
+
+.boss-rush-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, hsl(0, 70%, 60%) 0%, hsl(30, 70%, 60%) 100%);
+}
+
+.boss-rush-scrollbar {
+  scrollbar-color: hsl(15, 70%, 50%) hsl(210, 20%, 15%);
+}
+

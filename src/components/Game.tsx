@@ -8,6 +8,8 @@ import { EndScreen } from "./EndScreen";
 import { GetReadyOverlay } from "./GetReadyOverlay";
 import { BossVictoryOverlay } from "./BossVictoryOverlay";
 import { BossRushVictoryOverlay } from "./BossRushVictoryOverlay";
+import { BossRushScoreEntry } from "./BossRushScoreEntry";
+import { useBossRushScores } from "@/hooks/useBossRushScores";
 import { Button } from "@/components/ui/button";
 import { debugToast as toast } from "@/utils/debugToast";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
@@ -166,6 +168,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const isBossRush = settings.gameMode === "bossRush";
   const [bossRushIndex, setBossRushIndex] = useState(0); // 0-3 for 4 bosses
   const [showBossRushVictory, setShowBossRushVictory] = useState(false);
+  const [bossRushStartTime, setBossRushStartTime] = useState<number | null>(null);
+  const [bossRushCompletionTime, setBossRushCompletionTime] = useState<number>(0);
+  const [showBossRushScoreEntry, setShowBossRushScoreEntry] = useState(false);
 
   // Level progress tracking
   const { updateMaxLevel } = useLevelProgress();
@@ -1702,7 +1707,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       
       // Check if all bosses defeated
       if (nextBossIndex >= BOSS_RUSH_CONFIG.bossOrder.length) {
-        // Boss Rush complete!
+        // Boss Rush complete! Calculate completion time
+        const completionTime = bossRushStartTime ? Date.now() - bossRushStartTime : 0;
+        setBossRushCompletionTime(completionTime);
         setScore((s) => s + BOSS_RUSH_CONFIG.completionBonus);
         setShowBossRushVictory(true);
         soundManager.stopBossMusic();
@@ -8193,7 +8200,27 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }}
         />
       ) : showHighScoreDisplay ? (
-        <HighScoreDisplay onClose={handleCloseHighScoreDisplay} />
+        <HighScoreDisplay onClose={handleCloseHighScoreDisplay} initialTab={isBossRush ? 'bossRush' : 'normal'} />
+      ) : showBossRushScoreEntry ? (
+        <BossRushScoreEntry
+          score={score}
+          completionTimeMs={bossRushCompletionTime}
+          onSubmit={async (name) => {
+            try {
+              const { supabase } = await import("@/integrations/supabase/client");
+              await supabase.from('boss_rush_scores').insert({
+                player_name: name,
+                score: score,
+                completion_time_ms: bossRushCompletionTime,
+              });
+              toast.success("🎉 BOSS RUSH TIME SAVED! 🎉");
+            } catch (err) {
+              console.error("Failed to submit boss rush score:", err);
+            }
+            setShowBossRushScoreEntry(false);
+            setShowHighScoreDisplay(true);
+          }}
+        />
       ) : (
         <>
           {showHighScoreEntry ? (
@@ -8568,8 +8595,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     score={score - BOSS_RUSH_CONFIG.completionBonus}
                     onComplete={() => {
                       setShowBossRushVictory(false);
-                      setGameState("gameOver");
-                      setShowEndScreen(true);
+                      if (bossRushCompletionTime > 0) {
+                        setShowBossRushScoreEntry(true);
+                      } else {
+                        setGameState("gameOver");
+                        setShowEndScreen(true);
+                      }
                     }}
                   />
 
