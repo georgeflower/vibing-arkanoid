@@ -1,18 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
 import { useHighScores, type LeaderboardType } from "@/hooks/useHighScores";
+import { useBossRushScores } from "@/hooks/useBossRushScores";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { X } from "lucide-react";
+
+type TabType = 'normal' | 'bossRush';
 
 interface HighScoreDisplayProps {
   onClose: () => void;
   leaderboardType?: LeaderboardType;
+  initialTab?: TabType;
 }
 
-export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time' }: HighScoreDisplayProps) => {
-  const { highScores, isLoading } = useHighScores(leaderboardType);
+export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time', initialTab = 'normal' }: HighScoreDisplayProps) => {
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [selectedType, setSelectedType] = useState<LeaderboardType>(leaderboardType);
   const { highScores: currentScores, isLoading: currentLoading } = useHighScores(selectedType);
+  const { scores: bossRushScores, isLoading: bossRushLoading, formatTime } = useBossRushScores();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Swipe gesture for mobile back navigation
@@ -48,57 +53,115 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time' }: High
             HIGH SCORES
           </h2>
           
-          <div className="flex justify-center gap-2 mb-6">
+          {/* Tab switcher */}
+          <div className="flex justify-center gap-2 mb-4">
             <Button
-              onClick={() => setSelectedType('all-time')}
-              variant={selectedType === 'all-time' ? 'default' : 'outline'}
-              className="px-4 py-2 text-sm font-bold"
+              onClick={() => setActiveTab('normal')}
+              variant={activeTab === 'normal' ? 'default' : 'outline'}
+              className={`px-6 py-2 text-sm font-bold ${activeTab === 'normal' ? 'bg-cyan-600 hover:bg-cyan-500' : ''}`}
             >
-              ALL TIME
+              CAMPAIGN
             </Button>
             <Button
-              onClick={() => setSelectedType('weekly')}
-              variant={selectedType === 'weekly' ? 'default' : 'outline'}
-              className="px-4 py-2 text-sm font-bold"
+              onClick={() => setActiveTab('bossRush')}
+              variant={activeTab === 'bossRush' ? 'default' : 'outline'}
+              className={`px-6 py-2 text-sm font-bold ${activeTab === 'bossRush' ? 'bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 border-0' : 'border-red-500/50 text-red-400 hover:bg-red-500/20'}`}
             >
-              WEEKLY
-            </Button>
-            <Button
-              onClick={() => setSelectedType('daily')}
-              variant={selectedType === 'daily' ? 'default' : 'outline'}
-              className="px-4 py-2 text-sm font-bold"
-            >
-              DAILY
+              ⚔️ BOSS RUSH
             </Button>
           </div>
 
-          <div className="space-y-2 mb-8 max-h-[60vh] overflow-y-auto">
-            {currentLoading ? (
-              <div className="text-center text-slate-400 py-12">Loading scores...</div>
-            ) : currentScores.length === 0 ? (
-              <div className="text-center text-slate-500 py-12">No scores yet!</div>
-            ) : (
-              currentScores.map((entry, index) => (
-                <div key={entry.id || index} className="grid grid-cols-[auto_1fr_auto_auto] gap-2 sm:gap-3 md:gap-4 items-center text-[10px] sm:text-xs md:text-sm lg:text-xl px-2 sm:px-3 md:px-4 py-1 sm:py-2 bg-slate-800/60 rounded-lg border border-cyan-500/30">
-                  <span className="text-cyan-300">{index + 1}.</span>
-                  
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-white font-bold flex items-center gap-1 truncate">
-                      {entry.beatLevel50 && <span>👑</span>}
-                      <span className="truncate">{entry.name}</span>
-                    </span>
-                    {entry.difficulty === "godlike" && (
-                      <span className="text-red-500 text-[8px] sm:text-[9px] md:text-[10px] font-bold leading-tight">GOD-MODE</span>
-                    )}
-                  </div>
-                  
-                  <span className="text-white font-bold text-right tabular-nums">{entry.score.toString().padStart(6, '0')}</span>
-                  
-                  <span className="text-white text-right whitespace-nowrap">LVL{entry.level}</span>
-                </div>
-              ))
-            )}
-          </div>
+          {activeTab === 'normal' && (
+            <>
+              {/* Time filter for normal mode */}
+              <div className="flex justify-center gap-2 mb-6">
+                <Button
+                  onClick={() => setSelectedType('all-time')}
+                  variant={selectedType === 'all-time' ? 'default' : 'outline'}
+                  className="px-4 py-2 text-sm font-bold"
+                >
+                  ALL TIME
+                </Button>
+                <Button
+                  onClick={() => setSelectedType('weekly')}
+                  variant={selectedType === 'weekly' ? 'default' : 'outline'}
+                  className="px-4 py-2 text-sm font-bold"
+                >
+                  WEEKLY
+                </Button>
+                <Button
+                  onClick={() => setSelectedType('daily')}
+                  variant={selectedType === 'daily' ? 'default' : 'outline'}
+                  className="px-4 py-2 text-sm font-bold"
+                >
+                  DAILY
+                </Button>
+              </div>
+
+              <div className="space-y-2 mb-8 max-h-[50vh] overflow-y-auto smooth-scroll custom-scrollbar">
+                {currentLoading ? (
+                  <div className="text-center text-slate-400 py-12">Loading scores...</div>
+                ) : currentScores.length === 0 ? (
+                  <div className="text-center text-slate-500 py-12">No scores yet!</div>
+                ) : (
+                  currentScores.map((entry, index) => (
+                    <div key={entry.id || index} className="grid grid-cols-[auto_1fr_auto_auto] gap-2 sm:gap-3 md:gap-4 items-center text-[10px] sm:text-xs md:text-sm lg:text-xl px-2 sm:px-3 md:px-4 py-1 sm:py-2 bg-slate-800/60 rounded-lg border border-cyan-500/30">
+                      <span className="text-cyan-300">{index + 1}.</span>
+                      
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-white font-bold flex items-center gap-1 truncate">
+                          {entry.beatLevel50 && <span>👑</span>}
+                          <span className="truncate">{entry.name}</span>
+                        </span>
+                        {entry.difficulty === "godlike" && (
+                          <span className="text-red-500 text-[8px] sm:text-[9px] md:text-[10px] font-bold leading-tight">GOD-MODE</span>
+                        )}
+                      </div>
+                      
+                      <span className="text-white font-bold text-right tabular-nums">{entry.score.toString().padStart(6, '0')}</span>
+                      
+                      <span className="text-white text-right whitespace-nowrap">LVL{entry.level}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+
+          {activeTab === 'bossRush' && (
+            <>
+              <div className="text-center text-orange-400 text-sm mb-4 font-mono">
+                🏆 FASTEST COMPLETION TIMES 🏆
+              </div>
+              
+              <div className="space-y-2 mb-8 max-h-[50vh] overflow-y-auto smooth-scroll custom-scrollbar">
+                {bossRushLoading ? (
+                  <div className="text-center text-slate-400 py-12">Loading times...</div>
+                ) : bossRushScores.length === 0 ? (
+                  <div className="text-center text-slate-500 py-12">No times yet! Be the first!</div>
+                ) : (
+                  bossRushScores.map((entry, index) => (
+                    <div key={entry.id || index} className="grid grid-cols-[auto_1fr_auto_auto] gap-2 sm:gap-3 md:gap-4 items-center text-[10px] sm:text-xs md:text-sm lg:text-xl px-2 sm:px-3 md:px-4 py-1 sm:py-2 bg-slate-800/60 rounded-lg border border-red-500/30">
+                      <span className="text-red-300 font-bold">
+                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}
+                      </span>
+                      
+                      <span className="text-orange-400 font-bold truncate">{entry.name}</span>
+                      
+                      <span className="text-cyan-300 font-bold text-right tabular-nums">
+                        ⏱️ {formatTime(entry.completionTimeMs)}
+                      </span>
+                      
+                      <span className="text-amber-300 text-right whitespace-nowrap text-xs sm:text-sm">
+                        {entry.score.toLocaleString()}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+
           <div className="flex justify-center">
             <Button onClick={onClose} className="px-8 py-4 text-xl font-bold">CONTINUE</Button>
           </div>

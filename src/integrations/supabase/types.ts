@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      boss_rush_scores: {
+        Row: {
+          completion_time_ms: number
+          created_at: string
+          id: string
+          player_name: string
+          score: number
+        }
+        Insert: {
+          completion_time_ms: number
+          created_at?: string
+          id?: string
+          player_name: string
+          score: number
+        }
+        Update: {
+          completion_time_ms?: number
+          created_at?: string
+          id?: string
+          player_name?: string
+          score?: number
+        }
+        Relationships: []
+      }
       high_scores: {
         Row: {
           beat_level_50: boolean | null
