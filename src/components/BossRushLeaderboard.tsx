@@ -7,7 +7,7 @@ export const BossRushLeaderboard = () => {
     <div className="bg-slate-900/80 rounded-lg p-6 border-2 border-red-500/30 w-full max-w-md max-h-[80vh] overflow-y-auto smooth-scroll">
       <h2 className="text-2xl font-bold text-center mb-4 font-mono">
         <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400">
-          ⚔️ BOSS RUSH TIMES ⚔️
+          ⚔️ BOSS RUSH SCORES ⚔️
         </span>
       </h2>
 
@@ -25,14 +25,14 @@ export const BossRushLeaderboard = () => {
               <span className="text-red-300 w-8">
                 {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}
               </span>
-              <span className="text-orange-400 font-bold flex-shrink-0">
+              <span className="text-orange-400 font-bold flex-shrink-0 w-14">
                 {entry.name}
               </span>
-              <span className="text-cyan-300 flex-1 text-center font-bold">
-                {formatTime(entry.completionTimeMs)}
-              </span>
-              <span className="text-amber-300 w-24 text-right text-sm">
+              <span className="text-amber-300 flex-1 text-center font-bold text-lg">
                 {entry.score.toLocaleString()}
+              </span>
+              <span className="text-cyan-300 w-20 text-right text-sm">
+                {formatTime(entry.completionTimeMs)}
               </span>
             </div>
           ))}

@@ -25,7 +25,7 @@ export const useBossRushScores = () => {
       const { data, error: fetchError } = await supabase
         .from('boss_rush_scores')
         .select('*')
-        .order('completion_time_ms', { ascending: true })
+        .order('score', { ascending: false })
         .limit(MAX_BOSS_RUSH_SCORES);
 
       if (fetchError) throw fetchError;
@@ -51,12 +51,12 @@ export const useBossRushScores = () => {
     fetchScores();
   }, []);
 
-  const isTopScore = async (completionTimeMs: number): Promise<boolean> => {
+  const isTopScore = async (score: number): Promise<boolean> => {
     try {
       const { count, error: countError } = await supabase
         .from('boss_rush_scores')
         .select('*', { count: 'exact', head: true })
-        .lte('completion_time_ms', completionTimeMs);
+        .gte('score', score);
 
       if (countError) throw countError;
 
