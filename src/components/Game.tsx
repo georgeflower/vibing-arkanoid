@@ -2642,16 +2642,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         // Shape-specific collision checks (inlined for performance)
         if (bossTarget.type === "cube") {
-          // Rotated rectangle collision logic with isometric 3D offset
-          // The cube visual has isometric faces extending right (+X) and up (-Y)
+          // Asymmetric hitbox for isometric 3D cube
+          // The cube visual extends RIGHT (+X) and UP (-Y) only from the front face
           const size = bossTarget.width / 2;
-          const isoOffset = size * 0.5; // Same offset used in GameCanvas.tsx for 3D effect
+          const offset = size * 0.5; // Same offset used in GameCanvas.tsx for 3D effect
+          const HITBOX_EXPAND = 2;
           
-          // Shift center to account for visual isometric offset
-          // Cube extends right and up, so center shifts (+isoOffset/2, -isoOffset/2)
-          const centerX = bossTarget.x + bossTarget.width / 2 + isoOffset / 2;
-          const centerY = bossTarget.y + bossTarget.height / 2 - isoOffset / 2;
-          const HITBOX_EXPAND = 1;
+          // Use the ORIGINAL center of the front face (not shifted)
+          const centerX = bossTarget.x + bossTarget.width / 2;
+          const centerY = bossTarget.y + bossTarget.height / 2;
 
           const dx = sampleBall.x - centerX;
           const dy = sampleBall.y - centerY;
@@ -2661,12 +2660,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const ux = dx * cos - dy * sin;
           const uy = dx * sin + dy * cos;
 
-          // Expand hitbox to include isometric extrusion
-          const halfW = (bossTarget.width + isoOffset + 2 * HITBOX_EXPAND) / 2;
-          const halfH = (bossTarget.height + isoOffset + 2 * HITBOX_EXPAND) / 2;
+          // ASYMMETRIC BOUNDS matching the visual 3D cube:
+          // Left edge: -size (front face left)
+          // Right edge: +size + offset (right face extends rightward)
+          // Top edge: -size - offset (top face extends upward)
+          // Bottom edge: +size (front face bottom)
+          const leftBound = -size - HITBOX_EXPAND;
+          const rightBound = size + offset + HITBOX_EXPAND;
+          const topBound = -size - offset - HITBOX_EXPAND;
+          const bottomBound = size + HITBOX_EXPAND;
 
-          const closestX = Math.max(-halfW, Math.min(ux, halfW));
-          const closestY = Math.max(-halfH, Math.min(uy, halfH));
+          // Clamp to asymmetric bounds
+          const closestX = Math.max(leftBound, Math.min(ux, rightBound));
+          const closestY = Math.max(topBound, Math.min(uy, bottomBound));
 
           const distX = ux - closestX;
           const distY = uy - closestY;
@@ -2691,7 +2697,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             }
             
             const penetration = sampleBall.radius - dist;
-            const correctionDist = penetration + 5; // +5 pixel safety margin (increased from 2)
+            const correctionDist = penetration + 5; // +5 pixel safety margin
             const pushX = ux + localNormalX * correctionDist;
             const pushY = uy + localNormalY * correctionDist;
 
@@ -2718,78 +2724,117 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const dx = sampleBall.x - centerX;
           const dy = sampleBall.y - centerY;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          const bossRadius = bossTarget.width / 2 + HITBOX_EXPAND;
-          const totalRadius = sampleBall.radius + bossRadius;
+          const combinedRadius = bossTarget.width / 2 + sampleBall.radius + HITBOX_EXPAND;
 
-          if (dist < totalRadius) {
-            const penetration = totalRadius - dist;
-            const normalX = dx / (dist || 1e-6);
-            const normalY = dy / (dist || 1e-6);
-            const overlap = penetration + 2; // +2 pixel safety margin
-            const newX = sampleBall.x + normalX * overlap;
-            const newY = sampleBall.y + normalY * overlap;
-            const dot = sampleBall.dx * normalX + sampleBall.dy * normalY;
-            const newVx = sampleBall.dx - 2 * dot * normalX;
-            const newVy = sampleBall.dy - 2 * dot * normalY;
+          if (dist <= combinedRadius) {
+            const nx = dx / (dist || 1e-6);
+            const ny = dy / (dist || 1e-6);
+            const dot = sampleBall.dx * nx + sampleBall.dy * ny;
+            const newVx = sampleBall.dx - 2 * dot * nx;
+            const newVy = sampleBall.dy - 2 * dot * ny;
+            const separation = combinedRadius - dist + 5;
+            const newX = sampleBall.x + nx * separation;
+            const newY = sampleBall.y + ny * separation;
             collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
           }
         } else if (bossTarget.type === "pyramid") {
-          // Rotated triangle collision logic
+          // Rotated equilateral triangle collision logic
           const centerX = bossTarget.x + bossTarget.width / 2;
           const centerY = bossTarget.y + bossTarget.height / 2;
           const HITBOX_EXPAND = 1;
+
+          // Triangle vertices (pointing up)
           const size = bossTarget.width / 2 + HITBOX_EXPAND;
-          const v0 = { x: 0, y: -size };
-          const v1 = { x: size, y: size };
-          const v2 = { x: -size, y: size };
-          const cos = Math.cos(bossTarget.rotationY);
-          const sin = Math.sin(bossTarget.rotationY);
-          const rotatePoint = (p: { x: number; y: number }) => ({ x: p.x * cos - p.y * sin, y: p.x * sin + p.y * cos });
-          const rv0 = rotatePoint(v0);
-          const rv1 = rotatePoint(v1);
-          const rv2 = rotatePoint(v2);
-          const wv0 = { x: centerX + rv0.x, y: centerY + rv0.y };
-          const wv1 = { x: centerX + rv1.x, y: centerY + rv1.y };
-          const wv2 = { x: centerX + rv2.x, y: centerY + rv2.y };
-          const edges = [
-            { a: wv0, b: wv1 },
-            { a: wv1, b: wv2 },
-            { a: wv2, b: wv0 },
+          const height = size * Math.sqrt(3);
+          const rotation = bossTarget.rotationY || 0;
+
+          // Define triangle vertices relative to center
+          const vertices = [
+            { x: 0, y: -height * 0.6 }, // top
+            { x: -size, y: height * 0.4 }, // bottom-left
+            { x: size, y: height * 0.4 }, // bottom-right
           ];
-          let closestDist = Infinity;
-          let closestNormal = { x: 0, y: 0 };
-          for (const edge of edges) {
-            const ex = edge.b.x - edge.a.x;
-            const ey = edge.b.y - edge.a.y;
-            const len = Math.sqrt(ex * ex + ey * ey) || 1e-6;
-            const edgeNormX = ex / len;
-            const edgeNormY = ey / len;
-            const normalX = -edgeNormY;
-            const normalY = edgeNormX;
-            const toBallX = sampleBall.x - edge.a.x;
-            const toBallY = sampleBall.y - edge.a.y;
-            const t = Math.max(0, Math.min(len, toBallX * edgeNormX + toBallY * edgeNormY));
-            const closestX = edge.a.x + t * edgeNormX;
-            const closestY = edge.a.y + t * edgeNormY;
-            const distX = sampleBall.x - closestX;
-            const distY = sampleBall.y - closestY;
-            const dist = Math.sqrt(distX * distX + distY * distY);
-            if (dist < closestDist) {
-              closestDist = dist;
-              const toCenterX = sampleBall.x - centerX;
-              const toCenterY = sampleBall.y - centerY;
-              const dotProduct = normalX * toCenterX + normalY * toCenterY;
-              closestNormal = dotProduct > 0 ? { x: normalX, y: normalY } : { x: -normalX, y: -normalY };
+
+          // Rotate vertices
+          const rotatedVertices = vertices.map((v) => ({
+            x: centerX + v.x * Math.cos(rotation) - v.y * Math.sin(rotation),
+            y: centerY + v.x * Math.sin(rotation) + v.y * Math.cos(rotation),
+          }));
+
+          // Find closest point on triangle to ball
+          let minDist = Infinity;
+          let closestPoint = { x: 0, y: 0 };
+          let closestNormal = { x: 0, y: -1 };
+
+          for (let i = 0; i < 3; i++) {
+            const v1 = rotatedVertices[i];
+            const v2 = rotatedVertices[(i + 1) % 3];
+
+            // Project ball center onto edge
+            const ex = v2.x - v1.x;
+            const ey = v2.y - v1.y;
+            const edgeLen = Math.sqrt(ex * ex + ey * ey);
+            const edgeNormX = ex / edgeLen;
+            const edgeNormY = ey / edgeLen;
+
+            const toPointX = sampleBall.x - v1.x;
+            const toPointY = sampleBall.y - v1.y;
+            let t = (toPointX * edgeNormX + toPointY * edgeNormY) / edgeLen;
+            t = Math.max(0, Math.min(1, t));
+
+            const closestOnEdgeX = v1.x + t * ex;
+            const closestOnEdgeY = v1.y + t * ey;
+
+            const distToEdge = Math.sqrt(
+              (sampleBall.x - closestOnEdgeX) ** 2 + (sampleBall.y - closestOnEdgeY) ** 2,
+            );
+
+            if (distToEdge < minDist) {
+              minDist = distToEdge;
+              closestPoint = { x: closestOnEdgeX, y: closestOnEdgeY };
+              // Edge normal (perpendicular, pointing outward)
+              closestNormal = { x: -ey / edgeLen, y: ex / edgeLen };
+              // Ensure normal points away from center
+              const toCenterX = centerX - closestOnEdgeX;
+              const toCenterY = centerY - closestOnEdgeY;
+              if (closestNormal.x * toCenterX + closestNormal.y * toCenterY > 0) {
+                closestNormal.x = -closestNormal.x;
+                closestNormal.y = -closestNormal.y;
+              }
             }
           }
-          if (closestDist < sampleBall.radius) {
-            const penetration = sampleBall.radius - closestDist;
-            const correctionDist = penetration + 2; // +2 pixel safety margin
-            const newX = sampleBall.x + closestNormal.x * correctionDist;
-            const newY = sampleBall.y + closestNormal.y * correctionDist;
+
+          if (minDist <= sampleBall.radius) {
+            const penetration = sampleBall.radius - minDist;
+            const separation = penetration + 5;
+            const newX = sampleBall.x + closestNormal.x * separation;
+            const newY = sampleBall.y + closestNormal.y * separation;
+
             const dot = sampleBall.dx * closestNormal.x + sampleBall.dy * closestNormal.y;
             const newVx = sampleBall.dx - 2 * dot * closestNormal.x;
             const newVy = sampleBall.dy - 2 * dot * closestNormal.y;
+            collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
+          }
+        } else if (bossTarget.type === "hexagon") {
+          // Hexagon collision - treat as circle for simplicity
+          const centerX = bossTarget.x + bossTarget.width / 2;
+          const centerY = bossTarget.y + bossTarget.height / 2;
+          const HITBOX_EXPAND = 1;
+
+          const dx = sampleBall.x - centerX;
+          const dy = sampleBall.y - centerY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const combinedRadius = bossTarget.width / 2 + sampleBall.radius + HITBOX_EXPAND;
+
+          if (dist <= combinedRadius) {
+            const nx = dx / (dist || 1e-6);
+            const ny = dy / (dist || 1e-6);
+            const dot = sampleBall.dx * nx + sampleBall.dy * ny;
+            const newVx = sampleBall.dx - 2 * dot * nx;
+            const newVy = sampleBall.dy - 2 * dot * ny;
+            const separation = combinedRadius - dist + 5;
+            const newX = sampleBall.x + nx * separation;
+            const newY = sampleBall.y + ny * separation;
             collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
           }
         }
