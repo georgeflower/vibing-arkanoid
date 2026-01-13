@@ -118,7 +118,6 @@ import {
   markSwarmSpawned,
   incrementCoreHit,
   hasSufficientCoreHits,
-  ejectBallFromMegaBoss,
   MegaBoss,
 } from "@/utils/megaBossUtils";
 import {
@@ -2642,15 +2641,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         // Shape-specific collision checks (inlined for performance)
         if (bossTarget.type === "cube") {
-          // Asymmetric hitbox for isometric 3D cube
-          // The cube visual extends RIGHT (+X) and UP (-Y) only from the front face
-          const size = bossTarget.width / 2;
-          const offset = size * 0.5; // Same offset used in GameCanvas.tsx for 3D effect
-          const HITBOX_EXPAND = 2;
-          
-          // Use the ORIGINAL center of the front face (not shifted)
+          // Rotated rectangle collision logic
           const centerX = bossTarget.x + bossTarget.width / 2;
           const centerY = bossTarget.y + bossTarget.height / 2;
+          const HITBOX_EXPAND = 1;
 
           const dx = sampleBall.x - centerX;
           const dy = sampleBall.y - centerY;
@@ -2660,19 +2654,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const ux = dx * cos - dy * sin;
           const uy = dx * sin + dy * cos;
 
-          // ASYMMETRIC BOUNDS matching the visual 3D cube:
-          // Left edge: -size (front face left)
-          // Right edge: +size + offset (right face extends rightward)
-          // Top edge: -size - offset (top face extends upward)
-          // Bottom edge: +size (front face bottom)
-          const leftBound = -size - HITBOX_EXPAND;
-          const rightBound = size + offset + HITBOX_EXPAND;
-          const topBound = -size - offset - HITBOX_EXPAND;
-          const bottomBound = size + HITBOX_EXPAND;
+          const halfW = (bossTarget.width + 2 * HITBOX_EXPAND) / 2;
+          const halfH = (bossTarget.height + 2 * HITBOX_EXPAND) / 2;
 
-          // Clamp to asymmetric bounds
-          const closestX = Math.max(leftBound, Math.min(ux, rightBound));
-          const closestY = Math.max(topBound, Math.min(uy, bottomBound));
+          const closestX = Math.max(-halfW, Math.min(ux, halfW));
+          const closestY = Math.max(-halfH, Math.min(uy, halfH));
 
           const distX = ux - closestX;
           const distY = uy - closestY;
@@ -2680,26 +2666,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           if (distSq <= sampleBall.radius * sampleBall.radius) {
             const dist = Math.sqrt(distSq) || 1e-6;
-            
-            // SAFETY: If ball center is essentially AT the closest point,
-            // use direction from boss center to ball as fallback normal
-            let localNormalX: number, localNormalY: number;
-            if (dist < 0.1) {
-              // Use direction from boss center to ball as ejection normal
-              const toBallX = ux;
-              const toBallY = uy;
-              const toBallDist = Math.sqrt(toBallX * toBallX + toBallY * toBallY) || 1;
-              localNormalX = toBallX / toBallDist;
-              localNormalY = toBallY / toBallDist;
-            } else {
-              localNormalX = distX / dist;
-              localNormalY = distY / dist;
-            }
-            
             const penetration = sampleBall.radius - dist;
-            const correctionDist = penetration + 5; // +5 pixel safety margin
-            const pushX = ux + localNormalX * correctionDist;
-            const pushY = uy + localNormalY * correctionDist;
+            const correctionDist = penetration + 2; // +2 pixel safety margin
+            const pushX = ux + (distX / dist) * correctionDist;
+            const pushY = uy + (distY / dist) * correctionDist;
 
             // Rotate corrected position back to world space
             const worldPushX = pushX * Math.cos(bossTarget.rotationY) - pushY * Math.sin(bossTarget.rotationY);
@@ -2708,8 +2678,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             const newY = centerY + worldPushY;
 
             // Normal in world space
-            const worldNormalX = localNormalX * cos + localNormalY * sin;
-            const worldNormalY = -localNormalX * sin + localNormalY * cos;
+            const worldNormalX = Math.abs(dist) < 1e-6 ? 0 : (distX / dist) * cos + (distY / dist) * sin;
+            const worldNormalY = Math.abs(dist) < 1e-6 ? -1 : -(distX / dist) * sin + (distY / dist) * cos;
             const dot = sampleBall.dx * worldNormalX + sampleBall.dy * worldNormalY;
             const newVx = sampleBall.dx - 2 * dot * worldNormalX;
             const newVy = sampleBall.dy - 2 * dot * worldNormalY;
@@ -2724,117 +2694,78 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const dx = sampleBall.x - centerX;
           const dy = sampleBall.y - centerY;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          const combinedRadius = bossTarget.width / 2 + sampleBall.radius + HITBOX_EXPAND;
+          const bossRadius = bossTarget.width / 2 + HITBOX_EXPAND;
+          const totalRadius = sampleBall.radius + bossRadius;
 
-          if (dist <= combinedRadius) {
-            const nx = dx / (dist || 1e-6);
-            const ny = dy / (dist || 1e-6);
-            const dot = sampleBall.dx * nx + sampleBall.dy * ny;
-            const newVx = sampleBall.dx - 2 * dot * nx;
-            const newVy = sampleBall.dy - 2 * dot * ny;
-            const separation = combinedRadius - dist + 5;
-            const newX = sampleBall.x + nx * separation;
-            const newY = sampleBall.y + ny * separation;
+          if (dist < totalRadius) {
+            const penetration = totalRadius - dist;
+            const normalX = dx / (dist || 1e-6);
+            const normalY = dy / (dist || 1e-6);
+            const overlap = penetration + 2; // +2 pixel safety margin
+            const newX = sampleBall.x + normalX * overlap;
+            const newY = sampleBall.y + normalY * overlap;
+            const dot = sampleBall.dx * normalX + sampleBall.dy * normalY;
+            const newVx = sampleBall.dx - 2 * dot * normalX;
+            const newVy = sampleBall.dy - 2 * dot * normalY;
             collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
           }
         } else if (bossTarget.type === "pyramid") {
-          // Rotated equilateral triangle collision logic
+          // Rotated triangle collision logic
           const centerX = bossTarget.x + bossTarget.width / 2;
           const centerY = bossTarget.y + bossTarget.height / 2;
           const HITBOX_EXPAND = 1;
-
-          // Triangle vertices (pointing up)
           const size = bossTarget.width / 2 + HITBOX_EXPAND;
-          const height = size * Math.sqrt(3);
-          const rotation = bossTarget.rotationY || 0;
-
-          // Define triangle vertices relative to center
-          const vertices = [
-            { x: 0, y: -height * 0.6 }, // top
-            { x: -size, y: height * 0.4 }, // bottom-left
-            { x: size, y: height * 0.4 }, // bottom-right
+          const v0 = { x: 0, y: -size };
+          const v1 = { x: size, y: size };
+          const v2 = { x: -size, y: size };
+          const cos = Math.cos(bossTarget.rotationY);
+          const sin = Math.sin(bossTarget.rotationY);
+          const rotatePoint = (p: { x: number; y: number }) => ({ x: p.x * cos - p.y * sin, y: p.x * sin + p.y * cos });
+          const rv0 = rotatePoint(v0);
+          const rv1 = rotatePoint(v1);
+          const rv2 = rotatePoint(v2);
+          const wv0 = { x: centerX + rv0.x, y: centerY + rv0.y };
+          const wv1 = { x: centerX + rv1.x, y: centerY + rv1.y };
+          const wv2 = { x: centerX + rv2.x, y: centerY + rv2.y };
+          const edges = [
+            { a: wv0, b: wv1 },
+            { a: wv1, b: wv2 },
+            { a: wv2, b: wv0 },
           ];
-
-          // Rotate vertices
-          const rotatedVertices = vertices.map((v) => ({
-            x: centerX + v.x * Math.cos(rotation) - v.y * Math.sin(rotation),
-            y: centerY + v.x * Math.sin(rotation) + v.y * Math.cos(rotation),
-          }));
-
-          // Find closest point on triangle to ball
-          let minDist = Infinity;
-          let closestPoint = { x: 0, y: 0 };
-          let closestNormal = { x: 0, y: -1 };
-
-          for (let i = 0; i < 3; i++) {
-            const v1 = rotatedVertices[i];
-            const v2 = rotatedVertices[(i + 1) % 3];
-
-            // Project ball center onto edge
-            const ex = v2.x - v1.x;
-            const ey = v2.y - v1.y;
-            const edgeLen = Math.sqrt(ex * ex + ey * ey);
-            const edgeNormX = ex / edgeLen;
-            const edgeNormY = ey / edgeLen;
-
-            const toPointX = sampleBall.x - v1.x;
-            const toPointY = sampleBall.y - v1.y;
-            let t = (toPointX * edgeNormX + toPointY * edgeNormY) / edgeLen;
-            t = Math.max(0, Math.min(1, t));
-
-            const closestOnEdgeX = v1.x + t * ex;
-            const closestOnEdgeY = v1.y + t * ey;
-
-            const distToEdge = Math.sqrt(
-              (sampleBall.x - closestOnEdgeX) ** 2 + (sampleBall.y - closestOnEdgeY) ** 2,
-            );
-
-            if (distToEdge < minDist) {
-              minDist = distToEdge;
-              closestPoint = { x: closestOnEdgeX, y: closestOnEdgeY };
-              // Edge normal (perpendicular, pointing outward)
-              closestNormal = { x: -ey / edgeLen, y: ex / edgeLen };
-              // Ensure normal points away from center
-              const toCenterX = centerX - closestOnEdgeX;
-              const toCenterY = centerY - closestOnEdgeY;
-              if (closestNormal.x * toCenterX + closestNormal.y * toCenterY > 0) {
-                closestNormal.x = -closestNormal.x;
-                closestNormal.y = -closestNormal.y;
-              }
+          let closestDist = Infinity;
+          let closestNormal = { x: 0, y: 0 };
+          for (const edge of edges) {
+            const ex = edge.b.x - edge.a.x;
+            const ey = edge.b.y - edge.a.y;
+            const len = Math.sqrt(ex * ex + ey * ey) || 1e-6;
+            const edgeNormX = ex / len;
+            const edgeNormY = ey / len;
+            const normalX = -edgeNormY;
+            const normalY = edgeNormX;
+            const toBallX = sampleBall.x - edge.a.x;
+            const toBallY = sampleBall.y - edge.a.y;
+            const t = Math.max(0, Math.min(len, toBallX * edgeNormX + toBallY * edgeNormY));
+            const closestX = edge.a.x + t * edgeNormX;
+            const closestY = edge.a.y + t * edgeNormY;
+            const distX = sampleBall.x - closestX;
+            const distY = sampleBall.y - closestY;
+            const dist = Math.sqrt(distX * distX + distY * distY);
+            if (dist < closestDist) {
+              closestDist = dist;
+              const toCenterX = sampleBall.x - centerX;
+              const toCenterY = sampleBall.y - centerY;
+              const dotProduct = normalX * toCenterX + normalY * toCenterY;
+              closestNormal = dotProduct > 0 ? { x: normalX, y: normalY } : { x: -normalX, y: -normalY };
             }
           }
-
-          if (minDist <= sampleBall.radius) {
-            const penetration = sampleBall.radius - minDist;
-            const separation = penetration + 5;
-            const newX = sampleBall.x + closestNormal.x * separation;
-            const newY = sampleBall.y + closestNormal.y * separation;
-
+          if (closestDist < sampleBall.radius) {
+            const penetration = sampleBall.radius - closestDist;
+            const correctionDist = penetration + 2; // +2 pixel safety margin
+            const newX = sampleBall.x + closestNormal.x * correctionDist;
+            const newY = sampleBall.y + closestNormal.y * correctionDist;
             const dot = sampleBall.dx * closestNormal.x + sampleBall.dy * closestNormal.y;
             const newVx = sampleBall.dx - 2 * dot * closestNormal.x;
             const newVy = sampleBall.dy - 2 * dot * closestNormal.y;
-            collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
-          }
-        } else if (bossTarget.type === "hexagon") {
-          // Hexagon collision - treat as circle for simplicity
-          const centerX = bossTarget.x + bossTarget.width / 2;
-          const centerY = bossTarget.y + bossTarget.height / 2;
-          const HITBOX_EXPAND = 1;
-
-          const dx = sampleBall.x - centerX;
-          const dy = sampleBall.y - centerY;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const combinedRadius = bossTarget.width / 2 + sampleBall.radius + HITBOX_EXPAND;
-
-          if (dist <= combinedRadius) {
-            const nx = dx / (dist || 1e-6);
-            const ny = dy / (dist || 1e-6);
-            const dot = sampleBall.dx * nx + sampleBall.dy * ny;
-            const newVx = sampleBall.dx - 2 * dot * nx;
-            const newVy = sampleBall.dy - 2 * dot * ny;
-            const separation = combinedRadius - dist + 5;
-            const newX = sampleBall.x + nx * separation;
-            const newY = sampleBall.y + ny * separation;
             collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
           }
         }
@@ -4452,21 +4383,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             setTimeout(() => setSecondChanceImpact(null), 500);
             
             return true; // Ball was saved, don't check for loss
-          }
-
-          // MEGA BOSS: EJECT ball if inside boss but core is NOT exposed
-          // This catches edge cases where the ball penetrates the collision boundary
-          if (level === MEGA_BOSS_LEVEL && boss && isMegaBoss(boss)) {
-            const megaBoss = boss as MegaBoss;
-            if (!megaBoss.coreExposed && !megaBoss.trappedBall && isBallInsideMegaBoss(ball, megaBoss)) {
-              console.log(`[MEGA BOSS DEBUG] ⚠️ Ball ${ball.id} inside boss but core NOT exposed - EJECTING`);
-              const ejectedBall = ejectBallFromMegaBoss(ball, megaBoss);
-              ball.x = ejectedBall.x;
-              ball.y = ejectedBall.y;
-              ball.dx = ejectedBall.dx;
-              ball.dy = ejectedBall.dy;
-              return true; // Ball was ejected, keep it alive
-            }
           }
 
           // MEGA BOSS: Apply gravity well effect when core is exposed and ball is inside boss
