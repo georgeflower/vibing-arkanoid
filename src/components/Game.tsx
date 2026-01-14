@@ -4433,13 +4433,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           // Check if ball is falling below screen
 
-          // 🔴 SAFETY CHECK: Detect and fix balls that went above screen
-          if (ball.y < -50) {
-            console.error(`🚨 [BALL TRACKER] CRITICAL: Ball ${ball.id} went FAR ABOVE screen at y=${ball.y.toFixed(1)}! Forcing back into bounds.`);
-            ball.y = ball.radius + 10;
-            ball.dy = Math.abs(ball.dy) || 3; // Force downward
-          } else if (ball.y < 0) {
-            console.warn(`⚠️ [BALL TRACKER] Ball ${ball.id} went above screen at y=${ball.y.toFixed(1)} - wall bounce should handle this`);
+          // 🔴 TOP BOUNDARY SAFETY: Bounce balls back if they escape above screen
+          if (ball.y < ball.radius) {
+            if (ball.y < -20) {
+              console.error(`🚨 [BALL TRACKER] CRITICAL: Ball ${ball.id} escaped FAR above screen at y=${ball.y.toFixed(1)}!`);
+            }
+            // Force ball back into bounds and reverse vertical velocity
+            ball.y = ball.radius + 2;
+            ball.dy = Math.abs(ball.dy) || 3; // Ensure moving downward
+            console.log(`🔄 [BALL TRACKER] Ball ${ball.id} bounced off top safety boundary`);
           }
 
           // Now check if ball is lost (after second chance check)
