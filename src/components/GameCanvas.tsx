@@ -2960,10 +2960,8 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.setLineDash([]);
             ctx.restore();
           }
-          // Slow rotation based on time and phase
-          const rotationSpeed = megaBoss.corePhase === 3 ? 0.003 : (megaBoss.corePhase === 2 ? 0.002 : 0.001);
-          const hexRotation = (Date.now() * rotationSpeed) % (Math.PI * 2);
-          ctx.rotate(hexRotation);
+          // No rotation for Mega Boss - keep hitbox aligned with visuals
+          const hexRotation = 0;
           
           if (qualitySettings.glowEnabled) {
             ctx.shadowBlur = 30;
@@ -3158,8 +3156,8 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             const paddleCenterY = paddle.y - (boss.y + boss.height / 2);
             const angleToTarget = Math.atan2(paddleCenterY, paddleCenterX) - Math.PI / 2;
             
-            // Smooth rotation toward paddle (counter-rotate from hex rotation first)
-            ctx.rotate(-hexRotation + angleToTarget);
+            // Rotate cannon toward paddle
+            ctx.rotate(angleToTarget);
             
             // Hexagonal cannon barrel design
             const cannonWidth = 36;
