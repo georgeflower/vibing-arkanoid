@@ -2824,6 +2824,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               ball,
               bossTarget.type,
               { x: bossTarget.x + bossTarget.width / 2, y: bossTarget.y + bossTarget.height / 2 },
+              { width: bossTarget.width, height: bossTarget.height },
               { x: approxNormalX, y: approxNormalY }
             );
           }

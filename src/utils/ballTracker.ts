@@ -11,6 +11,7 @@ interface BallTrackingEvent {
   eventId: string;
   bossType: string;
   bossPosition: { x: number; y: number };
+  bossSize: { width: number; height: number };
   collisionNormal: { x: number; y: number };
   initialPosition: { x: number; y: number };
   initialVelocity: { dx: number; dy: number };
@@ -20,6 +21,7 @@ interface BallTrackingEvent {
     position: { x: number; y: number } | null;
     velocity: { dx: number; dy: number } | null;
     status: string;
+    insideBoss: boolean;
   }[];
 }
 
@@ -51,14 +53,19 @@ export function startBallTracking(
   ball: Ball,
   bossType: string,
   bossPosition: { x: number; y: number },
+  bossSize: { width: number; height: number },
   collisionNormal: { x: number; y: number }
 ): string {
   const eventId = `boss-hit-${Date.now()}-${ball.id}`;
+  
+  // Check if ball is inside boss at collision time
+  const initialInsideBoss = isBallInsideBoss(ball.x, ball.y, bossPosition, bossSize);
   
   const event: BallTrackingEvent = {
     eventId,
     bossType,
     bossPosition,
+    bossSize,
     collisionNormal,
     initialPosition: { x: ball.x, y: ball.y },
     initialVelocity: { dx: ball.dx, dy: ball.dy },
@@ -67,7 +74,8 @@ export function startBallTracking(
       ms: 0,
       position: { x: ball.x, y: ball.y },
       velocity: { dx: ball.dx, dy: ball.dy },
-      status: '🎯 COLLISION'
+      status: initialInsideBoss ? '🚨 COLLISION - INSIDE BOSS!' : '🎯 COLLISION',
+      insideBoss: initialInsideBoss
     }]
   };
   
@@ -88,13 +96,30 @@ export function startBallTracking(
   console.log(`🔴 [BALL TRACKER] ═══════════════════════════════════════════════`);
   console.log(`🔴 [BALL TRACKER] Starting tracking for ball ${ball.id}`);
   console.log(`🔴 [BALL TRACKER] Event ID: ${eventId}`);
-  console.log(`🔴 [BALL TRACKER] Boss: ${bossType} at (${bossPosition.x.toFixed(1)}, ${bossPosition.y.toFixed(1)})`);
-  console.log(`🔴 [BALL TRACKER] Ball position AFTER collision: (${ball.x.toFixed(1)}, ${ball.y.toFixed(1)})`);
+  console.log(`🔴 [BALL TRACKER] Boss: ${bossType} at (${bossPosition.x.toFixed(1)}, ${bossPosition.y.toFixed(1)}) size: ${bossSize.width.toFixed(0)}x${bossSize.height.toFixed(0)}`);
+  console.log(`🔴 [BALL TRACKER] Ball position AFTER collision: (${ball.x.toFixed(1)}, ${ball.y.toFixed(1)}) ${initialInsideBoss ? '⚠️ INSIDE BOSS!' : ''}`);
   console.log(`🔴 [BALL TRACKER] Ball velocity AFTER collision: dx=${ball.dx.toFixed(2)}, dy=${ball.dy.toFixed(2)}`);
   console.log(`🔴 [BALL TRACKER] Collision normal: (${collisionNormal.x.toFixed(3)}, ${collisionNormal.y.toFixed(3)})`);
   console.log(`🔴 [BALL TRACKER] ═══════════════════════════════════════════════`);
   
   return eventId;
+}
+
+/**
+ * Check if a ball position is inside the boss hitbox
+ */
+function isBallInsideBoss(
+  ballX: number, 
+  ballY: number, 
+  bossPos: { x: number; y: number }, 
+  bossSize: { width: number; height: number }
+): boolean {
+  const bossLeft = bossPos.x - bossSize.width / 2;
+  const bossRight = bossPos.x + bossSize.width / 2;
+  const bossTop = bossPos.y - bossSize.height / 2;
+  const bossBottom = bossPos.y + bossSize.height / 2;
+  
+  return ballX >= bossLeft && ballX <= bossRight && ballY >= bossTop && ballY <= bossBottom;
 }
 
 /**
@@ -114,7 +139,8 @@ function checkBallPosition(eventId: string, ballId: number, ms: number): void {
       ms,
       position: null,
       velocity: null,
-      status: '❌ BALL MISSING (not in game array)'
+      status: '❌ BALL MISSING (not in game array)',
+      insideBoss: false
     });
     console.log(`🔴 [BALL TRACKER] +${ms}ms: Ball ${ballId} is MISSING!`, { 
       eventId,
@@ -122,9 +148,14 @@ function checkBallPosition(eventId: string, ballId: number, ms: number): void {
       ballIds: balls?.map(b => b.id) ?? []
     });
   } else {
+    // Check if ball is inside the boss
+    const insideBoss = isBallInsideBoss(ball.x, ball.y, event.bossPosition, event.bossSize);
+    
     let status = '✅ IN BOUNDS';
     
-    if (ball.y < 0) {
+    if (insideBoss) {
+      status = `🚨 INSIDE BOSS! (${ball.x.toFixed(1)}, ${ball.y.toFixed(1)})`;
+    } else if (ball.y < 0) {
       status = `⚠️ ABOVE SCREEN (y=${ball.y.toFixed(1)})`;
     } else if (ball.y < -50) {
       status = `🚨 FAR ABOVE SCREEN (y=${ball.y.toFixed(1)})`;
@@ -137,14 +168,16 @@ function checkBallPosition(eventId: string, ballId: number, ms: number): void {
       ms,
       position: { x: ball.x, y: ball.y },
       velocity: { dx: ball.dx, dy: ball.dy },
-      status
+      status,
+      insideBoss
     });
     
-    const icon = status.startsWith('✅') ? '🟢' : status.startsWith('⚠️') ? '🟡' : '🔴';
+    const icon = insideBoss ? '🔴' : status.startsWith('✅') ? '🟢' : status.startsWith('⚠️') ? '🟡' : '🔴';
     console.log(`${icon} [BALL TRACKER] +${ms}ms: Ball ${ballId}`, {
       position: `(${ball.x.toFixed(1)}, ${ball.y.toFixed(1)})`,
       velocity: `dx=${ball.dx.toFixed(2)}, dy=${ball.dy.toFixed(2)}`,
-      status
+      status,
+      insideBoss
     });
   }
   
