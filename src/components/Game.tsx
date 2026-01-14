@@ -2651,8 +2651,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const dx = sampleBall.x - centerX;
           const dy = sampleBall.y - centerY;
 
-          const cos = Math.cos(-bossTarget.rotationY);
-          const sin = Math.sin(-bossTarget.rotationY);
+          // For Mega Boss (level 20): no rotation, for cube boss: use rotated collision
+          const isMegaBoss = level === 20;
+          const cos = isMegaBoss ? 1 : Math.cos(-bossTarget.rotationY);
+          const sin = isMegaBoss ? 0 : Math.sin(-bossTarget.rotationY);
           const ux = dx * cos - dy * sin;
           const uy = dx * sin + dy * cos;
 
@@ -2673,9 +2675,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             const pushX = ux + (distX / dist) * correctionDist;
             const pushY = uy + (distY / dist) * correctionDist;
 
-            // Rotate corrected position back to world space
-            const worldPushX = pushX * Math.cos(bossTarget.rotationY) - pushY * Math.sin(bossTarget.rotationY);
-            const worldPushY = pushX * Math.sin(bossTarget.rotationY) + pushY * Math.cos(bossTarget.rotationY);
+            // For Mega Boss: no rotation needed, for cube: rotate back to world space
+            const rotCos = isMegaBoss ? 1 : Math.cos(bossTarget.rotationY);
+            const rotSin = isMegaBoss ? 0 : Math.sin(bossTarget.rotationY);
+            const worldPushX = pushX * rotCos - pushY * rotSin;
+            const worldPushY = pushX * rotSin + pushY * rotCos;
             const newX = centerX + worldPushX;
             const newY = centerY + worldPushY;
 
