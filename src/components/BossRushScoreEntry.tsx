@@ -5,10 +5,12 @@ import { BOSS_RUSH_CONFIG } from "@/constants/bossRushConfig";
 interface BossRushScoreEntryProps {
   score: number;
   completionTimeMs: number;
+  bossLevel: number;
+  completed: boolean;
   onSubmit: (name: string) => void;
 }
 
-export const BossRushScoreEntry = ({ score, completionTimeMs, onSubmit }: BossRushScoreEntryProps) => {
+export const BossRushScoreEntry = ({ score, completionTimeMs, bossLevel, completed, onSubmit }: BossRushScoreEntryProps) => {
   const [name, setName] = useState("");
   const [displayScore, setDisplayScore] = useState(0);
 
@@ -77,39 +79,59 @@ export const BossRushScoreEntry = ({ score, completionTimeMs, onSubmit }: BossRu
     return () => clearInterval(timer);
   }, [score]);
 
-  const totalScore = score + BOSS_RUSH_CONFIG.completionBonus;
+  const totalScore = completed ? score + BOSS_RUSH_CONFIG.completionBonus : score;
+  const bossName = BOSS_RUSH_CONFIG.bossNames[bossLevel as keyof typeof BOSS_RUSH_CONFIG.bossNames] || `BOSS ${bossLevel}`;
 
   return (
     <div className="retro-border bg-slate-900/95 rounded-lg p-6 sm:p-12 w-full max-w-2xl max-h-[85vh] overflow-y-auto smooth-scroll text-center animate-scale-in relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-red-500/20 via-orange-500/20 to-yellow-500/20 animate-pulse pointer-events-none" />
+      <div className={`absolute inset-0 ${completed ? 'bg-gradient-to-br from-red-500/20 via-orange-500/20 to-yellow-500/20' : 'bg-gradient-to-br from-slate-600/20 via-red-500/20 to-slate-600/20'} animate-pulse pointer-events-none`} />
 
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 border-4 border-red-400/30 rounded-full animate-spin" style={{ animationDuration: '8s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 border-4 border-orange-400/30 rounded-full animate-spin" style={{ animationDuration: '6s', animationDirection: 'reverse' }} />
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 border-4 ${completed ? 'border-red-400/30' : 'border-slate-500/30'} rounded-full animate-spin`} style={{ animationDuration: '8s' }} />
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 border-4 ${completed ? 'border-orange-400/30' : 'border-red-500/30'} rounded-full animate-spin`} style={{ animationDuration: '6s', animationDirection: 'reverse' }} />
       </div>
 
       <div className="relative z-10">
         <div className="flex justify-center mb-4">
-          <div className="text-8xl animate-bounce">⚔️</div>
+          <div className="text-8xl animate-bounce">{completed ? '⚔️' : '💀'}</div>
         </div>
 
         <h2 className="text-4xl sm:text-5xl font-bold mb-2 font-mono relative">
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 inline-block animate-pulse">
-            BOSS RUSH RECORD!
-          </span>
+          {completed ? (
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 inline-block animate-pulse">
+              BOSS RUSH COMPLETE!
+            </span>
+          ) : (
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-400 via-red-400 to-slate-400 inline-block">
+              BOSS RUSH OVER
+            </span>
+          )}
         </h2>
+
+        {!completed && (
+          <div className="text-xl text-purple-400 mb-2 font-mono">
+            Reached: {bossName} (Level {bossLevel})
+          </div>
+        )}
 
         <div className="text-3xl text-cyan-300 mb-2 font-mono font-bold animate-pulse">
           ⏱️ {formatTime(completionTimeMs)}
         </div>
 
-        <div className="text-2xl text-amber-300 mb-2 font-mono">
-          {displayScore.toLocaleString()} + {BOSS_RUSH_CONFIG.completionBonus.toLocaleString()} BONUS
-        </div>
-
-        <div className="text-xl text-purple-400 mb-6 font-mono">
-          TOTAL: {totalScore.toLocaleString()} POINTS
-        </div>
+        {completed ? (
+          <>
+            <div className="text-2xl text-amber-300 mb-2 font-mono">
+              {displayScore.toLocaleString()} + {BOSS_RUSH_CONFIG.completionBonus.toLocaleString()} BONUS
+            </div>
+            <div className="text-xl text-purple-400 mb-6 font-mono">
+              TOTAL: {totalScore.toLocaleString()} POINTS
+            </div>
+          </>
+        ) : (
+          <div className="text-2xl text-amber-300 mb-6 font-mono">
+            SCORE: {displayScore.toLocaleString()}
+          </div>
+        )}
 
         <div className="mb-8">
           <label className="block text-pink-400 mb-4 font-mono text-xl tracking-wider">
@@ -139,7 +161,7 @@ export const BossRushScoreEntry = ({ score, completionTimeMs, onSubmit }: BossRu
           disabled={name.length !== 3}
           className="px-12 py-6 text-2xl font-bold font-mono bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white rounded-lg disabled:opacity-30 disabled:cursor-not-allowed retro-button"
         >
-          SUBMIT TIME
+          SUBMIT SCORE
         </Button>
 
         <div className="h-[50vh] sm:h-0" />

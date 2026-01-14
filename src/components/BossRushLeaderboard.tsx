@@ -31,14 +31,17 @@ export const BossRushLeaderboard = () => {
               <span className="text-amber-300 flex-1 text-center font-bold text-lg">
                 {entry.score.toLocaleString()}
               </span>
-              <span className="text-cyan-300 w-20 text-right text-sm">
+              <span className="text-cyan-300 w-16 text-center text-sm">
                 {formatTime(entry.completionTimeMs)}
+              </span>
+              <span className={`w-12 text-right text-sm font-bold ${entry.bossLevel === 20 ? 'text-yellow-400' : 'text-purple-400'}`}>
+                {entry.bossLevel === 20 ? '👑' : `L${entry.bossLevel}`}
               </span>
             </div>
           ))}
           {scores.length === 0 && (
             <div className="text-center text-slate-500 py-8 font-mono">
-              No times yet! Be the first!
+              No scores yet! Be the first!
             </div>
           )}
         </div>
