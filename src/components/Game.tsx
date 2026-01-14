@@ -38,6 +38,7 @@ import { FrameProfilerOverlay } from "./FrameProfilerOverlay";
 import { CCDPerformanceTracker } from "@/utils/rollingStats";
 import { debugLogger } from "@/utils/debugLogger";
 import { particlePool } from "@/utils/particlePool";
+import { startBallTracking } from "@/utils/ballTracker";
 // ═══════════════════════════════════════════════════════════════
 import { Maximize2, Minimize2, Home, X, Pause, Volume2, VolumeX } from "lucide-react";
 import { QualityIndicator } from "./QualityIndicator";
@@ -2800,11 +2801,32 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             );
           }
 
+          // Calculate collision normal for tracking (approximate from position change)
+          const prePosX = ball.x;
+          const prePosY = ball.y;
+          
           // 1. Apply position & velocity corrections to REAL ball
           ball.x = collision.newX;
           ball.y = collision.newY;
           ball.dx = collision.newVelocityX;
           ball.dy = collision.newVelocityY;
+          
+          // Calculate approximate collision normal from position change
+          const posDiffX = collision.newX - prePosX;
+          const posDiffY = collision.newY - prePosY;
+          const posDiffLen = Math.sqrt(posDiffX * posDiffX + posDiffY * posDiffY) || 1;
+          const approxNormalX = posDiffX / posDiffLen;
+          const approxNormalY = posDiffY / posDiffLen;
+          
+          // 🔴 BALL TRACKING: Log ball position after boss collision
+          if (debugSettings.enableBossLogging) {
+            startBallTracking(
+              ball,
+              bossTarget.type,
+              { x: bossTarget.x + bossTarget.width / 2, y: bossTarget.y + bossTarget.height / 2 },
+              { x: approxNormalX, y: approxNormalY }
+            );
+          }
 
           // 2. Mark ball to suppress paddle resolver
           (ball as any)._hitBossThisFrame = true;
@@ -4411,6 +4433,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           // Check if ball is falling below screen
 
+          // 🔴 SAFETY CHECK: Detect and fix balls that went above screen
+          if (ball.y < -50) {
+            console.error(`🚨 [BALL TRACKER] CRITICAL: Ball ${ball.id} went FAR ABOVE screen at y=${ball.y.toFixed(1)}! Forcing back into bounds.`);
+            ball.y = ball.radius + 10;
+            ball.dy = Math.abs(ball.dy) || 3; // Force downward
+          } else if (ball.y < 0) {
+            console.warn(`⚠️ [BALL TRACKER] Ball ${ball.id} went above screen at y=${ball.y.toFixed(1)} - wall bounce should handle this`);
+          }
+
           // Now check if ball is lost (after second chance check)
           if (ball.y > SCALED_CANVAS_HEIGHT + ball.radius) {
             return false; // Ball lost
@@ -4418,6 +4449,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           return true;
         });
+
+      // 🔴 EXPOSE BALLS TO WINDOW FOR TRACKING DEBUG
+      (window as any).currentBalls = updatedBalls;
 
       // Check if all balls are lost
       // IMPORTANT: Don't count as lost if the ball is trapped by Mega Boss!
