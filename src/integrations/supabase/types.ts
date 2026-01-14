@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       boss_rush_scores: {
         Row: {
+          boss_level: number
           completion_time_ms: number
           created_at: string
           id: string
@@ -23,6 +24,7 @@ export type Database = {
           score: number
         }
         Insert: {
+          boss_level?: number
           completion_time_ms: number
           created_at?: string
           id?: string
@@ -30,6 +32,7 @@ export type Database = {
           score: number
         }
         Update: {
+          boss_level?: number
           completion_time_ms?: number
           created_at?: string
           id?: string

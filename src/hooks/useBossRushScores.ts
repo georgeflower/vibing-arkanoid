@@ -7,6 +7,7 @@ export interface BossRushScore {
   name: string;
   score: number;
   completionTimeMs: number;
+  bossLevel: number;
   createdAt?: string;
 }
 
@@ -35,6 +36,7 @@ export const useBossRushScores = () => {
         name: row.player_name,
         score: row.score,
         completionTimeMs: row.completion_time_ms,
+        bossLevel: row.boss_level,
         createdAt: row.created_at,
       }));
 
@@ -67,7 +69,7 @@ export const useBossRushScores = () => {
     }
   };
 
-  const addScore = async (name: string, score: number, completionTimeMs: number) => {
+  const addScore = async (name: string, score: number, completionTimeMs: number, bossLevel: number = 20) => {
     try {
       // Rate limiting
       const lastSubmissionKey = 'lastBossRushScoreSubmission';
@@ -91,6 +93,7 @@ export const useBossRushScores = () => {
           player_name: name,
           score,
           completion_time_ms: completionTimeMs,
+          boss_level: bossLevel,
         });
 
       if (insertError) throw insertError;

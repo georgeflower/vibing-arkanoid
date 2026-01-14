@@ -171,6 +171,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bossRushStartTime, setBossRushStartTime] = useState<number | null>(null);
   const [bossRushCompletionTime, setBossRushCompletionTime] = useState<number>(0);
   const [showBossRushScoreEntry, setShowBossRushScoreEntry] = useState(false);
+  const [bossRushGameOverLevel, setBossRushGameOverLevel] = useState<number>(5); // Track which boss level the player died on
 
   // Level progress tracking
   const { updateMaxLevel } = useLevelProgress();
@@ -4451,22 +4452,34 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             particlePool.acquireForGameOver(SCALED_CANVAS_WIDTH / 2, SCALED_CANVAS_HEIGHT / 2, 100);
             setParticleRenderTick((t) => t + 1);
 
-            // Check for high score
-            getQualifiedLeaderboards(score).then((qualification) => {
-              if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
-                setQualifiedLeaderboards(qualification);
-                setShowHighScoreEntry(true);
-                // Create high score particles using pool
-                const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
-                particlePool.acquireForHighScore(SCALED_CANVAS_WIDTH / 2, SCALED_CANVAS_HEIGHT / 2, particleCount);
-                setParticleRenderTick((t) => t + 1);
-                soundManager.playHighScoreMusic();
-                toast.error("Game Over - New High Score!");
-              } else {
-                setShowEndScreen(true);
-                toast.error("Game Over!");
-              }
-            });
+            // Check for high score - separate Boss Rush from Campaign
+            if (isBossRush) {
+              // Boss Rush game over
+              const currentBossLevel = BOSS_RUSH_CONFIG.bossOrder[bossRushIndex] || 5;
+              setBossRushGameOverLevel(currentBossLevel);
+              const completionTime = bossRushStartTime ? Date.now() - bossRushStartTime : 0;
+              setBossRushCompletionTime(completionTime);
+              setShowBossRushScoreEntry(true);
+              soundManager.playHighScoreMusic();
+              toast.error("Boss Rush Over!");
+            } else {
+              // Campaign mode - check for regular high score
+              getQualifiedLeaderboards(score).then((qualification) => {
+                if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
+                  setQualifiedLeaderboards(qualification);
+                  setShowHighScoreEntry(true);
+                  // Create high score particles using pool
+                  const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
+                  particlePool.acquireForHighScore(SCALED_CANVAS_WIDTH / 2, SCALED_CANVAS_HEIGHT / 2, particleCount);
+                  setParticleRenderTick((t) => t + 1);
+                  soundManager.playHighScoreMusic();
+                  toast.error("Game Over - New High Score!");
+                } else {
+                  setShowEndScreen(true);
+                  toast.error("Game Over!");
+                }
+              });
+            }
           } else {
             // Reset ball and continue
             const baseSpeed = 4.5;
@@ -5169,18 +5182,28 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               soundManager.stopBackgroundMusic();
               setBossAttacks([]);
               setLaserWarnings([]);
-              // Check for high score immediately
-              getQualifiedLeaderboards(score).then((qualification) => {
-                if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
-                  setQualifiedLeaderboards(qualification);
-                  setShowHighScoreEntry(true);
-                  soundManager.playHighScoreMusic();
-                  toast.error("Game Over - New High Score!");
-                } else {
-                  setShowEndScreen(true);
-                  toast.error("Game Over!");
-                }
-              });
+              // Check for high score - separate Boss Rush from Campaign
+              if (isBossRush) {
+                const currentBossLevel = BOSS_RUSH_CONFIG.bossOrder[bossRushIndex] || 5;
+                setBossRushGameOverLevel(currentBossLevel);
+                const completionTime = bossRushStartTime ? Date.now() - bossRushStartTime : 0;
+                setBossRushCompletionTime(completionTime);
+                setShowBossRushScoreEntry(true);
+                soundManager.playHighScoreMusic();
+                toast.error("Boss Rush Over!");
+              } else {
+                getQualifiedLeaderboards(score).then((qualification) => {
+                  if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
+                    setQualifiedLeaderboards(qualification);
+                    setShowHighScoreEntry(true);
+                    soundManager.playHighScoreMusic();
+                    toast.error("Game Over - New High Score!");
+                  } else {
+                    setShowEndScreen(true);
+                    toast.error("Game Over!");
+                  }
+                });
+              }
             } else {
               // Reset ball and clear power-ups, but wait for click to continue
               const baseSpeed = 4.5; // Match fresh game start speed
@@ -5328,18 +5351,28 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               soundManager.stopBackgroundMusic();
               setBossAttacks([]);
               setLaserWarnings([]);
-              // Check for high score immediately
-              getQualifiedLeaderboards(score).then((qualification) => {
-                if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
-                  setQualifiedLeaderboards(qualification);
-                  setShowHighScoreEntry(true);
-                  soundManager.playHighScoreMusic();
-                  toast.error("Game Over - New High Score!");
-                } else {
-                  setShowEndScreen(true);
-                  toast.error("Game Over!");
-                }
-              });
+              // Check for high score - separate Boss Rush from Campaign
+              if (isBossRush) {
+                const currentBossLevel = BOSS_RUSH_CONFIG.bossOrder[bossRushIndex] || 5;
+                setBossRushGameOverLevel(currentBossLevel);
+                const completionTime = bossRushStartTime ? Date.now() - bossRushStartTime : 0;
+                setBossRushCompletionTime(completionTime);
+                setShowBossRushScoreEntry(true);
+                soundManager.playHighScoreMusic();
+                toast.error("Boss Rush Over!");
+              } else {
+                getQualifiedLeaderboards(score).then((qualification) => {
+                  if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
+                    setQualifiedLeaderboards(qualification);
+                    setShowHighScoreEntry(true);
+                    soundManager.playHighScoreMusic();
+                    toast.error("Game Over - New High Score!");
+                  } else {
+                    setShowEndScreen(true);
+                    toast.error("Game Over!");
+                  }
+                });
+              }
             } else {
               // Reset ball and clear power-ups, but wait for click to continue
               const baseSpeed = 5.175; // 50% faster base speed
@@ -6352,18 +6385,28 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               soundManager.stopBackgroundMusic();
               setBossAttacks([]);
               setLaserWarnings([]);
-              // Check for high score immediately
-              getQualifiedLeaderboards(score).then((qualification) => {
-                if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
-                  setQualifiedLeaderboards(qualification);
-                  setShowHighScoreEntry(true);
-                  soundManager.playHighScoreMusic();
-                  toast.error("Game Over - New High Score!");
-                } else {
-                  setShowEndScreen(true);
-                  toast.error("Game Over!");
-                }
-              });
+              // Check for high score - separate Boss Rush from Campaign
+              if (isBossRush) {
+                const currentBossLevel = BOSS_RUSH_CONFIG.bossOrder[bossRushIndex] || 5;
+                setBossRushGameOverLevel(currentBossLevel);
+                const completionTime = bossRushStartTime ? Date.now() - bossRushStartTime : 0;
+                setBossRushCompletionTime(completionTime);
+                setShowBossRushScoreEntry(true);
+                soundManager.playHighScoreMusic();
+                toast.error("Boss Rush Over!");
+              } else {
+                getQualifiedLeaderboards(score).then((qualification) => {
+                  if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
+                    setQualifiedLeaderboards(qualification);
+                    setShowHighScoreEntry(true);
+                    soundManager.playHighScoreMusic();
+                    toast.error("Game Over - New High Score!");
+                  } else {
+                    setShowEndScreen(true);
+                    toast.error("Game Over!");
+                  }
+                });
+              }
             } else {
               // Reset ball and clear power-ups, wait for click to continue
               const baseSpeed = 5.175;
@@ -7020,18 +7063,28 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               soundManager.stopBackgroundMusic();
               setBossAttacks([]);
               setLaserWarnings([]);
-              // Check for high score immediately
-              getQualifiedLeaderboards(score).then((qualification) => {
-                if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
-                  setQualifiedLeaderboards(qualification);
-                  setShowHighScoreEntry(true);
-                  soundManager.playHighScoreMusic();
-                  toast.error("Game Over - New High Score!");
-                } else {
-                  setShowEndScreen(true);
-                  toast.error("Game Over!");
-                }
-              });
+              // Check for high score - separate Boss Rush from Campaign
+              if (isBossRush) {
+                const currentBossLevel = BOSS_RUSH_CONFIG.bossOrder[bossRushIndex] || 5;
+                setBossRushGameOverLevel(currentBossLevel);
+                const completionTime = bossRushStartTime ? Date.now() - bossRushStartTime : 0;
+                setBossRushCompletionTime(completionTime);
+                setShowBossRushScoreEntry(true);
+                soundManager.playHighScoreMusic();
+                toast.error("Boss Rush Over!");
+              } else {
+                getQualifiedLeaderboards(score).then((qualification) => {
+                  if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
+                    setQualifiedLeaderboards(qualification);
+                    setShowHighScoreEntry(true);
+                    soundManager.playHighScoreMusic();
+                    toast.error("Game Over - New High Score!");
+                  } else {
+                    setShowEndScreen(true);
+                    toast.error("Game Over!");
+                  }
+                });
+              }
             } else {
               // Reset game to ready state
               const baseSpeed = 5.175;
@@ -8217,6 +8270,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         <BossRushScoreEntry
           score={score}
           completionTimeMs={bossRushCompletionTime}
+          bossLevel={bossRushGameOverLevel}
+          completed={bossRushGameOverLevel === 20}
           onSubmit={async (name) => {
             try {
               const { supabase } = await import("@/integrations/supabase/client");
@@ -8224,8 +8279,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 player_name: name,
                 score: score,
                 completion_time_ms: bossRushCompletionTime,
+                boss_level: bossRushGameOverLevel,
               });
-              toast.success("🎉 BOSS RUSH TIME SAVED! 🎉");
+              toast.success("🎉 BOSS RUSH SCORE SAVED! 🎉");
             } catch (err) {
               console.error("Failed to submit boss rush score:", err);
             }
@@ -8607,6 +8663,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     score={score - BOSS_RUSH_CONFIG.completionBonus}
                     onComplete={() => {
                       setShowBossRushVictory(false);
+                      setBossRushGameOverLevel(20); // Completed all bosses
                       if (bossRushCompletionTime > 0) {
                         setShowBossRushScoreEntry(true);
                       } else {
