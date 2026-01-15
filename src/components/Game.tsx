@@ -2643,53 +2643,78 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         // Shape-specific collision checks (inlined for performance)
         if (bossTarget.type === "cube") {
-          // Rotated rectangle collision logic
+          // For Mega Boss (level 20): check if we should use inner shield hitbox
+          const isMegaBoss = level === 20;
           const centerX = bossTarget.x + bossTarget.width / 2;
           const centerY = bossTarget.y + bossTarget.height / 2;
           const HITBOX_EXPAND = 1;
-
           const dx = sampleBall.x - centerX;
           const dy = sampleBall.y - centerY;
+          
+          // Check if Mega Boss has outer shield removed (use smaller inner shield hitbox)
+          const megaBossData = bossTarget as any;
+          const useInnerShield = isMegaBoss && megaBossData.outerShieldRemoved && megaBossData.innerShieldHP > 0;
+          
+          if (useInnerShield) {
+            // Use CIRCULAR collision for inner shield (45px radius matches visual)
+            const innerShieldRadius = 45 + HITBOX_EXPAND;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const totalRadius = sampleBall.radius + innerShieldRadius;
+            
+            if (dist < totalRadius) {
+              // Ball hit inner shield - calculate bounce
+              const penetration = totalRadius - dist;
+              const normalX = dx / (dist || 1e-6);
+              const normalY = dy / (dist || 1e-6);
+              const overlap = penetration + 2;
+              const newX = sampleBall.x + normalX * overlap;
+              const newY = sampleBall.y + normalY * overlap;
+              const dot = sampleBall.dx * normalX + sampleBall.dy * normalY;
+              const newVx = sampleBall.dx - 2 * dot * normalX;
+              const newVy = sampleBall.dy - 2 * dot * normalY;
+              collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
+            }
+            // If ball is outside inner shield radius, NO collision (passes through)
+          } else {
+            // Original rectangle collision for outer shield / phase 1 / other cube bosses
+            const cos = isMegaBoss ? 1 : Math.cos(-bossTarget.rotationY);
+            const sin = isMegaBoss ? 0 : Math.sin(-bossTarget.rotationY);
+            const ux = dx * cos - dy * sin;
+            const uy = dx * sin + dy * cos;
 
-          // For Mega Boss (level 20): no rotation, for cube boss: use rotated collision
-          const isMegaBoss = level === 20;
-          const cos = isMegaBoss ? 1 : Math.cos(-bossTarget.rotationY);
-          const sin = isMegaBoss ? 0 : Math.sin(-bossTarget.rotationY);
-          const ux = dx * cos - dy * sin;
-          const uy = dx * sin + dy * cos;
+            const halfW = (bossTarget.width + 2 * HITBOX_EXPAND) / 2;
+            const halfH = (bossTarget.height + 2 * HITBOX_EXPAND) / 2;
 
-          const halfW = (bossTarget.width + 2 * HITBOX_EXPAND) / 2;
-          const halfH = (bossTarget.height + 2 * HITBOX_EXPAND) / 2;
+            const closestX = Math.max(-halfW, Math.min(ux, halfW));
+            const closestY = Math.max(-halfH, Math.min(uy, halfH));
 
-          const closestX = Math.max(-halfW, Math.min(ux, halfW));
-          const closestY = Math.max(-halfH, Math.min(uy, halfH));
+            const distX = ux - closestX;
+            const distY = uy - closestY;
+            const distSq = distX * distX + distY * distY;
 
-          const distX = ux - closestX;
-          const distY = uy - closestY;
-          const distSq = distX * distX + distY * distY;
+            if (distSq <= sampleBall.radius * sampleBall.radius) {
+              const dist = Math.sqrt(distSq) || 1e-6;
+              const penetration = sampleBall.radius - dist;
+              const correctionDist = penetration + 2; // +2 pixel safety margin
+              const pushX = ux + (distX / dist) * correctionDist;
+              const pushY = uy + (distY / dist) * correctionDist;
 
-          if (distSq <= sampleBall.radius * sampleBall.radius) {
-            const dist = Math.sqrt(distSq) || 1e-6;
-            const penetration = sampleBall.radius - dist;
-            const correctionDist = penetration + 2; // +2 pixel safety margin
-            const pushX = ux + (distX / dist) * correctionDist;
-            const pushY = uy + (distY / dist) * correctionDist;
+              // For Mega Boss: no rotation needed, for cube: rotate back to world space
+              const rotCos = isMegaBoss ? 1 : Math.cos(bossTarget.rotationY);
+              const rotSin = isMegaBoss ? 0 : Math.sin(bossTarget.rotationY);
+              const worldPushX = pushX * rotCos - pushY * rotSin;
+              const worldPushY = pushX * rotSin + pushY * rotCos;
+              const newX = centerX + worldPushX;
+              const newY = centerY + worldPushY;
 
-            // For Mega Boss: no rotation needed, for cube: rotate back to world space
-            const rotCos = isMegaBoss ? 1 : Math.cos(bossTarget.rotationY);
-            const rotSin = isMegaBoss ? 0 : Math.sin(bossTarget.rotationY);
-            const worldPushX = pushX * rotCos - pushY * rotSin;
-            const worldPushY = pushX * rotSin + pushY * rotCos;
-            const newX = centerX + worldPushX;
-            const newY = centerY + worldPushY;
-
-            // Normal in world space
-            const worldNormalX = Math.abs(dist) < 1e-6 ? 0 : (distX / dist) * cos + (distY / dist) * sin;
-            const worldNormalY = Math.abs(dist) < 1e-6 ? -1 : -(distX / dist) * sin + (distY / dist) * cos;
-            const dot = sampleBall.dx * worldNormalX + sampleBall.dy * worldNormalY;
-            const newVx = sampleBall.dx - 2 * dot * worldNormalX;
-            const newVy = sampleBall.dy - 2 * dot * worldNormalY;
-            collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
+              // Normal in world space
+              const worldNormalX = Math.abs(dist) < 1e-6 ? 0 : (distX / dist) * cos + (distY / dist) * sin;
+              const worldNormalY = Math.abs(dist) < 1e-6 ? -1 : -(distX / dist) * sin + (distY / dist) * cos;
+              const dot = sampleBall.dx * worldNormalX + sampleBall.dy * worldNormalY;
+              const newVx = sampleBall.dx - 2 * dot * worldNormalX;
+              const newVy = sampleBall.dy - 2 * dot * worldNormalY;
+              collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
+            }
           }
         } else if (bossTarget.type === "sphere") {
           // Circle-circle collision logic
