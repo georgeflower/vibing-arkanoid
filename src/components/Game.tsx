@@ -9,6 +9,7 @@ import { GetReadyOverlay } from "./GetReadyOverlay";
 import { BossVictoryOverlay } from "./BossVictoryOverlay";
 import { BossRushVictoryOverlay } from "./BossRushVictoryOverlay";
 import { BossRushScoreEntry } from "./BossRushScoreEntry";
+import { BossRushStatsOverlay } from "./BossRushStatsOverlay";
 import { useBossRushScores } from "@/hooks/useBossRushScores";
 import { Button } from "@/components/ui/button";
 import { debugToast as toast } from "@/utils/debugToast";
@@ -173,6 +174,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bossRushCompletionTime, setBossRushCompletionTime] = useState<number>(0);
   const [showBossRushScoreEntry, setShowBossRushScoreEntry] = useState(false);
   const [bossRushGameOverLevel, setBossRushGameOverLevel] = useState<number>(5); // Track which boss level the player died on
+
+  // Boss Rush inter-boss stats tracking
+  const [bossRushStatsOverlayActive, setBossRushStatsOverlayActive] = useState(false);
+  // Per-boss stats (reset between bosses)
+  const [bossRushLivesLostThisBoss, setBossRushLivesLostThisBoss] = useState(0);
+  const [bossRushPowerUpsThisBoss, setBossRushPowerUpsThisBoss] = useState(0);
+  const [bossRushEnemiesThisBoss, setBossRushEnemiesThisBoss] = useState(0);
+  const [bossRushShotsThisBoss, setBossRushShotsThisBoss] = useState(0);
+  const [bossRushHitsThisBoss, setBossRushHitsThisBoss] = useState(0);
+  // Accumulated stats (persist across all bosses)
+  const [bossRushTotalLivesLost, setBossRushTotalLivesLost] = useState(0);
+  const [bossRushTotalPowerUps, setBossRushTotalPowerUps] = useState(0);
+  const [bossRushTotalEnemiesKilled, setBossRushTotalEnemiesKilled] = useState(0);
+  const [bossRushTotalShots, setBossRushTotalShots] = useState(0);
+  const [bossRushTotalHits, setBossRushTotalHits] = useState(0);
+  // Track which balls need to hit something after paddle collision (for accuracy)
+  const ballsPendingHitRef = useRef<Set<number>>(new Set());
 
   // Level progress tracking
   const { updateMaxLevel } = useLevelProgress();
@@ -936,6 +954,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setBrickHitSpeedAccumulated,
       (type: string) => {
         setPowerUpsCollectedTypes((prev) => new Set(prev).add(type));
+        
+        // Track Boss Rush power-up collection
+        if (isBossRush) {
+          setBossRushPowerUpsThisBoss(prev => prev + 1);
+          setBossRushTotalPowerUps(prev => prev + 1);
+        }
 
         // Trigger golden highlight flash for extra life (levels 1-4)
         if (type === "life") {
@@ -1137,10 +1161,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBossAttacks([]);
           setBombs([]);
           setBullets([]);
-          // Stop boss music and resume background music
-          soundManager.stopBossMusic();
-          soundManager.resumeBackgroundMusic();
-          setTimeout(() => nextLevel(), 3000);
+          
+          // Boss Rush mode: show stats overlay instead of immediate transition
+          if (isBossRush) {
+            // Accumulate accuracy stats before showing overlay
+            setBossRushTotalShots(prev => prev + bossRushShotsThisBoss);
+            setBossRushTotalHits(prev => prev + bossRushHitsThisBoss);
+            // Pause game and show stats overlay after victory overlay
+            setTimeout(() => {
+              gameLoopRef.current?.pause();
+              setBossRushStatsOverlayActive(true);
+            }, 2000);
+          } else {
+            // Stop boss music and resume background music
+            soundManager.stopBossMusic();
+            soundManager.resumeBackgroundMusic();
+            setTimeout(() => nextLevel(), 3000);
+          }
         }
 
         return remaining;
@@ -2880,6 +2917,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
 
           if (canDamage) {
+            // Boss Rush accuracy tracking - ball successfully hit boss
+            if (isBossRush && ballsPendingHitRef.current.has(ball.id)) {
+              ballsPendingHitRef.current.delete(ball.id);
+              setBossRushHitsThisBoss(prev => prev + 1);
+            }
+            
             // Drop shield on first boss hit
             if (!bossFirstHitShieldDropped) {
               setBossFirstHitShieldDropped(true);
@@ -2990,11 +3033,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     setBossAttacks([]);
                     setBombs([]);
                     setBullets([]);
-                    // Stop boss music and resume background music
-                    soundManager.stopBossMusic();
-                    soundManager.resumeBackgroundMusic();
-                    // Proceed to next level after 3 seconds
-                    setTimeout(() => nextLevel(), 3000);
+                    
+                    // Boss Rush mode: show stats overlay instead of immediate transition
+                    if (isBossRush) {
+                      // Accumulate accuracy stats before showing overlay
+                      setBossRushTotalShots(prev => prev + bossRushShotsThisBoss);
+                      setBossRushTotalHits(prev => prev + bossRushHitsThisBoss);
+                      // Pause game and show stats overlay after victory overlay
+                      setTimeout(() => {
+                        gameLoopRef.current?.pause();
+                        setBossRushStatsOverlayActive(true);
+                      }, 2000);
+                    } else {
+                      // Stop boss music and resume background music
+                      soundManager.stopBossMusic();
+                      soundManager.resumeBackgroundMusic();
+                      // Proceed to next level after 3 seconds
+                      setTimeout(() => nextLevel(), 3000);
+                    }
                     return null;
                   } else if (prev.type === "sphere") {
                     // Sphere boss - check phase
@@ -3057,10 +3113,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       setBossAttacks([]);
                       setBombs([]);
                       setBullets([]);
-                      // Stop boss music and resume background music
-                      soundManager.stopBossMusic();
-                      soundManager.resumeBackgroundMusic();
-                      setTimeout(() => nextLevel(), 3000);
+                      
+                      // Boss Rush mode: show stats overlay instead of immediate transition
+                      if (isBossRush) {
+                        // Accumulate accuracy stats before showing overlay
+                        setBossRushTotalShots(prev => prev + bossRushShotsThisBoss);
+                        setBossRushTotalHits(prev => prev + bossRushHitsThisBoss);
+                        // Pause game and show stats overlay after victory overlay
+                        setTimeout(() => {
+                          gameLoopRef.current?.pause();
+                          setBossRushStatsOverlayActive(true);
+                        }, 2000);
+                      } else {
+                        // Stop boss music and resume background music
+                        soundManager.stopBossMusic();
+                        soundManager.resumeBackgroundMusic();
+                        setTimeout(() => nextLevel(), 3000);
+                      }
                       return null;
                     }
                   } else if (prev.type === "pyramid") {
@@ -3515,6 +3584,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 }
                 // Clear trajectory history - paddle hit breaks any potential loop
                 trajectoryHistoryRef.current = [];
+                
+                // Boss Rush accuracy tracking
+                if (isBossRush) {
+                  // If ball was already pending a hit, it's a miss (paddle hit again without hitting enemy/boss)
+                  if (!ballsPendingHitRef.current.has(result.ball.id)) {
+                    // New shot - only count if ball wasn't already pending
+                    setBossRushShotsThisBoss(prev => prev + 1);
+                  }
+                  // Mark this ball as needing to hit something
+                  ballsPendingHitRef.current.add(result.ball.id);
+                }
               }
               break;
             }
@@ -4288,6 +4368,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Update enemies killed counter and handle power-up drops
       if (enemiesKilledIncrease > 0) {
+        // Track Boss Rush enemy kills
+        if (isBossRush) {
+          setBossRushEnemiesThisBoss(prev => prev + enemiesKilledIncrease);
+          setBossRushTotalEnemiesKilled(prev => prev + enemiesKilledIncrease);
+        }
+        
         setEnemiesKilled((prev) => {
           const newCount = prev + enemiesKilledIncrease;
 
@@ -4504,6 +4590,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
 
       if (updatedBalls.length === 0 && !megaBossHasTrappedBall && !justTrappedRecently) {
+        // Track Boss Rush lives lost
+        if (isBossRush) {
+          setBossRushLivesLostThisBoss(prev => prev + 1);
+          setBossRushTotalLivesLost(prev => prev + 1);
+        }
+        
         setLives((prev) => {
           const newLives = prev - 1;
           soundManager.playLoseLife();
@@ -8721,6 +8813,37 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   <BossVictoryOverlay
                     active={bossVictoryOverlayActive}
                     onComplete={() => setBossVictoryOverlayActive(false)}
+                  />
+
+                  {/* Boss Rush Stats Overlay */}
+                  <BossRushStatsOverlay
+                    active={bossRushStatsOverlayActive && isBossRush}
+                    currentTime={bossRushStartTime ? Date.now() - bossRushStartTime : 0}
+                    bossName={BOSS_RUSH_CONFIG.bossNames[BOSS_RUSH_CONFIG.bossOrder[bossRushIndex]]}
+                    bossIndex={bossRushIndex}
+                    livesLostThisBoss={bossRushLivesLostThisBoss}
+                    powerUpsThisBoss={bossRushPowerUpsThisBoss}
+                    enemiesKilledThisBoss={bossRushEnemiesThisBoss}
+                    accuracyThisBoss={bossRushShotsThisBoss > 0 ? (bossRushHitsThisBoss / bossRushShotsThisBoss) * 100 : 100}
+                    totalLivesLost={bossRushTotalLivesLost}
+                    totalPowerUpsCollected={bossRushTotalPowerUps}
+                    totalEnemiesKilled={bossRushTotalEnemiesKilled}
+                    totalAccuracy={bossRushTotalShots > 0 ? (bossRushTotalHits / bossRushTotalShots) * 100 : 100}
+                    livesRemaining={lives}
+                    onContinue={() => {
+                      setBossRushStatsOverlayActive(false);
+                      soundManager.stopBossMusic();
+                      // Reset per-boss stats
+                      setBossRushLivesLostThisBoss(0);
+                      setBossRushPowerUpsThisBoss(0);
+                      setBossRushEnemiesThisBoss(0);
+                      setBossRushShotsThisBoss(0);
+                      setBossRushHitsThisBoss(0);
+                      ballsPendingHitRef.current.clear();
+                      // Resume game and proceed to next boss
+                      gameLoopRef.current?.resume();
+                      nextLevel();
+                    }}
                   />
 
                   {/* Boss Rush Victory Overlay */}
