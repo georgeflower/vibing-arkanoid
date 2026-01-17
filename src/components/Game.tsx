@@ -532,7 +532,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Pause-aware timer management - save remaining durations on pause, restore on resume
   useEffect(() => {
-    const isPaused = gameState === "paused" || gameState === "ready" || tutorialActive;
+    // Include bossRushStatsOverlayActive as a pause state
+    const isPaused = gameState === "paused" || gameState === "ready" || tutorialActive || bossRushStatsOverlayActive;
 
     if (isPaused && pauseStartTimeRef.current === null) {
       // Entering pause - save remaining durations
@@ -558,6 +559,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Resuming from pause - restore timers with remaining duration
       const saved = savedTimerDurationsRef.current;
       const now = Date.now();
+      const pauseDuration = now - pauseStartTimeRef.current;
 
       if (saved.bossStunner !== null && saved.bossStunner > 0) {
         setBossStunnerEndTime(now + saved.bossStunner);
@@ -590,10 +592,47 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setFireballEndTime(now + saved.fireball);
       }
 
+      // Adjust Boss Rush start time to freeze the elapsed timer during pause
+      if (bossRushStartTime !== null) {
+        setBossRushStartTime(prev => prev !== null ? prev + pauseDuration : null);
+      }
+
+      // Adjust enemy spawn timer to prevent immediate spawn on resume
+      if (lastEnemySpawnTime > 0) {
+        setLastEnemySpawnTime(prev => prev + pauseDuration);
+      }
+
+      // Adjust cannon missile timer
+      if (nextCannonMissileTime > 0) {
+        setNextCannonMissileTime(prev => prev + pauseDuration);
+      }
+
+      // Adjust Mega Boss absolute timestamps
+      if (boss && isMegaBoss(boss)) {
+        setBoss(prev => {
+          if (!prev || !isMegaBoss(prev)) return prev;
+          const mb = prev as MegaBoss;
+          return {
+            ...mb,
+            // Shift all scheduled danger ball timestamps
+            scheduledDangerBalls: mb.scheduledDangerBalls.map(t => t + pauseDuration),
+            // Adjust invulnerability end time
+            invulnerableUntil: mb.invulnerableUntil ? mb.invulnerableUntil + pauseDuration : mb.invulnerableUntil,
+            // Adjust last swarm spawn time
+            lastSwarmSpawnTime: mb.lastSwarmSpawnTime + pauseDuration,
+            // Adjust visual effect timestamps
+            cannonExtendedTime: mb.cannonExtendedTime ? mb.cannonExtendedTime + pauseDuration : null,
+            coreExposedTime: mb.coreExposedTime ? mb.coreExposedTime + pauseDuration : null,
+            hatchOpenStartTime: mb.hatchOpenStartTime ? mb.hatchOpenStartTime + pauseDuration : null,
+            lastTrapTime: mb.lastTrapTime ? mb.lastTrapTime + pauseDuration : mb.lastTrapTime,
+          } as unknown as Boss;
+        });
+      }
+
       pauseStartTimeRef.current = null;
       savedTimerDurationsRef.current = { bossStunner: null, reflectShield: null, homingBall: null, fireball: null };
     }
-  }, [gameState, tutorialActive, bossStunnerEndTime, reflectShieldEndTime, homingBallEndTime, fireballEndTime, boss]);
+  }, [gameState, tutorialActive, bossRushStatsOverlayActive, bossStunnerEndTime, reflectShieldEndTime, homingBallEndTime, fireballEndTime, boss, bossRushStartTime, lastEnemySpawnTime, nextCannonMissileTime]);
 
   // "Get Ready" speed ramp - gradually increase speed from 30% to 100% over 2 seconds
   useEffect(() => {
