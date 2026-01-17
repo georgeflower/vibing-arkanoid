@@ -3626,11 +3626,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 
                 // Boss Rush accuracy tracking
                 if (isBossRush) {
-                  // If ball was already pending a hit, it's a miss (paddle hit again without hitting enemy/boss)
-                  if (!ballsPendingHitRef.current.has(result.ball.id)) {
-                    // New shot - only count if ball wasn't already pending
-                    setBossRushShotsThisBoss(prev => prev + 1);
-                  }
+                  // Every paddle hit counts as a shot attempt
+                  // If ball was already pending a hit, it means the previous shot was a miss
+                  setBossRushShotsThisBoss(prev => prev + 1);
                   // Mark this ball as needing to hit something
                   ballsPendingHitRef.current.add(result.ball.id);
                 }
@@ -3709,6 +3707,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 }
                 // Clear trajectory history - paddle hit breaks any potential loop
                 trajectoryHistoryRef.current = [];
+                
+                // Boss Rush accuracy tracking for paddle corner hits
+                if (isBossRush) {
+                  // Every paddle hit counts as a shot attempt
+                  setBossRushShotsThisBoss(prev => prev + 1);
+                  ballsPendingHitRef.current.add(result.ball.id);
+                }
               }
               break;
             }
@@ -7431,16 +7436,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, [gameState, gameLoop]);
 
   // Separate useEffect for timer management - handle pause/resume
+  // Include all pause-like states: paused, tutorial, boss rush stats overlay
   useEffect(() => {
-    if (gameState === "playing" && timerStartedRef.current) {
-      // Resume timer if it was started and we're playing
+    const isEffectivelyPaused = gameState === "paused" || tutorialActive || bossRushStatsOverlayActive;
+    
+    if (gameState === "playing" && timerStartedRef.current && !isEffectivelyPaused) {
+      // Resume timer if it was started and we're playing and not in a pause-like state
       if (!timerIntervalRef.current) {
         timerIntervalRef.current = setInterval(() => {
           setTimer((prev) => prev + 1);
         }, 1000);
       }
-    } else if (gameState === "paused") {
-      // Pause: clear interval but keep timerStartedRef true
+    } else if (isEffectivelyPaused) {
+      // Any pause-like state: clear interval but keep timerStartedRef true
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
         timerIntervalRef.current = undefined;
@@ -7457,15 +7465,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
 
     // Handle total play time independently
-    if (gameState === "playing" && totalPlayTimeStartedRef.current) {
-      // Resume total play time if it was started and we're playing
+    if (gameState === "playing" && totalPlayTimeStartedRef.current && !isEffectivelyPaused) {
+      // Resume total play time if it was started, we're playing, and not paused
       if (!totalPlayTimeIntervalRef.current) {
         totalPlayTimeIntervalRef.current = setInterval(() => {
           setTotalPlayTime((prev) => prev + 1);
         }, 1000);
       }
-    } else if (gameState === "paused") {
-      // Pause: clear interval but keep totalPlayTimeStartedRef true
+    } else if (isEffectivelyPaused) {
+      // Any pause-like state: clear interval but keep totalPlayTimeStartedRef true
       if (totalPlayTimeIntervalRef.current) {
         clearInterval(totalPlayTimeIntervalRef.current);
         totalPlayTimeIntervalRef.current = undefined;
@@ -7488,7 +7496,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
       bombIntervalsRef.current.clear();
     };
-  }, [gameState]);
+  }, [gameState, tutorialActive, bossRushStatsOverlayActive]);
 
   // Enemy spawn at regular intervals
   useEffect(() => {
@@ -8863,11 +8871,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     livesLostThisBoss={bossRushLivesLostThisBoss}
                     powerUpsThisBoss={bossRushPowerUpsThisBoss}
                     enemiesKilledThisBoss={bossRushEnemiesThisBoss}
-                    accuracyThisBoss={bossRushShotsThisBoss > 0 ? (bossRushHitsThisBoss / bossRushShotsThisBoss) * 100 : 100}
+                    accuracyThisBoss={bossRushShotsThisBoss > 0 ? (bossRushHitsThisBoss / bossRushShotsThisBoss) * 100 : 0}
                     totalLivesLost={bossRushTotalLivesLost}
                     totalPowerUpsCollected={bossRushTotalPowerUps}
                     totalEnemiesKilled={bossRushTotalEnemiesKilled}
-                    totalAccuracy={bossRushTotalShots > 0 ? (bossRushTotalHits / bossRushTotalShots) * 100 : 100}
+                    totalAccuracy={bossRushTotalShots > 0 ? (bossRushTotalHits / bossRushTotalShots) * 100 : 0}
                     livesRemaining={lives}
                     onContinue={() => {
                       setBossRushStatsOverlayActive(false);
