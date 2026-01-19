@@ -177,6 +177,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Boss Rush inter-boss stats tracking
   const [bossRushStatsOverlayActive, setBossRushStatsOverlayActive] = useState(false);
+  const [bossRushTimeSnapshot, setBossRushTimeSnapshot] = useState<number | null>(null);
   // Per-boss stats (reset between bosses)
   const [bossRushLivesLostThisBoss, setBossRushLivesLostThisBoss] = useState(0);
   const [bossRushPowerUpsThisBoss, setBossRushPowerUpsThisBoss] = useState(0);
@@ -3081,6 +3082,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       // Pause game and show stats overlay after victory overlay
                       setTimeout(() => {
                         gameLoopRef.current?.pause();
+                        // Capture time snapshot when overlay opens
+                        setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
                         setBossRushStatsOverlayActive(true);
                       }, 2000);
                     } else {
@@ -3161,6 +3164,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         // Pause game and show stats overlay after victory overlay
                         setTimeout(() => {
                           gameLoopRef.current?.pause();
+                          // Capture time snapshot when overlay opens
+                          setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
                           setBossRushStatsOverlayActive(true);
                         }, 2000);
                       } else {
@@ -3274,10 +3279,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       setBossAttacks([]);
                       setBombs([]);
                       setBullets([]);
-                      // Stop boss music and resume background music
-                      soundManager.stopBossMusic();
-                      soundManager.resumeBackgroundMusic();
-                      setTimeout(() => nextLevel(), 3000);
+                      
+                      // Boss Rush mode: show stats overlay instead of immediate transition
+                      if (isBossRush) {
+                        // Accumulate accuracy stats before showing overlay
+                        setBossRushTotalShots(prev => prev + bossRushShotsThisBoss);
+                        setBossRushTotalHits(prev => prev + bossRushHitsThisBoss);
+                        // Pause game and show stats overlay after victory overlay
+                        setTimeout(() => {
+                          gameLoopRef.current?.pause();
+                          // Capture time snapshot when overlay opens
+                          setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
+                          setBossRushStatsOverlayActive(true);
+                        }, 2000);
+                      } else {
+                        // Stop boss music and resume background music
+                        soundManager.stopBossMusic();
+                        soundManager.resumeBackgroundMusic();
+                        setTimeout(() => nextLevel(), 3000);
+                      }
                     }
                   } else {
                     toast.info(`PYRAMID: ${newHealth} HP`);
@@ -7679,6 +7699,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const MAX_BOSS_ENEMIES = 6; // Maximum enemies on screen
     const ENEMIES_PER_SPAWN = 2; // Spawn 2 at a time
 
+    // Debug: log spawn check periodically
+    if (timer % 5 === 0 && timer > 0) {
+      console.log("[BossSpawn Debug]", { 
+        bossType: boss.type, 
+        timer, 
+        lastBossSpawnTime, 
+        timeSinceSpawn: timer - lastBossSpawnTime,
+        enemyCount: enemies.length,
+        level,
+        isBossRush
+      });
+    }
+
     // Check if enough time has passed and we haven't reached the cap
     if (timer - lastBossSpawnTime >= BOSS_SPAWN_INTERVAL && enemies.length < MAX_BOSS_ENEMIES) {
       const enemiesToSpawn = Math.min(ENEMIES_PER_SPAWN, MAX_BOSS_ENEMIES - enemies.length);
@@ -8865,7 +8898,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   {/* Boss Rush Stats Overlay */}
                   <BossRushStatsOverlay
                     active={bossRushStatsOverlayActive && isBossRush}
-                    currentTime={bossRushStartTime ? Date.now() - bossRushStartTime : 0}
+                    currentTime={bossRushTimeSnapshot !== null ? bossRushTimeSnapshot : (bossRushStartTime ? Date.now() - bossRushStartTime : 0)}
                     bossName={BOSS_RUSH_CONFIG.bossNames[BOSS_RUSH_CONFIG.bossOrder[bossRushIndex]]}
                     bossIndex={bossRushIndex}
                     livesLostThisBoss={bossRushLivesLostThisBoss}
@@ -8879,6 +8912,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     livesRemaining={lives}
                     onContinue={() => {
                       setBossRushStatsOverlayActive(false);
+                      setBossRushTimeSnapshot(null); // Clear time snapshot
                       soundManager.stopBossMusic();
                       // Reset per-boss stats
                       setBossRushLivesLostThisBoss(0);
