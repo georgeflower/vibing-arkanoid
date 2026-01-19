@@ -7699,21 +7699,36 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const MAX_BOSS_ENEMIES = 6; // Maximum enemies on screen
     const ENEMIES_PER_SPAWN = 2; // Spawn 2 at a time
 
-    // Debug: log spawn check periodically
+    // Debug: log spawn check periodically (every 5 seconds)
     if (timer % 5 === 0 && timer > 0) {
+      const timeSinceSpawn = timer - lastBossSpawnTime;
+      const canSpawn = timeSinceSpawn >= BOSS_SPAWN_INTERVAL && enemies.length < MAX_BOSS_ENEMIES;
       console.log("[BossSpawn Debug]", { 
         bossType: boss.type, 
         timer, 
         lastBossSpawnTime, 
-        timeSinceSpawn: timer - lastBossSpawnTime,
+        timeSinceSpawn,
+        spawnInterval: BOSS_SPAWN_INTERVAL,
         enemyCount: enemies.length,
+        maxEnemies: MAX_BOSS_ENEMIES,
+        canSpawn,
         level,
-        isBossRush
+        isBossRush,
+        gameState,
+        bossDefeatedTransitioning
       });
     }
 
     // Check if enough time has passed and we haven't reached the cap
     if (timer - lastBossSpawnTime >= BOSS_SPAWN_INTERVAL && enemies.length < MAX_BOSS_ENEMIES) {
+      console.log("[BossSpawn] SPAWNING enemies!", {
+        bossType: boss.type,
+        timer,
+        lastBossSpawnTime,
+        currentEnemies: enemies.length,
+        level,
+        isBossRush
+      });
       const enemiesToSpawn = Math.min(ENEMIES_PER_SPAWN, MAX_BOSS_ENEMIES - enemies.length);
       const newEnemies: Enemy[] = [];
 
