@@ -193,6 +193,34 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Track which balls need to hit something after paddle collision (for accuracy)
   const ballsPendingHitRef = useRef<Set<number>>(new Set());
 
+  // Helper to reset ALL Boss Rush session state (called when starting a new Boss Rush run)
+  const resetBossRushSessionState = useCallback(() => {
+    console.log("[BossRush] Resetting ALL Boss Rush session state");
+    // Session progression
+    setBossRushIndex(0);
+    setBossRushStartTime(null);
+    setBossRushCompletionTime(0);
+    setBossRushGameOverLevel(5);
+    setShowBossRushVictory(false);
+    setShowBossRushScoreEntry(false);
+    // Overlay state
+    setBossRushStatsOverlayActive(false);
+    setBossRushTimeSnapshot(null);
+    // Per-boss stats
+    setBossRushLivesLostThisBoss(0);
+    setBossRushPowerUpsThisBoss(0);
+    setBossRushEnemiesThisBoss(0);
+    setBossRushShotsThisBoss(0);
+    setBossRushHitsThisBoss(0);
+    ballsPendingHitRef.current.clear();
+    // Accumulated totals (THE FIX for accuracy bug)
+    setBossRushTotalLivesLost(0);
+    setBossRushTotalPowerUps(0);
+    setBossRushTotalEnemiesKilled(0);
+    setBossRushTotalShots(0);
+    setBossRushTotalHits(0);
+  }, []);
+
   // Level progress tracking
   const { updateMaxLevel } = useLevelProgress();
   const [gameState, setGameState] = useState<GameState>("ready");
@@ -1719,6 +1747,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setEnemiesKilled(0);
     setLastBossSpawnTime(0);
     setBossSpawnAnimation(null);
+    
+    // Reset Boss Rush session state when starting a new Boss Rush run
+    if (isBossRush) {
+      resetBossRushSessionState();
+    }
     // Only clear boss state if starting level is NOT a boss level
     if (!BOSS_LEVELS.includes(startLevel)) {
       setBoss(null);
