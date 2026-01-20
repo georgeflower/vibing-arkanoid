@@ -141,23 +141,19 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time', initia
                   <div className="text-center text-slate-500 py-12">No scores yet! Be the first!</div>
                 ) : (
                   bossRushScores.map((entry, index) => (
-                    <div key={entry.id || index} className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-2 sm:gap-3 md:gap-4 items-center text-[10px] sm:text-xs md:text-sm lg:text-xl px-2 sm:px-3 md:px-4 py-1 sm:py-2 bg-slate-800/60 rounded-lg border border-red-500/30">
-                      <span className="text-red-300 font-bold">
+                    <div key={entry.id || index} className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm md:text-base px-2 sm:px-3 py-1.5 sm:py-2 bg-slate-800/60 rounded-lg border border-red-500/30 whitespace-nowrap overflow-x-auto">
+                      <span className="text-red-300 font-bold flex-shrink-0 w-6 sm:w-8">
                         {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}
                       </span>
                       
-                      <span className="text-orange-400 font-bold truncate">{entry.name}</span>
+                      <span className="text-orange-400 font-bold flex-shrink-0 w-10 sm:w-14">{entry.name}</span>
                       
-                      <span className="text-amber-300 font-bold text-right tabular-nums">
+                      <span className="text-amber-300 font-bold tabular-nums flex-1 text-right">
                         {entry.score.toLocaleString()}
                       </span>
                       
-                      <span className="text-cyan-300 text-right tabular-nums text-xs sm:text-sm">
-                        ⏱️ {formatTime(entry.completionTimeMs)}
-                      </span>
-                      
-                      <span className={`text-right whitespace-nowrap text-xs sm:text-sm font-bold ${entry.bossLevel === 20 ? 'text-yellow-400' : 'text-purple-400'}`}>
-                        {entry.bossLevel === 20 ? '👑' : `LVL${entry.bossLevel}`}
+                      <span className="text-cyan-300 tabular-nums flex-shrink-0">
+                        ⏱️{formatTime(entry.completionTimeMs)}
                       </span>
                     </div>
                   ))
