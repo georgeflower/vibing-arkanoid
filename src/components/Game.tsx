@@ -7726,14 +7726,26 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Boss enemy spawning system
   useEffect(() => {
+    // Log when effect triggers to debug stale closure issues
+    console.log("[BossSpawn] Effect triggered", {
+      bossType: boss?.type,
+      bossCurrentHealth: boss?.currentHealth,
+      level,
+      timer,
+      gameState,
+      bossDefeatedTransitioning,
+      isBossRush,
+      bossRushIndex
+    });
+
     if (gameState !== "playing" || !boss || bossDefeatedTransitioning) return;
 
     const BOSS_SPAWN_INTERVAL = 15; // 15 seconds
     const MAX_BOSS_ENEMIES = 6; // Maximum enemies on screen
     const ENEMIES_PER_SPAWN = 2; // Spawn 2 at a time
 
-    // Debug: log spawn check periodically (every 5 seconds)
-    if (timer % 5 === 0 && timer > 0) {
+    // Debug: log spawn check periodically (every 5 seconds) or at timer 0
+    if (timer === 0 || (timer % 5 === 0 && timer > 0)) {
       const timeSinceSpawn = timer - lastBossSpawnTime;
       const canSpawn = timeSinceSpawn >= BOSS_SPAWN_INTERVAL && enemies.length < MAX_BOSS_ENEMIES;
       console.log("[BossSpawn Debug]", { 
@@ -7909,7 +7921,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         duration: 2000,
       });
     }
-  }, [timer, gameState, boss, enemies.length, lastBossSpawnTime, SCALED_CANVAS_WIDTH, bossDefeatedTransitioning]);
+  }, [timer, gameState, boss, enemies.length, lastBossSpawnTime, SCALED_CANVAS_WIDTH, bossDefeatedTransitioning, level, isBossRush, bossRushIndex]);
 
   // Boss hit cooldown timer
   useEffect(() => {
