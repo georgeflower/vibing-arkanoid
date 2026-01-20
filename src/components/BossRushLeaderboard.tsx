@@ -4,7 +4,7 @@ export const BossRushLeaderboard = () => {
   const { scores, isLoading, formatTime } = useBossRushScores();
 
   return (
-    <div className="bg-slate-900/80 rounded-lg p-6 border-2 border-red-500/30 w-full max-w-md max-h-[80vh] overflow-y-auto smooth-scroll">
+    <div className="bg-slate-900/80 rounded-lg p-6 border-2 border-red-500/30 w-full max-w-md max-h-[80vh] overflow-y-auto overflow-x-auto smooth-scroll">
       <h2 className="text-2xl font-bold text-center mb-4 font-mono">
         <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400">
           ⚔️ BOSS RUSH SCORES ⚔️
