@@ -1885,6 +1885,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setBrickHitSpeedAccumulated(0);
       setLastBossSpawnTime(0);
       setBossSpawnAnimation(null);
+      setBossDefeatedTransitioning(false); // Reset so minions can spawn for next boss
       
       // Boss Rush always has bosses
       setBossIntroActive(true);
