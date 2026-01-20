@@ -20,22 +20,19 @@ export const BossRushLeaderboard = () => {
           {scores.map((entry, index) => (
             <div
               key={entry.id || index}
-              className="flex justify-between items-center font-mono text-base px-3 py-2 bg-slate-800/50 rounded border border-red-500/20"
+              className="flex items-center font-mono text-sm px-2 py-2 bg-slate-800/50 rounded border border-red-500/20 gap-2"
             >
-              <span className="text-red-300 w-8">
+              <span className="text-red-300 w-6 flex-shrink-0">
                 {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}
               </span>
-              <span className="text-orange-400 font-bold flex-shrink-0 w-14">
+              <span className="text-orange-400 font-bold w-12 flex-shrink-0 truncate">
                 {entry.name}
               </span>
-              <span className="text-amber-300 flex-1 text-center font-bold text-lg">
+              <span className="text-amber-300 flex-1 text-right font-bold">
                 {entry.score.toLocaleString()}
               </span>
-              <span className="text-cyan-300 w-16 text-center text-sm">
+              <span className="text-cyan-300 w-16 text-right flex-shrink-0">
                 {formatTime(entry.completionTimeMs)}
-              </span>
-              <span className={`w-12 text-right text-sm font-bold ${entry.bossLevel === 20 ? 'text-yellow-400' : 'text-purple-400'}`}>
-                {entry.bossLevel === 20 ? '👑' : `L${entry.bossLevel}`}
               </span>
             </div>
           ))}
