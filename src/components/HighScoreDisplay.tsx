@@ -149,7 +149,7 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time', initia
                       <span className="text-orange-400 font-bold flex-shrink-0 w-10 sm:w-14">{entry.name}</span>
                       
                       <span className="text-amber-300 font-bold tabular-nums flex-1 text-right">
-                        {entry.score.toLocaleString()}
+                        {entry.score}
                       </span>
                       
                       <span className="text-cyan-300 tabular-nums flex-shrink-0">
