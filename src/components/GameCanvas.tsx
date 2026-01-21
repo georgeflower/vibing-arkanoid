@@ -3353,16 +3353,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           const halfSize = boss.width / 2;
           const baseHue = boss.isAngry ? 0 : 180;
           
-          // Define 3D cube vertices
+          // Define 3D cube vertices (normalized -1 to 1, matching cube enemy)
           const vertices = [
-            [-halfSize, -halfSize, -halfSize],
-            [halfSize, -halfSize, -halfSize],
-            [halfSize, halfSize, -halfSize],
-            [-halfSize, halfSize, -halfSize],
-            [-halfSize, -halfSize, halfSize],
-            [halfSize, -halfSize, halfSize],
-            [halfSize, halfSize, halfSize],
-            [-halfSize, halfSize, halfSize]
+            [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], // back face
+            [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]      // front face
           ];
           
           const cosX = Math.cos(boss.rotationX);
@@ -3370,17 +3364,17 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           const cosY = Math.cos(boss.rotationY);
           const sinY = Math.sin(boss.rotationY);
           
-          // Project 3D vertices to 2D with perspective
+          // Project 3D vertices to 2D with orthographic projection (no perspective distortion)
           const projected = vertices.map(([x, y, z]) => {
-            // Apply X rotation
-            const y1 = y * cosX - z * sinX;
-            const z1 = y * sinX + z * cosX;
+            // Apply X rotation first
+            const rx = x;
+            const ry = y * cosX - z * sinX;
+            const rz = y * sinX + z * cosX;
             // Apply Y rotation
-            const x2 = x * cosY + z1 * sinY;
-            const z2 = -x * sinY + z1 * cosY;
-            // Perspective projection
-            const scale = 300 / (300 + z2);
-            return [x2 * scale, y1 * scale, z2];
+            const rx2 = rx * cosY - rz * sinY;
+            const rz2 = rx * sinY + rz * cosY;
+            // Orthographic projection - scale by halfSize (no perspective scaling)
+            return [rx2 * halfSize, ry * halfSize, rz2];
           });
           
           // Define 6 faces with lightness values
