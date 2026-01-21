@@ -1232,9 +1232,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           
           // Boss Rush mode: show stats overlay instead of immediate transition
           if (isBossRush) {
-            // Accumulate accuracy stats before showing overlay
-            setBossRushTotalShots(prev => prev + bossRushShotsThisBoss);
-            setBossRushTotalHits(prev => prev + bossRushHitsThisBoss);
             // Pause game and show stats overlay after victory overlay
             setTimeout(() => {
               gameLoopRef.current?.pause();
@@ -3110,9 +3107,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     
                     // Boss Rush mode: show stats overlay instead of immediate transition
                     if (isBossRush) {
-                      // Accumulate accuracy stats before showing overlay
-                      setBossRushTotalShots(prev => prev + bossRushShotsThisBoss);
-                      setBossRushTotalHits(prev => prev + bossRushHitsThisBoss);
                       // Pause game and show stats overlay after victory overlay
                       setTimeout(() => {
                         gameLoopRef.current?.pause();
@@ -3192,9 +3186,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       
                       // Boss Rush mode: show stats overlay instead of immediate transition
                       if (isBossRush) {
-                        // Accumulate accuracy stats before showing overlay
-                        setBossRushTotalShots(prev => prev + bossRushShotsThisBoss);
-                        setBossRushTotalHits(prev => prev + bossRushHitsThisBoss);
                         // Pause game and show stats overlay after victory overlay
                         setTimeout(() => {
                           gameLoopRef.current?.pause();
@@ -3316,9 +3307,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       
                       // Boss Rush mode: show stats overlay instead of immediate transition
                       if (isBossRush) {
-                        // Accumulate accuracy stats before showing overlay
-                        setBossRushTotalShots(prev => prev + bossRushShotsThisBoss);
-                        setBossRushTotalHits(prev => prev + bossRushHitsThisBoss);
                         // Pause game and show stats overlay after victory overlay
                         setTimeout(() => {
                           gameLoopRef.current?.pause();
@@ -8969,12 +8957,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     totalLivesLost={bossRushTotalLivesLost}
                     totalPowerUpsCollected={bossRushTotalPowerUps}
                     totalEnemiesKilled={bossRushTotalEnemiesKilled}
-                    totalAccuracy={bossRushTotalShots > 0 ? (bossRushTotalHits / bossRushTotalShots) * 100 : 0}
+                    totalAccuracy={(bossRushTotalShots + bossRushShotsThisBoss) > 0 ? ((bossRushTotalHits + bossRushHitsThisBoss) / (bossRushTotalShots + bossRushShotsThisBoss)) * 100 : 0}
                     livesRemaining={lives}
                     onContinue={() => {
                       setBossRushStatsOverlayActive(false);
                       setBossRushTimeSnapshot(null); // Clear time snapshot
                       soundManager.stopBossMusic();
+                      // Accumulate per-boss stats into totals BEFORE resetting
+                      setBossRushTotalShots(prev => prev + bossRushShotsThisBoss);
+                      setBossRushTotalHits(prev => prev + bossRushHitsThisBoss);
                       // Reset per-boss stats
                       setBossRushLivesLostThisBoss(0);
                       setBossRushPowerUpsThisBoss(0);
