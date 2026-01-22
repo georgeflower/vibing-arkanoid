@@ -5715,6 +5715,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         );
       }
     }
+    
+    // Cube boss idle spin when stationary (attacking phase)
+    if (boss && boss.type === 'cube' && boss.phase === 'attacking' && !boss.isStunned) {
+      setBoss((prev) =>
+        prev
+          ? {
+              ...prev,
+              rotationX: prev.rotationX + 0.008,
+              rotationY: prev.rotationY + 0.012,
+              rotationZ: prev.rotationZ + 0.005,
+            }
+          : null,
+      );
+    }
 
     // Check if boss stun has expired
     if (boss?.isStunned && Date.now() >= (boss.stunnedUntil || 0)) {
@@ -5754,6 +5768,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               targetPosition: prev.positions[nextIndex],
               currentPositionIndex: nextIndex,
               lastAttackTime: Date.now(),
+              recoilStartTime: Date.now(), // Trigger recoil animation on attack
             }
           : null,
       );
