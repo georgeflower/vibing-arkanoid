@@ -200,6 +200,9 @@ export interface Boss {
   // Boss stun
   isStunned?: boolean;
   stunnedUntil?: number;
+  
+  // Visual recoil effect (purely cosmetic, doesn't affect hitbox)
+  recoilStartTime?: number;
 }
 
 export interface BossAttack {
