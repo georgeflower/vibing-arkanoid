@@ -3353,20 +3353,6 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           const halfSize = boss.width / 2;
           const baseHue = boss.isAngry ? 0 : 180;
           
-          // Calculate recoil offset (purely visual, doesn't affect hitbox)
-          let recoilOffsetY = 0;
-          if (boss.recoilStartTime) {
-            const recoilAge = Date.now() - boss.recoilStartTime;
-            const recoilDuration = 150; // 150ms recoil animation
-            if (recoilAge < recoilDuration) {
-              // Quick backward movement then snap back (ease-out)
-              const progress = recoilAge / recoilDuration;
-              recoilOffsetY = -8 * Math.cos(progress * Math.PI * 0.5) * (1 - progress);
-            }
-          }
-          
-          // Apply recoil offset (visual only)
-          ctx.translate(0, recoilOffsetY);
           
           // Define 3D cube vertices (normalized -1 to 1, matching cube enemy)
           const vertices = [

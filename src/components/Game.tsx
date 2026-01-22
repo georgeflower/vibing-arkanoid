@@ -5768,7 +5768,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               targetPosition: prev.positions[nextIndex],
               currentPositionIndex: nextIndex,
               lastAttackTime: Date.now(),
-              recoilStartTime: Date.now(), // Trigger recoil animation on attack
             }
           : null,
       );
