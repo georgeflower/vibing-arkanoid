@@ -2951,8 +2951,8 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.setLineDash([]);
             ctx.restore();
           }
-          // No rotation for Mega Boss - keep hitbox aligned with visuals
-          const hexRotation = 0;
+          // Use boss rotation value for idle spin (controlled by Game.tsx logic)
+          const hexRotation = boss.rotationY || 0;
           
           if (qualitySettings.glowEnabled) {
             ctx.shadowBlur = 30;
@@ -2963,6 +2963,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           
           // Draw hexagon body (only if outer shield NOT removed)
           if (!megaBoss.outerShieldRemoved) {
+            ctx.save();
+            ctx.rotate(hexRotation);  // Apply idle rotation
+            
             ctx.beginPath();
             for (let i = 0; i < 6; i++) {
               const angle = (Math.PI / 3) * i - Math.PI / 2;
@@ -2996,6 +2999,8 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             }
             ctx.stroke();
             ctx.setLineDash([]); // Reset dash pattern
+            
+            ctx.restore();  // Restore after hexagon rotation
           }
           
           // ═══ INNER OCTAGON SHIELD (visible after outer shield is removed in phase 2+) ═══

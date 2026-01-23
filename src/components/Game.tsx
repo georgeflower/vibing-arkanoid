@@ -5736,6 +5736,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       } : null);
     }
 
+    // Mega Boss idle spin animation when in attacking phase (stationary)
+    // Disabled when ball is captured in core OR core is exposed (catch ball phase)
+    if (level === MEGA_BOSS_LEVEL && boss && isMegaBoss(boss) && boss.phase === 'attacking' && !boss.isStunned) {
+      const megaBoss = boss as MegaBoss;
+      const shouldRotate = !megaBoss.trappedBall && !megaBoss.coreExposed;
+      
+      if (shouldRotate) {
+        setBoss(prev => {
+          if (!prev || !isMegaBoss(prev)) return prev;
+          return {
+            ...prev,
+            rotationY: prev.rotationY + 0.010,  // Slow constant rotation for the hexagon
+          } as MegaBoss;
+        });
+      }
+    }
+
     // Check if boss stun has expired
     if (boss?.isStunned && Date.now() >= (boss.stunnedUntil || 0)) {
       setBoss((prev) => (prev ? { ...prev, isStunned: false, stunnedUntil: undefined } : null));
