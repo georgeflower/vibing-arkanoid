@@ -3359,15 +3359,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]      // front face
           ];
           
-          // Add slow idle spin when in attacking phase (stationary)
-          const idleSpinSpeed = 0.0008; // Slow rotation speed
-          const idleSpinY = boss.phase === 'attacking' ? (Date.now() * idleSpinSpeed) : 0;
-          const idleSpinX = boss.phase === 'attacking' ? (Date.now() * idleSpinSpeed * 0.3) : 0;
-          
-          const cosX = Math.cos(boss.rotationX + idleSpinX);
-          const sinX = Math.sin(boss.rotationX + idleSpinX);
-          const cosY = Math.cos(boss.rotationY + idleSpinY);
-          const sinY = Math.sin(boss.rotationY + idleSpinY);
+          const cosX = Math.cos(boss.rotationX);
+          const sinX = Math.sin(boss.rotationX);
+          const cosY = Math.cos(boss.rotationY);
+          const sinY = Math.sin(boss.rotationY);
           
           // Project 3D vertices to 2D with orthographic projection (no perspective distortion)
           const projected = vertices.map(([x, y, z]) => {
