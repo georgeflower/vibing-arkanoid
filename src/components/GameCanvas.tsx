@@ -2837,20 +2837,11 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           ctx.translate(centerX, centerY);
           
           if (boss.type === 'cube') {
-            ctx.rotate(boss.rotationY);
-            const halfSize = (boss.width + 2 * HITBOX_EXPAND) / 2;
-            // Draw octagon instead of square
-            ctx.beginPath();
-            for (let i = 0; i < 8; i++) {
-              const angle = (Math.PI / 4) * i - Math.PI / 8;
-              const ox = Math.cos(angle) * halfSize;
-              const oy = Math.sin(angle) * halfSize;
-              if (i === 0) ctx.moveTo(ox, oy);
-              else ctx.lineTo(ox, oy);
-            }
-            ctx.closePath();
-            ctx.stroke();
-            ctx.fill();
+            // Draw rectangle matching actual AABB hitbox (no rotation - physics uses axis-aligned)
+            const halfW = (boss.width + 2 * HITBOX_EXPAND) / 2;
+            const halfH = (boss.height + 2 * HITBOX_EXPAND) / 2;
+            ctx.strokeRect(-halfW, -halfH, halfW * 2, halfH * 2);
+            ctx.fillRect(-halfW, -halfH, halfW * 2, halfH * 2);
           } else if (boss.type === 'sphere') {
             const radius = boss.width / 2 + HITBOX_EXPAND;
             ctx.beginPath();
@@ -3358,98 +3349,109 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             }
           }
         } else if (boss.type === 'cube') {
-          // 2D isometric cube that emulates 3D
-          const size = boss.width / 2;
+          // True 3D cube projection (matching cube enemy style)
+          const halfSize = boss.width / 2;
           const baseHue = boss.isAngry ? 0 : 180;
-          const offset = size * 0.5; // Isometric offset for depth
           
-          ctx.rotate(boss.rotationY);
+          // Define 3D cube vertices (normalized -1 to 1, matching cube enemy)
+          const vertices = [
+            [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], // back face
+            [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]      // front face
+          ];
+          
+          const cosX = Math.cos(boss.rotationX);
+          const sinX = Math.sin(boss.rotationX);
+          const cosY = Math.cos(boss.rotationY);
+          const sinY = Math.sin(boss.rotationY);
+          
+          // Project 3D vertices to 2D with orthographic projection (no perspective distortion)
+          const projected = vertices.map(([x, y, z]) => {
+            // Apply X rotation first
+            const rx = x;
+            const ry = y * cosX - z * sinX;
+            const rz = y * sinX + z * cosX;
+            // Apply Y rotation
+            const rx2 = rx * cosY - rz * sinY;
+            const rz2 = rx * sinY + rz * cosY;
+            // Orthographic projection - scale by halfSize (no perspective scaling)
+            return [rx2 * halfSize, ry * halfSize, rz2];
+          });
+          
+          // Define 6 faces with lightness values
+          const faces = [
+            { indices: [0, 1, 2, 3], lightness: 40 }, // back
+            { indices: [4, 5, 6, 7], lightness: 60 }, // front
+            { indices: [0, 3, 7, 4], lightness: 48 }, // left
+            { indices: [1, 2, 6, 5], lightness: 52 }, // right
+            { indices: [3, 2, 6, 7], lightness: 55 }, // top
+            { indices: [0, 1, 5, 4], lightness: 45 }  // bottom
+          ];
+          
+          // Sort faces by depth (back-to-front)
+          const sortedFaces = faces.map(face => {
+            const avgZ = face.indices.reduce((sum, i) => sum + projected[i][2], 0) / 4;
+            return { ...face, avgZ };
+          }).sort((a, b) => a.avgZ - b.avgZ);
           
           if (qualitySettings.glowEnabled) {
-            ctx.shadowBlur = 20;
+            ctx.shadowBlur = boss.isAngry ? 30 : 20;
             ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
           }
           
-          // Front face (square)
-          ctx.fillStyle = `hsl(${baseHue}, 80%, 55%)`;
-          ctx.fillRect(-size, -size, size * 2, size * 2);
-          
-          // Top face (parallelogram) - lighter
-          ctx.fillStyle = `hsl(${baseHue}, 80%, 70%)`;
-          ctx.beginPath();
-          ctx.moveTo(-size, -size);
-          ctx.lineTo(-size + offset, -size - offset);
-          ctx.lineTo(size + offset, -size - offset);
-          ctx.lineTo(size, -size);
-          ctx.closePath();
-          ctx.fill();
-          
-          // Right face (parallelogram) - darker
-          ctx.fillStyle = `hsl(${baseHue}, 80%, 40%)`;
-          ctx.beginPath();
-          ctx.moveTo(size, -size);
-          ctx.lineTo(size + offset, -size - offset);
-          ctx.lineTo(size + offset, size - offset);
-          ctx.lineTo(size, size);
-          ctx.closePath();
-          ctx.fill();
+          // Draw faces
+          sortedFaces.forEach(face => {
+            const points = face.indices.map(i => projected[i]);
+            
+            ctx.fillStyle = `hsl(${baseHue}, 80%, ${face.lightness}%)`;
+            ctx.beginPath();
+            ctx.moveTo(points[0][0], points[0][1]);
+            for (let i = 1; i < points.length; i++) {
+              ctx.lineTo(points[i][0], points[i][1]);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            // Edge strokes
+            ctx.strokeStyle = `hsl(${baseHue}, 90%, 70%)`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(points[0][0], points[0][1]);
+            for (let i = 1; i < points.length; i++) {
+              ctx.lineTo(points[i][0], points[i][1]);
+            }
+            ctx.closePath();
+            ctx.stroke();
+          });
           
           // Draw retro pixel grid on front face (quality-dependent)
           if (qualitySettings.particleMultiplier > 0.5) {
-            const gridSize = qualitySettings.glowEnabled ? 6 : 4;
+            const frontFace = sortedFaces[sortedFaces.length - 1];
+            const frontPoints = frontFace.indices.map(i => projected[i]);
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(frontPoints[0][0], frontPoints[0][1]);
+            for (let i = 1; i < frontPoints.length; i++) {
+              ctx.lineTo(frontPoints[i][0], frontPoints[i][1]);
+            }
+            ctx.closePath();
+            ctx.clip();
+            
             ctx.strokeStyle = `rgba(255, 255, 255, ${boss.isAngry ? 0.25 : 0.15})`;
             ctx.lineWidth = 1;
-            const step = (size * 2) / gridSize;
+            const gridSize = qualitySettings.glowEnabled ? 6 : 4;
+            const step = halfSize * 2 / gridSize;
             
             for (let i = 1; i < gridSize; i++) {
-              // Horizontal lines
               ctx.beginPath();
-              ctx.moveTo(-size, -size + i * step);
-              ctx.lineTo(size, -size + i * step);
+              ctx.moveTo(-halfSize, -halfSize + i * step);
+              ctx.lineTo(halfSize, -halfSize + i * step);
               ctx.stroke();
-              // Vertical lines
               ctx.beginPath();
-              ctx.moveTo(-size + i * step, -size);
-              ctx.lineTo(-size + i * step, size);
+              ctx.moveTo(-halfSize + i * step, -halfSize);
+              ctx.lineTo(-halfSize + i * step, halfSize);
               ctx.stroke();
             }
-          }
-          
-          // Draw all edges
-          ctx.strokeStyle = `hsl(${baseHue}, 90%, 70%)`;
-          ctx.lineWidth = 2;
-          
-          // Front face edges
-          ctx.strokeRect(-size, -size, size * 2, size * 2);
-          
-          // Top face edges
-          ctx.beginPath();
-          ctx.moveTo(-size, -size);
-          ctx.lineTo(-size + offset, -size - offset);
-          ctx.lineTo(size + offset, -size - offset);
-          ctx.lineTo(size, -size);
-          ctx.stroke();
-          
-          // Right face edges
-          ctx.beginPath();
-          ctx.moveTo(size, -size);
-          ctx.lineTo(size + offset, -size - offset);
-          ctx.lineTo(size + offset, size - offset);
-          ctx.lineTo(size, size);
-          ctx.stroke();
-          
-          // Add corner highlights (16-bit style)
-          if (qualitySettings.shadowsEnabled) {
-            ctx.fillStyle = `rgba(255, 255, 255, ${boss.isAngry ? 0.7 : 0.5})`;
-            // Front corners
-            ctx.fillRect(-size - 2, -size - 2, 4, 4);
-            ctx.fillRect(size - 2, -size - 2, 4, 4);
-            ctx.fillRect(-size - 2, size - 2, 4, 4);
-            ctx.fillRect(size - 2, size - 2, 4, 4);
-            // Back corners
-            ctx.fillRect(-size + offset - 2, -size - offset - 2, 4, 4);
-            ctx.fillRect(size + offset - 2, -size - offset - 2, 4, 4);
-            ctx.fillRect(size + offset - 2, size - offset - 2, 4, 4);
+            ctx.restore();
           }
           
           // Angry state: pulsing edge glow
@@ -3457,11 +3459,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             const pulse = Math.sin(Date.now() / 150) * 0.5 + 0.5;
             ctx.shadowBlur = 25 * pulse;
             ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
-            ctx.strokeStyle = `hsl(${baseHue}, 100%, 75%)`;
-            ctx.lineWidth = 3;
-            ctx.strokeRect(-size, -size, size * 2, size * 2);
-            ctx.shadowBlur = 0;
           }
+          
+          ctx.shadowBlur = 0;
         } else if (boss.type === 'sphere') {
           const radius = boss.width / 2;
           const baseHue = boss.isAngry ? 0 : 330; // Red when angry, pink otherwise
