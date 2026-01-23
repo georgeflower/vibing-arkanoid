@@ -5717,12 +5717,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
 
     // Cube boss idle spin animation when in attacking phase (stationary)
+    // Cube boss idle spin animation when in attacking phase (stationary)
     if (boss && boss.type === 'cube' && boss.phase === 'attacking' && !boss.isStunned) {
       setBoss(prev => prev ? {
         ...prev,
         rotationX: prev.rotationX + 0.008,  // Much slower than movement spin
         rotationY: prev.rotationY + 0.012,  // Primary visible rotation
         rotationZ: prev.rotationZ + 0.005
+      } : null);
+    }
+
+    // Pyramid boss idle spin animation when in attacking phase (stationary)
+    if (boss && boss.type === 'pyramid' && boss.phase === 'attacking' && !boss.isStunned) {
+      setBoss(prev => prev ? {
+        ...prev,
+        rotationX: prev.rotationX + 0.013,  // Slower than movement (0.08)
+        rotationY: prev.rotationY + 0.020   // Slower than movement (0.12)
       } : null);
     }
 
