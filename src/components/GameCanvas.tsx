@@ -2954,6 +2954,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
           // Use boss rotation value for idle spin (controlled by Game.tsx logic)
           const hexRotation = boss.rotationY || 0;
           
+          // Apply rotation to ENTIRE boss (all elements rotate together)
+          ctx.save();
+          ctx.rotate(hexRotation);
+          
           if (qualitySettings.glowEnabled) {
             ctx.shadowBlur = 30;
             const glowColor = megaBoss.corePhase === 3 ? 'rgba(255, 50, 50, 0.9)' : 
@@ -2961,21 +2965,28 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.shadowColor = glowColor;
           }
           
-          // Draw hexagon body (only if outer shield NOT removed)
+          // Draw rounded hexagon body (circle with 6 curved facets) - only if outer shield NOT removed
           if (!megaBoss.outerShieldRemoved) {
-            ctx.save();
-            ctx.rotate(hexRotation);  // Apply idle rotation
-            
+            // Rounded hexagon using quadratic curves for a "pill/faceted" look
             ctx.beginPath();
             for (let i = 0; i < 6; i++) {
               const angle = (Math.PI / 3) * i - Math.PI / 2;
-              const x = Math.cos(angle) * radius;
-              const y = Math.sin(angle) * radius;
+              const nextAngle = (Math.PI / 3) * ((i + 1) % 6) - Math.PI / 2;
+              
+              const x1 = Math.cos(angle) * radius;
+              const y1 = Math.sin(angle) * radius;
+              const x2 = Math.cos(nextAngle) * radius;
+              const y2 = Math.sin(nextAngle) * radius;
+              
               if (i === 0) {
-                ctx.moveTo(x, y);
-              } else {
-                ctx.lineTo(x, y);
+                ctx.moveTo(x1, y1);
               }
+              
+              // Control point pushed outward for curved sides (makes it look round but with 6 sides)
+              const midAngle = (angle + nextAngle) / 2;
+              const cpX = Math.cos(midAngle) * (radius * 1.12);
+              const cpY = Math.sin(midAngle) * (radius * 1.12);
+              ctx.quadraticCurveTo(cpX, cpY, x2, y2);
             }
             ctx.closePath();
             
@@ -2999,8 +3010,6 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             }
             ctx.stroke();
             ctx.setLineDash([]); // Reset dash pattern
-            
-            ctx.restore();  // Restore after hexagon rotation
           }
           
           // ═══ INNER OCTAGON SHIELD (visible after outer shield is removed in phase 2+) ═══
@@ -3056,18 +3065,28 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             }
           }
           
-          // Inner hexagon detail (only show if outer shield NOT removed)
+          // Inner rounded hexagon detail (only show if outer shield NOT removed)
           if (!megaBoss.outerShieldRemoved) {
+            const innerRadius = radius * 0.65;
             ctx.beginPath();
             for (let i = 0; i < 6; i++) {
               const angle = (Math.PI / 3) * i - Math.PI / 2;
-              const x = Math.cos(angle) * (radius * 0.65);
-              const y = Math.sin(angle) * (radius * 0.65);
+              const nextAngle = (Math.PI / 3) * ((i + 1) % 6) - Math.PI / 2;
+              
+              const x1 = Math.cos(angle) * innerRadius;
+              const y1 = Math.sin(angle) * innerRadius;
+              const x2 = Math.cos(nextAngle) * innerRadius;
+              const y2 = Math.sin(nextAngle) * innerRadius;
+              
               if (i === 0) {
-                ctx.moveTo(x, y);
-              } else {
-                ctx.lineTo(x, y);
+                ctx.moveTo(x1, y1);
               }
+              
+              // Control point for curved sides
+              const midAngle = (angle + nextAngle) / 2;
+              const cpX = Math.cos(midAngle) * (innerRadius * 1.12);
+              const cpY = Math.sin(midAngle) * (innerRadius * 1.12);
+              ctx.quadraticCurveTo(cpX, cpY, x2, y2);
             }
             ctx.closePath();
             ctx.strokeStyle = `hsl(${baseHue}, 70%, 50%)`;
@@ -3075,7 +3094,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
             ctx.stroke();
           }
           
-          // Outer ring details at each vertex (only if outer shield NOT removed)
+          // Outer ring details at each vertex (only if outer shield NOT removed) - now rotate with boss
           if (!megaBoss.outerShieldRemoved) {
             ctx.shadowBlur = 0;
             for (let i = 0; i < 6; i++) {
@@ -3091,6 +3110,9 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
               ctx.stroke();
             }
           }
+          
+          // End rotation context for entire boss
+          ctx.restore();
           
           // Central core/eye - changes based on state
           const coreRadius = megaBoss.coreExposed ? radius * 0.4 : radius * 0.3;
