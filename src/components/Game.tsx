@@ -2783,10 +2783,29 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
             }
             // If ball is outside inner shield radius, NO collision (passes through)
+          } else if (isMegaBoss) {
+            // CIRCULAR collision for Mega Boss outer shield (matches rounded hexagon visual)
+            const outerShieldRadius = (bossTarget.width / 2) + HITBOX_EXPAND;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const totalRadius = sampleBall.radius + outerShieldRadius;
+            
+            if (dist < totalRadius) {
+              // Ball hit outer shield - calculate circular bounce
+              const penetration = totalRadius - dist;
+              const normalX = dx / (dist || 1e-6);
+              const normalY = dy / (dist || 1e-6);
+              const overlap = penetration + 2; // Safety margin
+              const newX = sampleBall.x + normalX * overlap;
+              const newY = sampleBall.y + normalY * overlap;
+              const dot = sampleBall.dx * normalX + sampleBall.dy * normalY;
+              const newVx = sampleBall.dx - 2 * dot * normalX;
+              const newVy = sampleBall.dy - 2 * dot * normalY;
+              collision = { newX, newY, newVelocityX: newVx, newVelocityY: newVy };
+            }
           } else {
-            // Original rectangle collision for outer shield / phase 1 / other cube bosses
-            const cos = isMegaBoss ? 1 : Math.cos(-bossTarget.rotationY);
-            const sin = isMegaBoss ? 0 : Math.sin(-bossTarget.rotationY);
+            // Original rectangle collision for Level 5 cube boss
+            const cos = Math.cos(-bossTarget.rotationY);
+            const sin = Math.sin(-bossTarget.rotationY);
             const ux = dx * cos - dy * sin;
             const uy = dx * sin + dy * cos;
 
@@ -2807,9 +2826,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               const pushX = ux + (distX / dist) * correctionDist;
               const pushY = uy + (distY / dist) * correctionDist;
 
-              // For Mega Boss: no rotation needed, for cube: rotate back to world space
-              const rotCos = isMegaBoss ? 1 : Math.cos(bossTarget.rotationY);
-              const rotSin = isMegaBoss ? 0 : Math.sin(bossTarget.rotationY);
+              const rotCos = Math.cos(bossTarget.rotationY);
+              const rotSin = Math.sin(bossTarget.rotationY);
               const worldPushX = pushX * rotCos - pushY * rotSin;
               const worldPushY = pushX * rotSin + pushY * rotCos;
               const newX = centerX + worldPushX;

@@ -2982,10 +2982,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
                 ctx.moveTo(x1, y1);
               }
               
-              // Control point pushed outward for curved sides (makes it look round but with 6 sides)
+              // Control point barely pushed out - flat sides with rounded corners
               const midAngle = (angle + nextAngle) / 2;
-              const cpX = Math.cos(midAngle) * (radius * 1.12);
-              const cpY = Math.sin(midAngle) * (radius * 1.12);
+              const cpX = Math.cos(midAngle) * (radius * 1.04);
+              const cpY = Math.sin(midAngle) * (radius * 1.04);
               ctx.quadraticCurveTo(cpX, cpY, x2, y2);
             }
             ctx.closePath();
@@ -3082,10 +3082,10 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
                 ctx.moveTo(x1, y1);
               }
               
-              // Control point for curved sides
+              // Control point for curved sides - match outer hexagon
               const midAngle = (angle + nextAngle) / 2;
-              const cpX = Math.cos(midAngle) * (innerRadius * 1.12);
-              const cpY = Math.sin(midAngle) * (innerRadius * 1.12);
+              const cpX = Math.cos(midAngle) * (innerRadius * 1.04);
+              const cpY = Math.sin(midAngle) * (innerRadius * 1.04);
               ctx.quadraticCurveTo(cpX, cpY, x2, y2);
             }
             ctx.closePath();
