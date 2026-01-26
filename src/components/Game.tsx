@@ -3092,6 +3092,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 if (newHealth <= 0) {
                   // Mega Boss has its own defeat logic via danger ball system - skip regular defeat
                   if (prev.type === "mega") {
+                    console.log(`[MEGA BOSS DEBUG] ⚠️ Ball collision defeat blocked - type: ${prev.type}, health: ${prev.currentHealth}, phase: ${prev.currentStage}`);
                     return prev;
                   }
                   if (prev.type === "cube") {
@@ -5914,8 +5915,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (shouldReleaseBall(megaBoss)) {
         console.log(`[MEGA BOSS DEBUG] ★★★ ALL 5 DANGER BALLS CAUGHT! Releasing ball and transitioning phase ★★★`);
         const { boss: updatedBoss, releasedBall, isDefeated } = releaseBallAndNextPhase(megaBoss);
+        console.log(`[MEGA BOSS DEBUG] 🔄 releaseBallAndNextPhase result: isDefeated=${isDefeated}, phase=${megaBoss.currentStage}, outerShieldRemoved=${megaBoss.outerShieldRemoved}`);
         
         if (isDefeated) {
+          console.log(`[MEGA BOSS DEBUG] ★★★ MEGA BOSS LEGITIMATELY DEFEATED via danger ball system! Phase was: ${megaBoss.currentStage} ★★★`);
           // MEGA BOSS DEFEATED! Victory with confetti!
           soundManager.playMegaBossVictorySound();
           setScore((s) => s + MEGA_BOSS_CONFIG.points);
@@ -6448,6 +6451,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               if (newHealth <= 0) {
                 // Skip defeat for Mega Boss - it has its own defeat system
                 if (isMegaBoss(prevBoss)) {
+                  console.log(`[MEGA BOSS DEBUG] ⚠️ Reflected attack defeat blocked - type: ${prevBoss.type}, health: ${prevBoss.currentHealth}`);
                   return prevBoss;
                 }
                 // Boss defeated - play explosion effects
@@ -7069,6 +7073,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           if (newHealth <= 0) {
             // Mega Boss cannot be defeated by reflected bombs
             if (prevBoss.type === "mega") {
+              console.log(`[MEGA BOSS DEBUG] ⚠️ Reflected bomb defeat blocked - type: ${prevBoss.type}, health: ${prevBoss.currentHealth}`);
               return prevBoss;
             }
             if (prevBoss.type === "cube") {
