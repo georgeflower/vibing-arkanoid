@@ -19,7 +19,7 @@ export const useBullets = (
   setResurrectedBosses?: React.Dispatch<React.SetStateAction<Boss[]>>,
   onLevelComplete?: () => void,
   onTurretDepleted?: () => void,
-  onBossDefeated?: (bossType: 'cube' | 'sphere' | 'pyramid', boss: Boss) => void,
+  onBossDefeated?: (bossType: 'cube' | 'sphere' | 'pyramid' | 'mega', boss: Boss) => void,
   onResurrectedBossDefeated?: (boss: Boss, index: number) => void,
   onSpherePhaseChange?: (boss: Boss) => Boss,
   onPyramidSplit?: (boss: Boss) => void,
@@ -211,6 +211,10 @@ export const useBullets = (
                 
                 // Check for defeat/phase change
                 if (newHealth <= 0) {
+                  // Mega Boss is never defeated by bullets directly - has its own defeat system
+                  if (prev.type === "mega") {
+                    return prev;
+                  }
                   if (prev.type === "cube") {
                     onBossDefeated?.("cube", prev);
                     return null;
