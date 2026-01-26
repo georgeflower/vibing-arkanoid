@@ -3090,6 +3090,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                 // Handle boss defeat based on type
                 if (newHealth <= 0) {
+                  // Mega Boss has its own defeat logic via danger ball system - skip regular defeat
+                  if (prev.type === "mega") {
+                    return prev;
+                  }
                   if (prev.type === "cube") {
                     // Cube boss - simple defeat
                     soundManager.playExplosion();
@@ -6442,6 +6446,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
               // Check for defeat
               if (newHealth <= 0) {
+                // Skip defeat for Mega Boss - it has its own defeat system
+                if (isMegaBoss(prevBoss)) {
+                  return prevBoss;
+                }
                 // Boss defeated - play explosion effects
                 soundManager.playExplosion();
                 soundManager.playBossDefeatSound();
@@ -7059,6 +7067,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           // Check for defeat
           if (newHealth <= 0) {
+            // Mega Boss cannot be defeated by reflected bombs
+            if (prevBoss.type === "mega") {
+              return prevBoss;
+            }
             if (prevBoss.type === "cube") {
               setTimeout(() => {
                 soundManager.playExplosion();
@@ -7825,7 +7837,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const enemyId = nextEnemyId.current++;
         // For level 20 Mega Boss, spawn mixed enemy types instead of just cubes
         const enemyTypes: Array<"cube" | "sphere" | "pyramid"> = ["cube", "sphere", "pyramid"];
-        const enemyType = level === 20 ? enemyTypes[Math.floor(Math.random() * enemyTypes.length)] : boss.type;
+        const enemyType = level === 20 
+          ? enemyTypes[Math.floor(Math.random() * enemyTypes.length)] 
+          : (boss.type === 'mega' ? 'cube' : boss.type);
 
         // Track that this enemy was spawned by the boss
         bossSpawnedEnemiesRef.current.add(enemyId);

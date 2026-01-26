@@ -62,7 +62,7 @@ export function createMegaBoss(canvasWidth: number, canvasHeight: number): MegaB
   
   return {
     id: nextMegaBossId++,
-    type: 'cube', // Visual type - we'll render it differently
+    type: 'mega', // Unique type identifier for Mega Boss
     x: positions[0].x,
     y: positions[0].y,
     width: config.size,

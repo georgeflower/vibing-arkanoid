@@ -1,6 +1,6 @@
 // Renders boss and enemy shapes for tutorial highlights
 
-export type EntityType = 'cube' | 'sphere' | 'pyramid' | 'enemy';
+export type EntityType = 'cube' | 'sphere' | 'pyramid' | 'mega' | 'enemy';
 
 interface RenderOptions {
   isAngry?: boolean;
@@ -28,6 +28,9 @@ export function renderBossToCanvas(
     renderSphereBoss(ctx, size / 2, isAngry);
   } else if (type === 'pyramid') {
     renderPyramidBoss(ctx, size / 2, isAngry, rotationY);
+  } else if (type === 'mega') {
+    // Mega boss renders as cube for tutorial (simplified)
+    renderCubeBoss(ctx, size / 2, isAngry, rotationX, rotationY, rotationZ);
   } else if (type === 'enemy') {
     renderEnemy(ctx, size, rotationX, rotationY);
   }

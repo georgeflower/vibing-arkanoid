@@ -152,7 +152,7 @@ export interface Explosion {
   particles: Particle[];
 }
 
-export type BossType = "cube" | "sphere" | "pyramid";
+export type BossType = "cube" | "sphere" | "pyramid" | "mega";
 export type BossPhase = "idle" | "moving" | "attacking" | "transitioning" | "defeated";
 export type BossAttackType = "shot" | "laser" | "super" | "spiral" | "cross" | "rocket";
 
