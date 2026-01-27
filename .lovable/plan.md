@@ -1,35 +1,59 @@
 
-## Plan: Fix Mega Boss Ball Collision Detection
+## Plan: Fix Mega Boss Movement After Phase Transition
 
 ### Problem
-After changing the Mega Boss type from `"cube"` to `"mega"`, the ball collision detection is broken because the collision check on line 2753 only checks for `bossTarget.type === "cube"`. Since the Mega Boss now has type `"mega"`, it completely skips the collision block and the ball passes straight through.
+After phase 1 of the Mega Boss is completed, both the ball and boss stop moving. The root cause is a runtime error when the game loop tries to access `BOSS_CONFIG[boss.type]` where `boss.type === "mega"`.
 
-**Why turrets work**: The bullet/turret code in `useBullets.ts` uses `isMegaBoss(boss)` which checks the `isMegaBoss: true` property rather than the `type` string, so it works correctly.
+Since `BOSS_CONFIG` only contains entries for `"cube"`, `"sphere"`, and `"pyramid"`, accessing `BOSS_CONFIG["mega"]` returns `undefined`. When the code then tries to check `"superAngryMoveSpeed" in config`, it throws:
+
+```
+TypeError: right-hand side of 'in' should be an object, got undefined
+```
+
+This crashes the game loop, causing both the ball and boss to freeze.
 
 ---
 
 ### Solution
-Update the collision condition to include the new `"mega"` type alongside `"cube"`.
+Add a check for the Mega Boss type before accessing `BOSS_CONFIG`, using `MEGA_BOSS_CONFIG` instead when the boss type is `"mega"`.
 
 ---
 
-### Technical Change
+### Technical Changes
 
-**File: `src/components/Game.tsx`** (line 2753)
+#### Change 1: Update Boss Movement Speed Lookup
+**File: `src/components/Game.tsx`** (lines 5719-5727)
 
 ```typescript
 // Before
-if (bossTarget.type === "cube") {
+} else {
+  const config = BOSS_CONFIG[boss.type];
+  const moveSpeed =
+    boss.isSuperAngry && "superAngryMoveSpeed" in config
+      ? config.superAngryMoveSpeed
+      : boss.isAngry && "angryMoveSpeed" in config
+        ? config.angryMoveSpeed
+        : boss.speed;
 
 // After
-if (bossTarget.type === "cube" || bossTarget.type === "mega") {
+} else {
+  // Use MEGA_BOSS_CONFIG for mega boss, otherwise use BOSS_CONFIG
+  const isMegaType = boss.type === "mega";
+  const moveSpeed = isMegaType
+    ? (boss.isSuperAngry 
+        ? MEGA_BOSS_CONFIG.veryAngryMoveSpeed 
+        : boss.isAngry 
+          ? MEGA_BOSS_CONFIG.angryMoveSpeed 
+          : MEGA_BOSS_CONFIG.moveSpeed)
+    : (() => {
+        const config = BOSS_CONFIG[boss.type as 'cube' | 'sphere' | 'pyramid'];
+        return boss.isSuperAngry && "superAngryMoveSpeed" in config
+          ? config.superAngryMoveSpeed
+          : boss.isAngry && "angryMoveSpeed" in config
+            ? config.angryMoveSpeed
+            : boss.speed;
+      })();
 ```
-
-This single change allows the Mega Boss circular hitbox collision logic (lines 2754-2804) to execute properly. The existing code already correctly handles:
-- Level 20 detection via `const isMegaBoss = level === 20` (line 2755)
-- Outer shield circular collision (lines 2787-2804)
-- Inner shield circular collision (lines 2766-2784)
-- Core exposed pass-through logic (lines 2936-2945)
 
 ---
 
@@ -37,13 +61,17 @@ This single change allows the Mega Boss circular hitbox collision logic (lines 2
 
 | File | Change |
 |------|--------|
-| `src/components/Game.tsx` | Line 2753: Add `|| bossTarget.type === "mega"` to collision condition |
+| `src/components/Game.tsx` | Lines 5719-5727: Add mega boss type check before accessing `BOSS_CONFIG` |
 
 ---
 
-### Validation
+### Required Import
+Ensure `MEGA_BOSS_CONFIG` is imported at the top of Game.tsx (likely already imported based on other usages).
+
+---
+
+### Result
 After this change:
-- Ball will properly collide with Mega Boss outer shield (circular hitbox)
-- Ball will collide with inner shield after outer is destroyed
-- Ball will pass through when core is exposed (existing logic)
-- All 3 phases of Mega Boss ball collision will work correctly
+- The Mega Boss will correctly use `MEGA_BOSS_CONFIG.moveSpeed` / `angryMoveSpeed` / `veryAngryMoveSpeed` during phase 2 and 3
+- The runtime error will be eliminated
+- Both the ball and boss will move correctly after phase transitions
