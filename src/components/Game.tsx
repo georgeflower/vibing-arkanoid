@@ -5717,13 +5717,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             : null,
         );
       } else {
-        const config = BOSS_CONFIG[boss.type];
-        const moveSpeed =
-          boss.isSuperAngry && "superAngryMoveSpeed" in config
-            ? config.superAngryMoveSpeed
-            : boss.isAngry && "angryMoveSpeed" in config
-              ? config.angryMoveSpeed
-              : boss.speed;
+        // Use MEGA_BOSS_CONFIG for mega boss, otherwise use BOSS_CONFIG
+        const isMegaType = boss.type === "mega";
+        const moveSpeed = isMegaType
+          ? (boss.isSuperAngry 
+              ? MEGA_BOSS_CONFIG.veryAngryMoveSpeed 
+              : boss.isAngry 
+                ? MEGA_BOSS_CONFIG.angryMoveSpeed 
+                : MEGA_BOSS_CONFIG.moveSpeed)
+          : (() => {
+              const config = BOSS_CONFIG[boss.type as 'cube' | 'sphere' | 'pyramid'];
+              return boss.isSuperAngry && "superAngryMoveSpeed" in config
+                ? config.superAngryMoveSpeed
+                : boss.isAngry && "angryMoveSpeed" in config
+                  ? config.angryMoveSpeed
+                  : boss.speed;
+            })();
         setBoss((prev) =>
           prev
             ? {
