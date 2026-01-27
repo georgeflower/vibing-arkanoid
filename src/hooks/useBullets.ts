@@ -213,7 +213,6 @@ export const useBullets = (
                 if (newHealth <= 0) {
                   // Mega Boss is never defeated by bullets directly - has its own defeat system
                   if (prev.type === "mega") {
-                    console.log(`[MEGA BOSS DEBUG] ⚠️ Bullet defeat blocked - type: ${prev.type}, health: ${prev.currentHealth}, phase: ${prev.currentStage}`);
                     return prev;
                   }
                   if (prev.type === "cube") {

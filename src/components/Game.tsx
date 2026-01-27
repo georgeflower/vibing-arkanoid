@@ -3042,7 +3042,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   
                   // If core is exposed, don't damage outer shield
                   if (megaBoss.coreExposed || megaBoss.trappedBall) {
-                    console.log(`[MEGA BOSS DEBUG] Ball bounced off boss but core exposed/trapped - no shield damage`);
                     // Ball can enter the core - handled in game loop
                     return prev;
                   }
@@ -3051,10 +3050,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   const { newOuterHP, newInnerHP, shouldExposeCore } = handleMegaBossOuterDamage(megaBoss, 1);
                   const activeShieldHP = megaBoss.outerShieldRemoved ? newInnerHP : newOuterHP;
                   const activeShieldMaxHP = megaBoss.outerShieldRemoved ? megaBoss.innerShieldMaxHP : megaBoss.outerShieldMaxHP;
-                  console.log(`[MEGA BOSS DEBUG] Ball hit ${megaBoss.outerShieldRemoved ? 'INNER' : 'OUTER'} shield! HP: ${megaBoss.outerShieldRemoved ? megaBoss.innerShieldHP : megaBoss.outerShieldHP} -> ${activeShieldHP}`);
-                  
                   if (shouldExposeCore) {
-                    console.log(`[MEGA BOSS DEBUG] ★★★ BALL EXPOSED THE CORE! ★★★`);
                     // Core is now exposed! Player must hit core
                     const exposedBoss = exposeMegaBossCore({
                       ...megaBoss,
@@ -3092,7 +3088,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 if (newHealth <= 0) {
                   // Mega Boss has its own defeat logic via danger ball system - skip regular defeat
                   if (prev.type === "mega") {
-                    console.log(`[MEGA BOSS DEBUG] ⚠️ Ball collision defeat blocked - type: ${prev.type}, health: ${prev.currentHealth}, phase: ${prev.currentStage}`);
                     return prev;
                   }
                   if (prev.type === "cube") {
@@ -4008,12 +4003,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     }
                   }
 
-                  console.log(
-                    `[${timestamp}ms] [Collision Debug] BRICK (fireball, ${brick.type}) - ` +
-                      `Before: dx=${ballBefore.dx.toFixed(2)}, dy=${ballBefore.dy.toFixed(2)}, speed=${ballBefore.speed.toFixed(2)} | ` +
-                      `After: dx=${result.ball.dx.toFixed(2)}, dy=${result.ball.dy.toFixed(2)}, speed=${speedAfter.toFixed(2)} | ` +
-                      `Status: ${status}`,
-                  );
 
                   // Record in collision history
                   collisionHistory.addEntry({
@@ -5916,18 +5905,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Schedule next missile in 4-7 seconds
           const nextDelay = 4000 + Math.random() * 3000;
           setNextCannonMissileTime(now + nextDelay);
-          console.log(`[MEGA BOSS DEBUG] 🚀 Cannon missile fired! Next in ${(nextDelay / 1000).toFixed(1)}s`);
+          
         }
       }
 
       // Check if all danger balls caught - release ball and transition phase
       if (shouldReleaseBall(megaBoss)) {
-        console.log(`[MEGA BOSS DEBUG] ★★★ ALL 5 DANGER BALLS CAUGHT! Releasing ball and transitioning phase ★★★`);
         const { boss: updatedBoss, releasedBall, isDefeated } = releaseBallAndNextPhase(megaBoss);
-        console.log(`[MEGA BOSS DEBUG] 🔄 releaseBallAndNextPhase result: isDefeated=${isDefeated}, phase=${megaBoss.currentStage}, outerShieldRemoved=${megaBoss.outerShieldRemoved}`);
         
         if (isDefeated) {
-          console.log(`[MEGA BOSS DEBUG] ★★★ MEGA BOSS LEGITIMATELY DEFEATED via danger ball system! Phase was: ${megaBoss.currentStage} ★★★`);
           // MEGA BOSS DEFEATED! Victory with confetti!
           soundManager.playMegaBossVictorySound();
           setScore((s) => s + MEGA_BOSS_CONFIG.points);
@@ -6106,7 +6092,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           if (!updatedBall.isReflected && isDangerBallIntercepted(updatedBall, paddle.x, paddle.y, paddle.width, paddle.height)) {
             // Reflect the ball and enable homing
             updatedBall = reflectDangerBall(updatedBall, paddle.x, paddle.width);
-            console.log(`[MEGA BOSS DEBUG] ↩️ Danger ball ${ball.id} REFLECTED! Now homing toward core.`);
+            
             toast.info(`↩️ Danger ball reflected!`, { duration: 1000 });
             soundManager.playDangerBallCatch();
             updatedBalls.push(updatedBall);
@@ -6116,7 +6102,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Check if REFLECTED ball hits the boss core
           if (updatedBall.isReflected && boss && isDangerBallAtCore(updatedBall, boss.x, boss.y, boss.width, boss.height)) {
             coreHits++;
-            console.log(`[MEGA BOSS DEBUG] 💥 Danger ball ${ball.id} HIT CORE! Total hits: ${megaBoss.coreHitsFromDangerBalls + coreHits}/5`);
+            
             toast.success(`💥 CORE HIT! (${megaBoss.coreHitsFromDangerBalls + coreHits}/5)`, { duration: 1000 });
             soundManager.playDangerBallCoreHitSound();
             return; // Remove ball after hitting core
@@ -6125,7 +6111,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Check if NON-REFLECTED ball reached bottom (missed without reflecting)
           if (!updatedBall.isReflected && isDangerBallAtBottom(updatedBall, SCALED_CANVAS_HEIGHT)) {
             ballsMissed++;
-            console.log(`[MEGA BOSS DEBUG] ⚠️ Danger ball ${ball.id} MISSED (not reflected)!`);
+            
             toast.warning("⚠️ Danger ball missed!", { duration: 1000 });
             return; // Remove ball
           }
@@ -6133,14 +6119,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Check if REFLECTED ball missed (went off screen without hitting core)
           if (updatedBall.isReflected && hasReflectedBallMissed(updatedBall, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT)) {
             ballsMissed++;
-            console.log(`[MEGA BOSS DEBUG] ⚠️ Reflected danger ball ${ball.id} MISSED CORE!`);
+            
             toast.warning("⚠️ Reflected ball missed the core!", { duration: 1000 });
             return; // Remove ball
           }
 
           // Check if off screen (sides when not reflected) - safety
           if (!updatedBall.isReflected && (updatedBall.x < -50 || updatedBall.x > SCALED_CANVAS_WIDTH + 50 || updatedBall.y < -50)) {
-            console.log(`[MEGA BOSS DEBUG] Danger ball ${ball.id} went off screen`);
+            
             return; // Remove from game
           }
 
@@ -6161,18 +6147,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         // FAIL FAST: Immediately reset boss on ANY missed danger ball
         if (ballsMissed > 0) {
-          console.log(`[MEGA BOSS DEBUG] ❌ FAIL FAST: ${ballsMissed} danger ball(s) missed → IMMEDIATELY resetting shield + releasing player ball`);
-          console.log(`[MEGA BOSS DEBUG] State before reset: coreHitsFromDangerBalls=${megaBoss.coreHitsFromDangerBalls}, dangerBallsFired=${megaBoss.dangerBallsFired}, scheduledDangerBalls=${megaBoss.scheduledDangerBalls?.length || 0}`);
           
           setBoss((prevBoss) => {
             if (!prevBoss || !isMegaBoss(prevBoss)) return prevBoss;
             const currentMegaBoss = prevBoss as MegaBoss;
             const { boss: resetBoss, releasedBall } = resetMegaBossPhaseProgress(currentMegaBoss);
             
-            console.log(`[MEGA BOSS DEBUG] Reset complete: outerShieldHP=${resetBoss.outerShieldHP}, innerShieldHP=${resetBoss.innerShieldHP}, coreExposed=${resetBoss.coreExposed}, cannonExtended=${resetBoss.cannonExtended}`);
-            
             if (releasedBall) {
-              console.log(`[MEGA BOSS DEBUG] Released player ball at (${releasedBall.x.toFixed(1)}, ${releasedBall.y.toFixed(1)})`);
               setBalls((prev) => [...prev, releasedBall]);
             }
             
@@ -6460,7 +6441,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               if (newHealth <= 0) {
                 // Skip defeat for Mega Boss - it has its own defeat system
                 if (isMegaBoss(prevBoss)) {
-                  console.log(`[MEGA BOSS DEBUG] ⚠️ Reflected attack defeat blocked - type: ${prevBoss.type}, health: ${prevBoss.currentHealth}`);
                   return prevBoss;
                 }
                 // Boss defeated - play explosion effects
@@ -7082,7 +7062,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           if (newHealth <= 0) {
             // Mega Boss cannot be defeated by reflected bombs
             if (prevBoss.type === "mega") {
-              console.log(`[MEGA BOSS DEBUG] ⚠️ Reflected bomb defeat blocked - type: ${prevBoss.type}, health: ${prevBoss.currentHealth}`);
               return prevBoss;
             }
             if (prevBoss.type === "cube") {
@@ -7796,54 +7775,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Boss enemy spawning system
   useEffect(() => {
-    // Log when effect triggers to debug stale closure issues
-    console.log("[BossSpawn] Effect triggered", {
-      bossType: boss?.type,
-      bossCurrentHealth: boss?.currentHealth,
-      level,
-      timer,
-      gameState,
-      bossDefeatedTransitioning,
-      isBossRush,
-      bossRushIndex
-    });
-
     if (gameState !== "playing" || !boss || bossDefeatedTransitioning) return;
 
     const BOSS_SPAWN_INTERVAL = 15; // 15 seconds
     const MAX_BOSS_ENEMIES = 6; // Maximum enemies on screen
     const ENEMIES_PER_SPAWN = 2; // Spawn 2 at a time
 
-    // Debug: log spawn check periodically (every 5 seconds) or at timer 0
-    if (timer === 0 || (timer % 5 === 0 && timer > 0)) {
-      const timeSinceSpawn = timer - lastBossSpawnTime;
-      const canSpawn = timeSinceSpawn >= BOSS_SPAWN_INTERVAL && enemies.length < MAX_BOSS_ENEMIES;
-      console.log("[BossSpawn Debug]", { 
-        bossType: boss.type, 
-        timer, 
-        lastBossSpawnTime, 
-        timeSinceSpawn,
-        spawnInterval: BOSS_SPAWN_INTERVAL,
-        enemyCount: enemies.length,
-        maxEnemies: MAX_BOSS_ENEMIES,
-        canSpawn,
-        level,
-        isBossRush,
-        gameState,
-        bossDefeatedTransitioning
-      });
-    }
-
     // Check if enough time has passed and we haven't reached the cap
     if (timer - lastBossSpawnTime >= BOSS_SPAWN_INTERVAL && enemies.length < MAX_BOSS_ENEMIES) {
-      console.log("[BossSpawn] SPAWNING enemies!", {
-        bossType: boss.type,
-        timer,
-        lastBossSpawnTime,
-        currentEnemies: enemies.length,
-        level,
-        isBossRush
-      });
       const enemiesToSpawn = Math.min(ENEMIES_PER_SPAWN, MAX_BOSS_ENEMIES - enemies.length);
       const newEnemies: Enemy[] = [];
 

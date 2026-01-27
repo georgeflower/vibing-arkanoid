@@ -6,6 +6,7 @@
  */
 
 import type { Ball } from "@/types/game";
+import { ENABLE_DEBUG_FEATURES } from "@/constants/game";
 
 interface BallTrackingEvent {
   eventId: string;
@@ -93,14 +94,16 @@ export function startBallTracking(
   
   activeTracking.set(ball.id, { eventId, ballId: ball.id, scheduledChecks });
   
-  console.log(`🔴 [BALL TRACKER] ═══════════════════════════════════════════════`);
-  console.log(`🔴 [BALL TRACKER] Starting tracking for ball ${ball.id}`);
-  console.log(`🔴 [BALL TRACKER] Event ID: ${eventId}`);
-  console.log(`🔴 [BALL TRACKER] Boss: ${bossType} at (${bossPosition.x.toFixed(1)}, ${bossPosition.y.toFixed(1)}) size: ${bossSize.width.toFixed(0)}x${bossSize.height.toFixed(0)}`);
-  console.log(`🔴 [BALL TRACKER] Ball position AFTER collision: (${ball.x.toFixed(1)}, ${ball.y.toFixed(1)}) ${initialInsideBoss ? '⚠️ INSIDE BOSS!' : ''}`);
-  console.log(`🔴 [BALL TRACKER] Ball velocity AFTER collision: dx=${ball.dx.toFixed(2)}, dy=${ball.dy.toFixed(2)}`);
-  console.log(`🔴 [BALL TRACKER] Collision normal: (${collisionNormal.x.toFixed(3)}, ${collisionNormal.y.toFixed(3)})`);
-  console.log(`🔴 [BALL TRACKER] ═══════════════════════════════════════════════`);
+  if (ENABLE_DEBUG_FEATURES) {
+    console.log(`🔴 [BALL TRACKER] ═══════════════════════════════════════════════`);
+    console.log(`🔴 [BALL TRACKER] Starting tracking for ball ${ball.id}`);
+    console.log(`🔴 [BALL TRACKER] Event ID: ${eventId}`);
+    console.log(`🔴 [BALL TRACKER] Boss: ${bossType} at (${bossPosition.x.toFixed(1)}, ${bossPosition.y.toFixed(1)}) size: ${bossSize.width.toFixed(0)}x${bossSize.height.toFixed(0)}`);
+    console.log(`🔴 [BALL TRACKER] Ball position AFTER collision: (${ball.x.toFixed(1)}, ${ball.y.toFixed(1)}) ${initialInsideBoss ? '⚠️ INSIDE BOSS!' : ''}`);
+    console.log(`🔴 [BALL TRACKER] Ball velocity AFTER collision: dx=${ball.dx.toFixed(2)}, dy=${ball.dy.toFixed(2)}`);
+    console.log(`🔴 [BALL TRACKER] Collision normal: (${collisionNormal.x.toFixed(3)}, ${collisionNormal.y.toFixed(3)})`);
+    console.log(`🔴 [BALL TRACKER] ═══════════════════════════════════════════════`);
+  }
   
   return eventId;
 }
@@ -142,11 +145,13 @@ function checkBallPosition(eventId: string, ballId: number, ms: number): void {
       status: '❌ BALL MISSING (not in game array)',
       insideBoss: false
     });
-    console.log(`🔴 [BALL TRACKER] +${ms}ms: Ball ${ballId} is MISSING!`, { 
-      eventId,
-      totalBallsInGame: balls?.length ?? 0,
-      ballIds: balls?.map(b => b.id) ?? []
-    });
+    if (ENABLE_DEBUG_FEATURES) {
+      console.log(`🔴 [BALL TRACKER] +${ms}ms: Ball ${ballId} is MISSING!`, { 
+        eventId,
+        totalBallsInGame: balls?.length ?? 0,
+        ballIds: balls?.map(b => b.id) ?? []
+      });
+    }
   } else {
     // Check if ball is inside the boss
     const insideBoss = isBallInsideBoss(ball.x, ball.y, event.bossPosition, event.bossSize);
@@ -172,28 +177,32 @@ function checkBallPosition(eventId: string, ballId: number, ms: number): void {
       insideBoss
     });
     
-    const icon = insideBoss ? '🔴' : status.startsWith('✅') ? '🟢' : status.startsWith('⚠️') ? '🟡' : '🔴';
-    console.log(`${icon} [BALL TRACKER] +${ms}ms: Ball ${ballId}`, {
-      position: `(${ball.x.toFixed(1)}, ${ball.y.toFixed(1)})`,
-      velocity: `dx=${ball.dx.toFixed(2)}, dy=${ball.dy.toFixed(2)}`,
-      status,
-      insideBoss
-    });
+    if (ENABLE_DEBUG_FEATURES) {
+      const icon = insideBoss ? '🔴' : status.startsWith('✅') ? '🟢' : status.startsWith('⚠️') ? '🟡' : '🔴';
+      console.log(`${icon} [BALL TRACKER] +${ms}ms: Ball ${ballId}`, {
+        position: `(${ball.x.toFixed(1)}, ${ball.y.toFixed(1)})`,
+        velocity: `dx=${ball.dx.toFixed(2)}, dy=${ball.dy.toFixed(2)}`,
+        status,
+        insideBoss
+      });
+    }
   }
   
   // On final check (1000ms), log complete summary
   if (ms === 1000) {
-    console.log(`🔵 [BALL TRACKER] ═══════════════════════════════════════════════`);
-    console.log(`🔵 [BALL TRACKER] COMPLETE TRACKING SUMMARY for ${eventId}:`);
-    console.log(`🔵 [BALL TRACKER] Boss: ${event.bossType} at (${event.bossPosition.x.toFixed(1)}, ${event.bossPosition.y.toFixed(1)})`);
-    console.log(`🔵 [BALL TRACKER] Collision normal: (${event.collisionNormal.x.toFixed(3)}, ${event.collisionNormal.y.toFixed(3)})`);
-    console.log(`🔵 [BALL TRACKER] Timeline:`);
-    event.timestamps.forEach(ts => {
-      const posStr = ts.position ? `(${ts.position.x.toFixed(1)}, ${ts.position.y.toFixed(1)})` : 'N/A';
-      const velStr = ts.velocity ? `dx=${ts.velocity.dx.toFixed(2)}, dy=${ts.velocity.dy.toFixed(2)}` : 'N/A';
-      console.log(`🔵 [BALL TRACKER]   ${ts.time}: pos=${posStr}, vel=${velStr}, ${ts.status}`);
-    });
-    console.log(`🔵 [BALL TRACKER] ═══════════════════════════════════════════════`);
+    if (ENABLE_DEBUG_FEATURES) {
+      console.log(`🔵 [BALL TRACKER] ═══════════════════════════════════════════════`);
+      console.log(`🔵 [BALL TRACKER] COMPLETE TRACKING SUMMARY for ${eventId}:`);
+      console.log(`🔵 [BALL TRACKER] Boss: ${event.bossType} at (${event.bossPosition.x.toFixed(1)}, ${event.bossPosition.y.toFixed(1)})`);
+      console.log(`🔵 [BALL TRACKER] Collision normal: (${event.collisionNormal.x.toFixed(3)}, ${event.collisionNormal.y.toFixed(3)})`);
+      console.log(`🔵 [BALL TRACKER] Timeline:`);
+      event.timestamps.forEach(ts => {
+        const posStr = ts.position ? `(${ts.position.x.toFixed(1)}, ${ts.position.y.toFixed(1)})` : 'N/A';
+        const velStr = ts.velocity ? `dx=${ts.velocity.dx.toFixed(2)}, dy=${ts.velocity.dy.toFixed(2)}` : 'N/A';
+        console.log(`🔵 [BALL TRACKER]   ${ts.time}: pos=${posStr}, vel=${velStr}, ${ts.status}`);
+      });
+      console.log(`🔵 [BALL TRACKER] ═══════════════════════════════════════════════`);
+    }
     
     // Clean up tracking
     activeTracking.delete(ballId);
