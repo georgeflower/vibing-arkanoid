@@ -2750,7 +2750,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         let collision: { newX: number; newY: number; newVelocityX: number; newVelocityY: number } | null = null;
 
         // Shape-specific collision checks (inlined for performance)
-        if (bossTarget.type === "cube") {
+        if (bossTarget.type === "cube" || bossTarget.type === "mega") {
           // For Mega Boss (level 20): check if we should use inner shield hitbox
           const isMegaBoss = level === 20;
           const centerX = bossTarget.x + bossTarget.width / 2;
