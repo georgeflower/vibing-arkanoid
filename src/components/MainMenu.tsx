@@ -39,28 +39,29 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const [showPressToStart, setShowPressToStart] = useState(true);
   const [showChangelog, setShowChangelog] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
-  
+
   // Starting level state
   const [startingLevel, setStartingLevel] = useState(1);
   const [showLockedMessage, setShowLockedMessage] = useState(false);
   const lockedMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { maxLevelReached, isLevelUnlocked } = useLevelProgress();
-  
+
   // Refs for swipe gesture detection
   const highScoresRef = useRef<HTMLDivElement>(null);
   const changelogRef = useRef<HTMLDivElement>(null);
   const whatsNewRef = useRef<HTMLDivElement>(null);
   const aboutRef = useRef<HTMLDivElement>(null);
   const instructionsRef = useRef<HTMLDivElement>(null);
-  
+
   // Use adaptive quality hook for CRT effects
   const { quality, qualitySettings } = useAdaptiveQuality({
-    initialQuality: 'high',
-    autoAdjust: false
+    initialQuality: "high",
+    autoAdjust: false,
   });
-  
-  const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  const isIOSDevice =
+    /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
   // Force service worker update check and apply when at main menu
   useServiceWorkerUpdate({ shouldApplyUpdate: true, isMainMenu: true });
@@ -68,15 +69,23 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   // Hidden developer feature: Press TAB to open level editor
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Tab' && !showInstructions && !showHighScores && !showAbout && !showChangelog && !showWhatsNew && !showPressToStart) {
+      if (
+        e.key === "Tab" &&
+        !showInstructions &&
+        !showHighScores &&
+        !showAbout &&
+        !showChangelog &&
+        !showWhatsNew &&
+        !showPressToStart
+      ) {
         e.preventDefault();
         soundManager.playMenuClick();
         navigate("/level-editor");
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [navigate, showInstructions, showHighScores, showAbout, showChangelog, showWhatsNew, showPressToStart]);
 
   const handleStart = () => {
@@ -92,16 +101,16 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   const handleLevelChange = (delta: number) => {
     const newLevel = startingLevel + delta;
     if (newLevel < 1 || newLevel > FINAL_LEVEL) return;
-    
+
     soundManager.playMenuClick();
     setStartingLevel(newLevel);
-    
+
     // In debug mode, all levels are unlocked
     if (ENABLE_DEBUG_FEATURES) {
       setShowLockedMessage(false);
       return;
     }
-    
+
     if (!isLevelUnlocked(newLevel)) {
       // Show locked message
       if (lockedMessageTimeoutRef.current) {
@@ -117,7 +126,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   };
 
   // Swipe gesture handlers for all sub-screens
-  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+  const isMobileDevice =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
     ("ontouchstart" in window && window.matchMedia("(max-width: 768px)").matches);
 
   useSwipeGesture(highScoresRef, () => setShowHighScores(false), { enabled: showHighScores && isMobileDevice });
@@ -129,7 +139,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
   // ESC key to close overlay screens
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         if (showHighScores) {
           soundManager.playMenuClick();
           setShowHighScores(false);
@@ -148,17 +158,18 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
         }
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showHighScores, showChangelog, showWhatsNew, showAbout, showInstructions]);
 
   if (showHighScores) {
     return (
-      <div ref={highScoresRef} className="fixed inset-0 w-full h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] swipe-container animate-fade-in">
+      <div
+        ref={highScoresRef}
+        className="fixed inset-0 w-full h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] swipe-container animate-fade-in"
+      >
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
-        <HighScoreDisplay 
-          onClose={() => setShowHighScores(false)} 
-        />
+        <HighScoreDisplay onClose={() => setShowHighScores(false)} />
       </div>
     );
   }
@@ -169,7 +180,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showWhatsNew) {
     return (
-      <div ref={whatsNewRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container animate-fade-in">
+      <div
+        ref={whatsNewRef}
+        className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container animate-fade-in"
+      >
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <Card className="relative w-full h-full max-w-2xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)] animate-scale-in">
           <button
@@ -182,18 +196,19 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           >
             <X size={24} />
           </button>
-          
+
           <h2 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-3 text-center text-[hsl(200,70%,50%)]">
             What's New in v{GAME_VERSION}
           </h2>
 
           <div className="space-y-2 sm:space-y-3 text-white">
             <div className="bg-gradient-to-r from-[hsl(0,85%,55%)]/20 to-[hsl(45,100%,50%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(0,85%,55%)]/50">
-              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(0,85%,55%)]">
-                👹 MEGA BOSS - Level 20
-              </h3>
+              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(0,85%,55%)]">👹 MEGA BOSS - Level 20</h3>
               <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-xs">
-                <li>Ultimate final boss with <span className="text-[hsl(45,100%,50%)] font-bold">4 challenging phases</span></li>
+                <li>
+                  Ultimate final boss with{" "}
+                  <span className="text-[hsl(45,100%,50%)] font-bold">4 challenging phases</span>
+                </li>
                 <li>Spawns protective orbs that shield the core</li>
                 <li>Captures and releases balls for unpredictable gameplay</li>
                 <li>Devastating super attack in final phase</li>
@@ -201,13 +216,15 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             </div>
 
             <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(120,60%,50%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(120,60%,50%)]/50">
-              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(120,60%,50%)]">
-                🛡️ Second Chance Power-up
-              </h3>
+              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(120,60%,50%)]">🛡️ Boss Rush mode!</h3>
               <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-xs">
-                <li>Creates an <span className="text-[hsl(200,70%,50%)] font-bold">energy barrier</span> at the bottom of the screen</li>
-                <li>Saves your ball once before disappearing</li>
-                <li>Gives you a second chance when you miss a paddle hit</li>
+                <li>
+                  Test your skills in <span className="text-[hsl(200,70%,50%)] font-bold">Boss Rush mode!</span>
+                </li>
+                <li>Defeat all 4 bosses in a row</li>
+                <li>
+                  Separate high score - <span className="text-[hsl(45,100%,50%)] font-bold">defeat the best time!</span>
+                </li>
               </ul>
             </div>
           </div>
@@ -241,7 +258,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showAbout) {
     return (
-      <div ref={aboutRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container animate-fade-in">
+      <div
+        ref={aboutRef}
+        className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container animate-fade-in"
+      >
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <Card className="relative w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)] animate-scale-in">
           <button
@@ -254,7 +274,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           >
             <X size={24} />
           </button>
-          
+
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">
             About Vibing Arkanoid
           </h2>
@@ -263,7 +283,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             <p className="text-xs sm:text-sm md:text-base leading-relaxed">
               Welcome to <span className="text-[hsl(200,70%,50%)] font-bold">Vibing Arkanoid</span> - the most
               electrifying brick-breaking experience ever created! This isn't just another Breakout clone - it's a
-              pulsating, retro-drenched journey through <span className="text-[hsl(200,70%,50%)] font-bold">20 action-packed levels</span> of pure arcade bliss.
+              pulsating, retro-drenched journey through{" "}
+              <span className="text-[hsl(200,70%,50%)] font-bold">20 action-packed levels</span> of pure arcade bliss.
             </p>
 
             <div className="bg-gradient-to-r from-[hsl(30,100%,60%)]/20 to-[hsl(0,85%,55%)]/20 p-3 sm:p-4 rounded-lg border-2 border-[hsl(30,100%,60%)]/50">
@@ -271,10 +292,15 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 ⚔️ Epic Boss Battles
               </h3>
               <p className="text-xs sm:text-sm leading-relaxed">
-                Face off against massive bosses on <span className="text-[hsl(200,70%,50%)] font-bold">levels 5, 10, 15, and the ultimate Mega Boss on level 20</span>! 
-                Each boss features unique attack patterns including shots, lasers, spiral attacks, and cross patterns. 
-                The Pyramid Boss <span className="text-[hsl(330,100%,65%)] font-bold">resurrects into 3 smaller bosses</span>, while the 
-                Mega Boss has <span className="text-[hsl(0,85%,55%)] font-bold">4 devastating phases</span> with orb swarms and ball capture mechanics!
+                Face off against massive bosses on{" "}
+                <span className="text-[hsl(200,70%,50%)] font-bold">
+                  levels 5, 10, 15, and the ultimate Mega Boss on level 20
+                </span>
+                ! Each boss features unique attack patterns including shots, lasers, spiral attacks, and cross patterns.
+                The Pyramid Boss{" "}
+                <span className="text-[hsl(330,100%,65%)] font-bold">resurrects into 3 smaller bosses</span>, while the
+                Mega Boss has <span className="text-[hsl(0,85%,55%)] font-bold">4 devastating phases</span> with orb
+                swarms and ball capture mechanics!
               </p>
             </div>
 
@@ -283,16 +309,18 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 🌐 Global High Scores
               </h3>
               <p className="text-xs sm:text-sm leading-relaxed">
-                Compete with players worldwide! Cloud-based leaderboards track <span className="text-[hsl(330,100%,65%)] font-bold">all-time, weekly, and daily rankings</span>. 
-                Can you reach the top 20 and prove you're the ultimate brick-breaking champion?
+                Compete with players worldwide! Cloud-based leaderboards track{" "}
+                <span className="text-[hsl(330,100%,65%)] font-bold">all-time, weekly, and daily rankings</span>. Can
+                you reach the top 20 and prove you're the ultimate brick-breaking champion?
               </p>
             </div>
 
             <p className="text-xs sm:text-sm md:text-base leading-relaxed">
-              Featuring an authentic retro aesthetic with <span className="text-[hsl(200,70%,50%)] font-bold">CRT scanline effects</span>, 
-              advanced <span className="text-[hsl(330,100%,65%)] font-bold">CCD physics engine</span> for precise collisions, 
-              special brick types (metal, cracked, explosive), 8 powerful power-ups, enemies that fight back, 
-              and a soundtrack that'll make your speakers weep with joy. Collect the legendary{" "}
+              Featuring an authentic retro aesthetic with{" "}
+              <span className="text-[hsl(200,70%,50%)] font-bold">CRT scanline effects</span>, advanced{" "}
+              <span className="text-[hsl(330,100%,65%)] font-bold">CCD physics engine</span> for precise collisions,
+              special brick types (metal, cracked, explosive), 8 powerful power-ups, enemies that fight back, and a
+              soundtrack that'll make your speakers weep with joy. Collect the legendary{" "}
               <span className="text-[hsl(330,100%,65%)] font-bold">Q-U-M-R-A-N</span> bonus letters for 5 extra lives!
             </p>
 
@@ -367,11 +395,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <picture className="absolute inset-0 w-full h-full pointer-events-none">
           <source srcSet={startScreenWebp} type="image/webp" />
-        <img
-          src={startScreenImg}
-          alt="Game start screen"
-          className="w-full h-full object-contain"
-        />
+          <img src={startScreenImg} alt="Game start screen" className="w-full h-full object-contain" />
         </picture>
         <div className="text-center animate-pulse relative z-10">
           <p className="text-white text-2xl font-bold">Press key/mouse to continue</p>
@@ -382,7 +406,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   if (showInstructions) {
     return (
-      <div ref={instructionsRef} className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container animate-fade-in">
+      <div
+        ref={instructionsRef}
+        className="fixed inset-0 w-full h-screen bg-gradient-to-b from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)] flex items-center justify-center p-2 sm:p-4 overflow-hidden swipe-container animate-fade-in"
+      >
         {qualitySettings.backgroundEffects && <CRTOverlay quality={quality} />}
         <Card className="relative w-full h-full max-w-5xl max-h-screen overflow-y-auto p-4 sm:p-6 md:p-8 bg-[hsl(220,20%,15%)] border-[hsl(200,70%,50%)] animate-scale-in">
           <button
@@ -395,7 +422,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           >
             <X size={24} />
           </button>
-          
+
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4 text-center text-[hsl(200,70%,50%)]">
             Instructions
           </h2>
@@ -434,17 +461,17 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 </li>
               </ul>
             </div>
-            
+
             {isIOSDevice && (
               <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(330,100%,65%)]/20 p-3 sm:p-4 rounded-lg border-2 border-[hsl(200,70%,50%)]/50">
                 <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">
                   📱 iOS Tip: True Fullscreen Experience
                 </h3>
                 <p className="text-xs sm:text-sm leading-relaxed">
-                  For the best fullscreen gaming experience on iPhone/iPad, add this game to your Home Screen:
-                  Tap the <span className="font-bold">Share</span> button in Safari → 
-                  <span className="font-bold"> Add to Home Screen</span>. 
-                  Then launch from your home screen to play without any browser UI!
+                  For the best fullscreen gaming experience on iPhone/iPad, add this game to your Home Screen: Tap the{" "}
+                  <span className="font-bold">Share</span> button in Safari →
+                  <span className="font-bold"> Add to Home Screen</span>. Then launch from your home screen to play
+                  without any browser UI!
                 </p>
               </div>
             )}
@@ -456,7 +483,11 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 <li>Collect power-ups for special abilities</li>
                 <li>Collect bonus letters Q-U-M-R-A-N for massive rewards (5 extra lives)</li>
                 <li>Watch out for enemies and their projectiles</li>
-                <li><span className="text-[hsl(30,100%,60%)] font-bold">Boss battles on levels 5, 10, 15, and the ultimate Mega Boss on level 20!</span></li>
+                <li>
+                  <span className="text-[hsl(30,100%,60%)] font-bold">
+                    Boss battles on levels 5, 10, 15, and the ultimate Mega Boss on level 20!
+                  </span>
+                </li>
                 <li>Ball bounces only from top half of paddle</li>
                 <li>If ball doesn't touch paddle for 15s, it auto-diverts</li>
                 <li>Powerup drops every 3 enemies destroyed</li>
@@ -465,24 +496,55 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             </div>
 
             <div>
-              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">Special Brick Types</h3>
+              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">
+                Special Brick Types
+              </h3>
               <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
-                <li><span className="text-gray-400">Metal Bricks</span> - Indestructible! Can only be destroyed by explosive blasts. Block turret shots.</li>
-                <li><span className="text-cyan-400">Cracked Bricks</span> - Require 3 hits to destroy. Visual damage progression with distinct sounds.</li>
-                <li><span className="text-[hsl(30,100%,60%)]">Explosive Bricks</span> - Detonate on impact! Destroy all surrounding bricks in blast radius.</li>
+                <li>
+                  <span className="text-gray-400">Metal Bricks</span> - Indestructible! Can only be destroyed by
+                  explosive blasts. Block turret shots.
+                </li>
+                <li>
+                  <span className="text-cyan-400">Cracked Bricks</span> - Require 3 hits to destroy. Visual damage
+                  progression with distinct sounds.
+                </li>
+                <li>
+                  <span className="text-[hsl(30,100%,60%)]">Explosive Bricks</span> - Detonate on impact! Destroy all
+                  surrounding bricks in blast radius.
+                </li>
               </ul>
             </div>
 
             <div>
-              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">Enemies & Bosses</h3>
+              <h3 className="font-bold text-sm sm:text-base md:text-lg mb-2 text-[hsl(200,70%,50%)]">
+                Enemies & Bosses
+              </h3>
               <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
-                <li><span className="text-cyan-400">Cube Enemies</span> - Basic enemies, 1 hit to destroy</li>
-                <li><span className="text-pink-400">Sphere Enemies</span> - 2 hits to destroy, become faster when angry</li>
-                <li><span className="text-purple-400">Pyramid Enemies</span> - 3 hits to destroy, toughest regular enemy</li>
-                <li><span className="text-[hsl(30,100%,60%)] font-bold">CUBE BOSS (Level 5)</span> - First boss encounter with unique attack patterns</li>
-                <li><span className="text-[hsl(330,100%,65%)] font-bold">SPHERE BOSS (Level 10)</span> - Multi-phase boss with escalating difficulty</li>
-                <li><span className="text-[hsl(280,80%,60%)] font-bold">PYRAMID BOSS (Level 15)</span> - Ultimate challenge! Splits into 3 smaller bosses</li>
-                <li><span className="text-[hsl(0,85%,55%)] font-bold">MEGA BOSS (Level 20)</span> - Final boss with 4 phases, orb swarms, and ball capture mechanics</li>
+                <li>
+                  <span className="text-cyan-400">Cube Enemies</span> - Basic enemies, 1 hit to destroy
+                </li>
+                <li>
+                  <span className="text-pink-400">Sphere Enemies</span> - 2 hits to destroy, become faster when angry
+                </li>
+                <li>
+                  <span className="text-purple-400">Pyramid Enemies</span> - 3 hits to destroy, toughest regular enemy
+                </li>
+                <li>
+                  <span className="text-[hsl(30,100%,60%)] font-bold">CUBE BOSS (Level 5)</span> - First boss encounter
+                  with unique attack patterns
+                </li>
+                <li>
+                  <span className="text-[hsl(330,100%,65%)] font-bold">SPHERE BOSS (Level 10)</span> - Multi-phase boss
+                  with escalating difficulty
+                </li>
+                <li>
+                  <span className="text-[hsl(280,80%,60%)] font-bold">PYRAMID BOSS (Level 15)</span> - Ultimate
+                  challenge! Splits into 3 smaller bosses
+                </li>
+                <li>
+                  <span className="text-[hsl(0,85%,55%)] font-bold">MEGA BOSS (Level 20)</span> - Final boss with 4
+                  phases, orb swarms, and ball capture mechanics
+                </li>
                 <li>Bosses attack with shots, lasers, spiral patterns, and cross patterns</li>
                 <li>Boss health bars show current phase HP</li>
               </ul>
@@ -495,7 +557,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   <span className="text-[hsl(330,100%,65%)]">Multiball</span> - Split ball into three
                 </li>
                 <li>
-                  <span className="text-[hsl(30,100%,60%)]">Turrets</span> - Add cannons to paddle (30 shots normal / 15 godlike, 50% chance at 90s)
+                  <span className="text-[hsl(30,100%,60%)]">Turrets</span> - Add cannons to paddle (30 shots normal / 15
+                  godlike, 50% chance at 90s)
                 </li>
                 <li>
                   <span className="text-[hsl(30,100%,60%)]">Fireball</span> - Ball destroys everything
@@ -516,16 +579,20 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   <span className="text-[hsl(280,80%,60%)]">Shield</span> - Protects paddle from 1 projectile hit
                 </li>
                 <li>
-                  <span className="text-[hsl(45,100%,50%)] font-bold">Boss Stunner</span> - Freezes boss for 5 seconds (boss minions only)
+                  <span className="text-[hsl(45,100%,50%)] font-bold">Boss Stunner</span> - Freezes boss for 5 seconds
+                  (boss minions only)
                 </li>
                 <li>
-                  <span className="text-[hsl(280,90%,60%)] font-bold">Reflect Shield</span> - Reflects boss attacks back for 15 seconds (boss minions only)
+                  <span className="text-[hsl(280,90%,60%)] font-bold">Reflect Shield</span> - Reflects boss attacks back
+                  for 15 seconds (boss minions only)
                 </li>
                 <li>
-                  <span className="text-[hsl(0,100%,50%)] font-bold">Homing Ball</span> - Ball curves toward boss for 8 seconds with red trail (boss levels only)
+                  <span className="text-[hsl(0,100%,50%)] font-bold">Homing Ball</span> - Ball curves toward boss for 8
+                  seconds with red trail (boss levels only)
                 </li>
                 <li>
-                  <span className="text-[hsl(180,70%,50%)] font-bold">Second Chance</span> - Creates a barrier at the bottom that saves your ball once
+                  <span className="text-[hsl(180,70%,50%)] font-bold">Second Chance</span> - Creates a barrier at the
+                  bottom that saves your ball once
                 </li>
               </ul>
             </div>
@@ -572,7 +639,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
         <div className="space-y-4">
           {/* Top Scores Display */}
           <TopScoresDisplay />
-          
+
           {/* Difficulty */}
           <div className="space-y-2">
             <Label className="text-white text-base">Difficulty</Label>
@@ -642,15 +709,13 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   >
                     <ChevronDown className="w-4 h-4 text-[hsl(200,70%,50%)]" />
                   </button>
-                  <span 
+                  <span
                     className={`text-sm font-mono min-w-[28px] text-center transition-colors ${
-                      (ENABLE_DEBUG_FEATURES || isLevelUnlocked(startingLevel))
-                        ? 'text-white' 
-                        : 'text-gray-500'
+                      ENABLE_DEBUG_FEATURES || isLevelUnlocked(startingLevel) ? "text-white" : "text-gray-500"
                     }`}
                     style={{ fontFamily: "'Press Start 2P', monospace" }}
                   >
-                    {startingLevel.toString().padStart(2, '0')}
+                    {startingLevel.toString().padStart(2, "0")}
                   </span>
                   <button
                     onClick={() => handleLevelChange(1)}
@@ -662,7 +727,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   </button>
                 </div>
               </div>
-              
+
               {/* Locked level floating message */}
               {showLockedMessage && (
                 <div className="absolute right-0 top-full mt-1 px-3 py-1.5 bg-[hsl(0,85%,45%)] text-white text-xs rounded-lg shadow-lg animate-pulse whitespace-nowrap z-10">
@@ -671,7 +736,6 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
               )}
             </div>
           )}
-
         </div>
 
         {/* Action Buttons */}
@@ -696,13 +760,13 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             onMouseEnter={() => soundManager.playMenuHover()}
             className={`w-full text-white text-lg py-4 ${
               gameMode === "bossRush"
-                ? 'bg-[hsl(30,100%,50%)] hover:bg-[hsl(30,100%,60%)]'
-                : (ENABLE_DEBUG_FEATURES || isLevelUnlocked(startingLevel))
-                  ? 'bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)]'
-                  : 'bg-gray-600 cursor-not-allowed'
+                ? "bg-[hsl(30,100%,50%)] hover:bg-[hsl(30,100%,60%)]"
+                : ENABLE_DEBUG_FEATURES || isLevelUnlocked(startingLevel)
+                  ? "bg-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,60%)]"
+                  : "bg-gray-600 cursor-not-allowed"
             }`}
           >
-            {gameMode === "bossRush" ? 'Start Boss Rush' : `Start Game${ENABLE_DEBUG_FEATURES ? ' (DEBUG)' : ''}`}
+            {gameMode === "bossRush" ? "Start Boss Rush" : `Start Game${ENABLE_DEBUG_FEATURES ? " (DEBUG)" : ""}`}
           </Button>
 
           <Button
