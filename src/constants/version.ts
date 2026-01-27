@@ -1,6 +1,16 @@
-export const GAME_VERSION = "0.9.6";
+export const GAME_VERSION = "0.9.7";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.7",
+    changes: [
+      "NEW: Boss Rush Mode – Fight all 4 bosses back-to-back in a high‑intensity challenge",
+      "Boss Rush includes a global timer – beat all bosses as fast as possible",
+      "Unique pacing adjustments for sequential boss encounters to keep difficulty balanced",
+      "Added end‑of‑rush results screen showing total time and performance",
+      "Minor code cleanup and stability improvements related to boss sequencing",
+    ],
+  },
   {
     version: "0.9.6",
     changes: [
