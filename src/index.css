@@ -313,12 +313,15 @@
 }
 
 /* Center region between title and bottom bar */
+
 .metal-main-content {
   display: flex;
   gap: 8px;
   margin-bottom: 6px;
   flex: 1;
   overflow: hidden;
+  /* Critical on flex parents: allows children to shrink so the canvas stays fully visible */
+  min-height: 0;
   justify-content: center;
 }
 
@@ -392,6 +395,7 @@
 }
 
 /* Game area container (non-fullscreen baseline) */
+
 .metal-game-area {
   background: linear-gradient(180deg, hsl(210, 15%, 30%) 0%, hsl(210, 15%, 22%) 100%);
   border: 4px ridge hsl(210, 15%, 50%);
@@ -407,6 +411,8 @@
   flex: 1; /* grow within main content */
   max-width: calc(100% - 220px); /* account for side panels (60 + 140) + gaps */
   min-width: 0;
+  /* Same rationale as above: ensures the inner wrapper/canvas can use full height */
+  min-height: 0;
 }
 
 .metal-bottom-bar {
