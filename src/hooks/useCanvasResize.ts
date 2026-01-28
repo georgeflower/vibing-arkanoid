@@ -1,29 +1,30 @@
+// src/hooks/useCanvasResize.ts
 import { useEffect, useRef, useCallback, useState } from "react";
 
 interface CanvasResizeOptions {
   enabled: boolean;
-  containerRef: React.RefObject<HTMLDivElement>;
-  gameGlowRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement>; // .metal-game-area
+  gameGlowRef: React.RefObject<HTMLDivElement>; // inner wrapper
+  canvasRef?: React.RefObject<HTMLCanvasElement>; // optional: set buffer + style
   logicalWidth: number; // SCALED_CANVAS_WIDTH
   logicalHeight: number; // SCALED_CANVAS_HEIGHT
+  hiDpi?: boolean; // set true for DPR scaling
 }
 
 interface CanvasSize {
   displayWidth: number;
   displayHeight: number;
-  scale: number;
+  scale: number; // display / logical
 }
 
-/**
- * Hook that dynamically sizes the canvas container based on available space
- * using ResizeObserver. Maintains aspect ratio while maximizing display area.
- */
 export function useCanvasResize({
   enabled,
   containerRef,
   gameGlowRef,
+  canvasRef,
   logicalWidth,
   logicalHeight,
+  hiDpi = true,
 }: CanvasResizeOptions): CanvasSize {
   const [size, setSize] = useState<CanvasSize>({
     displayWidth: logicalWidth,
@@ -37,60 +38,69 @@ export function useCanvasResize({
     if (!containerRef.current || !gameGlowRef.current) return;
 
     const container = containerRef.current;
-    const availableWidth = container.clientWidth - 16; // Account for padding
-    const availableHeight = container.clientHeight - 16;
+    // Read *actual* paddings from computed styles
+    const cs = getComputedStyle(container);
+    const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
 
-    // Calculate scale to fit while maintaining aspect ratio
-    const aspectRatio = logicalWidth / logicalHeight;
-    let displayWidth: number;
-    let displayHeight: number;
+    // clientWidth/Height include padding, exclude borders
+    const availableWidth = Math.max(0, container.clientWidth - padX);
+    const availableHeight = Math.max(0, container.clientHeight - padY);
 
-    if (availableWidth / availableHeight > aspectRatio) {
-      // Container is wider than canvas ratio - height-constrained
-      displayHeight = availableHeight;
-      displayWidth = displayHeight * aspectRatio;
+    const aspect = logicalWidth / logicalHeight;
+    let dw: number, dh: number;
+
+    if (availableWidth / availableHeight > aspect) {
+      // Height-constrained
+      dh = availableHeight;
+      dw = dh * aspect;
     } else {
-      // Container is taller than canvas ratio - width-constrained
-      displayWidth = availableWidth;
-      displayHeight = displayWidth / aspectRatio;
+      // Width-constrained
+      dw = availableWidth;
+      dh = dw / aspect;
     }
 
-    const scale = displayWidth / logicalWidth;
+    dw = Math.floor(dw);
+    dh = Math.floor(dh);
+    const scale = dw / logicalWidth;
 
-    setSize({
-      displayWidth: Math.floor(displayWidth),
-      displayHeight: Math.floor(displayHeight),
-      scale,
-    });
+    // Size the wrapper
+    const glow = gameGlowRef.current;
+    glow.style.width = `${dw}px`;
+    glow.style.height = `${dh}px`;
 
-    // Apply size to game-glow container
-    gameGlowRef.current.style.width = `${Math.floor(displayWidth)}px`;
-    gameGlowRef.current.style.height = `${Math.floor(displayHeight)}px`;
-  }, [containerRef, gameGlowRef, logicalWidth, logicalHeight]);
-
-  const debouncedCalculate = useCallback(() => {
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
+    // (Optional) size the canvas style and buffer for crispness
+    if (canvasRef?.current) {
+      const dpr = hiDpi ? Math.min(window.devicePixelRatio || 1, 3) : 1;
+      const canvas = canvasRef.current;
+      // CSS pixels for layout
+      canvas.style.width = `${dw}px`;
+      canvas.style.height = `${dh}px`;
+      // Backing store in device pixels
+      const bw = Math.max(1, Math.floor(dw * dpr));
+      const bh = Math.max(1, Math.floor(dh * dpr));
+      if (canvas.width !== bw) canvas.width = bw;
+      if (canvas.height !== bh) canvas.height = bh;
     }
+
+    setSize({ displayWidth: dw, displayHeight: dh, scale });
+  }, [containerRef, gameGlowRef, canvasRef, logicalWidth, logicalHeight, hiDpi]);
+
+  const debounced = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(calculateSize);
   }, [calculateSize]);
 
   useEffect(() => {
     if (!enabled || !containerRef.current) return;
-
-    const observer = new ResizeObserver(debouncedCalculate);
-    observer.observe(containerRef.current);
-
-    // Initial calculation
+    const ro = new ResizeObserver(debounced);
+    ro.observe(containerRef.current);
     calculateSize();
-
     return () => {
-      observer.disconnect();
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
+      ro.disconnect();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [enabled, containerRef, debouncedCalculate, calculateSize]);
+  }, [enabled, containerRef, debounced, calculateSize]);
 
   return size;
 }
