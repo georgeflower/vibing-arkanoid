@@ -16,6 +16,8 @@ import { debugToast as toast } from "@/utils/debugToast";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useScaledConstants } from "@/hooks/useScaledConstants";
+import { useViewportFrame } from "@/hooks/useViewportFrame";
+import { useCanvasResize } from "@/hooks/useCanvasResize";
 import CRTOverlay from "./CRTOverlay";
 import { BOSS_RUSH_CONFIG, BossRushLevel } from "@/constants/bossRushConfig";
 
@@ -771,6 +773,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const launchAngleIntervalRef = useRef<NodeJS.Timeout>();
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const gameContainerRef = useRef<HTMLDivElement>(null);
+  const gameAreaRef = useRef<HTMLDivElement>(null);
+  const gameGlowRef = useRef<HTMLDivElement>(null);
   const timerStartedRef = useRef(false);
   const nextLevelRef = useRef<(() => void) | null>(null);
 
@@ -1319,6 +1323,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       sampleWindow: 3,
       enableLogging: ENABLE_DEBUG_FEATURES && debugSettings.enableFPSLogging,
     });
+
+  // Desktop viewport frame - fills entire screen on desktop
+  useViewportFrame({
+    enabled: !isMobileDevice,
+    frameRef: gameContainerRef,
+  });
+
+  // Dynamic canvas resize for desktop - uses ResizeObserver
+  const { displayWidth, displayHeight, scale: dynamicScale } = useCanvasResize({
+    enabled: !isMobileDevice,
+    containerRef: gameAreaRef,
+    gameGlowRef,
+    logicalWidth: SCALED_CANVAS_WIDTH,
+    logicalHeight: SCALED_CANVAS_HEIGHT,
+  });
 
   // Helper function to create explosion particles based on enemy type
   // OPTIMIZED: Uses particle pool instead of creating new arrays
@@ -8641,15 +8660,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 </div>
 
                 {/* Game Canvas - Apply scale transform when title is hidden (desktop only) */}
-                <div className="metal-game-area">
+                <div className="metal-game-area" ref={gameAreaRef}>
                   <div
+                    ref={gameGlowRef}
                     className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}
-                    style={{
+                    style={isMobileDevice ? {
                       width: `${SCALED_CANVAS_WIDTH}px`,
                       height: `${SCALED_CANVAS_HEIGHT}px`,
                       transform: `scale(${gameScale})`,
                       transformOrigin: "top center",
                       transition: "transform 150ms ease-in-out",
+                    } : {
+                      // Desktop: Size controlled by useCanvasResize hook
+                      // Width/height set imperatively via ref
+                      transformOrigin: "top center",
+                      transition: "width 150ms ease-in-out, height 150ms ease-in-out",
                     }}
                   >
                     <GameCanvas
