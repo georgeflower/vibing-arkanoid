@@ -103,7 +103,7 @@
       inset -1px -1px 0px hsl(0, 0%, 15%),
       0 0 0 1px hsl(0, 0%, 10%);
   }
-  /* Canvas wrapper glow – NOW ALWAYS CENTERED */
+  /* Canvas wrapper glow — ALWAYS centered (added) */
   .game-glow {
     display: flex;
     align-items: center;
@@ -112,10 +112,11 @@
       0 0 16px hsl(var(--neon-cyan) / 0.2),
       0 0 32px hsl(var(--neon-purple) / 0.15);
   }
-  /* Canvas in non-mobile contexts: sized by ResizeObserver hook; ensure block */
+  /* Canvas block formatting */
   .game-glow canvas {
-    display: block; /* removes baseline gap under canvas */
-  }
+    display: block;
+  } /* removes baseline gap */
+
   /* Mobile canvas constraints (desktop uses hook sizing) */
   @media (max-width: 768px) {
     .game-glow canvas {
@@ -126,6 +127,7 @@
       object-fit: contain;
     }
   }
+
   .neon-text {
     text-shadow:
       0 0 6px currentColor,
@@ -253,7 +255,7 @@
   padding: 8px;
   max-width: 1400px; /* non-fullscreen default */
   width: fit-content; /* non-fullscreen default */
-  max-height: 100vh; /* slightly relaxed vs 98vh to reduce clipping */
+  max-height: 100vh; /* slightly relaxed from 98vh to reduce clipping (changed) */
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -297,7 +299,7 @@
   flex: 1;
   overflow: hidden;
   justify-content: center;
-  /* CRITICAL: allows children (game area) to shrink properly so canvas stays visible */
+  /* CRITICAL: allow children to shrink so canvas stays fully visible (added) */
   min-height: 0;
 }
 .metal-side-panel {
@@ -381,7 +383,7 @@
   flex: 1; /* grow within main content */
   max-width: calc(100% - 220px); /* account for side panels (60 + 140) + gaps */
   min-width: 0;
-  /* CRITICAL: allows inner wrapper to use full height */
+  /* CRITICAL: ensures inner wrapper/canvas can use full height (added) */
   min-height: 0;
 }
 .metal-bottom-bar {
@@ -395,7 +397,7 @@
 }
 /* ─────────────────────────────────────────────────────────────────────────────
  DESKTOP FULLSCREEN — authoritative, height-safe layout
- (applied when your component adds the `.desktop-fullscreen` class)
+ (applied when your hook adds the `.desktop-fullscreen` class)
 ───────────────────────────────────────────────────────────────────────────── */
 @media (min-width: 769px) {
   .metal-frame.desktop-fullscreen {
@@ -410,13 +412,7 @@
     border-radius: 0;
   }
 
-  /* Hide top and bottom bars to free vertical space for the canvas */
-  .metal-frame.desktop-fullscreen .metal-title-bar,
-  .metal-frame.desktop-fullscreen .metal-bottom-bar {
-    display: none !important;
-  }
-
-  /* Center stack consumes remaining space; allow shrink */
+  /* Header/Footer retain natural height; center consumes remaining space */
   .metal-main-content {
     display: flex;
     flex-direction: row;
@@ -424,7 +420,7 @@
     min-height: 0; /* critical: allow full height */
     min-width: 0;
     gap: 8px;
-    align-items: stretch; /* ensures game area and panels use full height */
+    align-items: stretch; /* allow children to take full height */
   }
 
   /* Sidebars remain fixed width */
@@ -437,7 +433,7 @@
     min-width: 140px;
   }
 
-  /* Game area fills remaining space and has NO inner padding in fullscreen */
+  /* Game area fills remaining space — remove inner padding in fullscreen (changed) */
   .metal-frame.desktop-fullscreen .metal-game-area {
     flex: 1 1 auto;
     min-width: 0;
@@ -445,7 +441,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 !important; /* remove inner padding so canvas reaches the inner frame edge */
+    padding: 0 !important; /* removed padding to let canvas reach the inner edge */
     box-sizing: border-box;
     max-width: none; /* remove width constraint in fullscreen */
   }
