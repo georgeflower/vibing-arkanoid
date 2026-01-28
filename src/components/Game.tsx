@@ -8745,7 +8745,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           ) : (
             <div
               ref={gameContainerRef}
-              className={`metal-frame ${!isMobileDevice && isFullscreen ? "desktop-fullscreen" : ""} ${isIOSDevice ? "mobile-fullscreen-mode" : isMobileDevice && isFullscreen ? "mobile-fullscreen-mode" : ""}`}
+              className={`metal-frame ${isIOSDevice ? "mobile-fullscreen-mode" : isMobileDevice && isFullscreen ? "mobile-fullscreen-mode" : ""}`}
             >
               {/* Title Bar - Adaptive Visibility (Desktop: only title hides, Mobile: all hides) */}
               <div
@@ -8790,9 +8790,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             transition: "transform 150ms ease-in-out",
                           }
                         : {
-                            // Desktop: Size controlled by useCanvasResize hook
-                            // Width/height set imperatively via ref
-                            transformOrigin: "top center",
+                            // Desktop: Size controlled by useCanvasResize hook; width/height set imperatively via ref
+                            transformOrigin: "center center",
+                            margin: "0 auto",
                             transition: "width 150ms ease-in-out, height 150ms ease-in-out",
                           }
                     }
