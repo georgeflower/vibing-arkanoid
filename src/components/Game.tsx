@@ -8665,52 +8665,111 @@ const { displayWidth, displayHeight, scale: dynamicScale } = useCanvasResize({
 
  {/* DESKTOP (isMobileDevice === false) */}
 <div className="metal-game-area" ref={gameAreaRef}>
-  <div ref={gameGlowRef} className="game-glow">
-    <GameCanvas
-      ref={canvasRef}
-      width={SCALED_CANVAS_WIDTH}
-      height={SCALED_CANVAS_HEIGHT}
-      /* keep your existing props as-is: */
-      bricks={bricks}
-      balls={balls}
-      paddle={paddle}
-      gameState={gameState}
-      powerUps={powerUps}
-      bullets={bullets}
-      enemy={enemies}
-      bombs={bombs}
-      level={level}
-      backgroundPhase={backgroundPhase}
-      explosions={explosions}
-      launchAngle={launchAngle}
-      bonusLetters={bonusLetters}
-      collectedLetters={collectedLetters}
-      screenShake={screenShake}
-      backgroundFlash={backgroundFlash}
-      highlightFlash={highlightFlash}
-      qualitySettings={qualitySettings}
-      boss={boss}
-      resurrectedBosses={resurrectedBosses}
-      bossAttacks={bossAttacks}
-      laserWarnings={laserWarnings}
-      superWarnings={superWarnings}
-      gameOverParticles={[]}
-      highScoreParticles={[]}
-      showHighScoreEntry={showHighScoreEntry}
-      bossIntroActive={bossIntroActive}
-      bossSpawnAnimation={bossSpawnAnimation}
-      shieldImpacts={shieldImpacts}
-      bulletImpacts={bulletImpacts}
-      tutorialHighlight={tutorialStep?.highlight}
-      debugEnabled={ENABLE_DEBUG_FEATURES}
-      getReadyGlow={null}                 // desktop doesn't use the glow helper
-      isMobile={false}
-      secondChanceImpact={secondChanceImpact}
-      dangerBalls={dangerBalls}
-      ballReleaseHighlight={ballReleaseHighlight}
-    />
-  </div>
+  {isMobileDevice ? (
+    // MOBILE: keep scale transform
+    <div
+      ref={gameGlowRef}
+      className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}
+      style={{
+        width: `${SCALED_CANVAS_WIDTH}px`,
+        height: `${SCALED_CANVAS_HEIGHT}px`,
+        transform: `scale(${gameScale})`,
+        transformOrigin: "top center",
+        transition: "transform 150ms ease-in-out",
+      }}
+    >
+      <GameCanvas
+        ref={canvasRef}
+        width={SCALED_CANVAS_WIDTH}
+        height={SCALED_CANVAS_HEIGHT}
+        bricks={bricks}
+        balls={balls}
+        paddle={paddle}
+        gameState={gameState}
+        powerUps={powerUps}
+        bullets={bullets}
+        enemy={enemies}
+        bombs={bombs}
+        level={level}
+        backgroundPhase={backgroundPhase}
+        explosions={explosions}
+        launchAngle={launchAngle}
+        bonusLetters={bonusLetters}
+        collectedLetters={collectedLetters}
+        screenShake={screenShake}
+        backgroundFlash={backgroundFlash}
+        highlightFlash={highlightFlash}
+        qualitySettings={qualitySettings}
+        boss={boss}
+        resurrectedBosses={resurrectedBosses}
+        bossAttacks={bossAttacks}
+        laserWarnings={laserWarnings}
+        superWarnings={superWarnings}
+        gameOverParticles={[]}
+        highScoreParticles={[]}
+        showHighScoreEntry={showHighScoreEntry}
+        bossIntroActive={bossIntroActive}
+        bossSpawnAnimation={bossSpawnAnimation}
+        shieldImpacts={shieldImpacts}
+        bulletImpacts={bulletImpacts}
+        tutorialHighlight={tutorialStep?.highlight}
+        debugEnabled={ENABLE_DEBUG_FEATURES}
+        getReadyGlow={getReadyGlow}
+        isMobile={true}
+        secondChanceImpact={secondChanceImpact}
+        dangerBalls={dangerBalls}
+        ballReleaseHighlight={ballReleaseHighlight}
+      />
+    </div>
+  ) : (
+    // DESKTOP: size controlled by useCanvasResize hook + CSS
+    <div ref={gameGlowRef} className="game-glow">
+      <GameCanvas
+        ref={canvasRef}
+        width={SCALED_CANVAS_WIDTH}
+        height={SCALED_CANVAS_HEIGHT}
+        bricks={bricks}
+        balls={balls}
+        paddle={paddle}
+        gameState={gameState}
+        powerUps={powerUps}
+        bullets={bullets}
+        enemy={enemies}
+        bombs={bombs}
+        level={level}
+        backgroundPhase={backgroundPhase}
+        explosions={explosions}
+        launchAngle={launchAngle}
+        bonusLetters={bonusLetters}
+        collectedLetters={collectedLetters}
+        screenShake={screenShake}
+        backgroundFlash={backgroundFlash}
+        highlightFlash={highlightFlash}
+        qualitySettings={qualitySettings}
+        boss={boss}
+        resurrectedBosses={resurrectedBosses}
+        bossAttacks={bossAttacks}
+        laserWarnings={laserWarnings}
+        superWarnings={superWarnings}
+        gameOverParticles={[]}
+        highScoreParticles={[]}
+        showHighScoreEntry={showHighScoreEntry}
+        bossIntroActive={bossIntroActive}
+        bossSpawnAnimation={bossSpawnAnimation}
+        shieldImpacts={shieldImpacts}
+        bulletImpacts={bulletImpacts}
+        tutorialHighlight={tutorialStep?.highlight}
+        debugEnabled={ENABLE_DEBUG_FEATURES}
+        getReadyGlow={null}   // desktop doesn't use the glow helper
+        isMobile={false}
+        secondChanceImpact={secondChanceImpact}
+        dangerBalls={dangerBalls}
+        ballReleaseHighlight={ballReleaseHighlight}
+      />
+    </div>
+  )}
 </div>
+
 
                     {/* Boss Power-Up Duration Timers - Desktop only (paddle-relative positioning) */}
                     {!isMobileDevice && paddle && (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
