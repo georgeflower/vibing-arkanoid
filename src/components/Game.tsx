@@ -1330,14 +1330,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     frameRef: gameContainerRef,
   });
 
-  // Dynamic canvas resize for desktop - uses ResizeObserver
-  const { displayWidth, displayHeight, scale: dynamicScale } = useCanvasResize({
-    enabled: !isMobileDevice,
-    containerRef: gameAreaRef,
-    gameGlowRef,
-    logicalWidth: SCALED_CANVAS_WIDTH,
-    logicalHeight: SCALED_CANVAS_HEIGHT,
-  });
+ 
+// Desktop dynamic resize
+const { displayWidth, displayHeight, scale: dynamicScale } = useCanvasResize({
+  enabled: !isMobileDevice,
+  containerRef: gameAreaRef,
+  gameGlowRef,
+  canvasRef,                      // <-- add this
+  logicalWidth: SCALED_CANVAS_WIDTH,
+  logicalHeight: SCALED_CANVAS_HEIGHT,
+  hiDpi: true,
+});
+
 
   // Helper function to create explosion particles based on enemy type
   // OPTIMIZED: Uses particle pool instead of creating new arrays
@@ -8659,66 +8663,54 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   <div className="panel-decoration"></div>
                 </div>
 
-                {/* Game Canvas - Apply scale transform when title is hidden (desktop only) */}
-                <div className="metal-game-area" ref={gameAreaRef}>
-                  <div
-                    ref={gameGlowRef}
-                    className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}
-                    style={isMobileDevice ? {
-                      width: `${SCALED_CANVAS_WIDTH}px`,
-                      height: `${SCALED_CANVAS_HEIGHT}px`,
-                      transform: `scale(${gameScale})`,
-                      transformOrigin: "top center",
-                      transition: "transform 150ms ease-in-out",
-                    } : {
-                      // Desktop: Size controlled by useCanvasResize hook
-                      // Width/height set imperatively via ref
-                      transformOrigin: "top center",
-                      transition: "width 150ms ease-in-out, height 150ms ease-in-out",
-                    }}
-                  >
-                    <GameCanvas
-                      ref={canvasRef}
-                      width={SCALED_CANVAS_WIDTH}
-                      height={SCALED_CANVAS_HEIGHT}
-                      bricks={bricks}
-                      balls={balls}
-                      paddle={paddle}
-                      gameState={gameState}
-                      powerUps={powerUps}
-                      bullets={bullets}
-                      enemy={enemies}
-                      bombs={bombs}
-                      level={level}
-                      backgroundPhase={backgroundPhase}
-                      explosions={explosions}
-                      launchAngle={launchAngle}
-                      bonusLetters={bonusLetters}
-                      collectedLetters={collectedLetters}
-                      screenShake={screenShake}
-                      backgroundFlash={backgroundFlash}
-                      highlightFlash={highlightFlash}
-                      qualitySettings={qualitySettings}
-                      boss={boss}
-                      resurrectedBosses={resurrectedBosses}
-                      bossAttacks={bossAttacks}
-                      laserWarnings={laserWarnings}
-                      superWarnings={superWarnings}
-                      gameOverParticles={[]}
-                      highScoreParticles={[]}
-                      showHighScoreEntry={showHighScoreEntry}
-                      bossIntroActive={bossIntroActive}
-                      bossSpawnAnimation={bossSpawnAnimation}
-                      shieldImpacts={shieldImpacts}
-                      bulletImpacts={bulletImpacts}
-                      tutorialHighlight={tutorialStep?.highlight}
-                      debugEnabled={ENABLE_DEBUG_FEATURES}
-                      getReadyGlow={isMobileDevice ? getReadyGlow : null}
-                      isMobile={isMobileDevice}
-                      secondChanceImpact={secondChanceImpact}
-                      dangerBalls={dangerBalls}
-                      ballReleaseHighlight={ballReleaseHighlight}
-                    />
+ {/* DESKTOP (isMobileDevice === false) */}
+<div className="metal-game-area" ref={gameAreaRef}>
+  <div ref={gameGlowRef} className="game-glow">
+    <GameCanvas
+      ref={canvasRef}
+      width={SCALED_CANVAS_WIDTH}
+      height={SCALED_CANVAS_HEIGHT}
+      /* keep your existing props as-is: */
+      bricks={bricks}
+      balls={balls}
+      paddle={paddle}
+      gameState={gameState}
+      powerUps={powerUps}
+      bullets={bullets}
+      enemy={enemies}
+      bombs={bombs}
+      level={level}
+      backgroundPhase={backgroundPhase}
+      explosions={explosions}
+      launchAngle={launchAngle}
+      bonusLetters={bonusLetters}
+      collectedLetters={collectedLetters}
+      screenShake={screenShake}
+      backgroundFlash={backgroundFlash}
+      highlightFlash={highlightFlash}
+      qualitySettings={qualitySettings}
+      boss={boss}
+      resurrectedBosses={resurrectedBosses}
+      bossAttacks={bossAttacks}
+      laserWarnings={laserWarnings}
+      superWarnings={superWarnings}
+      gameOverParticles={[]}
+      highScoreParticles={[]}
+      showHighScoreEntry={showHighScoreEntry}
+      bossIntroActive={bossIntroActive}
+      bossSpawnAnimation={bossSpawnAnimation}
+      shieldImpacts={shieldImpacts}
+      bulletImpacts={bulletImpacts}
+      tutorialHighlight={tutorialStep?.highlight}
+      debugEnabled={ENABLE_DEBUG_FEATURES}
+      getReadyGlow={null}                 // desktop doesn't use the glow helper
+      isMobile={false}
+      secondChanceImpact={secondChanceImpact}
+      dangerBalls={dangerBalls}
+      ballReleaseHighlight={ballReleaseHighlight}
+    />
+  </div>
+</div>
 
                     {/* Boss Power-Up Duration Timers - Desktop only (paddle-relative positioning) */}
                     {!isMobileDevice && paddle && (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
