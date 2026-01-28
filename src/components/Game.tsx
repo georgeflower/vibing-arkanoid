@@ -8663,12 +8663,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   return (
     <div
       ref={fullscreenContainerRef}
-      className={`flex items-center justify-center ${
+      className={`${
         isIOSDevice
-          ? "ios-fullscreen-container" // Always use iOS container on iOS devices
+          ? "ios-fullscreen-container"
           : isFullscreen
             ? "h-screen bg-background overflow-hidden"
-            : "h-screen overflow-hidden"
+            : "h-screen overflow-hidden flex items-center justify-center"
       }`}
     >
       {/* CRT Overlay - inside fullscreen container (Phase 5: Toggle by debug setting) */}
