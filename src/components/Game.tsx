@@ -234,38 +234,35 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const MAX_TOTAL_SPEED_NORMAL = 1.5;
   const MAX_TOTAL_SPEED_GODLIKE = 1.75;
 
-  const calculateSpeedForLevel = useCallback(
-    (levelNum: number, difficulty: string, gameMode?: string, rushIndex?: number) => {
-      // Boss Rush mode uses fixed speeds per boss
-      if (gameMode === "bossRush" && rushIndex !== undefined) {
-        const bossLevel = BOSS_RUSH_CONFIG.bossOrder[rushIndex] as BossRushLevel;
-        return BOSS_RUSH_CONFIG.speedMultipliers[bossLevel];
-      }
+  const calculateSpeedForLevel = useCallback((levelNum: number, difficulty: string, gameMode?: string, rushIndex?: number) => {
+    // Boss Rush mode uses fixed speeds per boss
+    if (gameMode === "bossRush" && rushIndex !== undefined) {
+      const bossLevel = BOSS_RUSH_CONFIG.bossOrder[rushIndex] as BossRushLevel;
+      return BOSS_RUSH_CONFIG.speedMultipliers[bossLevel];
+    }
+    
+    // 105% base for normal, 137.5% for godlike
+    const baseMultiplier = difficulty === "godlike" ? 1.375 : 1.05;
+    // Level-based caps (before brick hit bonuses): 155% godlike, 140% normal
+    const maxSpeedMultiplier = difficulty === "godlike" ? 1.55 : 1.4;
 
-      // 105% base for normal, 137.5% for godlike
-      const baseMultiplier = difficulty === "godlike" ? 1.375 : 1.05;
-      // Level-based caps (before brick hit bonuses): 155% godlike, 140% normal
-      const maxSpeedMultiplier = difficulty === "godlike" ? 1.55 : 1.4;
-
-      let speedMult: number;
-      if (difficulty === "godlike") {
-        // Godlike: always +5% per level
-        speedMult = baseMultiplier + (levelNum - 1) * 0.05;
-      } else {
-        // Normal: always +3% per level
-        speedMult = baseMultiplier + (levelNum - 1) * 0.03;
-      }
-      return Math.min(maxSpeedMultiplier, speedMult);
-    },
-    [],
-  );
+    let speedMult: number;
+    if (difficulty === "godlike") {
+      // Godlike: always +5% per level
+      speedMult = baseMultiplier + (levelNum - 1) * 0.05;
+    } else {
+      // Normal: always +3% per level
+      speedMult = baseMultiplier + (levelNum - 1) * 0.03;
+    }
+    return Math.min(maxSpeedMultiplier, speedMult);
+  }, []);
 
   const [speedMultiplier, setSpeedMultiplier] = useState(() => {
     // Boss Rush mode uses fixed speed for first boss
     if (settings.gameMode === "bossRush") {
       return BOSS_RUSH_CONFIG.speedMultipliers[5]; // First boss is level 5
     }
-
+    
     // Calculate speed for starting level
     const startLevel = settings.startingLevel;
     // 105% base for normal, 137.5% for godlike
@@ -359,7 +356,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Function to detect if ball is stuck in a loop
   const detectStuckLoop = useCallback((angles: number[]): boolean => {
     if (angles.length < 6) return false;
-
+    
     // Check for alternating pattern (horizontal/vertical loop)
     // Angles alternate between 2 values
     const lastAngles = angles.slice(-6);
@@ -374,7 +371,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     }
     if (alternating) return true;
-
+    
     // Check for same-angle repetition (pure horizontal/vertical)
     let sameAngle = true;
     for (let i = 1; i < lastAngles.length; i++) {
@@ -386,7 +383,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     }
     if (sameAngle) return true;
-
+    
     // Check for 3-angle repeating pattern
     if (angles.length >= 9) {
       const last9 = angles.slice(-9);
@@ -401,7 +398,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
       if (threePattern) return true;
     }
-
+    
     return false;
   }, []);
 
@@ -628,28 +625,28 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Adjust Boss Rush start time to freeze the elapsed timer during pause
       if (bossRushStartTime !== null) {
-        setBossRushStartTime((prev) => (prev !== null ? prev + pauseDuration : null));
+        setBossRushStartTime(prev => prev !== null ? prev + pauseDuration : null);
       }
 
       // Adjust enemy spawn timer to prevent immediate spawn on resume
       if (lastEnemySpawnTime > 0) {
-        setLastEnemySpawnTime((prev) => prev + pauseDuration);
+        setLastEnemySpawnTime(prev => prev + pauseDuration);
       }
 
       // Adjust cannon missile timer
       if (nextCannonMissileTime > 0) {
-        setNextCannonMissileTime((prev) => prev + pauseDuration);
+        setNextCannonMissileTime(prev => prev + pauseDuration);
       }
 
       // Adjust Mega Boss absolute timestamps
       if (boss && isMegaBoss(boss)) {
-        setBoss((prev) => {
+        setBoss(prev => {
           if (!prev || !isMegaBoss(prev)) return prev;
           const mb = prev as MegaBoss;
           return {
             ...mb,
             // Shift all scheduled danger ball timestamps
-            scheduledDangerBalls: mb.scheduledDangerBalls.map((t) => t + pauseDuration),
+            scheduledDangerBalls: mb.scheduledDangerBalls.map(t => t + pauseDuration),
             // Adjust invulnerability end time
             invulnerableUntil: mb.invulnerableUntil ? mb.invulnerableUntil + pauseDuration : mb.invulnerableUntil,
             // Adjust last swarm spawn time
@@ -666,19 +663,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       pauseStartTimeRef.current = null;
       savedTimerDurationsRef.current = { bossStunner: null, reflectShield: null, homingBall: null, fireball: null };
     }
-  }, [
-    gameState,
-    tutorialActive,
-    bossRushStatsOverlayActive,
-    bossStunnerEndTime,
-    reflectShieldEndTime,
-    homingBallEndTime,
-    fireballEndTime,
-    boss,
-    bossRushStartTime,
-    lastEnemySpawnTime,
-    nextCannonMissileTime,
-  ]);
+  }, [gameState, tutorialActive, bossRushStatsOverlayActive, bossStunnerEndTime, reflectShieldEndTime, homingBallEndTime, fireballEndTime, boss, bossRushStartTime, lastEnemySpawnTime, nextCannonMissileTime]);
 
   // "Get Ready" speed ramp - gradually increase speed from 30% to 100% over 2 seconds
   useEffect(() => {
@@ -769,7 +754,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const launchAngleDirectionRef = useRef(1);
   const animationFrameRef = useRef<number>();
   const nextBallId = useRef(1);
-
+  
   // Track bricks destroyed this level for level 1 multiball rule
   const bricksDestroyedThisLevelRef = useRef(0);
 
@@ -911,7 +896,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     bossStunnerTimeoutRef.current = setTimeout(() => {
       setBossStunnerEndTime(null);
-
+      
       // Reset isStunned on main boss
       setBoss((prev) =>
         prev
@@ -922,7 +907,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             }
           : null,
       );
-
+      
       // Reset isStunned on resurrected bosses
       setResurrectedBosses((prev) =>
         prev.map((rb) => ({
@@ -1041,11 +1026,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setBrickHitSpeedAccumulated,
       (type: string) => {
         setPowerUpsCollectedTypes((prev) => new Set(prev).add(type));
-
+        
         // Track Boss Rush power-up collection
         if (isBossRush) {
-          setBossRushPowerUpsThisBoss((prev) => prev + 1);
-          setBossRushTotalPowerUps((prev) => prev + 1);
+          setBossRushPowerUpsThisBoss(prev => prev + 1);
+          setBossRushTotalPowerUps(prev => prev + 1);
         }
 
         // Trigger golden highlight flash for extra life (levels 1-4)
@@ -1248,7 +1233,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBossAttacks([]);
           setBombs([]);
           setBullets([]);
-
+          
           // Boss Rush mode: show stats overlay instead of immediate transition
           if (isBossRush) {
             // Pause game and show stats overlay after victory overlay
@@ -1346,11 +1331,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   });
 
   // Dynamic canvas resize for desktop - uses ResizeObserver
-  const {
-    displayWidth,
-    displayHeight,
-    scale: dynamicScale,
-  } = useCanvasResize({
+  const { displayWidth, displayHeight, scale: dynamicScale } = useCanvasResize({
     enabled: !isMobileDevice,
     containerRef: gameAreaRef,
     gameGlowRef,
@@ -1782,7 +1763,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setEnemiesKilled(0);
     setLastBossSpawnTime(0);
     setBossSpawnAnimation(null);
-
+    
     // Reset Boss Rush session state when starting a new Boss Rush run
     if (isBossRush) {
       resetBossRushSessionState();
@@ -1847,11 +1828,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     bombIntervalsRef.current.clear();
     setBonusLetters([]);
     setDroppedLettersThisLevel(new Set());
-
+    
     // Boss Rush mode: progress through boss order
     if (isBossRush) {
       const nextBossIndex = bossRushIndex + 1;
-
+      
       // Check if all bosses defeated
       if (nextBossIndex >= BOSS_RUSH_CONFIG.bossOrder.length) {
         // Boss Rush complete! Calculate completion time
@@ -1863,17 +1844,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         soundManager.resumeBackgroundMusic();
         return;
       }
-
+      
       // Next boss in Boss Rush
       setBossRushIndex(nextBossIndex);
       const nextBossLevel = BOSS_RUSH_CONFIG.bossOrder[nextBossIndex] as BossRushLevel;
       const newSpeedMultiplier = BOSS_RUSH_CONFIG.speedMultipliers[nextBossLevel];
-
+      
       setLevel(nextBossLevel);
       setLivesLostOnCurrentLevel(0);
       setBossFirstHitShieldDropped(false);
       setSpeedMultiplier(newSpeedMultiplier);
-
+      
       setPaddle((prev) => ({
         x: SCALED_CANVAS_WIDTH / 2 - SCALED_PADDLE_WIDTH / 2,
         y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
@@ -1921,7 +1902,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setLastBossSpawnTime(0);
       setBossSpawnAnimation(null);
       setBossDefeatedTransitioning(false); // Reset so minions can spawn for next boss
-
+      
       // Boss Rush always has bosses
       setBossIntroActive(true);
       soundManager.playBossIntroSound();
@@ -1943,7 +1924,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       toast.success(`Boss ${nextBossIndex + 1}/4! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
       return;
     }
-
+    
     // Normal mode progression
     const newLevel = level + 1;
 
@@ -2058,18 +2039,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     } else {
       toast.success(`Level ${newLevel}! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
     }
-  }, [
-    level,
-    initBricksForLevel,
-    setPowerUps,
-    initPowerUpAssignments,
-    updateMaxLevel,
-    missedLetters,
-    isBossRush,
-    bossRushIndex,
-    settings.difficulty,
-    calculateSpeedForLevel,
-  ]);
+  }, [level, initBricksForLevel, setPowerUps, initPowerUpAssignments, updateMaxLevel, missedLetters, isBossRush, bossRushIndex, settings.difficulty, calculateSpeedForLevel]);
 
   // Update nextLevel ref whenever nextLevel function changes
   nextLevelRef.current = nextLevel;
@@ -2225,7 +2195,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (isLevelComplete) {
           nextLevel();
         } else {
-          // Start game - start music only if not already playing (and not boss music)
+        // Start game - start music only if not already playing (and not boss music)
           setGameState("playing");
           // Start Boss Rush timer on first game start
           if (isBossRush && bossRushStartTime === null) {
@@ -2306,18 +2276,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
       }
     },
-    [
-      paddle,
-      balls,
-      gameState,
-      launchAngle,
-      fireBullets,
-      SCALED_CANVAS_WIDTH,
-      bricks,
-      nextLevel,
-      tutorialActive,
-      launchBallAtCurrentAngle,
-    ],
+    [paddle, balls, gameState, launchAngle, fireBullets, SCALED_CANVAS_WIDTH, bricks, nextLevel, tutorialActive, launchBallAtCurrentAngle],
   );
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
@@ -2427,7 +2386,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (isLevelComplete) {
         nextLevel();
       } else {
-        // Start game - start music only if not already playing (and not boss music)
+      // Start game - start music only if not already playing (and not boss music)
         setGameState("playing");
         // Start Boss Rush timer on first game start
         if (isBossRush && bossRushStartTime === null) {
@@ -2453,19 +2412,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (paddle.hasTurrets) {
       fireBullets(paddle);
     }
-  }, [
-    paddle,
-    gameState,
-    fireBullets,
-    bricks,
-    nextLevel,
-    balls,
-    launchAngle,
-    level,
-    tutorialActive,
-    isMobileDevice,
-    launchBallAtCurrentAngle,
-  ]);
+  }, [paddle, gameState, fireBullets, bricks, nextLevel, balls, launchAngle, level, tutorialActive, isMobileDevice, launchBallAtCurrentAngle]);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -2692,7 +2639,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const letterTypes: BonusLetterType[] = ["Q", "U", "M", "R", "A", "N"];
           const randomLetter = letterTypes[Math.floor(Math.random() * letterTypes.length)];
           const originX = paddle.x + paddle.width / 2 - 15;
-
+          
           setBonusLetters((prev) => [
             ...prev,
             {
@@ -2830,17 +2777,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const HITBOX_EXPAND = 1;
           const dx = sampleBall.x - centerX;
           const dy = sampleBall.y - centerY;
-
+          
           // Check if Mega Boss has outer shield removed (use smaller inner shield hitbox)
           const megaBossData = bossTarget as any;
           const useInnerShield = isMegaBoss && megaBossData.outerShieldRemoved && megaBossData.innerShieldHP > 0;
-
+          
           if (useInnerShield) {
             // Use CIRCULAR collision for inner shield (45px radius matches visual)
             const innerShieldRadius = 45 + HITBOX_EXPAND;
             const dist = Math.sqrt(dx * dx + dy * dy);
             const totalRadius = sampleBall.radius + innerShieldRadius;
-
+            
             if (dist < totalRadius) {
               // Ball hit inner shield - calculate bounce
               const penetration = totalRadius - dist;
@@ -2857,10 +2804,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             // If ball is outside inner shield radius, NO collision (passes through)
           } else if (isMegaBoss) {
             // CIRCULAR collision for Mega Boss outer shield (matches rounded hexagon visual)
-            const outerShieldRadius = bossTarget.width / 2 + HITBOX_EXPAND;
+            const outerShieldRadius = (bossTarget.width / 2) + HITBOX_EXPAND;
             const dist = Math.sqrt(dx * dx + dy * dy);
             const totalRadius = sampleBall.radius + outerShieldRadius;
-
+            
             if (dist < totalRadius) {
               // Ball hit outer shield - calculate circular bounce
               const penetration = totalRadius - dist;
@@ -3001,7 +2948,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         if (collision) {
           // FOUND boss collision at this sample point
-
+          
           // ═══ MEGA BOSS: Skip reflection when core is exposed ═══
           // When core is exposed, the outer shell becomes penetrable
           // so the ball can pass through and hit the core
@@ -3031,20 +2978,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Calculate collision normal for tracking (approximate from position change)
           const prePosX = ball.x;
           const prePosY = ball.y;
-
+          
           // 1. Apply position & velocity corrections to REAL ball
           ball.x = collision.newX;
           ball.y = collision.newY;
           ball.dx = collision.newVelocityX;
           ball.dy = collision.newVelocityY;
-
+          
           // Calculate approximate collision normal from position change
           const posDiffX = collision.newX - prePosX;
           const posDiffY = collision.newY - prePosY;
           const posDiffLen = Math.sqrt(posDiffX * posDiffX + posDiffY * posDiffY) || 1;
           const approxNormalX = posDiffX / posDiffLen;
           const approxNormalY = posDiffY / posDiffLen;
-
+          
           // 🔴 BALL TRACKING: Log ball position after boss collision
           if (debugSettings.enableBossLogging) {
             startBallTracking(
@@ -3052,7 +2999,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               bossTarget.type,
               { x: bossTarget.x + bossTarget.width / 2, y: bossTarget.y + bossTarget.height / 2 },
               { width: bossTarget.width, height: bossTarget.height },
-              { x: approxNormalX, y: approxNormalY },
+              { x: approxNormalX, y: approxNormalY }
             );
           }
 
@@ -3081,25 +3028,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             // Boss Rush accuracy tracking - ball successfully hit boss
             if (isBossRush && ballsPendingHitRef.current.has(ball.id)) {
               ballsPendingHitRef.current.delete(ball.id);
-              setBossRushHitsThisBoss((prev) => prev + 1);
+              setBossRushHitsThisBoss(prev => prev + 1);
             }
-
+            
             // Drop shield on first boss hit
             if (!bossFirstHitShieldDropped) {
               setBossFirstHitShieldDropped(true);
               const shieldPowerUp: PowerUp = {
-                type: "shield",
+                type: 'shield',
                 x: bossTarget.x + bossTarget.width / 2 - POWERUP_SIZE / 2,
                 y: bossTarget.y + bossTarget.height,
                 width: POWERUP_SIZE,
                 height: POWERUP_SIZE,
                 speed: POWERUP_FALL_SPEED,
-                active: true,
+                active: true
               };
-              setPowerUps((currentPowerUps) => [...currentPowerUps, shieldPowerUp]);
+              setPowerUps(currentPowerUps => [...currentPowerUps, shieldPowerUp]);
               toast.info("🛡️ Shield incoming!");
             }
-
+            
             // Apply damage, update boss.lastHitAt with frameTick
             const isBoss = bossTarget === boss;
             const isResurrected = !isBoss;
@@ -3107,23 +3054,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (isBoss) {
               setBoss((prev) => {
                 if (!prev) return prev;
-
+                
                 // ═══ MEGA BOSS SPECIAL HANDLING ═══
                 if (isMegaBoss(prev)) {
                   const megaBoss = prev as MegaBoss;
-
+                  
                   // If core is exposed, don't damage outer shield
                   if (megaBoss.coreExposed || megaBoss.trappedBall) {
                     // Ball can enter the core - handled in game loop
                     return prev;
                   }
-
+                  
                   // Damage shield (outer or inner depending on phase)
                   const { newOuterHP, newInnerHP, shouldExposeCore } = handleMegaBossOuterDamage(megaBoss, 1);
                   const activeShieldHP = megaBoss.outerShieldRemoved ? newInnerHP : newOuterHP;
-                  const activeShieldMaxHP = megaBoss.outerShieldRemoved
-                    ? megaBoss.innerShieldMaxHP
-                    : megaBoss.outerShieldMaxHP;
+                  const activeShieldMaxHP = megaBoss.outerShieldRemoved ? megaBoss.innerShieldMaxHP : megaBoss.outerShieldMaxHP;
                   if (shouldExposeCore) {
                     // Core is now exposed! Player must hit core
                     const exposedBoss = exposeMegaBossCore({
@@ -3141,13 +3086,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     } as unknown as Boss;
                   } else {
                     // Just damaged shield
-                    toast.info(
-                      `MEGA BOSS: ${activeShieldHP}/${activeShieldMaxHP} ${megaBoss.outerShieldRemoved ? "Inner" : "Outer"} Shield`,
-                      {
-                        duration: 1000,
-                        style: { background: "#ff0000", color: "#fff" },
-                      },
-                    );
+                    toast.info(`MEGA BOSS: ${activeShieldHP}/${activeShieldMaxHP} ${megaBoss.outerShieldRemoved ? 'Inner' : 'Outer'} Shield`, {
+                      duration: 1000,
+                      style: { background: "#ff0000", color: "#fff" },
+                    });
                     return {
                       ...megaBoss,
                       outerShieldHP: newOuterHP,
@@ -3157,7 +3099,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     } as unknown as Boss;
                   }
                 }
-
+                
                 // ═══ REGULAR BOSS HANDLING ═══
                 const newHealth = Math.max(0, prev.currentHealth - 1);
 
@@ -3199,7 +3141,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     setBossAttacks([]);
                     setBombs([]);
                     setBullets([]);
-
+                    
                     // Boss Rush mode: show stats overlay instead of immediate transition
                     if (isBossRush) {
                       // Pause game and show stats overlay after victory overlay
@@ -3278,7 +3220,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       setBossAttacks([]);
                       setBombs([]);
                       setBullets([]);
-
+                      
                       // Boss Rush mode: show stats overlay instead of immediate transition
                       if (isBossRush) {
                         // Pause game and show stats overlay after victory overlay
@@ -3399,7 +3341,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       setBossAttacks([]);
                       setBombs([]);
                       setBullets([]);
-
+                      
                       // Boss Rush mode: show stats overlay instead of immediate transition
                       if (isBossRush) {
                         // Pause game and show stats overlay after victory overlay
@@ -3582,6 +3524,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const now = Date.now();
           const objectKey = `${event.objectType}-${event.objectId}`;
 
+
           // Check if this event is a duplicate (same object hit within EPS_TOI)
           const lastTOI = processedObjects.get(objectKey);
           const isDuplicate =
@@ -3687,11 +3630,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               const checkDx = event.originalDx ?? result.ball.dx;
               const checkDy = event.originalDy ?? result.ball.dy;
               const dot = checkDx * event.normal.x + checkDy * event.normal.y;
-
+              
               // For balls recently released from Mega Boss, be more lenient (2 second grace period)
-              const isRecentlyReleasedFromBoss =
-                result.ball.releasedFromBossTime && Date.now() - result.ball.releasedFromBossTime < 2000;
-
+              const isRecentlyReleasedFromBoss = result.ball.releasedFromBossTime && 
+                (Date.now() - result.ball.releasedFromBossTime) < 2000;
+              
               if (dot >= 0 && !isRecentlyReleasedFromBoss) {
                 if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging) {
                   console.log(`[Collision Debug] PADDLE REJECTED: dot=${dot.toFixed(2)} >= 0 (ball moving away)`);
@@ -3759,12 +3702,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 }
                 // Clear trajectory history - paddle hit breaks any potential loop
                 trajectoryHistoryRef.current = [];
-
+                
                 // Boss Rush accuracy tracking
                 if (isBossRush) {
                   // Every paddle hit counts as a shot attempt
                   // If ball was already pending a hit, it means the previous shot was a miss
-                  setBossRushShotsThisBoss((prev) => prev + 1);
+                  setBossRushShotsThisBoss(prev => prev + 1);
                   // Mark this ball as needing to hit something
                   ballsPendingHitRef.current.add(result.ball.id);
                 }
@@ -3843,11 +3786,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 }
                 // Clear trajectory history - paddle hit breaks any potential loop
                 trajectoryHistoryRef.current = [];
-
+                
                 // Boss Rush accuracy tracking for paddle corner hits
                 if (isBossRush) {
                   // Every paddle hit counts as a shot attempt
-                  setBossRushShotsThisBoss((prev) => prev + 1);
+                  setBossRushShotsThisBoss(prev => prev + 1);
                   ballsPendingHitRef.current.add(result.ball.id);
                 }
               }
@@ -3956,11 +3899,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         dy: enemy.dy * 1.3,
                       });
                       const hitsLeft = maxHits - currentHits;
-                      throttledToast(
-                        "warning",
-                        enemy.isLargeSphere ? `Large sphere hit! ${hitsLeft} more hits!` : "Sphere enemy is angry!",
-                        "sphere_hit",
-                      );
+                      throttledToast("warning", enemy.isLargeSphere ? `Large sphere hit! ${hitsLeft} more hits!` : "Sphere enemy is angry!", "sphere_hit");
                       triggerScreenShake(5, 500);
                     } else {
                       // Final hit - destroy sphere
@@ -3972,11 +3911,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       });
                       const points = enemy.isLargeSphere ? 400 : 200;
                       scoreIncrease += points;
-                      throttledToast(
-                        "success",
-                        `${enemy.isLargeSphere ? "Large sphere" : "Sphere enemy"} destroyed! +${points} points`,
-                        "enemy_destroyed",
-                      );
+                      throttledToast("success", `${enemy.isLargeSphere ? "Large sphere" : "Sphere enemy"} destroyed! +${points} points`, "enemy_destroyed");
                       soundManager.playExplosion();
                       enemiesKilledIncrease++;
                       bonusLetterDrops.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2 });
@@ -4086,6 +4021,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       console.warn(`⚠️ Unexpected fireball reflection on non-metal ${brick.type} brick!`);
                     }
                   }
+
 
                   // Record in collision history
                   collisionHistory.addEntry({
@@ -4245,7 +4181,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   // Brick damaged but not destroyed
                   brickUpdates.set(brick.id, { visible: true, hitsRemaining: newHitsRemaining });
                 }
-
+                
                 // Record trajectory for loop detection (brick bounces count as potential loop)
                 if (!isDuplicate) {
                   const bounceAngle = Math.atan2(result.ball.dy, result.ball.dx);
@@ -4282,7 +4218,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       powerUpsToCreate.forEach((brick) => {
         // Track bricks destroyed this level for level 1 multiball rule
         bricksDestroyedThisLevelRef.current += 1;
-
+        
         // Level 1: Force multiball on exactly the 3rd brick destroyed
         if (level === 1 && bricksDestroyedThisLevelRef.current === 3) {
           const forcedPowerUp: PowerUp = {
@@ -4551,10 +4487,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (enemiesKilledIncrease > 0) {
         // Track Boss Rush enemy kills
         if (isBossRush) {
-          setBossRushEnemiesThisBoss((prev) => prev + enemiesKilledIncrease);
-          setBossRushTotalEnemiesKilled((prev) => prev + enemiesKilledIncrease);
+          setBossRushEnemiesThisBoss(prev => prev + enemiesKilledIncrease);
+          setBossRushTotalEnemiesKilled(prev => prev + enemiesKilledIncrease);
         }
-
+        
         setEnemiesKilled((prev) => {
           const newCount = prev + enemiesKilledIncrease;
 
@@ -4701,7 +4637,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             // Clear impact effect after 500ms
             setTimeout(() => setSecondChanceImpact(null), 500);
-
+            
             return true; // Ball was saved, don't check for loss
           }
 
@@ -4710,12 +4646,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             const megaBoss = boss as MegaBoss;
             if (megaBoss.coreExposed && isBallInsideMegaBoss(ball, megaBoss)) {
               console.log(`[MEGA BOSS DEBUG] Ball ${ball.id} inside boss with core exposed - applying gravity well`);
-
+              
               // Don't let the ball die - apply gravity well to pull toward core
               const pulledBall = applyGravityWellToBall(ball, megaBoss);
               ball.dx = pulledBall.dx;
               ball.dy = pulledBall.dy;
-
+              
               // Keep ball inside boss area
               const bossBottom = megaBoss.y + megaBoss.height;
               if (ball.y > bossBottom - ball.radius) {
@@ -4723,7 +4659,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 ball.y = bossBottom - ball.radius - 5;
                 ball.dy = -Math.abs(ball.dy) * 0.5; // Bounce back up
               }
-
+              
               return true; // Ball is safe inside boss
             }
           }
@@ -4733,9 +4669,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // 🔴 TOP BOUNDARY SAFETY: Bounce balls back if they escape above screen
           if (ball.y < ball.radius) {
             if (ball.y < -20) {
-              console.error(
-                `🚨 [BALL TRACKER] CRITICAL: Ball ${ball.id} escaped FAR above screen at y=${ball.y.toFixed(1)}!`,
-              );
+              console.error(`🚨 [BALL TRACKER] CRITICAL: Ball ${ball.id} escaped FAR above screen at y=${ball.y.toFixed(1)}!`);
             }
             // Force ball back into bounds and reverse vertical velocity
             ball.y = ball.radius + 2;
@@ -4761,23 +4695,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const megaBossHasTrappedBall =
         level === MEGA_BOSS_LEVEL && boss && isMegaBoss(boss) && (boss as MegaBoss).trappedBall !== null;
 
-      const justTrappedRecently = level === MEGA_BOSS_LEVEL && Date.now() - megaBossTrapJustHappenedRef.current < 1500;
+      const justTrappedRecently =
+        level === MEGA_BOSS_LEVEL && Date.now() - megaBossTrapJustHappenedRef.current < 1500;
 
       if (updatedBalls.length === 0 && level === MEGA_BOSS_LEVEL) {
         console.log(`[MEGA BOSS DEBUG] updatedBalls=0 check`, {
           megaBossHasTrappedBall,
           justTrappedRecently,
-          bossTrappedBall: boss && isMegaBoss(boss) ? ((boss as MegaBoss).trappedBall ? "YES" : "NO") : "N/A",
+          bossTrappedBall: boss && isMegaBoss(boss) ? ((boss as MegaBoss).trappedBall ? 'YES' : 'NO') : 'N/A',
         });
       }
 
       if (updatedBalls.length === 0 && !megaBossHasTrappedBall && !justTrappedRecently) {
         // Track Boss Rush lives lost
         if (isBossRush) {
-          setBossRushLivesLostThisBoss((prev) => prev + 1);
-          setBossRushTotalLivesLost((prev) => prev + 1);
+          setBossRushLivesLostThisBoss(prev => prev + 1);
+          setBossRushTotalLivesLost(prev => prev + 1);
         }
-
+        
         setLives((prev) => {
           const newLives = prev - 1;
           soundManager.playLoseLife();
@@ -4839,28 +4774,28 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             setLaunchAngle(-20);
             launchAngleDirectionRef.current = 1;
             setShowInstructions(true);
-
+            
             // Track lives lost on current level for mercy power-up logic
-            setLivesLostOnCurrentLevel((prev) => {
+            setLivesLostOnCurrentLevel(prev => {
               const newCount = prev + 1;
-
+              
               // In godlike mode, no mercy power-ups - just clear all power-ups
               if (settings.difficulty === "godlike") {
                 setPowerUps([]);
                 return newCount;
               }
-
+              
               // Drop mercy power-up to help player recover
               let mercyType: PowerUpType;
               if (newCount >= 3) {
                 // After 3 ball losses on same level, give extra life
-                mercyType = "life";
+                mercyType = 'life';
               } else {
                 // Otherwise give turrets, secondChance (barrier), or shield
-                const mercyTypes: PowerUpType[] = ["turrets", "secondChance", "shield"];
+                const mercyTypes: PowerUpType[] = ['turrets', 'secondChance', 'shield'];
                 mercyType = mercyTypes[Math.floor(Math.random() * mercyTypes.length)];
               }
-
+              
               const mercyPowerUp: PowerUp = {
                 type: mercyType,
                 x: SCALED_CANVAS_WIDTH / 2 - POWERUP_SIZE / 2,
@@ -4869,13 +4804,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 height: POWERUP_SIZE,
                 speed: POWERUP_FALL_SPEED,
                 active: true,
-                isMercyLife: mercyType === "life", // Mark mercy lives to bypass per-5-levels limit
+                isMercyLife: mercyType === 'life' // Mark mercy lives to bypass per-5-levels limit
               };
               setPowerUps([mercyPowerUp]);
-
+              
               return newCount;
             });
-
+            
             setPaddle((prev) =>
               prev
                 ? {
@@ -5187,7 +5122,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     frameProfiler.startTiming("enemies");
     // Check if stun is active (applies to all enemies)
     const isStunActive = bossStunnerEndTime !== null && Date.now() < bossStunnerEndTime;
-
+    
     // Update enemies - OPTIMIZED: In-place mutation (skip if stunned)
     if (!isStunActive) {
       setEnemies((prev) => {
@@ -5224,12 +5159,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Update in place
           enemy.x = newX;
           enemy.y = newY;
-          enemy.rotationX +=
-            enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.08 : 0.05;
-          enemy.rotationY +=
-            enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.12 : 0.08;
-          enemy.rotationZ +=
-            enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.06 : 0.03;
+          enemy.rotationX += enemy.type === "pyramid" ? 0.06 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.08 : 0.05;
+          enemy.rotationY += enemy.type === "pyramid" ? 0.09 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.12 : 0.08;
+          enemy.rotationZ += enemy.type === "pyramid" ? 0.04 : (enemy.type === "sphere" || enemy.type === "crossBall") ? 0.06 : 0.03;
         }
         return [...prev]; // New array reference for React
       });
@@ -5274,43 +5206,45 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Ball repels nearby enemy shots (1-5% based on proximity to paddle)
     // This creates a safety buffer to prevent impossible death situations
     if (paddle && balls.length > 0) {
-      setBombs((prevBombs) => {
+      setBombs(prevBombs => {
         let modified = false;
         for (const bomb of prevBombs) {
           // Skip reflected bombs (they're friendly)
           if (bomb.isReflected) continue;
-
+          
           // Check each active ball
           for (const ball of balls) {
             if (ball.waitingToLaunch) continue;
-
+            
             const ballCenterX = ball.x;
             const ballCenterY = ball.y;
             const bombCenterX = bomb.x + bomb.width / 2;
             const bombCenterY = bomb.y + bomb.height / 2;
-
+            
             // Calculate distance between ball and bomb
             const dx = bombCenterX - ballCenterX;
             const dy = bombCenterY - ballCenterY;
             const distance = Math.sqrt(dx * dx + dy * dy);
-
+            
             // Repel range: ~40 pixels from ball center
             const repelRange = ball.radius + 40;
-
+            
             if (distance < repelRange && distance > 0) {
               // Calculate repel strength based on ball's proximity to paddle
               // Higher = closer to paddle = more repel (1% at top, 5% near paddle)
               const paddleY = paddle.y;
               const topOfScreen = 0;
-              const proximityRatio = Math.max(0, Math.min(1, (ball.y - topOfScreen) / (paddleY - topOfScreen)));
-
+              const proximityRatio = Math.max(0, Math.min(1, 
+                (ball.y - topOfScreen) / (paddleY - topOfScreen)
+              ));
+              
               // Repel strength: 1% at top of screen, 5% near paddle
-              const repelStrength = 0.01 + proximityRatio * 0.04;
-
+              const repelStrength = 0.01 + (proximityRatio * 0.04);
+              
               // Normalize direction and apply repel force
               const normalizedDx = dx / distance;
               const normalizedDy = dy / distance;
-
+              
               // Apply repel - push bomb away from ball
               bomb.x += normalizedDx * repelStrength * bomb.speed * 10;
               bomb.y += normalizedDy * repelStrength * bomb.speed * 10;
@@ -5325,15 +5259,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Update bombs and rockets - OPTIMIZED: In-place mutation with backwards iteration
     // Define paddle danger zone for stun freezing
     const bombPaddleDangerZoneY = paddle ? paddle.y - 100 : SCALED_CANVAS_HEIGHT - 100;
-
+    
     setBombs((prev) => {
       for (let i = prev.length - 1; i >= 0; i--) {
         const bomb = prev[i];
-
+        
         // Check if bomb should be frozen during stun (except near paddle)
         const bombInDangerZone = bomb.y >= bombPaddleDangerZoneY;
         const shouldFreezeBomb = isStunActive && !bomb.isReflected && !bombInDangerZone;
-
+        
         if (shouldFreezeBomb) {
           // Skip movement update but keep bomb
           continue;
@@ -5794,13 +5728,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Use MEGA_BOSS_CONFIG for mega boss, otherwise use BOSS_CONFIG
         const isMegaType = boss.type === "mega";
         const moveSpeed = isMegaType
-          ? boss.isSuperAngry
-            ? MEGA_BOSS_CONFIG.veryAngryMoveSpeed
-            : boss.isAngry
-              ? MEGA_BOSS_CONFIG.angryMoveSpeed
-              : MEGA_BOSS_CONFIG.moveSpeed
+          ? (boss.isSuperAngry 
+              ? MEGA_BOSS_CONFIG.veryAngryMoveSpeed 
+              : boss.isAngry 
+                ? MEGA_BOSS_CONFIG.angryMoveSpeed 
+                : MEGA_BOSS_CONFIG.moveSpeed)
           : (() => {
-              const config = BOSS_CONFIG[boss.type as "cube" | "sphere" | "pyramid"];
+              const config = BOSS_CONFIG[boss.type as 'cube' | 'sphere' | 'pyramid'];
               return boss.isSuperAngry && "superAngryMoveSpeed" in config
                 ? config.superAngryMoveSpeed
                 : boss.isAngry && "angryMoveSpeed" in config
@@ -5824,44 +5758,36 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Cube boss idle spin animation when in attacking phase (stationary)
     // Cube boss idle spin animation when in attacking phase (stationary)
-    if (boss && boss.type === "cube" && boss.phase === "attacking" && !boss.isStunned) {
-      setBoss((prev) =>
-        prev
-          ? {
-              ...prev,
-              rotationX: prev.rotationX + 0.008, // Much slower than movement spin
-              rotationY: prev.rotationY + 0.012, // Primary visible rotation
-              rotationZ: prev.rotationZ + 0.005,
-            }
-          : null,
-      );
+    if (boss && boss.type === 'cube' && boss.phase === 'attacking' && !boss.isStunned) {
+      setBoss(prev => prev ? {
+        ...prev,
+        rotationX: prev.rotationX + 0.008,  // Much slower than movement spin
+        rotationY: prev.rotationY + 0.012,  // Primary visible rotation
+        rotationZ: prev.rotationZ + 0.005
+      } : null);
     }
 
     // Pyramid boss idle spin animation when in attacking phase (stationary)
-    if (boss && boss.type === "pyramid" && boss.phase === "attacking" && !boss.isStunned) {
-      setBoss((prev) =>
-        prev
-          ? {
-              ...prev,
-              rotationX: prev.rotationX + 0.013, // Slower than movement (0.08)
-              rotationY: prev.rotationY + 0.02, // Slower than movement (0.12)
-            }
-          : null,
-      );
+    if (boss && boss.type === 'pyramid' && boss.phase === 'attacking' && !boss.isStunned) {
+      setBoss(prev => prev ? {
+        ...prev,
+        rotationX: prev.rotationX + 0.013,  // Slower than movement (0.08)
+        rotationY: prev.rotationY + 0.020   // Slower than movement (0.12)
+      } : null);
     }
 
     // Mega Boss idle spin animation when in attacking phase (stationary)
     // Disabled when ball is captured in core OR core is exposed (catch ball phase)
-    if (level === MEGA_BOSS_LEVEL && boss && isMegaBoss(boss) && boss.phase === "attacking" && !boss.isStunned) {
+    if (level === MEGA_BOSS_LEVEL && boss && isMegaBoss(boss) && boss.phase === 'attacking' && !boss.isStunned) {
       const megaBoss = boss as MegaBoss;
       const shouldRotate = !megaBoss.trappedBall && !megaBoss.coreExposed;
-
+      
       if (shouldRotate) {
-        setBoss((prev) => {
+        setBoss(prev => {
           if (!prev || !isMegaBoss(prev)) return prev;
           return {
             ...prev,
-            rotationY: prev.rotationY + 0.01, // Slow constant rotation for the hexagon
+            rotationY: prev.rotationY + 0.010,  // Slow constant rotation for the hexagon
           } as MegaBoss;
         });
       }
@@ -5894,14 +5820,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         );
       } else {
         // Regular boss attack
-        performBossAttack(
-          boss,
-          paddle.x + paddle.width / 2,
-          paddle.y,
-          setBossAttacks,
-          setLaserWarnings,
-          setSuperWarnings,
-        );
+        performBossAttack(boss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings, setSuperWarnings);
       }
       const nextIndex = (boss.currentPositionIndex + 1) % boss.positions.length;
       setBoss((prev) =>
@@ -5922,6 +5841,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       const megaBoss = boss as MegaBoss;
       const now = Date.now();
 
+
       // Check if player ball enters exposed core
       if (megaBoss.coreExposed && !megaBoss.trappedBall) {
         balls.forEach((ball) => {
@@ -5939,7 +5859,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             toast.error("🔴 BALL TRAPPED IN CORE! Catch 5 danger balls!", { duration: 3000 });
             soundManager.playCannonModeSound();
-
+            
             // Initialize first cannon missile time (4-7 seconds from now)
             setNextCannonMissileTime(Date.now() + 4000 + Math.random() * 3000);
           }
@@ -5951,7 +5871,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const nextSpawnTime = megaBoss.scheduledDangerBalls[0];
         if (now >= nextSpawnTime) {
           console.log(`[MEGA BOSS DEBUG] Spawning danger ball ${megaBoss.dangerBallsFired + 1}/5`);
-
+          
           // Spawn a danger ball
           const newDangerBall = spawnDangerBall(megaBoss);
           setDangerBalls((prev) => [...prev, newDangerBall]);
@@ -5980,13 +5900,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const cannonY = megaBoss.y + megaBoss.height / 2 + 60; // Cannon muzzle position
           const paddleCenterX = paddle.x + paddle.width / 2;
           const paddleCenterY = paddle.y;
-
+          
           const angle = Math.atan2(paddleCenterY - cannonY, paddleCenterX - cannonX);
           const missileSpeed = 8; // Fast missile
-
+          
           const missile: BossAttack = {
             bossId: megaBoss.id,
-            type: "rocket",
+            type: 'rocket',
             x: cannonX,
             y: cannonY,
             width: 10,
@@ -5995,29 +5915,30 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             angle,
             dx: Math.cos(angle) * missileSpeed,
             dy: Math.sin(angle) * missileSpeed,
-            damage: 1,
+            damage: 1
           };
-
-          setBossAttacks((prev) => [...prev, missile]);
+          
+          setBossAttacks(prev => [...prev, missile]);
           soundManager.playShoot();
-
+          
           // Schedule next missile in 4-7 seconds
           const nextDelay = 4000 + Math.random() * 3000;
           setNextCannonMissileTime(now + nextDelay);
+          
         }
       }
 
       // Check if all danger balls caught - release ball and transition phase
       if (shouldReleaseBall(megaBoss)) {
         const { boss: updatedBoss, releasedBall, isDefeated } = releaseBallAndNextPhase(megaBoss);
-
+        
         if (isDefeated) {
           // MEGA BOSS DEFEATED! Victory with confetti!
           soundManager.playMegaBossVictorySound();
           setScore((s) => s + MEGA_BOSS_CONFIG.points);
           setLives((prev) => prev + 1); // Bonus life for defeating Mega Boss
           toast.success(`🎉 MEGA BOSS DEFEATED! +${MEGA_BOSS_CONFIG.points} points + BONUS LIFE!`, { duration: 5000 });
-
+          
           // Multiple explosion waves for dramatic effect
           const bossCenter = { x: megaBoss.x + megaBoss.width / 2, y: megaBoss.y + megaBoss.height / 2 };
           [0, 150, 300, 500].forEach((delay, i) => {
@@ -6039,12 +5960,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               ]);
             }, delay);
           });
-
+          
           // Create victory confetti particles using pool
           const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
           particlePool.acquireForHighScore(bossCenter.x, bossCenter.y, particleCount);
           setParticleRenderTick((t) => t + 1);
-
+          
           setBossesKilled((k) => k + 1);
           setBossActive(false);
           setBoss(null);
@@ -6053,13 +5974,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setEnemies([]);
           setBombs([]);
           setBullets([]);
-
+          
           // Do NOT release the ball after phase 3 victory - keep it trapped
           // Ball stays "consumed" for clean transition to victory screen
           setBalls([]);
-
+          
           soundManager.stopBossMusic();
-
+          
           // Show victory screen - check for high score first!
           setTimeout(() => {
             setGameState("won");
@@ -6078,24 +5999,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         } else {
           // Phase transition - not defeated yet
           soundManager.playPhaseCompleteJingle();
-          toast.success(`✨ PHASE ${megaBoss.corePhase} COMPLETE! Boss entering phase ${megaBoss.corePhase + 1}!`, {
-            duration: 3000,
-          });
-
+          toast.success(`✨ PHASE ${megaBoss.corePhase} COMPLETE! Boss entering phase ${megaBoss.corePhase + 1}!`, { duration: 3000 });
+          
           setBoss(updatedBoss as unknown as Boss);
           if (releasedBall) {
             // Release ball at normal speed (no slow motion)
             setBalls([releasedBall]);
-
+            
             // Start ball release highlight (visual only)
             setBallReleaseHighlight({ active: true, startTime: Date.now() });
-
+            
             // End highlight after 1.5 seconds
             setTimeout(() => {
               setBallReleaseHighlight(null);
             }, 1500);
           }
-
+          
           const phaseNum = (updatedBoss as MegaBoss).corePhase;
           if (phaseNum === 2) {
             toast.error("🔥 PHASE 2: MEGA BOSS ANGRY!", { duration: 3000 });
@@ -6112,13 +6031,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       if (shouldSpawnSwarm(megaBoss)) {
         const maxEnemies = MEGA_BOSS_CONFIG.maxSwarmEnemies;
         const currentEnemyCount = enemies.length;
-
+        
         // Only spawn if under max limit
         if (currentEnemyCount < maxEnemies) {
           const canSpawn = Math.min(MEGA_BOSS_CONFIG.swarmEnemyCount, maxEnemies - currentEnemyCount);
           const enemyTypes: Array<"cube" | "sphere" | "pyramid"> = ["cube", "sphere", "pyramid"];
           const newEnemies: Enemy[] = [];
-
+          
           for (let i = 0; i < canSpawn; i++) {
             const spawnX = Math.random() * (SCALED_CANVAS_WIDTH - 40) + 20;
             const spawnY = 50 + Math.random() * 50;
@@ -6126,7 +6045,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             const speed = 1.5 + Math.random() * 0.5;
             const enemyId = Date.now() + i;
             const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-
+            
             newEnemies.push({
               id: enemyId,
               type: enemyType,
@@ -6143,18 +6062,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               rotationZ: 0,
               hits: 0,
             });
-
+            
             // Add to boss spawned enemies for power-up drops
             bossSpawnedEnemiesRef.current.add(enemyId);
           }
-
+          
           if (newEnemies.length > 0) {
             setEnemies((prev) => [...prev, ...newEnemies]);
             setBoss((prev) => {
               if (!prev || !isMegaBoss(prev)) return prev;
               return markSwarmSpawned(prev as MegaBoss) as unknown as Boss;
             });
-
+            
             toast.warning(`⚔️ ${newEnemies.length} SWARM ENEMIES SPAWNED!`, { duration: 1500 });
           }
         } else {
@@ -6170,7 +6089,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // ═══ DANGER BALL UPDATE LOOP (with reflect + homing mechanic) ═══
     if (dangerBalls.length > 0 && paddle && boss && isMegaBoss(boss)) {
       const megaBoss = boss as MegaBoss;
-
+      
       setDangerBalls((prev) => {
         const updatedBalls: DangerBall[] = [];
         let coreHits = 0;
@@ -6182,17 +6101,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           // If ball is homing, apply homing steering toward boss core
           if (updatedBall.isHoming && boss) {
-            updatedBall = applyHomingToDangerBall(updatedBall, boss.x, boss.y, boss.width, boss.height);
+            updatedBall = applyHomingToDangerBall(
+              updatedBall, 
+              boss.x, boss.y, boss.width, boss.height
+            );
           }
 
           // Check if NOT YET REFLECTED ball hits paddle -> REFLECT it
-          if (
-            !updatedBall.isReflected &&
-            isDangerBallIntercepted(updatedBall, paddle.x, paddle.y, paddle.width, paddle.height)
-          ) {
+          if (!updatedBall.isReflected && isDangerBallIntercepted(updatedBall, paddle.x, paddle.y, paddle.width, paddle.height)) {
             // Reflect the ball and enable homing
             updatedBall = reflectDangerBall(updatedBall, paddle.x, paddle.width);
-
+            
             toast.info(`↩️ Danger ball reflected!`, { duration: 1000 });
             soundManager.playDangerBallCatch();
             updatedBalls.push(updatedBall);
@@ -6200,13 +6119,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
 
           // Check if REFLECTED ball hits the boss core
-          if (
-            updatedBall.isReflected &&
-            boss &&
-            isDangerBallAtCore(updatedBall, boss.x, boss.y, boss.width, boss.height)
-          ) {
+          if (updatedBall.isReflected && boss && isDangerBallAtCore(updatedBall, boss.x, boss.y, boss.width, boss.height)) {
             coreHits++;
-
+            
             toast.success(`💥 CORE HIT! (${megaBoss.coreHitsFromDangerBalls + coreHits}/5)`, { duration: 1000 });
             soundManager.playDangerBallCoreHitSound();
             return; // Remove ball after hitting core
@@ -6215,27 +6130,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Check if NON-REFLECTED ball reached bottom (missed without reflecting)
           if (!updatedBall.isReflected && isDangerBallAtBottom(updatedBall, SCALED_CANVAS_HEIGHT)) {
             ballsMissed++;
-
+            
             toast.warning("⚠️ Danger ball missed!", { duration: 1000 });
             return; // Remove ball
           }
 
           // Check if REFLECTED ball missed (went off screen without hitting core)
-          if (
-            updatedBall.isReflected &&
-            hasReflectedBallMissed(updatedBall, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT)
-          ) {
+          if (updatedBall.isReflected && hasReflectedBallMissed(updatedBall, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT)) {
             ballsMissed++;
-
+            
             toast.warning("⚠️ Reflected ball missed the core!", { duration: 1000 });
             return; // Remove ball
           }
 
           // Check if off screen (sides when not reflected) - safety
-          if (
-            !updatedBall.isReflected &&
-            (updatedBall.x < -50 || updatedBall.x > SCALED_CANVAS_WIDTH + 50 || updatedBall.y < -50)
-          ) {
+          if (!updatedBall.isReflected && (updatedBall.x < -50 || updatedBall.x > SCALED_CANVAS_WIDTH + 50 || updatedBall.y < -50)) {
+            
             return; // Remove from game
           }
 
@@ -6256,34 +6166,36 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         // FAIL FAST: Immediately reset boss on ANY missed danger ball
         if (ballsMissed > 0) {
+          
           setBoss((prevBoss) => {
             if (!prevBoss || !isMegaBoss(prevBoss)) return prevBoss;
             const currentMegaBoss = prevBoss as MegaBoss;
             const { boss: resetBoss, releasedBall } = resetMegaBossPhaseProgress(currentMegaBoss);
-
+            
             if (releasedBall) {
               setBalls((prev) => [...prev, releasedBall]);
             }
-
+            
             return resetBoss as unknown as Boss;
           });
-
+          
           toast.error(`⚠️ Catch all 5 balls to kill enemy!`, { duration: 4000 });
           soundManager.playFailureSound();
-
+          
           // Clear all remaining danger balls immediately
           return [];
         }
 
         return updatedBalls;
       });
-
+      
       // Check if danger ball phase should end successfully (all 5 core hits)
       if (shouldEndDangerBallPhase(megaBoss) && dangerBalls.length === 0 && hasSufficientCoreHits(megaBoss)) {
         console.log(`[MEGA BOSS DEBUG] SUCCESS! All 5 core hits achieved - phase will advance via shouldReleaseBall`);
         // Success path is handled by shouldReleaseBall in the existing ball update code
       }
     }
+
 
     // Update resurrected bosses
     resurrectedBosses.forEach((resBoss, idx) => {
@@ -6316,14 +6228,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         Date.now() - resBoss.lastAttackTime >= resBoss.attackCooldown &&
         paddle
       ) {
-        performBossAttack(
-          resBoss,
-          paddle.x + paddle.width / 2,
-          paddle.y,
-          setBossAttacks,
-          setLaserWarnings,
-          setSuperWarnings,
-        );
+        performBossAttack(resBoss, paddle.x + paddle.width / 2, paddle.y, setBossAttacks, setLaserWarnings, setSuperWarnings);
         const nextIdx = (resBoss.currentPositionIndex + 1) % resBoss.positions.length;
         setResurrectedBosses((prev) =>
           prev.map((b, i) =>
@@ -6344,11 +6249,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Update boss attacks
     // Define paddle danger zone - projectiles within this Y range keep moving during stun
     const paddleDangerZoneY = paddle ? paddle.y - 100 : SCALED_CANVAS_HEIGHT - 100;
-
+    
     setBossAttacks((prev) =>
       prev.filter((attack) => {
         if (attack.type === "laser") return true;
-
+        
         // Check if stun is active and projectile should be frozen
         // Exception: projectiles near paddle level (within danger zone) keep moving
         const isInDangerZone = attack.y >= paddleDangerZoneY;
@@ -6358,12 +6263,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
 
         // Special handling for cross attack course changes
-        if (attack.type === "cross" && !attack.isReflected) {
+        if (attack.type === 'cross' && !attack.isReflected) {
           const now = Date.now();
-
+          
           // Check if in paddle danger zone - never stop in this area
           const isInPaddleZone = attack.y >= paddleDangerZoneY;
-
+          
           if (attack.isStopped) {
             // If currently stopped but now in danger zone, resume immediately
             if (isInPaddleZone) {
@@ -6394,12 +6299,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               // Time for a course change - stop and pre-calculate new direction
               attack.isStopped = true;
               attack.stopStartTime = now;
-
+              
               // Pre-calculate the new direction for visual indicator
               const currentAngle = Math.atan2(attack.dy || 0, attack.dx || 0);
               const directionChange = (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 6); // ±30° change
               let newAngle = currentAngle + directionChange;
-
+              
               // Ensure projectile never goes upward (dy must be positive)
               // Clamp angle to range [0, PI] which gives positive dy values
               let newDy = Math.sin(newAngle) * attack.speed;
@@ -6412,10 +6317,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   newDy = Math.abs(newDy);
                 }
               }
-
+              
               attack.pendingDirection = {
                 dx: Math.cos(newAngle) * attack.speed,
-                dy: newDy,
+                dy: newDy
               };
               return true;
             }
@@ -6499,7 +6404,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
 
         // Skip position update if cross attack is stopped
-        if (attack.type === "cross" && attack.isStopped) {
+        if (attack.type === 'cross' && attack.isStopped) {
           return true;
         }
 
@@ -6522,7 +6427,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             // Damage the boss with proper cooldown, defeat detection, and logging
             const REFLECTED_ATTACK_COOLDOWN_MS = 1000;
             const nowMs = Date.now();
-
+            
             // Use ref for synchronous cooldown check to prevent multiple hits in same frame
             const lastHitMs = reflectedAttackLastHitRef.current;
             const canDamage = nowMs - lastHitMs >= REFLECTED_ATTACK_COOLDOWN_MS;
@@ -6536,7 +6441,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (!canDamage) {
               return false; // Remove attack but don't damage (on cooldown)
             }
-
+            
             // Update ref immediately to prevent other attacks in same frame from dealing damage
             reflectedAttackLastHitRef.current = nowMs;
 
@@ -6876,13 +6781,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Check for collisions between non-reflected cross projectiles to spawn crossBall enemies
     const MERGE_COOLDOWN_MS = 1000; // 1 second before projectiles can merge
     const nowForMerge = Date.now();
-
+    
     const crossProjectiles = bossAttacks.filter(
-      (attack) =>
-        attack.type === "cross" &&
-        !attack.isReflected &&
-        // Only allow merging after 1 second since spawn
-        (attack.spawnTime ? nowForMerge - attack.spawnTime >= MERGE_COOLDOWN_MS : true),
+      (attack) => attack.type === "cross" && !attack.isReflected && 
+      // Only allow merging after 1 second since spawn
+      (attack.spawnTime ? nowForMerge - attack.spawnTime >= MERGE_COOLDOWN_MS : true)
     );
 
     if (crossProjectiles.length >= 2) {
@@ -6967,7 +6870,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Spawn new crossBall enemies
         if (newCrossBallEnemies.length > 0) {
           setEnemies((prev) => [...prev, ...newCrossBallEnemies]);
-
+          
           // Create merge particle effects
           for (const explosion of mergeExplosions) {
             setExplosions((e) => [
@@ -6982,7 +6885,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               },
             ]);
           }
-
+          
           soundManager.playMergeSound();
           toast.warning("Cross projectiles merged into CrossBall enemy!");
         }
@@ -6992,11 +6895,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // ═══ CROSSBALL ENEMY COLLISION DETECTION ═══
     // Check for collisions between crossBall enemies to spawn large spheres
     const crossBallEnemies = enemies.filter(
-      (e) =>
-        e.type === "crossBall" &&
-        e.isCrossBall &&
-        // Only allow merging after 1 second since spawn
-        (e.spawnTime ? nowForMerge - e.spawnTime >= MERGE_COOLDOWN_MS : true),
+      (e) => e.type === "crossBall" && e.isCrossBall &&
+      // Only allow merging after 1 second since spawn
+      (e.spawnTime ? nowForMerge - e.spawnTime >= MERGE_COOLDOWN_MS : true)
     );
 
     if (crossBallEnemies.length >= 2) {
@@ -7033,7 +6934,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         for (const collision of crossBallCollisions) {
           // Skip if already processed
-          if (enemiesToRemove.has(collision.enemy1.id!) || enemiesToRemove.has(collision.enemy2.id!)) {
+          if (
+            enemiesToRemove.has(collision.enemy1.id!) ||
+            enemiesToRemove.has(collision.enemy2.id!)
+          ) {
             continue;
           }
 
@@ -7080,7 +6984,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Spawn new large sphere enemies (add separately to avoid filter interference)
         if (newLargeSpheres.length > 0) {
           setEnemies((prev) => [...prev, ...newLargeSpheres]);
-
+          
           // Create merge particle effects
           for (const explosion of largeSphereExplosions) {
             setExplosions((e) => [
@@ -7095,7 +6999,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               },
             ]);
           }
-
+          
           soundManager.playMergeSound();
           toast.warning("CrossBall enemies merged into Large Sphere!");
           triggerScreenShake(8, 400);
@@ -7557,7 +7461,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Clean up expired laser warnings
     setLaserWarnings((prev) => prev.filter((warning) => Date.now() - warning.startTime < 800));
-
+    
     // Clean up expired super warnings
     setSuperWarnings((prev) => prev.filter((warning) => Date.now() - warning.startTime < 600));
 
@@ -7590,6 +7494,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       );
       trajectoryHistoryRef.current = []; // Clear history after diversion
     }
+
 
     // ═══ PHASE 1: End Frame Profiling ═══
     frameProfiler.endFrame();
@@ -7655,7 +7560,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Include all pause-like states: paused, tutorial, boss rush stats overlay
   useEffect(() => {
     const isEffectivelyPaused = gameState === "paused" || tutorialActive || bossRushStatsOverlayActive;
-
+    
     if (gameState === "playing" && timerStartedRef.current && !isEffectivelyPaused) {
       // Resume timer if it was started and we're playing and not in a pause-like state
       if (!timerIntervalRef.current) {
@@ -7904,12 +7809,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const enemyId = nextEnemyId.current++;
         // For level 20 Mega Boss, spawn mixed enemy types instead of just cubes
         const enemyTypes: Array<"cube" | "sphere" | "pyramid"> = ["cube", "sphere", "pyramid"];
-        const enemyType =
-          level === 20
-            ? enemyTypes[Math.floor(Math.random() * enemyTypes.length)]
-            : boss.type === "mega"
-              ? "cube"
-              : boss.type;
+        const enemyType = level === 20 
+          ? enemyTypes[Math.floor(Math.random() * enemyTypes.length)] 
+          : (boss.type === 'mega' ? 'cube' : boss.type);
 
         // Track that this enemy was spawned by the boss
         bossSpawnedEnemiesRef.current.add(enemyId);
@@ -8049,18 +7951,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         duration: 2000,
       });
     }
-  }, [
-    timer,
-    gameState,
-    boss,
-    enemies.length,
-    lastBossSpawnTime,
-    SCALED_CANVAS_WIDTH,
-    bossDefeatedTransitioning,
-    level,
-    isBossRush,
-    bossRushIndex,
-  ]);
+  }, [timer, gameState, boss, enemies.length, lastBossSpawnTime, SCALED_CANVAS_WIDTH, bossDefeatedTransitioning, level, isBossRush, bossRushIndex]);
 
   // Boss hit cooldown timer
   useEffect(() => {
@@ -8122,6 +8013,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     };
   }, [gameState, balls, isManualAimMode]);
 
+
   // Keyboard controls: A/D/LEFT/RIGHT stop oscillation and switch to manual aim mode
   // Mousewheel scroll also stops oscillation and adjusts angle
   // Mousewheel CLICK launches the ball
@@ -8181,7 +8073,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Start next level
         nextLevel();
       } else {
-        // Continue current level - start music only if not already playing (and not boss music)
+      // Continue current level - start music only if not already playing (and not boss music)
         setGameState("playing");
         // Start Boss Rush timer on first game start
         if (isBossRush && bossRushStartTime === null) {
@@ -8219,15 +8111,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setBackgroundFlash(1);
       setTimeout(() => setBackgroundFlash(0), 200);
 
-      await addHighScore(
-        name,
-        score,
-        level,
-        settings.difficulty,
-        beatLevel50Completed,
-        collectedLetters.size === 6,
-        settings.startingLives,
-      );
+      await addHighScore(name, score, level, settings.difficulty, beatLevel50Completed, collectedLetters.size === 6, settings.startingLives);
 
       toast.success("🎉 HIGH SCORE SAVED! 🎉", {
         duration: 3000,
@@ -8663,12 +8547,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   return (
     <div
       ref={fullscreenContainerRef}
-      className={`${
+      className={`flex items-center justify-center ${
         isIOSDevice
-          ? "ios-fullscreen-container"
+          ? "ios-fullscreen-container" // Always use iOS container on iOS devices
           : isFullscreen
             ? "h-screen bg-background overflow-hidden"
-            : "h-screen overflow-hidden flex items-center justify-center"
+            : "h-screen overflow-hidden"
       }`}
     >
       {/* CRT Overlay - inside fullscreen container (Phase 5: Toggle by debug setting) */}
@@ -8709,7 +8593,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }}
         />
       ) : showHighScoreDisplay ? (
-        <HighScoreDisplay onClose={handleCloseHighScoreDisplay} initialTab={isBossRush ? "bossRush" : "normal"} />
+        <HighScoreDisplay onClose={handleCloseHighScoreDisplay} initialTab={isBossRush ? 'bossRush' : 'normal'} />
       ) : showBossRushScoreEntry ? (
         <BossRushScoreEntry
           score={score}
@@ -8719,7 +8603,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           onSubmit={async (name) => {
             try {
               const { supabase } = await import("@/integrations/supabase/client");
-              await supabase.from("boss_rush_scores").insert({
+              await supabase.from('boss_rush_scores').insert({
                 player_name: name,
                 score: score,
                 completion_time_ms: bossRushCompletionTime,
@@ -8745,7 +8629,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           ) : (
             <div
               ref={gameContainerRef}
-              className={`metal-frame ${!isMobileDevice && isFullscreen ? "desktop-fullscreen" : ""} ${isIOSDevice ? "mobile-fullscreen-mode" : isMobileDevice && isFullscreen ? "mobile-fullscreen-mode" : ""}`}
+              className={`metal-frame ${isIOSDevice ? "mobile-fullscreen-mode" : isMobileDevice && isFullscreen ? "mobile-fullscreen-mode" : ""}`}
             >
               {/* Title Bar - Adaptive Visibility (Desktop: only title hides, Mobile: all hides) */}
               <div
@@ -8780,22 +8664,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   <div
                     ref={gameGlowRef}
                     className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}
-                    style={
-                      isMobileDevice
-                        ? {
-                            width: `${SCALED_CANVAS_WIDTH}px`,
-                            height: `${SCALED_CANVAS_HEIGHT}px`,
-                            transform: `scale(${gameScale})`,
-                            transformOrigin: "top center",
-                            transition: "transform 150ms ease-in-out",
-                          }
-                        : {
-                            // Desktop: Size controlled by useCanvasResize hook; width/height set imperatively via ref
-                            transformOrigin: "center center",
-                            margin: "0 auto",
-                            transition: "width 150ms ease-in-out, height 150ms ease-in-out",
-                          }
-                    }
+                    style={isMobileDevice ? {
+                      width: `${SCALED_CANVAS_WIDTH}px`,
+                      height: `${SCALED_CANVAS_HEIGHT}px`,
+                      transform: `scale(${gameScale})`,
+                      transformOrigin: "top center",
+                      transition: "transform 150ms ease-in-out",
+                    } : {
+                      // Desktop: Size controlled by useCanvasResize hook
+                      // Width/height set imperatively via ref
+                      transformOrigin: "top center",
+                      transition: "width 150ms ease-in-out, height 150ms ease-in-out",
+                    }}
                   >
                     <GameCanvas
                       ref={canvasRef}
@@ -8841,84 +8721,82 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     />
 
                     {/* Boss Power-Up Duration Timers - Desktop only (paddle-relative positioning) */}
-                    {!isMobileDevice &&
-                      paddle &&
-                      (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
-                        <div
-                          className="absolute pointer-events-none"
-                          style={{
-                            top: 0,
-                            left: 0,
-                            width: `${SCALED_CANVAS_WIDTH}px`,
-                            height: `${SCALED_CANVAS_HEIGHT}px`,
-                          }}
-                        >
-                          {bossStunnerEndTime && Date.now() < bossStunnerEndTime && (
-                            <div
-                              className="absolute retro-pixel-text"
-                              style={{
-                                left: `${paddle.x + paddle.width / 2}px`,
-                                top: `${paddle.y - 45}px`,
-                                transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
-                                color: `hsl(${Math.max(0, 50 - (1 - (bossStunnerEndTime - Date.now()) / 5000) * 50)}, 100%, 50%)`,
-                                textShadow: `0 0 10px currentColor`,
-                                fontSize: "12px",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              STUN: {((bossStunnerEndTime - Date.now()) / 1000).toFixed(1)}s
-                            </div>
-                          )}
-                          {reflectShieldEndTime && Date.now() < reflectShieldEndTime && (
-                            <div
-                              className="absolute retro-pixel-text"
-                              style={{
-                                left: `${paddle.x + paddle.width / 2}px`,
-                                top: `${paddle.y - 60}px`,
-                                transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
-                                color: `hsl(${Math.max(0, 50 - (1 - (reflectShieldEndTime - Date.now()) / 15000) * 50)}, 100%, 50%)`,
-                                textShadow: `0 0 10px currentColor`,
-                                fontSize: "12px",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              REFLECT: {((reflectShieldEndTime - Date.now()) / 1000).toFixed(1)}s
-                            </div>
-                          )}
-                          {homingBallEndTime && Date.now() < homingBallEndTime && (
-                            <div
-                              className="absolute retro-pixel-text"
-                              style={{
-                                left: `${paddle.x + paddle.width / 2}px`,
-                                top: `${paddle.y - 75}px`,
-                                transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
-                                color: `hsl(${Math.max(0, 50 - (1 - (homingBallEndTime - Date.now()) / 8000) * 50)}, 100%, 50%)`,
-                                textShadow: `0 0 10px currentColor`,
-                                fontSize: "12px",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              MAGNET: {((homingBallEndTime - Date.now()) / 1000).toFixed(1)}s
-                            </div>
-                          )}
-                          {fireballEndTime && Date.now() < fireballEndTime && (
-                            <div
-                              className="absolute retro-pixel-text"
-                              style={{
-                                left: `${paddle.x + paddle.width / 2}px`,
-                                top: `${paddle.y - 90}px`,
-                                transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
-                                color: `hsl(${Math.max(0, 30 - (1 - (fireballEndTime - Date.now()) / FIREBALL_DURATION) * 30)}, 100%, 50%)`,
-                                textShadow: `0 0 10px currentColor`,
-                                fontSize: "12px",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              FIREBALL: {((fireballEndTime - Date.now()) / 1000).toFixed(1)}s
-                            </div>
-                          )}
-                        </div>
-                      )}
+                    {!isMobileDevice && paddle && (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
+                      <div
+                        className="absolute pointer-events-none"
+                        style={{
+                          top: 0,
+                          left: 0,
+                          width: `${SCALED_CANVAS_WIDTH}px`,
+                          height: `${SCALED_CANVAS_HEIGHT}px`,
+                        }}
+                      >
+                        {bossStunnerEndTime && Date.now() < bossStunnerEndTime && (
+                          <div
+                            className="absolute retro-pixel-text"
+                            style={{
+                              left: `${paddle.x + paddle.width / 2}px`,
+                              top: `${paddle.y - 45}px`,
+                              transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              color: `hsl(${Math.max(0, 50 - (1 - (bossStunnerEndTime - Date.now()) / 5000) * 50)}, 100%, 50%)`,
+                              textShadow: `0 0 10px currentColor`,
+                              fontSize: "12px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            STUN: {((bossStunnerEndTime - Date.now()) / 1000).toFixed(1)}s
+                          </div>
+                        )}
+                        {reflectShieldEndTime && Date.now() < reflectShieldEndTime && (
+                          <div
+                            className="absolute retro-pixel-text"
+                            style={{
+                              left: `${paddle.x + paddle.width / 2}px`,
+                              top: `${paddle.y - 60}px`,
+                              transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              color: `hsl(${Math.max(0, 50 - (1 - (reflectShieldEndTime - Date.now()) / 15000) * 50)}, 100%, 50%)`,
+                              textShadow: `0 0 10px currentColor`,
+                              fontSize: "12px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            REFLECT: {((reflectShieldEndTime - Date.now()) / 1000).toFixed(1)}s
+                          </div>
+                        )}
+                        {homingBallEndTime && Date.now() < homingBallEndTime && (
+                          <div
+                            className="absolute retro-pixel-text"
+                            style={{
+                              left: `${paddle.x + paddle.width / 2}px`,
+                              top: `${paddle.y - 75}px`,
+                              transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              color: `hsl(${Math.max(0, 50 - (1 - (homingBallEndTime - Date.now()) / 8000) * 50)}, 100%, 50%)`,
+                              textShadow: `0 0 10px currentColor`,
+                              fontSize: "12px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            MAGNET: {((homingBallEndTime - Date.now()) / 1000).toFixed(1)}s
+                          </div>
+                        )}
+                        {fireballEndTime && Date.now() < fireballEndTime && (
+                          <div
+                            className="absolute retro-pixel-text"
+                            style={{
+                              left: `${paddle.x + paddle.width / 2}px`,
+                              top: `${paddle.y - 90}px`,
+                              transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                              color: `hsl(${Math.max(0, 30 - (1 - (fireballEndTime - Date.now()) / FIREBALL_DURATION) * 30)}, 100%, 50%)`,
+                              textShadow: `0 0 10px currentColor`,
+                              fontSize: "12px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            FIREBALL: {((fireballEndTime - Date.now()) / 1000).toFixed(1)}s
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Bonus Letter Floating Text Tutorial - Desktop only */}
                     {!isMobileDevice && bonusLetterFloatingText?.active && bonusLetters.length > 0 && (
@@ -9116,38 +8994,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   {/* Boss Rush Stats Overlay */}
                   <BossRushStatsOverlay
                     active={bossRushStatsOverlayActive && isBossRush}
-                    currentTime={
-                      bossRushTimeSnapshot !== null
-                        ? bossRushTimeSnapshot
-                        : bossRushStartTime
-                          ? Date.now() - bossRushStartTime
-                          : 0
-                    }
+                    currentTime={bossRushTimeSnapshot !== null ? bossRushTimeSnapshot : (bossRushStartTime ? Date.now() - bossRushStartTime : 0)}
                     bossName={BOSS_RUSH_CONFIG.bossNames[BOSS_RUSH_CONFIG.bossOrder[bossRushIndex]]}
                     bossIndex={bossRushIndex}
                     livesLostThisBoss={bossRushLivesLostThisBoss}
                     powerUpsThisBoss={bossRushPowerUpsThisBoss}
                     enemiesKilledThisBoss={bossRushEnemiesThisBoss}
-                    accuracyThisBoss={
-                      bossRushShotsThisBoss > 0 ? (bossRushHitsThisBoss / bossRushShotsThisBoss) * 100 : 0
-                    }
+                    accuracyThisBoss={bossRushShotsThisBoss > 0 ? (bossRushHitsThisBoss / bossRushShotsThisBoss) * 100 : 0}
                     totalLivesLost={bossRushTotalLivesLost}
                     totalPowerUpsCollected={bossRushTotalPowerUps}
                     totalEnemiesKilled={bossRushTotalEnemiesKilled}
-                    totalAccuracy={
-                      bossRushTotalShots + bossRushShotsThisBoss > 0
-                        ? ((bossRushTotalHits + bossRushHitsThisBoss) / (bossRushTotalShots + bossRushShotsThisBoss)) *
-                          100
-                        : 0
-                    }
+                    totalAccuracy={(bossRushTotalShots + bossRushShotsThisBoss) > 0 ? ((bossRushTotalHits + bossRushHitsThisBoss) / (bossRushTotalShots + bossRushShotsThisBoss)) * 100 : 0}
                     livesRemaining={lives}
                     onContinue={() => {
                       setBossRushStatsOverlayActive(false);
                       setBossRushTimeSnapshot(null); // Clear time snapshot
                       soundManager.stopBossMusic();
                       // Accumulate per-boss stats into totals BEFORE resetting
-                      setBossRushTotalShots((prev) => prev + bossRushShotsThisBoss);
-                      setBossRushTotalHits((prev) => prev + bossRushHitsThisBoss);
+                      setBossRushTotalShots(prev => prev + bossRushShotsThisBoss);
+                      setBossRushTotalHits(prev => prev + bossRushHitsThisBoss);
                       // Reset per-boss stats
                       setBossRushLivesLostThisBoss(0);
                       setBossRushPowerUpsThisBoss(0);
@@ -9548,65 +9413,61 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               </div>
 
               {/* Mobile Power-Up Timers - Outside scaled container for correct positioning */}
-              {isMobileDevice &&
-                paddle &&
-                (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
-                  <div className="flex justify-center items-center gap-3 py-2 retro-pixel-text text-xs font-bold pointer-events-none">
-                    {bossStunnerEndTime && Date.now() < bossStunnerEndTime && (
-                      <span
-                        style={{
-                          color: `hsl(${Math.max(0, 50 - (1 - (bossStunnerEndTime - Date.now()) / 5000) * 50)}, 100%, 50%)`,
-                          textShadow: "0 0 8px currentColor",
-                          transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
-                          display: "inline-block",
-                        }}
-                      >
-                        STUN: {((bossStunnerEndTime - Date.now()) / 1000).toFixed(1)}s
-                      </span>
-                    )}
-                    {reflectShieldEndTime && Date.now() < reflectShieldEndTime && (
-                      <span
-                        style={{
-                          color: `hsl(${Math.max(0, 50 - (1 - (reflectShieldEndTime - Date.now()) / 15000) * 50)}, 100%, 50%)`,
-                          textShadow: "0 0 8px currentColor",
-                          transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
-                          display: "inline-block",
-                        }}
-                      >
-                        REFLECT: {((reflectShieldEndTime - Date.now()) / 1000).toFixed(1)}s
-                      </span>
-                    )}
-                    {homingBallEndTime && Date.now() < homingBallEndTime && (
-                      <span
-                        style={{
-                          color: `hsl(${Math.max(0, 50 - (1 - (homingBallEndTime - Date.now()) / 8000) * 50)}, 100%, 50%)`,
-                          textShadow: "0 0 8px currentColor",
-                          transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
-                          display: "inline-block",
-                        }}
-                      >
-                        MAGNET: {((homingBallEndTime - Date.now()) / 1000).toFixed(1)}s
-                      </span>
-                    )}
-                    {fireballEndTime && Date.now() < fireballEndTime && (
-                      <span
-                        style={{
-                          color: `hsl(${Math.max(0, 30 - (1 - (fireballEndTime - Date.now()) / FIREBALL_DURATION) * 30)}, 100%, 50%)`,
-                          textShadow: "0 0 8px currentColor",
-                          transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
-                          display: "inline-block",
-                        }}
-                      >
-                        FIREBALL: {((fireballEndTime - Date.now()) / 1000).toFixed(1)}s
-                      </span>
-                    )}
-                  </div>
-                )}
+              {isMobileDevice && paddle && (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
+                <div className="flex justify-center items-center gap-3 py-2 retro-pixel-text text-xs font-bold pointer-events-none">
+                  {bossStunnerEndTime && Date.now() < bossStunnerEndTime && (
+                    <span
+                      style={{
+                        color: `hsl(${Math.max(0, 50 - (1 - (bossStunnerEndTime - Date.now()) / 5000) * 50)}, 100%, 50%)`,
+                        textShadow: "0 0 8px currentColor",
+                        transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
+                        display: "inline-block",
+                      }}
+                    >
+                      STUN: {((bossStunnerEndTime - Date.now()) / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                  {reflectShieldEndTime && Date.now() < reflectShieldEndTime && (
+                    <span
+                      style={{
+                        color: `hsl(${Math.max(0, 50 - (1 - (reflectShieldEndTime - Date.now()) / 15000) * 50)}, 100%, 50%)`,
+                        textShadow: "0 0 8px currentColor",
+                        transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
+                        display: "inline-block",
+                      }}
+                    >
+                      REFLECT: {((reflectShieldEndTime - Date.now()) / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                  {homingBallEndTime && Date.now() < homingBallEndTime && (
+                    <span
+                      style={{
+                        color: `hsl(${Math.max(0, 50 - (1 - (homingBallEndTime - Date.now()) / 8000) * 50)}, 100%, 50%)`,
+                        textShadow: "0 0 8px currentColor",
+                        transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
+                        display: "inline-block",
+                      }}
+                    >
+                      MAGNET: {((homingBallEndTime - Date.now()) / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                  {fireballEndTime && Date.now() < fireballEndTime && (
+                    <span
+                      style={{
+                        color: `hsl(${Math.max(0, 30 - (1 - (fireballEndTime - Date.now()) / FIREBALL_DURATION) * 30)}, 100%, 50%)`,
+                        textShadow: "0 0 8px currentColor",
+                        transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
+                        display: "inline-block",
+                      }}
+                    >
+                      FIREBALL: {((fireballEndTime - Date.now()) / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Mobile Bonus Letter Tutorial - Outside scaled container */}
-              {isMobileDevice &&
-                bonusLetterFloatingText?.active &&
-                bonusLetters.length > 0 &&
+              {isMobileDevice && bonusLetterFloatingText?.active && bonusLetters.length > 0 && (
                 (() => {
                   const elapsed = Date.now() - bonusLetterFloatingText.startTime;
                   const duration = 4000;
@@ -9634,7 +9495,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       Catch all letters for megabonus!
                     </div>
                   );
-                })()}
+                })()
+              )}
 
               {/* Compact HUD Overlay - Shown when frames are hidden */}
               {!framesVisible && (
