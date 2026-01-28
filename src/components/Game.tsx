@@ -8780,19 +8780,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   <div
                     ref={gameGlowRef}
                     className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}
-                    style={
+                    s
+                    tyle={
                       isMobileDevice
                         ? {
                             width: `${SCALED_CANVAS_WIDTH}px`,
                             height: `${SCALED_CANVAS_HEIGHT}px`,
                             transform: `scale(${gameScale})`,
-                            transformOrigin: "top center",
+                            transformOrigin: "center center", // ← changed from "top center"
                             transition: "transform 150ms ease-in-out",
                           }
                         : {
                             // Desktop: Size controlled by useCanvasResize hook; width/height set imperatively via ref
-                            transformOrigin: "center center",
-                            margin: "0 auto",
+                            transformOrigin: "center center", // ← changed from "top center"
+                            margin: "0 auto", // ← helps keep wrapper centered if display flips
                             transition: "width 150ms ease-in-out, height 150ms ease-in-out",
                           }
                     }
