@@ -1331,12 +1331,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   });
 
  
-// Desktop dynamic resize
 const { displayWidth, displayHeight, scale: dynamicScale } = useCanvasResize({
   enabled: !isMobileDevice,
   containerRef: gameAreaRef,
   gameGlowRef,
-  canvasRef,                      // <-- add this
+  canvasRef,
   logicalWidth: SCALED_CANVAS_WIDTH,
   logicalHeight: SCALED_CANVAS_HEIGHT,
   hiDpi: true,
@@ -8720,7 +8719,7 @@ const { displayWidth, displayHeight, scale: dynamicScale } = useCanvasResize({
         dangerBalls={dangerBalls}
         ballReleaseHighlight={ballReleaseHighlight}
       />
-    </div>
+    
   ) : (
     // DESKTOP: size controlled by useCanvasResize hook + CSS
     <div ref={gameGlowRef} className="game-glow">
