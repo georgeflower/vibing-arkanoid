@@ -474,16 +474,19 @@ All colors MUST be HSL.
 
   .metal-frame.desktop-fullscreen .metal-game-area {
     flex: 1;
-    max-width: none;
+    max-width: none !important;
     min-width: 0;
     min-height: 0;
     height: 100%;
+    width: 100%;
   }
 
   .metal-frame.desktop-fullscreen .game-glow {
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100% !important;
+    height: 100% !important;
   }
 
   .metal-frame.desktop-fullscreen .game-glow canvas {
