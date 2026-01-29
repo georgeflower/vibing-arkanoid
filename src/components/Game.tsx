@@ -8671,10 +8671,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       transformOrigin: "top center",
                       transition: "transform 150ms ease-in-out",
                     } : {
-                      // Desktop: Size controlled by useCanvasResize hook
-                      // Width/height set imperatively via ref
+                      // Desktop: Size controlled by useCanvasResize hook on wide viewports
+                      // On narrow viewports (<769px), CSS handles it
                       transformOrigin: "top center",
-                      transition: "width 150ms ease-in-out, height 150ms ease-in-out",
+                      // No transition to prevent shrinking animation during resize
                     }}
                   >
                     <GameCanvas
