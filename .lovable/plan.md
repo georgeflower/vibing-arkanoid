@@ -1,175 +1,191 @@
 
+# Fix: Game Area Not Expanding to Fill Available Frame Space
 
-# Fix: Desktop Layout Shrinking When Sidebars Are Hidden
+## Issue Analysis
 
-## Root Cause Analysis
+Looking at the screenshot, the game canvas is smaller than it could be - there's significant unused gray space around it within the frame. The frame correctly fills the viewport, but the game area isn't maximizing its use of the available space.
 
-The shrinking occurs due to a **mismatch between two different detection systems**:
+### Root Cause
 
-### The Conflict
+The `useCanvasResize` hook correctly calculates the optimal canvas size based on its container (`gameAreaRef`). However, the container itself isn't filling all available space due to CSS conflicts:
 
-| System | Detection Method | Behavior |
-|--------|------------------|----------|
-| `useCanvasResize` hook | `isMobileDevice` (user agent) | Enabled on desktop browsers regardless of viewport width |
-| Sidebar visibility | CSS `@media (max-width: 768px)` | Hides sidebars based on viewport width |
+1. **Base `.metal-game-area`** has `max-width: calc(100% - 220px)` (line 442) - this constraint persists even in desktop-fullscreen mode
+2. **The desktop-fullscreen override** sets `max-width: none` but this may be getting overridden by specificity or cascading issues
+3. **The `.metal-main-content`** uses `justify-content: center` which centers the game area but doesn't force it to expand
 
-When you resize to <768px on a desktop browser:
-1. **CSS hides the sidebars** (via `@media (max-width: 768px) { .metal-side-panel { display: none } }`)
-2. **The hook is still enabled** because `isMobileDevice` is false (desktop user agent)
-3. The hook measures `gameAreaRef.clientWidth/clientHeight` which now changes drastically
-4. The hook imperatively sets smaller dimensions on `.game-glow`
-5. The canvas shrinks, and due to the transition CSS, it keeps animating smaller
-6. The CSS rule `width: 100% !important` on the canvas conflicts with the container size
+### The CSS Cascade Problem
 
-### The Cascade Effect
+```css
+/* Base rule (line 442) */
+.metal-game-area {
+  max-width: calc(100% - 220px); /* Always applied */
+}
 
-```text
-Window resize → sidebars hidden → gameAreaRef size changes → 
-hook calculates smaller size → applies to game-glow → 
-canvas scales down → bottom gets clipped
+/* Override rule (line 475-481) */
+@media (min-width: 769px) {
+  .metal-frame.desktop-fullscreen .metal-game-area {
+    max-width: none; /* Should override, but may not win */
+  }
+}
+
+/* Responsive override (line 518-520) */
+@media (max-width: 1200px) {
+  .metal-game-area {
+    max-width: calc(100% - 210px); /* Re-applies constraint! */
+  }
+}
 ```
+
+At viewport widths between 769px-1200px, BOTH the `(min-width: 769px)` and `(max-width: 1200px)` queries match. The more specific selector in the desktop-fullscreen rule should win, but we need to verify the specificity.
 
 ---
 
 ## Solution
 
-Gate the `useCanvasResize` hook not just by user agent, but also by **viewport width**. When the viewport is narrow (<769px), the hook should be disabled and let standard CSS handle the layout.
+### Change 1: Ensure Desktop Fullscreen Rules Have Proper Specificity
 
----
+**File: `src/index.css`** (lines 475-481)
 
-## Technical Changes
-
-### Change 1: Gate Hook by Viewport Width
-
-**File: `src/hooks/useCanvasResize.ts`** (lines 36-69)
-
-Add viewport width check inside the calculation function so it only applies sizing on wide viewports:
-
-```typescript
-const calculateSize = useCallback(() => {
-  if (!containerRef.current || !gameGlowRef.current) return;
-
-  const container = containerRef.current;
-  
-  // Don't imperatively size on narrow viewports - let CSS handle it
-  // This prevents conflicts when sidebars are hidden via CSS media queries
-  const viewportWidth = window.innerWidth;
-  if (viewportWidth < 769) {
-    // Clear any previously set inline styles
-    gameGlowRef.current.style.width = '';
-    gameGlowRef.current.style.height = '';
-    return;
-  }
-
-  const availableWidth = container.clientWidth - 16;
-  const availableHeight = container.clientHeight - 16;
-
-  // ... rest of calculation
-```
-
-### Change 2: Update CSS for Narrow Desktop Viewports
-
-**File: `src/index.css`** (after line 496, before the responsive adjustments)
-
-Add explicit rules for desktop at narrow widths to ensure canvas fills properly when sidebars are hidden:
+Update the desktop fullscreen `.metal-game-area` rule to use `!important` to guarantee it wins over other rules:
 
 ```css
-/* Desktop at narrow widths (sidebars hidden but not mobile device) */
 @media (min-width: 769px) {
-  .metal-frame.desktop-fullscreen .game-glow canvas {
-    /* Ensure canvas scales properly within container */
-    width: auto !important;
-    height: auto !important;
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
+  .metal-frame.desktop-fullscreen .metal-game-area {
+    flex: 1;
+    max-width: none !important; /* Force override of all other rules */
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
   }
 }
 ```
 
-### Change 3: Handle Sidebar Transition in Hook
+### Change 2: Ensure Main Content Fills Space
 
-**File: `src/hooks/useCanvasResize.ts`** (lines 78-93)
+**File: `src/index.css`** (lines 470-473)
 
-Also listen for viewport resize to detect sidebar visibility changes:
+The `.metal-main-content` needs to use all available height and let its children (side panels + game area) fill it:
 
-```typescript
-useEffect(() => {
-  if (!enabled || !containerRef.current) return;
-
-  const observer = new ResizeObserver(debouncedCalculate);
-  observer.observe(containerRef.current);
-
-  // Also listen to window resize to detect viewport width changes
-  // This handles the case where sidebars hide/show via CSS media queries
-  const handleWindowResize = () => {
-    debouncedCalculate();
-  };
-  window.addEventListener('resize', handleWindowResize);
-
-  // Initial calculation
-  calculateSize();
-
-  return () => {
-    observer.disconnect();
-    window.removeEventListener('resize', handleWindowResize);
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-    }
-  };
-}, [enabled, containerRef, debouncedCalculate, calculateSize]);
+```css
+@media (min-width: 769px) {
+  .metal-frame.desktop-fullscreen .metal-main-content {
+    flex: 1;
+    min-height: 0;
+    /* Remove justify-content: center to allow game area to expand */
+    justify-content: stretch;
+  }
+}
 ```
 
-### Change 4: Update Game.tsx Desktop Styles
+Actually, `justify-content: stretch` is the default for flexbox, so we just need to NOT have `justify-content: center` applied. Let me check if that's set elsewhere.
 
-**File: `src/components/Game.tsx`** (lines 8667-8678)
+### Change 3: Make Game Glow Container Fill Game Area
 
-Remove the transition on width/height that causes the shrinking animation:
+**File: `src/index.css`** (lines 483-487)
 
-```typescript
-style={isMobileDevice ? {
-  width: `${SCALED_CANVAS_WIDTH}px`,
-  height: `${SCALED_CANVAS_HEIGHT}px`,
-  transform: `scale(${gameScale})`,
-  transformOrigin: "top center",
-  transition: "transform 150ms ease-in-out",
-} : {
-  // Desktop: Size controlled by useCanvasResize hook on wide viewports
-  // On narrow viewports (<769px), CSS handles it
-  transformOrigin: "top center",
-  // Remove transition to prevent shrinking animation during resize
-}}
+The `.game-glow` container needs to fill 100% of the game area so the canvas can maximize within it:
+
+```css
+@media (min-width: 769px) {
+  .metal-frame.desktop-fullscreen .game-glow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+}
 ```
+
+### Change 4: Update Hook to Account for Container Fill
+
+**File: `src/hooks/useCanvasResize.ts`** (lines 51-52)
+
+The hook subtracts 16px for padding but the container has 8px padding on each side. Let me verify this is correct or if we need to adjust.
+
+Looking at line 433: `.metal-game-area { padding: 8px; }` - so total padding is 16px (8+8), which is correctly accounted for.
+
+However, the issue might be that the container isn't getting the full available space in the first place. Let me add some debug logging to understand what dimensions the hook is receiving.
+
+Actually, the simpler fix is to ensure the CSS properly allows the container to expand, then the hook will correctly size the canvas within that expanded container.
+
+---
+
+## Technical Changes Summary
+
+| File | Change |
+|------|--------|
+| `src/index.css` | Add `!important` to `.metal-frame.desktop-fullscreen .metal-game-area { max-width: none !important }` |
+| `src/index.css` | Add explicit `width: 100%` and `height: 100%` to `.metal-frame.desktop-fullscreen .game-glow` |
+| `src/index.css` | Ensure `.metal-frame.desktop-fullscreen .metal-main-content` doesn't have centering that prevents expansion |
+
+---
+
+## Detailed CSS Changes
+
+### Update 1: Force max-width override (lines 475-481)
+
+```css
+@media (min-width: 769px) {
+  .metal-frame.desktop-fullscreen .metal-game-area {
+    flex: 1;
+    max-width: none !important;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    /* Ensure it fills available width from flexbox */
+    width: 100%;
+  }
+}
+```
+
+### Update 2: Ensure game-glow fills the game area (lines 483-487)
+
+```css
+@media (min-width: 769px) {
+  .metal-frame.desktop-fullscreen .game-glow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100% !important;
+    height: 100% !important;
+  }
+}
+```
+
+### Update 3: Fix main content to not over-center (lines 470-473)
+
+The base `.metal-main-content` has `justify-content: center` which is fine, but we should not override it to `stretch` as that would break the layout. The flexbox children (side panels + game area) should naturally fill the row.
+
+The actual issue is that the game area's `flex: 1` isn't expanding because the side panels have fixed widths and the game area has a max-width constraint. By removing the max-width constraint with `!important`, the game area should expand to fill the remaining space.
 
 ---
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/hooks/useCanvasResize.ts` | Add viewport width check (skip sizing < 769px), clear inline styles when narrow, add window resize listener |
-| `src/index.css` | Update canvas rules to use `width: auto` instead of `100%` to prevent forced stretching |
-| `src/components/Game.tsx` | Remove transition on desktop game-glow styles |
+| File | Line Range | Change |
+|------|------------|--------|
+| `src/index.css` | 475-481 | Add `max-width: none !important`, `width: 100%` to `.metal-frame.desktop-fullscreen .metal-game-area` |
+| `src/index.css` | 483-487 | Add `width: 100% !important`, `height: 100% !important` to `.metal-frame.desktop-fullscreen .game-glow` |
 
 ---
 
-## Why This Fixes the Issue
+## Expected Result
 
-1. **Viewport-aware hook**: The hook now checks `window.innerWidth` and skips imperatively setting dimensions when <769px
-2. **Clears inline styles**: When transitioning to narrow viewport, the hook removes any previously set inline width/height, letting CSS take over
-3. **No shrinking animation**: Removing the transition prevents the visible shrinking effect
-4. **CSS handles narrow viewports**: Standard CSS rules manage layout when sidebars are hidden
+After these changes:
+1. The `.metal-game-area` will expand to fill all space between the side panels
+2. The `.game-glow` will fill the entire game area
+3. The `useCanvasResize` hook will receive the larger container dimensions
+4. The canvas will scale up to fill more of the available space while maintaining aspect ratio
+5. Less dead/gray space around the game canvas
 
 ---
 
-## Test Checklist
+## Test Plan
 
-1. Wide desktop (>1200px): Frame fills viewport, canvas maximizes space
-2. Medium desktop (769px-1200px): Frame fills viewport, sidebars slightly smaller
-3. Narrow desktop (<769px): Sidebars hidden, canvas still visible and not clipping
-4. Resize from wide to narrow: Smooth transition, no shrinking animation
-5. Resize from narrow to wide: Canvas expands properly
-6. Full playable area visible at all widths
-7. Mouse/paddle controls accurate at all sizes
-8. Mobile device: Unchanged behavior
-
+1. Wide desktop (1920×1080): Game area should be significantly larger
+2. Medium desktop (1440×900): Game area should fill available space
+3. Narrow desktop (1024×768): Game area adapts, sidebars may compress
+4. Very narrow (<769px): Falls back to CSS-only handling
+5. Resize smoothly between sizes: No jarring transitions
+6. Aspect ratio maintained: No distortion of game content
