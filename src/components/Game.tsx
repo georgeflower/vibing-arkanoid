@@ -9196,10 +9196,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         )}
 
                         <h2
-                          className="retro-pixel-text text-xl md:text-3xl mb-3 md:mb-6 text-center animate-pulse"
+                          className="retro-pixel-text text-xl md:text-2xl mb-3 md:mb-6 text-center animate-pulse"
                           style={{ color: "hsl(48, 100%, 60%)" }}
                         >
-                          ⏸️GAME PAUSED
+                          ⏸️ GAME PAUSED
                         </h2>
 
                         <div className="space-y-2 md:space-y-3 text-white retro-pixel-text text-xs md:text-sm">
