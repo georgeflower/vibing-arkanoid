@@ -9195,12 +9195,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           </button>
                         )}
 
-                        <h3
+                        <h2
                           className="retro-pixel-text text-xl md:text-3xl mb-3 md:mb-6 text-center animate-pulse"
                           style={{ color: "hsl(48, 100%, 60%)" }}
                         >
                           ⏸️GAME PAUSED
-                        </h3>
+                        </h2>
 
                         <div className="space-y-2 md:space-y-3 text-white retro-pixel-text text-xs md:text-sm">
                           <div className="border-b border-cyan-500/30 pb-2 md:pb-3 mb-2 md:mb-4">
