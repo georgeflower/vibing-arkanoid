@@ -485,16 +485,15 @@ All colors MUST be HSL.
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100% !important;
-    height: 100% !important;
+    /* Let hook's inline width/height take precedence */
+    max-width: 100%;
+    max-height: 100%;
   }
 
   .metal-frame.desktop-fullscreen .game-glow canvas {
-    /* Use auto instead of 100% to prevent forced stretching */
-    width: auto !important;
-    height: auto !important;
-    max-width: 100%;
-    max-height: 100%;
+    /* Fill the hook-sized container, maintain aspect via container sizing */
+    width: 100% !important;
+    height: 100% !important;
     object-fit: contain;
   }
 }
