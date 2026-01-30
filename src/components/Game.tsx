@@ -8793,7 +8793,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             // Desktop: Size controlled by useCanvasResize hook
                             // Width/height set imperatively via ref
                             transformOrigin: "top center",
-                            transition: "width 150ms ease-in-out, height 150ms ease-in-out",
                           }
                     }
                   >
