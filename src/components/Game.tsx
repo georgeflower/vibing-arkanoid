@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { debugToast as toast } from "@/utils/debugToast";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
+import { MobileGameControls } from "./MobileGameControls";
 import { useScaledConstants } from "@/hooks/useScaledConstants";
 import { useViewportFrame } from "@/hooks/useViewportFrame";
 import { useCanvasResize } from "@/hooks/useCanvasResize";
@@ -43,7 +44,7 @@ import { debugLogger } from "@/utils/debugLogger";
 import { particlePool } from "@/utils/particlePool";
 import { startBallTracking } from "@/utils/ballTracker";
 // ═══════════════════════════════════════════════════════════════
-import { Maximize2, Minimize2, Home, X, Pause, Volume2, VolumeX } from "lucide-react";
+import { Maximize2, Minimize2, Home, X } from "lucide-react";
 import { QualityIndicator } from "./QualityIndicator";
 import type {
   Brick,
@@ -325,6 +326,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const reflectedAttackLastHitRef = useRef<number>(0);
   // Track pending chain explosions for explosive bricks (delayed by 200ms)
   const pendingChainExplosionsRef = useRef<Array<{ brick: Brick; triggerTime: number }>>([]);
+
+  // ═══ Device Detection (needed early for multiple features) ═══
   const [isMobileDevice] = useState(() => {
     return (
       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
@@ -335,8 +338,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     return (
       /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-    ); // iPad Pro detection
+    );
   });
+
+  // ═══ Fullscreen and Layout State ═══
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
@@ -344,6 +349,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [titleVisible, setTitleVisible] = useState(true);
   const [gameScale, setGameScale] = useState(1);
   const [disableAutoZoom, setDisableAutoZoom] = useState(false);
+
   const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
   const [enemiesKilled, setEnemiesKilled] = useState(0);
   const [screenShake, setScreenShake] = useState(0);
@@ -9302,71 +9308,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                 {/* Tutorial Overlay moved inside scaled game-glow container above */}
 
-                {/* Mobile Pause Button - always visible on mobile when playing */}
-                {isMobileDevice && gameState === "playing" && (
-                  <button
-                    onTouchStart={(e) => {
-                      e.stopPropagation();
-                    }}
-                    onTouchEnd={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      setGameState("paused");
-                      if (gameLoopRef.current) {
-                        gameLoopRef.current.pause();
-                      }
-                    }}
-                    onClick={() => {
-                      setGameState("paused");
-                      if (gameLoopRef.current) {
-                        gameLoopRef.current.pause();
-                      }
-                    }}
-                    className="fixed left-4 top-[116px] z-[100] w-12 h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 transition-transform touch-manipulation"
-                    aria-label="Pause Game"
-                    style={{ touchAction: "manipulation" }}
-                  >
-                    <Pause className="w-6 h-6 text-white/70" />
-                  </button>
-                )}
-
-                {/* Music Toggle Button - right side */}
-                {gameState === "playing" && isMobileDevice && (
-                  <div className="fixed right-4 top-[116px] z-[100]">
-                    <button
-                      onTouchStart={(e) => {
-                        e.stopPropagation();
-                      }}
-                      onTouchEnd={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        const newState = !musicEnabled;
-                        setMusicEnabled(newState);
-                        soundManager.setMusicEnabled(newState);
-                        if (newState) {
-                          soundManager.playBackgroundMusic();
-                        }
-                      }}
-                      onClick={() => {
-                        const newState = !musicEnabled;
-                        setMusicEnabled(newState);
-                        soundManager.setMusicEnabled(newState);
-                        if (newState) {
-                          soundManager.playBackgroundMusic();
-                        }
-                      }}
-                      className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 hover:border-white/50 transition-all touch-manipulation"
-                      aria-label="Toggle Music"
-                      style={{ touchAction: "manipulation" }}
-                    >
-                      {musicEnabled ? (
-                        <Volume2 className="w-5 h-5 md:w-6 md:h-6 text-white/70" />
-                      ) : (
-                        <VolumeX className="w-5 h-5 md:w-6 md:h-6 text-white/40" />
-                      )}
-                    </button>
-                  </div>
-                )}
+                {/* Mobile Controls - Pause button, Music toggle, Debug button */}
+                <MobileGameControls
+                  isMobileDevice={isMobileDevice}
+                  gameState={gameState}
+                  setGameState={setGameState}
+                  gameLoopRef={gameLoopRef}
+                  musicEnabled={musicEnabled}
+                  setMusicEnabled={setMusicEnabled}
+                  showFullscreenPrompt={showFullscreenPrompt}
+                  onFullscreenPromptClick={handleFullscreenPromptClick}
+                  showDebugDashboard={showDebugDashboard}
+                  setShowDebugDashboard={setShowDebugDashboard}
+                />
 
                 {/* ═══════════════════════════════════════════════════════════════
                      ████████╗ DEBUG UI COMPONENTS - REMOVE BEFORE PRODUCTION ████████╗
@@ -9390,25 +9344,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       onReset={resetDebugSettings}
                     />
 
-                    {/* Mobile Debug Button - floating icon for touch devices */}
-                    {isMobileDevice && !showDebugDashboard && (
-                      <button
-                        onTouchStart={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onTouchEnd={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          setShowDebugDashboard(true);
-                        }}
-                        onClick={() => setShowDebugDashboard(true)}
-                        className="fixed right-4 top-1/2 -translate-y-1/2 z-[100] w-12 h-12 rounded-full bg-yellow-500/90 flex items-center justify-center text-2xl shadow-lg active:scale-95 transition-transform touch-manipulation"
-                        aria-label="Open Debug Dashboard"
-                        style={{ touchAction: "manipulation" }}
-                      >
-                        🐛
-                      </button>
-                    )}
+                    {/* Mobile Debug Button is now in MobileGameControls */}
 
                     {/* Quality Indicator - Always visible */}
                     <QualityIndicator quality={quality} autoAdjustEnabled={autoAdjustEnabled} fps={currentFps} />
