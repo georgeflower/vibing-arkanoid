@@ -103,6 +103,9 @@ import { createBoss, createResurrectedPyramid } from "@/utils/bossUtils";
 import { performBossAttack } from "@/utils/bossAttacks";
 import { BOSS_LEVELS, BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
 import { processBallWithCCD } from "@/utils/gameCCD";
+import { brickSpatialHash } from "@/utils/spatialHash";
+import { resetAllPools } from "@/utils/entityPool";
+import { brickRenderer } from "@/utils/brickLayerCache";
 import { assignPowerUpsToBricks, reassignPowerUpsToBricks } from "@/utils/powerUpAssignment";
 import { MEGA_BOSS_LEVEL, MEGA_BOSS_CONFIG } from "@/constants/megaBossConfig";
 import {
@@ -569,6 +572,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     }
   }, [showDebugDashboard, gameState, debugDashboardPausedGame]);
+
+  // Rebuild spatial hash when bricks change (level load, brick destruction)
+  // This enables O(k) collision detection instead of O(n)
+  useEffect(() => {
+    if (bricks.length > 0) {
+      brickSpatialHash.rebuild(bricks);
+    } else {
+      brickSpatialHash.clear();
+    }
+    // Also invalidate brick layer cache to trigger re-render
+    brickRenderer.invalidate();
+  }, [bricks]);
 
   // Pause-aware timer management - save remaining durations on pause, restore on resume
   useEffect(() => {
@@ -5107,7 +5122,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           // Object counts
           ballCount: balls.length,
-          visibleBrickCount: bricks.filter((b) => b.visible).length,
+          visibleBrickCount: bricks.reduce((c, b) => c + (b.visible ? 1 : 0), 0),
           totalBrickCount: bricks.length,
           enemyCount: enemies.length,
           powerUpCount: powerUps.length,
@@ -8261,6 +8276,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     soundManager.stopBackgroundMusic();
     setShowEndScreen(false);
     particlePool.releaseAll(); // Clear all particles
+    resetAllPools(); // Clear all entity pools
     onReturnToMenu();
   };
 
@@ -8346,6 +8362,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBricksDestroyedByTurrets(0);
     setBossesKilled(0);
     particlePool.releaseAll(); // Clear all particles
+    resetAllPools(); // Clear all entity pools (power-ups, bullets, enemies, etc.)
     setLives(settings.startingLives);
 
     // Clear all entities

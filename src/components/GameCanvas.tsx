@@ -7,6 +7,7 @@ import { powerUpImages } from "@/utils/powerUpImages";
 import { particlePool } from "@/utils/particlePool";
 import { bonusLetterImages } from "@/utils/bonusLetterImages";
 import { isMegaBoss } from "@/utils/megaBossUtils";
+import { brickRenderer } from "@/utils/brickLayerCache";
 import paddleImg from "@/assets/paddle.png";
 import paddleTurretsImg from "@/assets/paddle-turrets.png";
 import crackedBrick1 from "@/assets/brick-cracked-1.png";
@@ -290,6 +291,22 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       };
     }, []);
 
+    // Initialize brick layer cache for offscreen rendering
+    useEffect(() => {
+      brickRenderer.initialize(width, height);
+    }, [width, height]);
+
+    // Set cracked brick images for brick renderer when they load
+    useEffect(() => {
+      if (crackedBrick1Ref.current && crackedBrick2Ref.current && crackedBrick3Ref.current) {
+        brickRenderer.setCrackedImages(
+          crackedBrick1Ref.current,
+          crackedBrick2Ref.current,
+          crackedBrick3Ref.current
+        );
+      }
+    }, []);
+
     useEffect(() => {
       const canvas = ref as React.RefObject<HTMLCanvasElement>;
       if (!canvas.current) return;
@@ -416,191 +433,22 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
         ctx.fillRect(0, 0, width, height);
       }
 
-      // Draw bricks with 16-bit Turrican 2 style texture
-      bricks.forEach((brick) => {
-        if (brick.visible) {
-          // Reset shadow to prevent bleeding from other elements
-          ctx.shadowBlur = 0;
-          
-          // Metal (Indestructible) bricks - steel appearance
-        if (brick.type === "metal") {
-          // Detect adjacent metal bricks for seamless melting
-          const adjacent = getAdjacentMetalBricks(brick, bricks);
-          
-          // Steel base color - fill entire brick area
-          ctx.fillStyle = 'hsl(0, 0%, 33%)';
-          ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
-          
-          ctx.shadowBlur = 0;
-          
-          // Top metallic highlight - only if no brick above
-          if (!adjacent.top) {
-            ctx.fillStyle = "rgba(200, 200, 200, 0.4)";
-            ctx.fillRect(brick.x, brick.y, brick.width, 4);
-          }
-          
-          // Left metallic shine - only if no brick to the left
-          if (!adjacent.left) {
-            ctx.fillStyle = "rgba(200, 200, 200, 0.4)";
-            ctx.fillRect(brick.x, brick.y, 4, brick.height);
-          }
-          
-          // Darker bottom - only if no brick below
-          if (!adjacent.bottom) {
-            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-            ctx.fillRect(brick.x, brick.y + brick.height - 4, brick.width, 4);
-          }
-          
-          // Right shadow - only if no brick to the right
-          if (!adjacent.right) {
-            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-            ctx.fillRect(brick.x + brick.width - 4, brick.y, 4, brick.height);
-          }
-          
-          // Steel rivets pattern - draw across entire brick
-          ctx.fillStyle = "rgba(100, 100, 100, 0.8)";
-          const rivetSize = 3;
-          const spacing = 12;
-          for (let py = brick.y + spacing / 2; py < brick.y + brick.height; py += spacing) {
-            for (let px = brick.x + spacing / 2; px < brick.x + brick.width; px += spacing) {
-              ctx.beginPath();
-              ctx.arc(px, py, rivetSize, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          }
-          
-          // Diagonal hatching pattern - continuous across brick
-          ctx.strokeStyle = "rgba(150, 150, 150, 0.15)";
-          ctx.lineWidth = 1;
-          for (let i = 0; i < brick.width + brick.height; i += 6) {
-            ctx.beginPath();
-            ctx.moveTo(brick.x + i, brick.y);
-            ctx.lineTo(brick.x, brick.y + i);
-            ctx.stroke();
-          }
-        } else if (brick.type === "explosive") {
-            // Explosive brick - orange/red with warning pattern
+      // Draw bricks using offscreen canvas cache for performance
+      // Updates cache only when bricks change (destruction/damage)
+      if (brickRenderer.isReady()) {
+        brickRenderer.updateCache(bricks, qualitySettings);
+        brickRenderer.drawToCanvas(ctx);
+      } else {
+        // Fallback: direct rendering if cache not ready (first few frames)
+        bricks.forEach((brick) => {
+          if (brick.visible) {
+            ctx.shadowBlur = 0;
             ctx.fillStyle = brick.color;
             ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
-            
-            // Pulsing glow effect (if quality allows)
-            if (qualitySettings.glowEnabled) {
-              const pulseIntensity = Math.sin(Date.now() * 0.005) * 0.3 + 0.7;
-              ctx.shadowBlur = 8 * pulseIntensity;
-              ctx.shadowColor = 'hsl(15, 100%, 50%)';
-            }
-            
-            // Top highlight
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = "rgba(255, 255, 100, 0.3)";
-            ctx.fillRect(brick.x, brick.y, brick.width, 3);
-            
-            // Bottom shadow
-            ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-            ctx.fillRect(brick.x, brick.y + brick.height - 3, brick.width, 3);
-            
-            // Warning pattern (dotted)
-            ctx.strokeStyle = "rgba(50, 50, 50, 0.4)";
-            ctx.lineWidth = 2;
-            ctx.setLineDash([4, 4]);
-            for (let i = 0; i < brick.width + brick.height; i += 8) {
-              ctx.beginPath();
-              ctx.moveTo(brick.x + i, brick.y);
-              ctx.lineTo(brick.x, brick.y + i);
-              ctx.stroke();
-            }
-            ctx.setLineDash([]);
-            
-            // Show bomb emojis representing hits required
-            ctx.fillStyle = "rgba(255, 200, 0, 0.8)";
-            ctx.font = "bold 14px monospace";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            const bombsText = "💥".repeat(brick.hitsRemaining);
-            ctx.fillText(bombsText, brick.x + brick.width / 2, brick.y + brick.height / 2);
-            
-            ctx.shadowBlur = 0;
-          } else if (brick.type === "cracked") {
-            // Cracked brick - use texture based on hits remaining (1.png = least damaged, 3.png = most damaged)
-            let crackedImage: HTMLImageElement | null = null;
-            if (brick.hitsRemaining === 3 && crackedBrick1Ref.current) {
-              crackedImage = crackedBrick1Ref.current;
-            } else if (brick.hitsRemaining === 2 && crackedBrick2Ref.current) {
-              crackedImage = crackedBrick2Ref.current;
-            } else if (brick.hitsRemaining === 1 && crackedBrick3Ref.current) {
-              crackedImage = crackedBrick3Ref.current;
-            }
-            
-            if (crackedImage && isImageValid(crackedImage)) {
-              // Draw the texture image, ensuring it stays within brick dimensions
-              ctx.drawImage(
-                crackedImage,
-                brick.x,
-                brick.y,
-                brick.width,
-                brick.height
-              );
-            } else {
-              // Fallback rendering if texture not loaded
-              ctx.fillStyle = brick.color;
-              ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
-              
-              ctx.shadowBlur = 0;
-              ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
-              ctx.fillRect(brick.x, brick.y, brick.width, 3);
-              ctx.fillRect(brick.x, brick.y, 3, brick.height);
-              
-              ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-              ctx.fillRect(brick.x, brick.y + brick.height - 3, brick.width, 3);
-              ctx.fillRect(brick.x + brick.width - 3, brick.y, 3, brick.height);
-            }
-            
-            // No hit counter for cracked bricks - texture shows damage progression
-          } else {
-            // Normal brick - Base brick color
-            ctx.fillStyle = brick.color;
-            ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
-            
-            // Top highlight
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
-            ctx.fillRect(brick.x, brick.y, brick.width, 3);
-            
-            // Left highlight
-            ctx.fillRect(brick.x, brick.y, 3, brick.height);
-            
-            // Bottom shadow
-            ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-            ctx.fillRect(brick.x, brick.y + brick.height - 3, brick.width, 3);
-            
-            // Right shadow
-            ctx.fillRect(brick.x + brick.width - 3, brick.y, 3, brick.height);
-            
-            // 16-bit pixel pattern texture (Turrican 2 style)
-            ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
-            for (let py = brick.y + 4; py < brick.y + brick.height - 4; py += 4) {
-              for (let px = brick.x + 4; px < brick.x + brick.width - 4; px += 4) {
-                if ((px + py) % 8 === 0) {
-                  ctx.fillRect(px, py, 2, 2);
-                }
-              }
-            }
-            
-            // Draw hit counter for multi-hit bricks
-            if (brick.maxHits > 1) {
-              ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-              ctx.font = "bold 12px 'Courier New', monospace";
-              ctx.textAlign = "center";
-              ctx.textBaseline = "middle";
-              ctx.fillText(
-                brick.hitsRemaining.toString(),
-                brick.x + brick.width / 2,
-                brick.y + brick.height / 2
-              );
-            }
+            // Minimal fallback - just base color
           }
-        }
-      });
+        });
+      }
 
       // Draw paddle (with rotation support for perimeter mode)
       if (paddle) {
