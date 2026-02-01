@@ -1,259 +1,275 @@
 
 
-# Mobile/Touch Input Extraction Plan
+# Debug System Extraction Plan
 
 ## Overview
-Extract mobile-specific logic and UI from `Game.tsx` (~450+ lines) into a dedicated hook and component, improving maintainability while preserving all mobile functionality.
+Extract the debug system from `Game.tsx` (~400+ lines of debug-related code) into a dedicated hook (`useGameDebug`) and component (`GameDebugOverlays`), reducing Game.tsx complexity while maintaining all debug functionality.
 
 ## Current State Analysis
 
-### Mobile-Related Code Locations in Game.tsx:
+### Debug-Related Code in Game.tsx
 
-| Section | Lines | Description |
-|---------|-------|-------------|
-| Device Detection | 328-339 | `isMobileDevice`, `isIOSDevice` detection |
-| Mobile Ball Glow | 499-503, 711-744 | Get Ready glow animation for mobile |
-| Swipe Gesture Integration | 1410-1425 | `useSwipeGesture` for pause |
-| Touch Handlers | 2208-2410 | `handleTouchStart`, `handleTouchMove`, `handleTouchEnd` (~200 lines) |
-| Touch Event Registration | 2736-2752 | Canvas touch event listeners |
-| Pointer Lock Skip | 2724-2728 | Skip pointer lock check on mobile |
-| Fullscreen Logic | 8422-8564 | `toggleFullscreen`, fullscreen events, iOS gesture prevention (~140 lines) |
-| Fullscreen Prompt | 8662-8697 | `handleFullscreenPromptClick`, mobile prompt overlay |
-| Mobile Pause Button | 9305-9331 | Floating pause button for mobile |
-| Mobile Music Toggle | 9333-9369 | Floating music on/off button |
-| Mobile Debug Button | 9393-9411 | Debug dashboard trigger for touch |
-| Mobile Power-Up Timers | 9558-9612 | Timer display outside scaled container |
-| Mobile Bonus Text | 9614-9653 | Bonus letter tutorial for mobile |
-| Layout Adaptation | 8566-8661 | Frame/header visibility based on mobile/fullscreen |
+| Location | Lines | Description |
+|----------|-------|-------------|
+| Imports | 28-45 | 14 debug-related imports |
+| State | 512-540 | `ccdPerformanceRef`, `frameCountRef`, `currentFps`, `showDebugDashboard`, `debugDashboardPausedGame`, `useDebugSettings()`, `calculateActiveDebugFeatures()` |
+| Effects | 544-571 | Frame profiler toggle effect, dashboard pause/resume effect |
+| Logger Init | 816-825 | `debugLogger.intercept()` initialization |
+| Keyboard | 2547-2718 | ~170 lines of debug keyboard shortcuts (Tab, L, W, C, H, X, Z, §, V, Q, 0, +, 1-9, R, E, U, [, ]) |
+| Callback | 2773-2799 | `getSubstepDebugInfo()` function (~25 lines) |
+| JSX Inline | 8976-9005 | `GameLoopDebugOverlay`, `PowerUpWeightsOverlay` inside scaled container |
+| JSX Block | 9325-9391 | `DebugModeIndicator`, `DebugDashboard`, `QualityIndicator`, `SubstepDebugOverlay`, `FrameProfilerOverlay`, `CollisionHistoryViewer`, `CCDPerformanceOverlay` |
 
-### Dependencies Required:
-- `gameContainerRef`, `canvasRef`, `fullscreenContainerRef` (DOM refs)
-- `paddle`, `setPaddle`, `paddleXRef` (paddle control)
-- `balls`, `setBalls` (ball launch detection)
-- `gameState`, `setGameState` (pause/play)
-- `gameLoopRef` (pause/resume loop)
-- `launchAngle`, `setLaunchAngle` (launch control)
-- `fireBullets` (turret firing)
-- `SCALED_CANVAS_WIDTH`, `SCALED_CANVAS_HEIGHT` (scaled dimensions)
-- `bricks`, `nextLevel` (ready state launch)
-- `tutorialActive` (skip input during tutorial)
-- Power-up end times for timer display
-- `musicEnabled`, `setMusicEnabled`, `soundManager` (music toggle)
+### Dependencies Required by Debug System
+- `gameLoopRef` - for debug info and time scale
+- `gameState` / `setGameState` - for pause/resume
+- `balls`, `speedMultiplier` - for substep debug info
+- `paddle`, `setPowerUps`, `setBonusLetters` - for test power-up drops
+- `setLevelSkipped`, `nextLevel` - for level skip
+- `quality`, `setQuality`, `toggleAutoAdjust` - for quality controls
+- `ccdPerformanceRef`, `ccdPerformanceTrackerRef` - for CCD overlay
+- `SCALED_BRICK_WIDTH`, `SCALED_BRICK_HEIGHT` - for substep calculations
+- `powerUpDropCounts`, `extraLifeUsedLevels`, `settings.difficulty`, `level` - for power-up weights overlay
 
 ---
 
-## Proposed Architecture
+## Architecture
 
-### New Files to Create:
+### New Files
 
 ```text
-src/hooks/useGameTouchInput.ts       (~250 lines) - Touch handling & device detection
-src/components/MobileGameControls.tsx (~200 lines) - Mobile-specific UI components
+src/hooks/useGameDebug.ts           (~220 lines) - Debug state, keyboard handling, callbacks
+src/components/GameDebugOverlays.tsx (~180 lines) - All debug overlay rendering
 ```
 
 ---
 
-## File 1: `src/hooks/useGameTouchInput.ts`
+## File 1: `src/hooks/useGameDebug.ts`
 
 ### Purpose
-Centralize all touch input handling, device detection, and mobile-specific gestures.
+Centralize debug state management, keyboard shortcuts, and debug info callbacks.
 
 ### Interface
+
 ```typescript
-interface UseGameTouchInputProps {
+interface UseGameDebugProps {
   // Refs
-  canvasRef: React.RefObject<HTMLCanvasElement>;
-  gameContainerRef: React.RefObject<HTMLDivElement>;
-  fullscreenContainerRef: React.RefObject<HTMLDivElement>;
   gameLoopRef: React.RefObject<FixedStepGameLoop | null>;
-  paddleXRef: React.MutableRefObject<number>;
+  ccdPerformanceRef: React.MutableRefObject<CCDPerformanceData | null>;
+  ccdPerformanceTrackerRef: React.MutableRefObject<CCDPerformanceTracker>;
   
   // Game state
   gameState: GameState;
   setGameState: (state: GameState) => void;
   
-  // Paddle
-  paddle: Paddle | null;
-  setPaddle: React.Dispatch<React.SetStateAction<Paddle | null>>;
-  
-  // Balls
+  // Ball/physics data for debug overlays
   balls: Ball[];
-  launchAngle: number;
-  setLaunchAngle: (angle: number) => void;
-  launchBallAtCurrentAngle: () => void;
+  speedMultiplier: number;
+  setSpeedMultiplier: React.Dispatch<React.SetStateAction<number>>;
+  scaledBrickWidth: number;
+  scaledBrickHeight: number;
   
-  // Turrets
-  fireBullets: (paddle: Paddle) => void;
+  // Paddle for debug power-up drops
+  paddle: Paddle | null;
+  setPowerUps: React.Dispatch<React.SetStateAction<PowerUp[]>>;
+  setBonusLetters: React.Dispatch<React.SetStateAction<BonusLetter[]>>;
   
-  // Scaling
-  scaledCanvasWidth: number;
-  scaledCanvasHeight: number;
-  
-  // Level transitions
-  bricks: Brick[];
+  // Level controls
+  setLevelSkipped: (skipped: boolean) => void;
   nextLevel: () => void;
   
-  // Boss Rush
-  isBossRush: boolean;
-  bossRushStartTime: number | null;
-  setBossRushStartTime: (time: number) => void;
-  
-  // Tutorial
-  tutorialActive: boolean;
+  // Quality controls
+  quality: QualityLevel;
+  setQuality: (quality: QualityLevel) => void;
+  toggleAutoAdjust: () => void;
 }
 
-interface UseGameTouchInputReturn {
-  // Device info
-  isMobileDevice: boolean;
-  isIOSDevice: boolean;
+interface UseGameDebugReturn {
+  // Debug settings (from useDebugSettings)
+  debugSettings: DebugSettings;
+  toggleDebugSetting: (key: keyof DebugSettings) => void;
+  resetDebugSettings: () => void;
   
-  // Fullscreen
-  isFullscreen: boolean;
-  toggleFullscreen: () => Promise<void>;
-  showFullscreenPrompt: boolean;
-  handleFullscreenPromptClick: () => Promise<void>;
+  // Dashboard state
+  showDebugDashboard: boolean;
+  setShowDebugDashboard: (show: boolean) => void;
+  debugDashboardPausedGame: boolean;
   
-  // Touch handlers (for manual attachment if needed)
-  handleTouchStart: (e: TouchEvent) => void;
-  handleTouchMove: (e: TouchEvent) => void;
-  handleTouchEnd: (e: TouchEvent) => void;
+  // Debug info callbacks
+  getSubstepDebugInfo: () => SubstepDebugInfo;
+  getCCDPerformanceData: () => CCDPerformanceDataExtended | null;
   
-  // Mobile glow state
-  getReadyGlow: { opacity: number } | null;
-  setGetReadyGlow: React.Dispatch<React.SetStateAction<{ opacity: number } | null>>;
-  getReadyGlowStartTimeRef: React.RefObject<number | null>;
+  // Computed values
+  activeDebugFeatureCount: number;
+  currentFps: number;
   
-  // Layout state
-  headerVisible: boolean;
-  framesVisible: boolean;
-  titleVisible: boolean;
-  gameScale: number;
+  // Keyboard handler (to be registered externally)
+  handleDebugKeyPress: (e: KeyboardEvent) => boolean; // returns true if handled
 }
 ```
 
 ### Implementation Sections
 
-1. **Device Detection** (~15 lines)
-   - `isMobileDevice` and `isIOSDevice` detection
-   - User agent parsing
+1. **State Management** (~20 lines)
+   - Wrap `useDebugSettings()` hook
+   - `showDebugDashboard`, `debugDashboardPausedGame` state
+   - `currentFps` state
 
-2. **Touch Refs** (~10 lines)
-   - `activeTouchRef`, `secondTouchRef` for multi-touch tracking
+2. **Active Feature Counter** (~15 lines)
+   - `calculateActiveDebugFeatures()` helper function
 
-3. **Touch Handlers** (~120 lines)
-   - `handleTouchStart`: Game start, paddle position, launch angle, turret fire
-   - `handleTouchMove`: Paddle control with zone mapping, launch angle adjustment
-   - `handleTouchEnd`: Clear touch tracking
+3. **Dashboard Pause/Resume Effect** (~20 lines)
+   - Auto-pause when dashboard opens
+   - Auto-resume when dashboard closes
 
-4. **Touch Event Registration Effect** (~20 lines)
-   - Attach/detach touch listeners to canvas
+4. **Frame Profiler Toggle Effect** (~10 lines)
+   - Enable/disable `frameProfiler` based on settings
 
-5. **Fullscreen Management** (~80 lines)
-   - `toggleFullscreen()` with iOS CSS fallback
-   - Fullscreen change event listeners
-   - Auto-fullscreen on game start
-   - `handleFullscreenPromptClick()` for resume
+5. **Debug Logger Initialization Effect** (~15 lines)
+   - `debugLogger.intercept()` on mount
 
-6. **iOS Gesture Prevention Effect** (~15 lines)
-   - Document-level gesturestart/gesturechange prevention
+6. **getSubstepDebugInfo Callback** (~25 lines)
+   - Calculate substeps, ball speed, collision info
 
-7. **Swipe Gesture Integration** (~15 lines)
-   - `useSwipeGesture` for swipe-to-pause
+7. **getCCDPerformanceData Callback** (~30 lines)
+   - Build extended performance data with rolling averages and peaks
 
-8. **Mobile Ball Glow Animation Effect** (~40 lines)
-   - `getReadyGlow` state and animation loop
-
-9. **Layout Adaptation Effect** (~60 lines)
-   - Header/frame visibility based on viewport and fullscreen
+8. **handleDebugKeyPress Handler** (~80 lines)
+   - All debug keyboard shortcuts (Tab, L, W, C, H, X, Z, §, V, Q, [, ], 0, +, 1-9, R, E, U)
+   - Returns `true` if key was handled (to prevent event bubbling in Game.tsx)
 
 ---
 
-## File 2: `src/components/MobileGameControls.tsx`
+## File 2: `src/components/GameDebugOverlays.tsx`
 
 ### Purpose
-Render all mobile-specific UI controls in a single component.
+Render all debug overlays in a single component, simplifying Game.tsx JSX.
 
 ### Props Interface
+
 ```typescript
-interface MobileGameControlsProps {
-  // Device info
-  isMobileDevice: boolean;
-  isIOSDevice: boolean;
+interface GameDebugOverlaysProps {
+  // From useGameDebug
+  debugSettings: DebugSettings;
+  toggleDebugSetting: (key: keyof DebugSettings) => void;
+  resetDebugSettings: () => void;
+  showDebugDashboard: boolean;
+  setShowDebugDashboard: (show: boolean) => void;
+  activeDebugFeatureCount: number;
+  getSubstepDebugInfo: () => SubstepDebugInfo;
+  getCCDPerformanceData: () => CCDPerformanceDataExtended | null;
   
-  // Game state
-  gameState: GameState;
-  setGameState: (state: GameState) => void;
+  // Game loop ref for GameLoopDebugOverlay
   gameLoopRef: React.RefObject<FixedStepGameLoop | null>;
   
-  // Music control
-  musicEnabled: boolean;
-  setMusicEnabled: (enabled: boolean) => void;
+  // Power-up weights overlay data
+  powerUpDropCounts: Partial<Record<PowerUpType, number>>;
+  difficulty: string;
+  currentLevel: number;
+  extraLifeUsedLevels: Set<number>;
   
-  // Fullscreen
-  isFullscreen: boolean;
-  showFullscreenPrompt: boolean;
-  onFullscreenPromptClick: () => void;
+  // Quality indicator
+  quality: QualityLevel;
+  autoAdjustEnabled: boolean;
+  currentFps: number;
   
-  // Power-up timers
-  bossStunnerEndTime: number | null;
-  reflectShieldEndTime: number | null;
-  homingBallEndTime: number | null;
-  fireballEndTime: number | null;
-  paddle: Paddle | null;
-  
-  // Bonus letter tutorial
-  bonusLetterFloatingText: { active: boolean; startTime: number } | null;
-  setBonusLetterFloatingText: (text: { active: boolean; startTime: number } | null) => void;
-  bonusLettersLength: number;
-  
-  // Debug (optional)
-  showDebugDashboard?: boolean;
-  setShowDebugDashboard?: (show: boolean) => void;
-  enableDebugFeatures?: boolean;
+  // Device type (for mobile debug button position)
+  isMobileDevice: boolean;
 }
 ```
 
 ### Structure
+
 ```tsx
-export const MobileGameControls = (props: MobileGameControlsProps) => {
-  if (!props.isMobileDevice) return null;
+export const GameDebugOverlays = (props: GameDebugOverlaysProps) => {
+  if (!ENABLE_DEBUG_FEATURES) return null;
   
   return (
     <>
-      {/* Fullscreen Prompt Overlay */}
-      {props.showFullscreenPrompt && (
-        <div className="fixed inset-0 z-50 ...">
-          ...
-        </div>
+      {/* Debug Mode Indicator - top right */}
+      {props.debugSettings.showDebugModeIndicator && (
+        <DebugModeIndicator
+          activeFeatureCount={props.activeDebugFeatureCount}
+          onToggle={() => props.toggleDebugSetting("showDebugModeIndicator")}
+        />
       )}
       
-      {/* Pause Button */}
-      {props.gameState === "playing" && (
-        <button className="fixed left-4 top-[116px] ...">
-          <Pause ... />
-        </button>
+      {/* Debug Dashboard Modal */}
+      <DebugDashboard
+        isOpen={props.showDebugDashboard}
+        onClose={() => props.setShowDebugDashboard(false)}
+        settings={props.debugSettings}
+        onToggle={props.toggleDebugSetting}
+        onReset={props.resetDebugSettings}
+      />
+      
+      {/* Quality Indicator - always visible in debug mode */}
+      <QualityIndicator
+        quality={props.quality}
+        autoAdjustEnabled={props.autoAdjustEnabled}
+        fps={props.currentFps}
+      />
+      
+      {/* Substep Debug Overlay */}
+      <SubstepDebugOverlay
+        getDebugInfo={props.getSubstepDebugInfo}
+        visible={props.debugSettings.showSubstepDebug}
+      />
+      
+      {/* Frame Profiler Overlay */}
+      <FrameProfilerOverlay visible={props.debugSettings.showFrameProfiler} />
+      
+      {/* Collision History Viewer */}
+      {props.debugSettings.showCollisionHistory && (
+        <CollisionHistoryViewer onClose={() => props.toggleDebugSetting("showCollisionHistory")} />
       )}
       
-      {/* Music Toggle Button */}
-      {props.gameState === "playing" && (
-        <button className="fixed right-4 top-[116px] ...">
-          {props.musicEnabled ? <Volume2 /> : <VolumeX />}
-        </button>
+      {/* CCD Performance Profiler */}
+      <CCDPerformanceOverlay
+        getPerformanceData={props.getCCDPerformanceData}
+        visible={props.debugSettings.showCCDPerformance}
+      />
+    </>
+  );
+};
+```
+
+### Additional Inline Overlays Component
+
+A separate component for overlays that must render **inside** the scaled game container:
+
+```typescript
+interface GameDebugInlineOverlaysProps {
+  debugSettings: DebugSettings;
+  gameLoopRef: React.RefObject<FixedStepGameLoop | null>;
+  powerUpDropCounts: Partial<Record<PowerUpType, number>>;
+  difficulty: string;
+  currentLevel: number;
+  extraLifeUsedLevels: Set<number>;
+}
+
+export const GameDebugInlineOverlays = (props: GameDebugInlineOverlaysProps) => {
+  if (!ENABLE_DEBUG_FEATURES) return null;
+  
+  return (
+    <>
+      {/* Game Loop Debug - inside scaled container */}
+      {props.debugSettings.showGameLoopDebug && props.gameLoopRef.current && (
+        <GameLoopDebugOverlay
+          getDebugInfo={() => props.gameLoopRef.current?.getDebugInfo() ?? {...}}
+          visible={props.debugSettings.showGameLoopDebug}
+        />
       )}
       
-      {/* Power-Up Timers */}
-      {(props.bossStunnerEndTime || ...) && (
-        <div className="flex justify-center ...">
-          {/* STUN, REFLECT, MAGNET, FIREBALL timers */}
-        </div>
-      )}
-      
-      {/* Bonus Letter Tutorial */}
-      {props.bonusLetterFloatingText?.active && ...}
-      
-      {/* Mobile Debug Button (conditional) */}
-      {props.enableDebugFeatures && !props.showDebugDashboard && (
-        <button className="fixed right-4 top-1/2 ...">🐛</button>
+      {/* Power-Up Weights - inside scaled container */}
+      {props.debugSettings.showPowerUpWeights && (
+        <PowerUpWeightsOverlay
+          dropCounts={props.powerUpDropCounts}
+          difficulty={props.difficulty}
+          currentLevel={props.currentLevel}
+          extraLifeUsedLevels={props.extraLifeUsedLevels}
+          visible={props.debugSettings.showPowerUpWeights}
+        />
       )}
     </>
   );
@@ -265,123 +281,162 @@ export const MobileGameControls = (props: MobileGameControlsProps) => {
 ## Changes to Game.tsx
 
 ### 1. Update Imports
+
 **Remove:**
 ```typescript
-import { useSwipeGesture } from "@/hooks/useSwipeGesture";
-// (internal touch handler definitions removed)
+import { GameLoopDebugOverlay } from "./GameLoopDebugOverlay";
+import { SubstepDebugOverlay } from "./SubstepDebugOverlay";
+import { PowerUpWeightsOverlay } from "./PowerUpWeightsOverlay";
+import { CollisionHistoryViewer } from "./CollisionHistoryViewer";
+import { CCDPerformanceOverlay, CCDPerformanceData } from "./CCDPerformanceOverlay";
+import { collisionHistory } from "@/utils/collisionHistory";
+import { DebugDashboard } from "./DebugDashboard";
+import { DebugModeIndicator } from "./DebugModeIndicator";
+import { useDebugSettings } from "@/hooks/useDebugSettings";
+import { FrameProfilerOverlay } from "./FrameProfilerOverlay";
+import { debugLogger } from "@/utils/debugLogger";
 ```
 
 **Add:**
 ```typescript
-import { useGameTouchInput } from "@/hooks/useGameTouchInput";
-import { MobileGameControls } from "./MobileGameControls";
+import { useGameDebug } from "@/hooks/useGameDebug";
+import { GameDebugOverlays, GameDebugInlineOverlays } from "./GameDebugOverlays";
+import type { CCDPerformanceData } from "./CCDPerformanceOverlay";
 ```
 
-### 2. Replace Device Detection & Touch State (~30 lines removed)
-**Remove:**
-```typescript
-const [isMobileDevice] = useState(() => { ... });
-const [isIOSDevice] = useState(() => { ... });
-const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
-const [isFullscreen, setIsFullscreen] = useState(false);
-const [headerVisible, setHeaderVisible] = useState(true);
-const [framesVisible, setFramesVisible] = useState(true);
-const [titleVisible, setTitleVisible] = useState(true);
-const [gameScale, setGameScale] = useState(1);
-const [getReadyGlow, setGetReadyGlow] = useState<{ opacity: number } | null>(null);
-const getReadyGlowStartTimeRef = useRef<number | null>(null);
-const activeTouchRef = useRef<number | null>(null);
-const secondTouchRef = useRef<number | null>(null);
-```
+### 2. Replace Debug State Block (lines 510-541)
+
+**Remove:** ~30 lines of debug state declarations
 
 **Add:**
 ```typescript
+// CCD performance tracking refs (needed by Game.tsx for physics)
+const ccdPerformanceRef = useRef<CCDPerformanceData | null>(null);
+const ccdPerformanceTrackerRef = useRef<CCDPerformanceTracker>(new CCDPerformanceTracker());
+
+// Debug system hook
 const {
-  isMobileDevice,
-  isIOSDevice,
-  isFullscreen,
-  toggleFullscreen,
-  showFullscreenPrompt,
-  handleFullscreenPromptClick,
-  handleTouchStart,
-  handleTouchMove,
-  handleTouchEnd,
-  getReadyGlow,
-  setGetReadyGlow,
-  getReadyGlowStartTimeRef,
-  headerVisible,
-  framesVisible,
-  titleVisible,
-  gameScale,
-} = useGameTouchInput({
-  canvasRef,
-  gameContainerRef,
-  fullscreenContainerRef,
+  debugSettings,
+  toggleDebugSetting,
+  resetDebugSettings,
+  showDebugDashboard,
+  setShowDebugDashboard,
+  debugDashboardPausedGame,
+  getSubstepDebugInfo,
+  getCCDPerformanceData,
+  activeDebugFeatureCount,
+  currentFps,
+  handleDebugKeyPress,
+} = useGameDebug({
   gameLoopRef,
-  paddleXRef,
+  ccdPerformanceRef,
+  ccdPerformanceTrackerRef,
   gameState,
   setGameState,
-  paddle,
-  setPaddle,
   balls,
-  launchAngle,
-  setLaunchAngle,
-  launchBallAtCurrentAngle,
-  fireBullets,
-  scaledCanvasWidth: SCALED_CANVAS_WIDTH,
-  scaledCanvasHeight: SCALED_CANVAS_HEIGHT,
-  bricks,
+  speedMultiplier,
+  setSpeedMultiplier,
+  scaledBrickWidth: SCALED_BRICK_WIDTH,
+  scaledBrickHeight: SCALED_BRICK_HEIGHT,
+  paddle,
+  setPowerUps,
+  setBonusLetters,
+  setLevelSkipped,
   nextLevel,
-  isBossRush,
-  bossRushStartTime,
-  setBossRushStartTime,
-  tutorialActive,
+  quality,
+  setQuality,
+  toggleAutoAdjust,
 });
 ```
 
-### 3. Remove Touch Handler Definitions (lines 2210-2410)
-Move `handleTouchStart`, `handleTouchMove`, `handleTouchEnd` to hook (~200 lines).
+### 3. Remove Effects (lines 544-571, 816-825)
 
-### 4. Remove Effects
-- Mobile ball glow animation effect (lines 711-744)
-- Swipe gesture integration (lines 1410-1425)
-- Fullscreen change listener (lines 8487-8513)
-- Auto-fullscreen effect (lines 8515-8533)
-- iOS gesture prevention (lines 8547-8564)
-- Layout adaptation effect (lines 8566-8661)
-- `toggleFullscreen` function (lines 8422-8485)
-- `handleFullscreenPromptClick` (lines 8662-8670)
+Move to `useGameDebug` hook:
+- Frame profiler enable/disable effect
+- Dashboard pause/resume effect
+- Debug logger initialization effect
 
-### 5. Replace Mobile UI JSX Blocks
-**Remove:** Lines 9305-9369 (pause button, music toggle), 9393-9411 (debug button), 8686-8697 (fullscreen prompt), 9558-9653 (power-up timers, bonus text)
+### 4. Simplify Keyboard Handler (lines 2547-2718)
 
-**Add:**
+**Replace** the debug keyboard block with:
+```typescript
+if (ENABLE_DEBUG_FEATURES) {
+  // Delegate to debug hook - returns true if handled
+  if (handleDebugKeyPress(e)) {
+    return; // Don't process further if debug handled it
+  }
+}
+```
+
+### 5. Remove getSubstepDebugInfo (lines 2773-2799)
+
+This callback is now provided by `useGameDebug`.
+
+### 6. Replace Inline Debug JSX (lines 8976-9005)
+
+**Replace with:**
 ```tsx
-{/* Mobile Controls - All mobile UI in one component */}
-<MobileGameControls
-  isMobileDevice={isMobileDevice}
-  isIOSDevice={isIOSDevice}
-  gameState={gameState}
-  setGameState={setGameState}
+{/* Debug Inline Overlays - Inside scaled container */}
+<GameDebugInlineOverlays
+  debugSettings={debugSettings}
   gameLoopRef={gameLoopRef}
-  musicEnabled={musicEnabled}
-  setMusicEnabled={setMusicEnabled}
-  isFullscreen={isFullscreen}
-  showFullscreenPrompt={showFullscreenPrompt}
-  onFullscreenPromptClick={handleFullscreenPromptClick}
-  bossStunnerEndTime={bossStunnerEndTime}
-  reflectShieldEndTime={reflectShieldEndTime}
-  homingBallEndTime={homingBallEndTime}
-  fireballEndTime={fireballEndTime}
-  paddle={paddle}
-  bonusLetterFloatingText={bonusLetterFloatingText}
-  setBonusLetterFloatingText={setBonusLetterFloatingText}
-  bonusLettersLength={bonusLetters.length}
-  showDebugDashboard={showDebugDashboard}
-  setShowDebugDashboard={setShowDebugDashboard}
-  enableDebugFeatures={ENABLE_DEBUG_FEATURES}
+  powerUpDropCounts={powerUpDropCounts}
+  difficulty={settings.difficulty}
+  currentLevel={level}
+  extraLifeUsedLevels={extraLifeUsedLevels}
 />
 ```
+
+### 7. Replace Debug UI JSX Block (lines 9325-9391)
+
+**Replace with:**
+```tsx
+{/* Debug Overlays - All debug UI in one component */}
+<GameDebugOverlays
+  debugSettings={debugSettings}
+  toggleDebugSetting={toggleDebugSetting}
+  resetDebugSettings={resetDebugSettings}
+  showDebugDashboard={showDebugDashboard}
+  setShowDebugDashboard={setShowDebugDashboard}
+  activeDebugFeatureCount={activeDebugFeatureCount}
+  getSubstepDebugInfo={getSubstepDebugInfo}
+  getCCDPerformanceData={getCCDPerformanceData}
+  gameLoopRef={gameLoopRef}
+  powerUpDropCounts={powerUpDropCounts}
+  difficulty={settings.difficulty}
+  currentLevel={level}
+  extraLifeUsedLevels={extraLifeUsedLevels}
+  quality={quality}
+  autoAdjustEnabled={autoAdjustEnabled}
+  currentFps={currentFps}
+  isMobileDevice={isMobileDevice}
+/>
+```
+
+---
+
+## Technical Details
+
+### Keyboard Handler Architecture
+
+The `handleDebugKeyPress` function returns a boolean:
+- `true` = key was handled by debug system, stop propagation
+- `false` = key not handled, let Game.tsx process it
+
+This allows clean separation while maintaining existing behavior.
+
+### Effect Dependencies
+
+The hook internally manages its own effects:
+- Dashboard pause/resume watches `showDebugDashboard`, `gameState`, `debugDashboardPausedGame`
+- Frame profiler watches `debugSettings.showFrameProfiler`
+- Debug logger runs once on mount
+
+### Performance Considerations
+
+- All debug code paths gated by `ENABLE_DEBUG_FEATURES`
+- Callbacks wrapped in `useCallback` for stable references
+- Effects properly cleaned up on unmount
 
 ---
 
@@ -389,62 +444,64 @@ Move `handleTouchStart`, `handleTouchMove`, `handleTouchEnd` to hook (~200 lines
 
 | Section | Lines Removed |
 |---------|---------------|
-| Device detection state | ~15 |
-| Touch handler definitions | ~200 |
-| Touch event registration | ~20 |
-| Fullscreen logic & effects | ~140 |
-| iOS gesture prevention | ~20 |
-| Layout adaptation effect | ~100 |
-| Mobile UI JSX (pause, music, timers) | ~150 |
-| Mobile glow animation | ~35 |
-| Swipe gesture integration | ~15 |
-| **Total** | **~695 lines** |
+| Debug imports | ~12 |
+| Debug state declarations | ~30 |
+| Debug effects | ~35 |
+| Debug keyboard block | ~170 |
+| getSubstepDebugInfo | ~25 |
+| Debug inline JSX | ~30 |
+| Debug UI JSX block | ~65 |
+| **Total** | **~367 lines** |
 
 ---
 
 ## Implementation Order
 
-1. Create `src/hooks/useGameTouchInput.ts` with all touch handling and device detection
-2. Create `src/components/MobileGameControls.tsx` with all mobile UI
+1. Create `src/hooks/useGameDebug.ts` with all debug state, effects, and keyboard handling
+2. Create `src/components/GameDebugOverlays.tsx` with all overlay rendering
 3. Update `Game.tsx` imports
-4. Replace state declarations with `useGameTouchInput()` hook call
-5. Remove migrated touch handlers and effects
-6. Replace mobile UI JSX with `<MobileGameControls />`
-7. Test all mobile functionality
+4. Replace debug state with `useGameDebug()` hook call
+5. Integrate `handleDebugKeyPress` into existing keyboard handler
+6. Remove migrated effects and callbacks
+7. Replace JSX debug blocks with new components
+8. Test all debug features work correctly
 
 ---
 
 ## Testing Checklist
 
-### Touch Input
-- [ ] Single tap starts game from "ready" state
-- [ ] Single tap launches ball when waiting
-- [ ] Touch movement controls paddle position
-- [ ] Touch zone mapping (15%-85%) works correctly
-- [ ] Two-finger touch adjusts launch angle
-- [ ] Two-finger tap fires turrets (when equipped)
-- [ ] Touch controls disabled during tutorial
+### Dashboard & Indicator
+- [ ] § key opens/closes debug dashboard
+- [ ] Dashboard auto-pauses game when opened
+- [ ] Dashboard auto-resumes game when closed (if it paused it)
+- [ ] Debug mode indicator shows with active feature count
+- [ ] X button on indicator hides it
 
-### Fullscreen
-- [ ] Auto-enters fullscreen on game start (non-iOS)
-- [ ] iOS uses CSS-based fullscreen fallback
-- [ ] Exiting fullscreen pauses game and shows prompt
-- [ ] Tapping prompt resumes fullscreen and game
-- [ ] F key still toggles fullscreen on desktop
+### Keyboard Shortcuts
+- [ ] Tab toggles substep debug overlay
+- [ ] L toggles game loop debug overlay
+- [ ] W toggles power-up weights overlay
+- [ ] H toggles collision history viewer
+- [ ] V toggles CCD performance profiler
+- [ ] C toggles collision logging
+- [ ] X exports collision history to JSON
+- [ ] Z downloads debug logs
+- [ ] [ and ] adjust time scale
+- [ ] Q cycles quality levels
+- [ ] Shift+Q toggles auto-adjust
+- [ ] 0 skips level (disqualifies from high scores)
+- [ ] + increases ball speed
+- [ ] 1-8 drop regular power-ups
+- [ ] 9, R, E drop boss power-ups
+- [ ] U drops random bonus letter
 
-### Mobile UI
-- [ ] Pause button visible and functional during gameplay
-- [ ] Music toggle button works correctly
-- [ ] Power-up timers display with correct colors/animations
-- [ ] Bonus letter tutorial appears on mobile
-- [ ] Debug button appears (when debug features enabled)
+### Overlays
+- [ ] All overlays render in correct positions
+- [ ] Inline overlays (GameLoopDebug, PowerUpWeights) inside scaled container
+- [ ] Fixed overlays (Dashboard, Indicator, etc.) positioned correctly
 
-### Swipe Gesture
-- [ ] Swipe right from left edge pauses game
-- [ ] Swipe gesture blocked on iOS Safari (prevents back navigation)
-
-### Layout
-- [ ] Frames hide in mobile fullscreen mode
-- [ ] Header/title adapt to available space
-- [ ] Game scales appropriately on different screen sizes
+### Edge Cases
+- [ ] Debug features fully disabled when `ENABLE_DEBUG_FEATURES = false`
+- [ ] No console errors during gameplay
+- [ ] Debug keyboard shortcuts don't interfere with game controls
 
