@@ -8,6 +8,8 @@
 // - currentTick: timestamp (ms) for paddle cooldown
 // - lastPaddleHitTime: timestamp of last paddle hit (ms)
 
+import { brickSpatialHash } from './spatialHash';
+
 export type Vec2 = { x: number; y: number };
 
 export type Ball = {
@@ -185,19 +187,38 @@ Assumes uniform bricks array on grid with known BRICK_WIDTH/HEIGHT; compute cand
 If user supplies tilemapQuery in config, it will be used instead.
 brickCount: optional limit on how many bricks to check (avoids .slice() overhead)
 */
+/**
+ * Default tilemap query - uses spatial hash for O(k) broadphase when available,
+ * falls back to linear scan for bosses/enemies added dynamically to bricks array
+ */
 function defaultTilemapQuery(bricks: Brick[] | undefined, swept: { x: number; y: number; w: number; h: number }, brickCount?: number) {
   if (!bricks) return [];
-  // simple filter by AABB overlap
-  const res: Brick[] = [];
+  
+  // Use spatial hash for main brick collision (fast path)
+  // Only query spatial hash if it has been populated (brickCount > 0 indicates bricks exist)
+  const spatialHashResult = brickSpatialHash.query(swept);
+  
+  // Also check for dynamically added entities (bosses, enemies with negative/large IDs)
+  // These are added to the bricks array but not in the spatial hash
   const limit = brickCount ?? bricks.length;
+  const dynamicEntities: Brick[] = [];
+  
   for (let i = 0; i < limit; i++) {
     const b = bricks[i];
-    if (!b.visible) continue;
-    if (b.x + b.width < swept.x || b.x > swept.x + swept.w || b.y + b.height < swept.y || b.y > swept.y + swept.h)
-      continue;
-    res.push(b);
+    // Dynamic entities have id < 0 (bosses) or id >= 100000 (enemies)
+    if (b.id < 0 || b.id >= 100000) {
+      if (!b.visible) continue;
+      if (b.x + b.width < swept.x || b.x > swept.x + swept.w || b.y + b.height < swept.y || b.y > swept.y + swept.h)
+        continue;
+      dynamicEntities.push(b);
+    }
   }
-  return res;
+  
+  // Return spatial hash results + any dynamic entities
+  if (dynamicEntities.length === 0) {
+    return spatialHashResult;
+  }
+  return [...spatialHashResult, ...dynamicEntities];
 }
 
 /*
