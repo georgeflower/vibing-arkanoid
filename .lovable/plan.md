@@ -1,507 +1,602 @@
 
-
-# Debug System Extraction Plan
+# Performance Optimization Implementation Plan
 
 ## Overview
-Extract the debug system from `Game.tsx` (~400+ lines of debug-related code) into a dedicated hook (`useGameDebug`) and component (`GameDebugOverlays`), reducing Game.tsx complexity while maintaining all debug functionality.
+This plan covers three high-impact performance optimizations:
+1. **#1 Offscreen Canvas for Brick Rendering** - Cache static bricks to reduce per-frame draw calls
+2. **#3 Spatial Hashing for Collision Detection** - Reduce broadphase collision checks from O(n) to O(k)
+3. **#4 Extended Object Pooling** - Expand pooling to PowerUps, Bullets, Enemies, Bombs
 
-## Current State Analysis
-
-### Debug-Related Code in Game.tsx
-
-| Location | Lines | Description |
-|----------|-------|-------------|
-| Imports | 28-45 | 14 debug-related imports |
-| State | 512-540 | `ccdPerformanceRef`, `frameCountRef`, `currentFps`, `showDebugDashboard`, `debugDashboardPausedGame`, `useDebugSettings()`, `calculateActiveDebugFeatures()` |
-| Effects | 544-571 | Frame profiler toggle effect, dashboard pause/resume effect |
-| Logger Init | 816-825 | `debugLogger.intercept()` initialization |
-| Keyboard | 2547-2718 | ~170 lines of debug keyboard shortcuts (Tab, L, W, C, H, X, Z, §, V, Q, 0, +, 1-9, R, E, U, [, ]) |
-| Callback | 2773-2799 | `getSubstepDebugInfo()` function (~25 lines) |
-| JSX Inline | 8976-9005 | `GameLoopDebugOverlay`, `PowerUpWeightsOverlay` inside scaled container |
-| JSX Block | 9325-9391 | `DebugModeIndicator`, `DebugDashboard`, `QualityIndicator`, `SubstepDebugOverlay`, `FrameProfilerOverlay`, `CollisionHistoryViewer`, `CCDPerformanceOverlay` |
-
-### Dependencies Required by Debug System
-- `gameLoopRef` - for debug info and time scale
-- `gameState` / `setGameState` - for pause/resume
-- `balls`, `speedMultiplier` - for substep debug info
-- `paddle`, `setPowerUps`, `setBonusLetters` - for test power-up drops
-- `setLevelSkipped`, `nextLevel` - for level skip
-- `quality`, `setQuality`, `toggleAutoAdjust` - for quality controls
-- `ccdPerformanceRef`, `ccdPerformanceTrackerRef` - for CCD overlay
-- `SCALED_BRICK_WIDTH`, `SCALED_BRICK_HEIGHT` - for substep calculations
-- `powerUpDropCounts`, `extraLifeUsedLevels`, `settings.difficulty`, `level` - for power-up weights overlay
+Combined, these optimizations target the two largest performance bottlenecks: rendering and physics.
 
 ---
 
-## Architecture
+## Optimization #1: Offscreen Canvas for Brick Rendering
 
-### New Files
+### Problem Analysis
+Currently, `GameCanvas.tsx` redraws **all visible bricks every frame** (lines 420-603). Each brick requires:
+- Fill rect for base color
+- 2-4 highlight/shadow rects
+- Metal bricks: rivet pattern (multiple arc calls) + diagonal hatching
+- Explosive bricks: dashed warning pattern + emoji text
+- Normal bricks: 16-bit pixel pattern loop
 
-```text
-src/hooks/useGameDebug.ts           (~220 lines) - Debug state, keyboard handling, callbacks
-src/components/GameDebugOverlays.tsx (~180 lines) - All debug overlay rendering
-```
+With 182 bricks (14 rows × 13 cols), this creates **1,000+ draw calls per frame**.
 
----
+### Solution: Brick Layer Caching
+Pre-render bricks to an offscreen canvas, only invalidating when bricks change (destruction).
 
-## File 1: `src/hooks/useGameDebug.ts`
-
-### Purpose
-Centralize debug state management, keyboard shortcuts, and debug info callbacks.
-
-### Interface
+### New File: `src/utils/brickLayerCache.ts`
 
 ```typescript
-interface UseGameDebugProps {
-  // Refs
-  gameLoopRef: React.RefObject<FixedStepGameLoop | null>;
-  ccdPerformanceRef: React.MutableRefObject<CCDPerformanceData | null>;
-  ccdPerformanceTrackerRef: React.MutableRefObject<CCDPerformanceTracker>;
-  
-  // Game state
-  gameState: GameState;
-  setGameState: (state: GameState) => void;
-  
-  // Ball/physics data for debug overlays
-  balls: Ball[];
-  speedMultiplier: number;
-  setSpeedMultiplier: React.Dispatch<React.SetStateAction<number>>;
-  scaledBrickWidth: number;
-  scaledBrickHeight: number;
-  
-  // Paddle for debug power-up drops
-  paddle: Paddle | null;
-  setPowerUps: React.Dispatch<React.SetStateAction<PowerUp[]>>;
-  setBonusLetters: React.Dispatch<React.SetStateAction<BonusLetter[]>>;
-  
-  // Level controls
-  setLevelSkipped: (skipped: boolean) => void;
-  nextLevel: () => void;
-  
-  // Quality controls
-  quality: QualityLevel;
-  setQuality: (quality: QualityLevel) => void;
-  toggleAutoAdjust: () => void;
+interface BrickLayerCache {
+  canvas: OffscreenCanvas | HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  version: number;  // Incremented when bricks change
+  lastBrickHash: string;  // Quick dirty check
+  width: number;
+  height: number;
 }
 
-interface UseGameDebugReturn {
-  // Debug settings (from useDebugSettings)
-  debugSettings: DebugSettings;
-  toggleDebugSetting: (key: keyof DebugSettings) => void;
-  resetDebugSettings: () => void;
+export class BrickRenderer {
+  private cache: BrickLayerCache | null = null;
+  private crackedImages: HTMLImageElement[] = [];
   
-  // Dashboard state
-  showDebugDashboard: boolean;
-  setShowDebugDashboard: (show: boolean) => void;
-  debugDashboardPausedGame: boolean;
+  initialize(width: number, height: number): void;
+  setCrackedImages(img1: HTMLImageElement, img2: HTMLImageElement, img3: HTMLImageElement): void;
   
-  // Debug info callbacks
-  getSubstepDebugInfo: () => SubstepDebugInfo;
-  getCCDPerformanceData: () => CCDPerformanceDataExtended | null;
+  // Returns true if cache was rebuilt
+  updateCache(
+    bricks: Brick[],
+    qualitySettings: QualitySettings
+  ): boolean;
   
-  // Computed values
-  activeDebugFeatureCount: number;
-  currentFps: number;
+  // Draw cached layer to main canvas
+  drawToCanvas(ctx: CanvasRenderingContext2D): void;
   
-  // Keyboard handler (to be registered externally)
-  handleDebugKeyPress: (e: KeyboardEvent) => boolean; // returns true if handled
+  // Force rebuild on next frame
+  invalidate(): void;
+  
+  // Calculate hash of brick state for dirty checking
+  private calculateBrickHash(bricks: Brick[]): string;
+  
+  // Render single brick to offscreen context
+  private renderBrick(
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    brick: Brick,
+    allBricks: Brick[],
+    qualitySettings: QualitySettings
+  ): void;
 }
+
+export const brickRenderer = new BrickRenderer();
 ```
 
-### Implementation Sections
-
-1. **State Management** (~20 lines)
-   - Wrap `useDebugSettings()` hook
-   - `showDebugDashboard`, `debugDashboardPausedGame` state
-   - `currentFps` state
-
-2. **Active Feature Counter** (~15 lines)
-   - `calculateActiveDebugFeatures()` helper function
-
-3. **Dashboard Pause/Resume Effect** (~20 lines)
-   - Auto-pause when dashboard opens
-   - Auto-resume when dashboard closes
-
-4. **Frame Profiler Toggle Effect** (~10 lines)
-   - Enable/disable `frameProfiler` based on settings
-
-5. **Debug Logger Initialization Effect** (~15 lines)
-   - `debugLogger.intercept()` on mount
-
-6. **getSubstepDebugInfo Callback** (~25 lines)
-   - Calculate substeps, ball speed, collision info
-
-7. **getCCDPerformanceData Callback** (~30 lines)
-   - Build extended performance data with rolling averages and peaks
-
-8. **handleDebugKeyPress Handler** (~80 lines)
-   - All debug keyboard shortcuts (Tab, L, W, C, H, X, Z, §, V, Q, [, ], 0, +, 1-9, R, E, U)
-   - Returns `true` if key was handled (to prevent event bubbling in Game.tsx)
-
----
-
-## File 2: `src/components/GameDebugOverlays.tsx`
-
-### Purpose
-Render all debug overlays in a single component, simplifying Game.tsx JSX.
-
-### Props Interface
+### Hash Calculation Strategy
+Instead of stringifying all bricks, use a lightweight hash:
 
 ```typescript
-interface GameDebugOverlaysProps {
-  // From useGameDebug
-  debugSettings: DebugSettings;
-  toggleDebugSetting: (key: keyof DebugSettings) => void;
-  resetDebugSettings: () => void;
-  showDebugDashboard: boolean;
-  setShowDebugDashboard: (show: boolean) => void;
-  activeDebugFeatureCount: number;
-  getSubstepDebugInfo: () => SubstepDebugInfo;
-  getCCDPerformanceData: () => CCDPerformanceDataExtended | null;
-  
-  // Game loop ref for GameLoopDebugOverlay
-  gameLoopRef: React.RefObject<FixedStepGameLoop | null>;
-  
-  // Power-up weights overlay data
-  powerUpDropCounts: Partial<Record<PowerUpType, number>>;
-  difficulty: string;
-  currentLevel: number;
-  extraLifeUsedLevels: Set<number>;
-  
-  // Quality indicator
-  quality: QualityLevel;
-  autoAdjustEnabled: boolean;
-  currentFps: number;
-  
-  // Device type (for mobile debug button position)
-  isMobileDevice: boolean;
+private calculateBrickHash(bricks: Brick[]): string {
+  // Only track visibility and hit state - these are what change during gameplay
+  let hash = 0;
+  for (let i = 0; i < bricks.length; i++) {
+    const b = bricks[i];
+    if (b.visible) {
+      hash = (hash * 31 + b.id) | 0;
+      hash = (hash * 31 + b.hitsRemaining) | 0;
+    }
+  }
+  return hash.toString(36);
 }
 ```
 
-### Structure
+### Changes to GameCanvas.tsx
 
-```tsx
-export const GameDebugOverlays = (props: GameDebugOverlaysProps) => {
-  if (!ENABLE_DEBUG_FEATURES) return null;
-  
-  return (
-    <>
-      {/* Debug Mode Indicator - top right */}
-      {props.debugSettings.showDebugModeIndicator && (
-        <DebugModeIndicator
-          activeFeatureCount={props.activeDebugFeatureCount}
-          onToggle={() => props.toggleDebugSetting("showDebugModeIndicator")}
-        />
-      )}
-      
-      {/* Debug Dashboard Modal */}
-      <DebugDashboard
-        isOpen={props.showDebugDashboard}
-        onClose={() => props.setShowDebugDashboard(false)}
-        settings={props.debugSettings}
-        onToggle={props.toggleDebugSetting}
-        onReset={props.resetDebugSettings}
-      />
-      
-      {/* Quality Indicator - always visible in debug mode */}
-      <QualityIndicator
-        quality={props.quality}
-        autoAdjustEnabled={props.autoAdjustEnabled}
-        fps={props.currentFps}
-      />
-      
-      {/* Substep Debug Overlay */}
-      <SubstepDebugOverlay
-        getDebugInfo={props.getSubstepDebugInfo}
-        visible={props.debugSettings.showSubstepDebug}
-      />
-      
-      {/* Frame Profiler Overlay */}
-      <FrameProfilerOverlay visible={props.debugSettings.showFrameProfiler} />
-      
-      {/* Collision History Viewer */}
-      {props.debugSettings.showCollisionHistory && (
-        <CollisionHistoryViewer onClose={() => props.toggleDebugSetting("showCollisionHistory")} />
-      )}
-      
-      {/* CCD Performance Profiler */}
-      <CCDPerformanceOverlay
-        getPerformanceData={props.getCCDPerformanceData}
-        visible={props.debugSettings.showCCDPerformance}
-      />
-    </>
+**Remove** (lines 420-603): The entire brick rendering loop
+
+**Add** at component mount:
+```typescript
+// Initialize brick cache
+useEffect(() => {
+  brickRenderer.initialize(width, height);
+  brickRenderer.setCrackedImages(
+    crackedBrick1Ref.current!,
+    crackedBrick2Ref.current!,
+    crackedBrick3Ref.current!
   );
-};
+}, [width, height]);
 ```
 
-### Additional Inline Overlays Component
-
-A separate component for overlays that must render **inside** the scaled game container:
-
+**Replace** brick rendering with:
 ```typescript
-interface GameDebugInlineOverlaysProps {
-  debugSettings: DebugSettings;
-  gameLoopRef: React.RefObject<FixedStepGameLoop | null>;
-  powerUpDropCounts: Partial<Record<PowerUpType, number>>;
-  difficulty: string;
-  currentLevel: number;
-  extraLifeUsedLevels: Set<number>;
-}
-
-export const GameDebugInlineOverlays = (props: GameDebugInlineOverlaysProps) => {
-  if (!ENABLE_DEBUG_FEATURES) return null;
-  
-  return (
-    <>
-      {/* Game Loop Debug - inside scaled container */}
-      {props.debugSettings.showGameLoopDebug && props.gameLoopRef.current && (
-        <GameLoopDebugOverlay
-          getDebugInfo={() => props.gameLoopRef.current?.getDebugInfo() ?? {...}}
-          visible={props.debugSettings.showGameLoopDebug}
-        />
-      )}
-      
-      {/* Power-Up Weights - inside scaled container */}
-      {props.debugSettings.showPowerUpWeights && (
-        <PowerUpWeightsOverlay
-          dropCounts={props.powerUpDropCounts}
-          difficulty={props.difficulty}
-          currentLevel={props.currentLevel}
-          extraLifeUsedLevels={props.extraLifeUsedLevels}
-          visible={props.debugSettings.showPowerUpWeights}
-        />
-      )}
-    </>
-  );
-};
+// Update brick cache if needed
+brickRenderer.updateCache(bricks, qualitySettings);
+// Draw cached bricks
+brickRenderer.drawToCanvas(ctx);
 ```
+
+### Invalidation Triggers
+The cache auto-invalidates via hash comparison when:
+- A brick is destroyed (`visible` changes)
+- A brick takes damage (`hitsRemaining` changes)
+- Level changes (new brick layout)
+
+### Performance Impact
+- **Before**: ~1,000 draw calls per frame for bricks
+- **After**: 1 `drawImage` call per frame (plus occasional rebuild)
+- **Expected improvement**: 40-60% reduction in render time
 
 ---
 
-## Changes to Game.tsx
+## Optimization #3: Spatial Hashing for Collision Detection
 
-### 1. Update Imports
+### Problem Analysis
+Current broadphase in `processBallCCD.ts` (lines 188-201) iterates **all bricks** for every ball:
 
-**Remove:**
 ```typescript
-import { GameLoopDebugOverlay } from "./GameLoopDebugOverlay";
-import { SubstepDebugOverlay } from "./SubstepDebugOverlay";
-import { PowerUpWeightsOverlay } from "./PowerUpWeightsOverlay";
-import { CollisionHistoryViewer } from "./CollisionHistoryViewer";
-import { CCDPerformanceOverlay, CCDPerformanceData } from "./CCDPerformanceOverlay";
-import { collisionHistory } from "@/utils/collisionHistory";
-import { DebugDashboard } from "./DebugDashboard";
-import { DebugModeIndicator } from "./DebugModeIndicator";
-import { useDebugSettings } from "@/hooks/useDebugSettings";
-import { FrameProfilerOverlay } from "./FrameProfilerOverlay";
-import { debugLogger } from "@/utils/debugLogger";
+function defaultTilemapQuery(bricks, swept, brickCount) {
+  const res: Brick[] = [];
+  for (let i = 0; i < limit; i++) {  // O(n) where n = all bricks
+    const b = bricks[i];
+    if (!b.visible) continue;
+    // AABB overlap check...
+  }
+  return res;
+}
 ```
 
-**Add:**
+With 182 bricks and potentially multiple balls, this creates significant overhead.
+
+### Solution: Spatial Hash Grid
+Divide the canvas into cells. Each brick is pre-assigned to cells it overlaps. Ball queries only check relevant cells.
+
+### New File: `src/utils/spatialHash.ts`
+
 ```typescript
-import { useGameDebug } from "@/hooks/useGameDebug";
-import { GameDebugOverlays, GameDebugInlineOverlays } from "./GameDebugOverlays";
-import type { CCDPerformanceData } from "./CCDPerformanceOverlay";
-```
+export interface SpatialHashConfig {
+  cellSize: number;  // Typically 2x brick width (~112px)
+  width: number;     // Canvas width
+  height: number;    // Canvas height
+}
 
-### 2. Replace Debug State Block (lines 510-541)
+export class SpatialHash<T extends { x: number; y: number; width: number; height: number; visible?: boolean }> {
+  private cells: Map<number, T[]> = new Map();
+  private cellSize: number;
+  private cols: number;
+  private rows: number;
+  private objectToKeys: Map<T, number[]> = new Map();  // For fast removal
+  
+  constructor(config: SpatialHashConfig);
+  
+  // Insert an object into the grid
+  insert(obj: T): void;
+  
+  // Remove an object from the grid
+  remove(obj: T): void;
+  
+  // Clear all objects
+  clear(): void;
+  
+  // Query objects overlapping an AABB (swept ball area)
+  query(aabb: { x: number; y: number; w: number; h: number }): T[];
+  
+  // Rebuild from array (for level load)
+  rebuild(objects: T[]): void;
+  
+  // Mark object as invisible (for brick destruction without full rebuild)
+  markInvisible(obj: T): void;
+  
+  // Private: get cell key from position
+  private getCellKey(col: number, row: number): number;
+  
+  // Private: get all cell keys an object overlaps
+  private getObjectCellKeys(obj: T): number[];
+}
 
-**Remove:** ~30 lines of debug state declarations
-
-**Add:**
-```typescript
-// CCD performance tracking refs (needed by Game.tsx for physics)
-const ccdPerformanceRef = useRef<CCDPerformanceData | null>(null);
-const ccdPerformanceTrackerRef = useRef<CCDPerformanceTracker>(new CCDPerformanceTracker());
-
-// Debug system hook
-const {
-  debugSettings,
-  toggleDebugSetting,
-  resetDebugSettings,
-  showDebugDashboard,
-  setShowDebugDashboard,
-  debugDashboardPausedGame,
-  getSubstepDebugInfo,
-  getCCDPerformanceData,
-  activeDebugFeatureCount,
-  currentFps,
-  handleDebugKeyPress,
-} = useGameDebug({
-  gameLoopRef,
-  ccdPerformanceRef,
-  ccdPerformanceTrackerRef,
-  gameState,
-  setGameState,
-  balls,
-  speedMultiplier,
-  setSpeedMultiplier,
-  scaledBrickWidth: SCALED_BRICK_WIDTH,
-  scaledBrickHeight: SCALED_BRICK_HEIGHT,
-  paddle,
-  setPowerUps,
-  setBonusLetters,
-  setLevelSkipped,
-  nextLevel,
-  quality,
-  setQuality,
-  toggleAutoAdjust,
+// Singleton for bricks
+export const brickSpatialHash = new SpatialHash<Brick>({
+  cellSize: 112,  // 2x brick width
+  width: 850,
+  height: 650
 });
 ```
 
-### 3. Remove Effects (lines 544-571, 816-825)
-
-Move to `useGameDebug` hook:
-- Frame profiler enable/disable effect
-- Dashboard pause/resume effect
-- Debug logger initialization effect
-
-### 4. Simplify Keyboard Handler (lines 2547-2718)
-
-**Replace** the debug keyboard block with:
+### Cell Key Calculation
+Use a single integer key for fast Map lookups:
 ```typescript
-if (ENABLE_DEBUG_FEATURES) {
-  // Delegate to debug hook - returns true if handled
-  if (handleDebugKeyPress(e)) {
-    return; // Don't process further if debug handled it
+private getCellKey(col: number, row: number): number {
+  return row * this.cols + col;
+}
+```
+
+### Query Implementation
+```typescript
+query(aabb: { x: number; y: number; w: number; h: number }): T[] {
+  const minCol = Math.max(0, Math.floor(aabb.x / this.cellSize));
+  const maxCol = Math.min(this.cols - 1, Math.floor((aabb.x + aabb.w) / this.cellSize));
+  const minRow = Math.max(0, Math.floor(aabb.y / this.cellSize));
+  const maxRow = Math.min(this.rows - 1, Math.floor((aabb.y + aabb.h) / this.cellSize));
+  
+  const seen = new Set<T>();
+  const results: T[] = [];
+  
+  for (let row = minRow; row <= maxRow; row++) {
+    for (let col = minCol; col <= maxCol; col++) {
+      const key = this.getCellKey(col, row);
+      const cell = this.cells.get(key);
+      if (cell) {
+        for (const obj of cell) {
+          if (!seen.has(obj) && obj.visible !== false) {
+            seen.add(obj);
+            // Fine-grained AABB check
+            if (this.overlaps(obj, aabb)) {
+              results.push(obj);
+            }
+          }
+        }
+      }
+    }
+  }
+  return results;
+}
+```
+
+### Integration with CCD System
+
+**Modify** `processBallCCD.ts`:
+
+```typescript
+import { brickSpatialHash } from './spatialHash';
+
+// In processBallCCD function:
+const candidates = tilemapQuery 
+  ? tilemapQuery(sweptAabb) 
+  : brickSpatialHash.query(sweptAabb);  // Use spatial hash instead of linear scan
+```
+
+**Modify** `Game.tsx` or level initialization:
+
+```typescript
+// When level loads or bricks change
+useEffect(() => {
+  brickSpatialHash.rebuild(bricks);
+}, [level]);
+
+// When brick is destroyed (in collision handling)
+const handleBrickDestruction = (brick: Brick) => {
+  brick.visible = false;
+  brickSpatialHash.markInvisible(brick);
+};
+```
+
+### Performance Impact
+- **Before**: O(n) per ball per substep (n = ~182 bricks)
+- **After**: O(k) per ball per substep (k = ~4-12 bricks in relevant cells)
+- **Expected improvement**: 10-15x faster broadphase, ~20-30% overall physics improvement
+
+---
+
+## Optimization #4: Extended Object Pooling
+
+### Problem Analysis
+Current pooling only covers `Particle` objects. Other entities are created/destroyed frequently:
+
+| Entity | Creation Pattern | Frequency |
+|--------|------------------|-----------|
+| PowerUp | `{ ...props }` in usePowerUps | Per brick destruction (~182/level) |
+| Bullet | `{ ...props }` in useBullets | Per turret shot (up to 45/level) |
+| Enemy | `{ ...props }` in Game.tsx | Continuous spawning |
+| Bomb | `{ ...props }` in bossAttacks | Frequent during boss fights |
+| BonusLetter | `{ ...props }` in Game.tsx | Per brick (every ~6 bricks) |
+
+Each creation allocates a new object, contributing to GC pressure.
+
+### Solution: Generic Entity Pool
+
+### New File: `src/utils/entityPool.ts`
+
+```typescript
+export interface Poolable {
+  active?: boolean;
+  [key: string]: any;
+}
+
+export class EntityPool<T extends Poolable> {
+  private pool: T[] = [];
+  private active: T[] = [];
+  private maxPoolSize: number;
+  private factory: () => T;
+  private reset: (obj: T) => void;
+  
+  constructor(
+    factory: () => T,
+    reset: (obj: T) => void,
+    initialSize: number = 50,
+    maxSize: number = 200
+  ) {
+    this.factory = factory;
+    this.reset = reset;
+    this.maxPoolSize = maxSize;
+    this.preallocate(initialSize);
+  }
+  
+  private preallocate(count: number): void {
+    for (let i = 0; i < count; i++) {
+      this.pool.push(this.factory());
+    }
+  }
+  
+  acquire(init: Partial<T>): T | null {
+    let obj: T;
+    
+    if (this.pool.length > 0) {
+      obj = this.pool.pop()!;
+    } else if (this.active.length < this.maxPoolSize) {
+      obj = this.factory();
+    } else {
+      return null;  // Pool exhausted
+    }
+    
+    // Apply initialization
+    Object.assign(obj, init);
+    obj.active = true;
+    this.active.push(obj);
+    return obj;
+  }
+  
+  release(obj: T): void {
+    const idx = this.active.indexOf(obj);
+    if (idx !== -1) {
+      // Swap-and-pop for O(1) removal
+      const last = this.active.length - 1;
+      if (idx !== last) {
+        this.active[idx] = this.active[last];
+      }
+      this.active.pop();
+      this.reset(obj);
+      this.pool.push(obj);
+    }
+  }
+  
+  getActive(): T[] {
+    return this.active;
+  }
+  
+  releaseAll(): void {
+    for (let i = this.active.length - 1; i >= 0; i--) {
+      const obj = this.active[i];
+      this.reset(obj);
+      this.pool.push(obj);
+    }
+    this.active.length = 0;
+  }
+  
+  getStats(): { active: number; pooled: number } {
+    return {
+      active: this.active.length,
+      pooled: this.pool.length
+    };
   }
 }
 ```
 
-### 5. Remove getSubstepDebugInfo (lines 2773-2799)
+### Pool Instances
 
-This callback is now provided by `useGameDebug`.
+```typescript
+// Power-up pool
+export const powerUpPool = new EntityPool<PowerUp>(
+  () => ({
+    x: 0, y: 0, width: 61, height: 61,
+    type: 'multiball' as PowerUpType,
+    speed: 2, active: false
+  }),
+  (p) => { p.active = false; },
+  20, 50
+);
 
-### 6. Replace Inline Debug JSX (lines 8976-9005)
+// Bullet pool
+export const bulletPool = new EntityPool<Bullet>(
+  () => ({
+    x: 0, y: 0, width: 4, height: 12,
+    speed: 7, isBounced: false, isSuper: false
+  }),
+  (b) => { b.isBounced = false; b.isSuper = false; },
+  30, 100
+);
 
-**Replace with:**
-```tsx
-{/* Debug Inline Overlays - Inside scaled container */}
-<GameDebugInlineOverlays
-  debugSettings={debugSettings}
-  gameLoopRef={gameLoopRef}
-  powerUpDropCounts={powerUpDropCounts}
-  difficulty={settings.difficulty}
-  currentLevel={level}
-  extraLifeUsedLevels={extraLifeUsedLevels}
-/>
+// Bomb pool
+export const bombPool = new EntityPool<Bomb>(
+  () => ({
+    id: 0, x: 0, y: 0, width: 12, height: 12,
+    speed: 3, type: 'bomb' as ProjectileType,
+    isReflected: false
+  }),
+  (b) => { b.isReflected = false; b.dx = undefined; b.dy = undefined; },
+  20, 60
+);
+
+// Enemy pool
+export const enemyPool = new EntityPool<Enemy>(
+  () => ({
+    id: 0, type: 'cube' as EnemyType,
+    x: 0, y: 0, width: 30, height: 30,
+    rotation: 0, rotationX: 0, rotationY: 0, rotationZ: 0,
+    speed: 1.5, dx: 0, dy: 1.5
+  }),
+  (e) => { 
+    e.hits = undefined; 
+    e.isAngry = false; 
+    e.isCrossBall = false;
+  },
+  15, 40
+);
+
+// Bonus letter pool
+export const bonusLetterPool = new EntityPool<BonusLetter>(
+  () => ({
+    x: 0, y: 0, originX: 0, spawnTime: 0,
+    width: 50, height: 50,
+    type: 'Q' as BonusLetterType,
+    speed: 1.5, active: false
+  }),
+  (l) => { l.active = false; },
+  10, 30
+);
 ```
 
-### 7. Replace Debug UI JSX Block (lines 9325-9391)
+### Integration Changes
 
-**Replace with:**
-```tsx
-{/* Debug Overlays - All debug UI in one component */}
-<GameDebugOverlays
-  debugSettings={debugSettings}
-  toggleDebugSetting={toggleDebugSetting}
-  resetDebugSettings={resetDebugSettings}
-  showDebugDashboard={showDebugDashboard}
-  setShowDebugDashboard={setShowDebugDashboard}
-  activeDebugFeatureCount={activeDebugFeatureCount}
-  getSubstepDebugInfo={getSubstepDebugInfo}
-  getCCDPerformanceData={getCCDPerformanceData}
-  gameLoopRef={gameLoopRef}
-  powerUpDropCounts={powerUpDropCounts}
-  difficulty={settings.difficulty}
-  currentLevel={level}
-  extraLifeUsedLevels={extraLifeUsedLevels}
-  quality={quality}
-  autoAdjustEnabled={autoAdjustEnabled}
-  currentFps={currentFps}
-  isMobileDevice={isMobileDevice}
-/>
+**Modify `usePowerUps.ts`**:
+```typescript
+import { powerUpPool } from '@/utils/entityPool';
+
+const createPowerUp = useCallback((brick: Brick, ...): PowerUp | null => {
+  // ... existing logic to determine type ...
+  
+  return powerUpPool.acquire({
+    x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
+    y: brick.y,
+    width: POWERUP_SIZE,
+    height: POWERUP_SIZE,
+    type,
+    speed: POWERUP_FALL_SPEED,
+    active: true,
+  });
+}, [/* deps */]);
+
+// Instead of filtering out inactive:
+const updatePowerUps = useCallback(() => {
+  const active = powerUpPool.getActive();
+  for (let i = active.length - 1; i >= 0; i--) {
+    const p = active[i];
+    p.y += p.speed;
+    if (p.y >= CANVAS_HEIGHT || !p.active) {
+      powerUpPool.release(p);
+    }
+  }
+}, []);
 ```
+
+**Modify `useBullets.ts`**:
+```typescript
+import { bulletPool } from '@/utils/entityPool';
+
+// Replace bullet creation with pool acquisition
+// Replace array filtering with pool release
+```
+
+### React State Synchronization
+Since pools manage their own arrays, sync with React state for rendering:
+
+```typescript
+// In Game.tsx game loop
+const syncPoolsToState = useCallback(() => {
+  // Only update React state when pool contents change
+  const activePowerUps = powerUpPool.getActive();
+  if (activePowerUps.length !== powerUpsRef.current.length) {
+    setPowerUps([...activePowerUps]);
+  }
+  // Similar for bullets, enemies, bombs, bonusLetters
+}, []);
+```
+
+### Performance Impact
+- **Before**: New object allocation per entity creation
+- **After**: Zero allocations during normal gameplay
+- **Expected improvement**: 60-80% reduction in minor GC pauses
 
 ---
 
-## Technical Details
+## Quick Win Optimizations (Bonus)
 
-### Keyboard Handler Architecture
+### 1. Replace `bricks.filter().length` with Counter
+**Location**: `Game.tsx` line 5110
 
-The `handleDebugKeyPress` function returns a boolean:
-- `true` = key was handled by debug system, stop propagation
-- `false` = key not handled, let Game.tsx process it
+```typescript
+// Before (creates intermediate array)
+visibleBrickCount: bricks.filter((b) => b.visible).length
 
-This allows clean separation while maintaining existing behavior.
+// After (no allocation)
+visibleBrickCount: bricks.reduce((c, b) => c + (b.visible ? 1 : 0), 0)
+```
 
-### Effect Dependencies
+### 2. Pre-allocate Reusable Objects for Frequent Operations
 
-The hook internally manages its own effects:
-- Dashboard pause/resume watches `showDebugDashboard`, `gameState`, `debugDashboardPausedGame`
-- Frame profiler watches `debugSettings.showFrameProfiler`
-- Debug logger runs once on mount
+In `processBallCCD.ts`, add at module scope:
+```typescript
+// Reusable Vec2 objects to avoid per-frame allocations
+const _tempVec: Vec2 = { x: 0, y: 0 };
+const _tempMove: Vec2 = { x: 0, y: 0 };
+const _tempNormal: Vec2 = { x: 0, y: 0 };
+```
 
-### Performance Considerations
+### 3. Batch Canvas State Changes
+In `GameCanvas.tsx`, group shadow operations:
+```typescript
+// Before
+ctx.shadowBlur = 12;
+ctx.shadowColor = "...";
+ctx.fillRect(...);
+ctx.shadowBlur = 0;
 
-- All debug code paths gated by `ENABLE_DEBUG_FEATURES`
-- Callbacks wrapped in `useCallback` for stable references
-- Effects properly cleaned up on unmount
-
----
-
-## Estimated Line Reduction
-
-| Section | Lines Removed |
-|---------|---------------|
-| Debug imports | ~12 |
-| Debug state declarations | ~30 |
-| Debug effects | ~35 |
-| Debug keyboard block | ~170 |
-| getSubstepDebugInfo | ~25 |
-| Debug inline JSX | ~30 |
-| Debug UI JSX block | ~65 |
-| **Total** | **~367 lines** |
+// After (when drawing multiple similar objects)
+ctx.save();
+ctx.shadowBlur = 12;
+ctx.shadowColor = "...";
+for (const obj of objects) {
+  ctx.fillRect(...);
+}
+ctx.restore();
+```
 
 ---
 
 ## Implementation Order
 
-1. Create `src/hooks/useGameDebug.ts` with all debug state, effects, and keyboard handling
-2. Create `src/components/GameDebugOverlays.tsx` with all overlay rendering
-3. Update `Game.tsx` imports
-4. Replace debug state with `useGameDebug()` hook call
-5. Integrate `handleDebugKeyPress` into existing keyboard handler
-6. Remove migrated effects and callbacks
-7. Replace JSX debug blocks with new components
-8. Test all debug features work correctly
+| Phase | Task | Estimated Lines Changed |
+|-------|------|------------------------|
+| 1 | Create `src/utils/entityPool.ts` | +120 new |
+| 2 | Create `src/utils/spatialHash.ts` | +150 new |
+| 3 | Create `src/utils/brickLayerCache.ts` | +200 new |
+| 4 | Integrate spatial hash into `processBallCCD.ts` | ~30 modified |
+| 5 | Integrate brick cache into `GameCanvas.tsx` | ~200 removed, ~30 added |
+| 6 | Migrate `usePowerUps.ts` to pool | ~50 modified |
+| 7 | Migrate `useBullets.ts` to pool | ~40 modified |
+| 8 | Migrate enemy/bomb creation in `Game.tsx` | ~60 modified |
+| 9 | Apply quick wins | ~20 modified |
+
+**Total**: ~470 new lines, ~200 removed, ~200 modified
 
 ---
 
 ## Testing Checklist
 
-### Dashboard & Indicator
-- [ ] § key opens/closes debug dashboard
-- [ ] Dashboard auto-pauses game when opened
-- [ ] Dashboard auto-resumes game when closed (if it paused it)
-- [ ] Debug mode indicator shows with active feature count
-- [ ] X button on indicator hides it
+### Brick Cache
+- [ ] Bricks render correctly on level load
+- [ ] Brick destruction updates cache properly
+- [ ] Multi-hit bricks update cache on each hit
+- [ ] Metal bricks render with connected patterns
+- [ ] Cracked brick textures display correctly
+- [ ] Level transitions rebuild cache
 
-### Keyboard Shortcuts
-- [ ] Tab toggles substep debug overlay
-- [ ] L toggles game loop debug overlay
-- [ ] W toggles power-up weights overlay
-- [ ] H toggles collision history viewer
-- [ ] V toggles CCD performance profiler
-- [ ] C toggles collision logging
-- [ ] X exports collision history to JSON
-- [ ] Z downloads debug logs
-- [ ] [ and ] adjust time scale
-- [ ] Q cycles quality levels
-- [ ] Shift+Q toggles auto-adjust
-- [ ] 0 skips level (disqualifies from high scores)
-- [ ] + increases ball speed
-- [ ] 1-8 drop regular power-ups
-- [ ] 9, R, E drop boss power-ups
-- [ ] U drops random bonus letter
+### Spatial Hash
+- [ ] Ball collides with all visible bricks
+- [ ] No missed collisions at cell boundaries
+- [ ] Brick destruction removes from hash
+- [ ] Boss level enemies in spatial hash
+- [ ] Performance improves with many bricks
 
-### Overlays
-- [ ] All overlays render in correct positions
-- [ ] Inline overlays (GameLoopDebug, PowerUpWeights) inside scaled container
-- [ ] Fixed overlays (Dashboard, Indicator, etc.) positioned correctly
+### Object Pools
+- [ ] Power-ups spawn and fall correctly
+- [ ] Bullets fire and collide properly
+- [ ] Enemies spawn and move correctly
+- [ ] Bombs drop and explode properly
+- [ ] Pool exhaustion handled gracefully
+- [ ] Game reset clears all pools
+- [ ] No visual artifacts from object reuse
 
-### Edge Cases
-- [ ] Debug features fully disabled when `ENABLE_DEBUG_FEATURES = false`
-- [ ] No console errors during gameplay
-- [ ] Debug keyboard shortcuts don't interfere with game controls
-
+### Performance Verification
+- [ ] Frame time reduced (check with profiler)
+- [ ] GC pauses reduced (check memory tab)
+- [ ] No memory leaks over extended play
+- [ ] Mobile performance improved
