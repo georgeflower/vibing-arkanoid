@@ -3,6 +3,7 @@ import type { PowerUp, PowerUpType, Ball, Paddle, Brick, Difficulty } from "@/ty
 import { POWERUP_SIZE, POWERUP_FALL_SPEED, POWERUP_DROP_CHANCE, CANVAS_HEIGHT, FIREBALL_DURATION } from "@/constants/game";
 import { debugToast as toast } from "@/utils/debugToast";
 import { soundManager } from "@/utils/sounds";
+import { powerUpPool } from "@/utils/entityPool";
 
 const regularPowerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life", "slowdown", "paddleExtend", "paddleShrink", "shield", "secondChance"];
 const bossPowerUpTypes: PowerUpType[] = ["bossStunner", "reflectShield", "homingBall"];
@@ -57,7 +58,8 @@ export const usePowerUps = (
 
       const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
 
-      return {
+      // Use pool to acquire power-up
+      return powerUpPool.acquire({
         x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
         y: brick.y,
         width: POWERUP_SIZE,
@@ -65,7 +67,7 @@ export const usePowerUps = (
         type,
         speed: POWERUP_FALL_SPEED,
         active: true,
-      };
+      });
     }
     
     // Regular enemy drops (non-boss minions) - every 3rd kill triggers this
@@ -83,7 +85,8 @@ export const usePowerUps = (
       
       const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
       
-      return {
+      // Use pool to acquire power-up
+      return powerUpPool.acquire({
         x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
         y: brick.y,
         width: POWERUP_SIZE,
@@ -91,7 +94,7 @@ export const usePowerUps = (
         type,
         speed: POWERUP_FALL_SPEED,
         active: true,
-      };
+      });
     }
     
     // Regular bricks: use pre-assigned power-ups
@@ -100,7 +103,8 @@ export const usePowerUps = (
     const assignedType = powerUpAssignments.get(brick.id);
     if (!assignedType) return null;
 
-    return {
+    // Use pool to acquire power-up
+    return powerUpPool.acquire({
       x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
       y: brick.y,
       width: POWERUP_SIZE,
@@ -108,15 +112,29 @@ export const usePowerUps = (
       type: assignedType,
       speed: POWERUP_FALL_SPEED,
       active: true,
-    };
+    });
   }, [currentLevel, extraLifeUsedLevels, difficulty, powerUpAssignments]);
 
   const updatePowerUps = useCallback(() => {
-    setPowerUps(prev => 
-      prev
-        .map(p => ({ ...p, y: p.y + p.speed }))
-        .filter(p => p.y < CANVAS_HEIGHT && p.active)
-    );
+    setPowerUps(prev => {
+      // In-place mutation: update positions
+      for (let i = prev.length - 1; i >= 0; i--) {
+        const p = prev[i];
+        p.y += p.speed;
+        
+        // Release back to pool if off-screen or inactive
+        if (p.y >= CANVAS_HEIGHT || !p.active) {
+          powerUpPool.release(p);
+          // Swap-and-pop removal
+          const last = prev.length - 1;
+          if (i !== last) {
+            prev[i] = prev[last];
+          }
+          prev.pop();
+        }
+      }
+      return [...prev]; // New reference for React
+    });
   }, []);
 
   const checkPowerUpCollision = useCallback((

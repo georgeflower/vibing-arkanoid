@@ -65,6 +65,22 @@ export type CCDConfig = {
   debug?: boolean; // optional debug gating
 };
 
+// Pre-allocated Vec2 objects to avoid per-frame allocations
+const _tempVec: Vec2 = { x: 0, y: 0 };
+const _tempMove: Vec2 = { x: 0, y: 0 };
+const _tempNormal: Vec2 = { x: 0, y: 0 };
+const _tempPos0: Vec2 = { x: 0, y: 0 };
+const _tempPos1: Vec2 = { x: 0, y: 0 };
+const _tempMoveDir: Vec2 = { x: 0, y: 0 };
+const _tempSweptAabb = { x: 0, y: 0, w: 0, h: 0 };
+
+// Mutable vector operations (modify first argument in place)
+const vAddTo = (out: Vec2, a: Vec2, b: Vec2): Vec2 => { out.x = a.x + b.x; out.y = a.y + b.y; return out; };
+const vSubTo = (out: Vec2, a: Vec2, b: Vec2): Vec2 => { out.x = a.x - b.x; out.y = a.y - b.y; return out; };
+const vScaleTo = (out: Vec2, a: Vec2, s: number): Vec2 => { out.x = a.x * s; out.y = a.y * s; return out; };
+const vSet = (out: Vec2, x: number, y: number): Vec2 => { out.x = x; out.y = y; return out; };
+
+// Immutable operations (for places where we need new objects)
 const vAdd = (a: Vec2, b: Vec2): Vec2 => ({ x: a.x + b.x, y: a.y + b.y });
 const vSub = (a: Vec2, b: Vec2): Vec2 => ({ x: a.x - b.x, y: a.y - b.y });
 const vScale = (a: Vec2, s: number): Vec2 => ({ x: a.x * s, y: a.y * s });
@@ -73,6 +89,12 @@ const vLen = (a: Vec2): number => Math.hypot(a.x, a.y);
 const normalize = (a: Vec2): Vec2 => {
   const L = vLen(a) || 1;
   return { x: a.x / L, y: a.y / L };
+};
+const normalizeTo = (out: Vec2, a: Vec2): Vec2 => {
+  const L = vLen(a) || 1;
+  out.x = a.x / L;
+  out.y = a.y / L;
+  return out;
 };
 const reflect = (vel: Vec2, normal: Vec2): Vec2 => {
   const n = normalize(normal);
@@ -273,29 +295,32 @@ export function processBallCCD(
     let remaining = 1.0;
     let iter = 0;
 
-    // initial positions for this substep
-    let pos0: Vec2 = { x: ball.x, y: ball.y };
+    // initial positions for this substep (use pre-allocated)
+    vSet(_tempPos0, ball.x, ball.y);
+    let pos0 = _tempPos0;
 
-    // desired move over full substep
-    const fullMove: Vec2 = { x: ball.dx * subDt, y: ball.dy * subDt };
+    // desired move over full substep (use pre-allocated)
+    vSet(_tempMove, ball.dx * subDt, ball.dy * subDt);
+    const fullMove = _tempMove;
 
     // Safety: if zero movement, skip
     if (Math.abs(fullMove.x) < 1e-9 && Math.abs(fullMove.y) < 1e-9) break;
 
     while (remaining > 1e-6 && iter < maxToiIterations) {
       iter++;
-      const move = vScale(fullMove, remaining); // remaining portion of this substep
-      const pos1 = vAdd(pos0, move);
+      // Calculate move for remaining portion
+      vScaleTo(_tempVec, fullMove, remaining);
+      vAddTo(_tempPos1, pos0, _tempVec);
+      const pos1 = _tempPos1;
+      const move = _tempVec; // reuse
 
-      // broadphase swept AABB for candidate bricks
-      const sweptAabb = {
-        x: Math.min(pos0.x, pos1.x) - ball.radius,
-        y: Math.min(pos0.y, pos1.y) - ball.radius,
-        w: Math.abs(pos1.x - pos0.x) + 2 * ball.radius,
-        h: Math.abs(pos1.y - pos0.y) + 2 * ball.radius,
-      };
+      // broadphase swept AABB for candidate bricks (use pre-allocated)
+      _tempSweptAabb.x = Math.min(pos0.x, pos1.x) - ball.radius;
+      _tempSweptAabb.y = Math.min(pos0.y, pos1.y) - ball.radius;
+      _tempSweptAabb.w = Math.abs(pos1.x - pos0.x) + 2 * ball.radius;
+      _tempSweptAabb.h = Math.abs(pos1.y - pos0.y) + 2 * ball.radius;
 
-      const candidates = tilemapQuery ? tilemapQuery(sweptAabb) : defaultTilemapQuery(bricks, sweptAabb, brickCount);
+      const candidates = tilemapQuery ? tilemapQuery(_tempSweptAabb) : defaultTilemapQuery(bricks, _tempSweptAabb, brickCount);
       // Collect earliest hit among walls, paddle, bricks, corners
       let earliest: CollisionEvent | null = null;
 
@@ -531,19 +556,24 @@ export function processBallCCD(
         }
       }
 
-      if (debug) debugArr.push({ sweptAabb, candidates: candidates.map((b) => b.id), earliest, iter });
+      if (debug) debugArr.push({ sweptAabb: { ..._tempSweptAabb }, candidates: candidates.map((b) => b.id), earliest, iter });
 
       if (!earliest) {
         // no collision this iteration: commit full remaining move
-        pos0 = pos1;
+        // Copy values instead of reference assignment
+        pos0.x = pos1.x;
+        pos0.y = pos1.y;
         remaining = 0;
         break;
       }
 
       // Found earliest collision at fraction earliest.t of remaining
       const tHit = Math.max(0, Math.min(1, earliest.t));
-      // move to contact point
-      pos0 = vAdd(pos0, vScale(vSub(pos1, pos0), tHit));
+      // move to contact point (update pos0 in place)
+      const moveX = pos1.x - pos0.x;
+      const moveY = pos1.y - pos0.y;
+      pos0.x += moveX * tHit;
+      pos0.y += moveY * tHit;
 
       // Robust normal validation and fallback
       let n = earliest.normal;
