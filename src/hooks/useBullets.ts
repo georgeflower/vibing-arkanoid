@@ -5,6 +5,7 @@ import { soundManager } from "@/utils/sounds";
 import { getHitColor } from "@/constants/game";
 import { toast } from "sonner";
 import { isMegaBoss, handleMegaBossOuterDamage, exposeMegaBossCore, MegaBoss } from "@/utils/megaBossUtils";
+import { bulletPool } from "@/utils/entityPool";
 
 export const useBullets = (
   setScore: React.Dispatch<React.SetStateAction<number>>,
@@ -34,25 +35,32 @@ export const useBullets = (
 
     const isSuper = paddle.hasSuperTurrets || false;
 
-    const leftBullet: Bullet = {
+    // Use pool to acquire bullets
+    const leftBullet = bulletPool.acquire({
       x: paddle.x + 10,
       y: paddle.y,
       width: BULLET_WIDTH,
       height: BULLET_HEIGHT,
       speed: BULLET_SPEED,
       isSuper,
-    };
+      isBounced: false,
+    });
 
-    const rightBullet: Bullet = {
+    const rightBullet = bulletPool.acquire({
       x: paddle.x + paddle.width - 10 - BULLET_WIDTH,
       y: paddle.y,
       width: BULLET_WIDTH,
       height: BULLET_HEIGHT,
       speed: BULLET_SPEED,
       isSuper,
-    };
+      isBounced: false,
+    });
 
-    setBullets(prev => [...prev, leftBullet, rightBullet]);
+    setBullets(prev => {
+      if (leftBullet) prev.push(leftBullet);
+      if (rightBullet) prev.push(rightBullet);
+      return [...prev];
+    });
     
     // Decrement turret shots and remove turrets if depleted
     setPaddle(prev => {
@@ -76,11 +84,26 @@ export const useBullets = (
         b.y = b.isBounced ? b.y + b.speed : b.y - b.speed;
       }
       
-      // Filter out-of-bounds bullets (only creates new array if needed)
+      // Filter out-of-bounds bullets and release to pool
       let movedBullets = prev;
-      const inBoundsCount = prev.filter(b => b.y > 0 && b.y < CANVAS_HEIGHT).length;
-      if (inBoundsCount !== prev.length) {
-        movedBullets = prev.filter(b => b.y > 0 && b.y < CANVAS_HEIGHT);
+      let hasOutOfBounds = false;
+      for (let i = 0; i < prev.length; i++) {
+        if (prev[i].y <= 0 || prev[i].y >= CANVAS_HEIGHT) {
+          hasOutOfBounds = true;
+          break;
+        }
+      }
+      
+      if (hasOutOfBounds) {
+        movedBullets = [];
+        for (let i = 0; i < prev.length; i++) {
+          const b = prev[i];
+          if (b.y > 0 && b.y < CANVAS_HEIGHT) {
+            movedBullets.push(b);
+          } else {
+            bulletPool.release(b);
+          }
+        }
       }
       
       const bulletIndicesHit = new Set<number>();
@@ -356,10 +379,13 @@ export const useBullets = (
         return movedBullets;
       }
       
-      // Filter hit bullets and mutate bounced ones in-place
+      // Filter hit bullets and mutate bounced ones in-place, release hit bullets to pool
       const result: Bullet[] = [];
       for (let i = 0; i < movedBullets.length; i++) {
-        if (bulletIndicesHit.has(i)) continue;
+        if (bulletIndicesHit.has(i)) {
+          bulletPool.release(movedBullets[i]);
+          continue;
+        }
         const bullet = movedBullets[i];
         if (bulletIndicesToBounce.has(i)) {
           bullet.isBounced = true; // Mutate in-place
