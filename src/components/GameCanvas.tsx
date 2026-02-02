@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import type { Brick, Ball, Paddle, GameState, PowerUp, Bullet, Enemy, Bomb, Explosion, BonusLetter, BonusLetterType, Particle, Boss, BossAttack, ShieldImpact } from "@/types/game";
 import type { QualitySettings } from "@/hooks/useAdaptiveQuality";
 import type { DangerBall } from "@/utils/megaBossAttacks";
@@ -106,6 +106,7 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
     const zoomDirectionRef = useRef(1);
     const dashOffsetRef = useRef(0);
     const missileImageRef = useRef<HTMLImageElement | null>(null);
+    const [crackedImagesLoaded, setCrackedImagesLoaded] = useState(false);
     
     
     // Helper function to check if image is valid and loaded
@@ -179,18 +180,27 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
       const crackedBrick1Image = new Image();
       crackedBrick1Image.onload = () => {
         crackedBrick1Ref.current = crackedBrick1Image;
+        if (crackedBrick2Ref.current && crackedBrick3Ref.current) {
+          setCrackedImagesLoaded(true);
+        }
       };
       crackedBrick1Image.src = crackedBrick1;
       
       const crackedBrick2Image = new Image();
       crackedBrick2Image.onload = () => {
         crackedBrick2Ref.current = crackedBrick2Image;
+        if (crackedBrick1Ref.current && crackedBrick3Ref.current) {
+          setCrackedImagesLoaded(true);
+        }
       };
       crackedBrick2Image.src = crackedBrick2;
       
       const crackedBrick3Image = new Image();
       crackedBrick3Image.onload = () => {
         crackedBrick3Ref.current = crackedBrick3Image;
+        if (crackedBrick1Ref.current && crackedBrick2Ref.current) {
+          setCrackedImagesLoaded(true);
+        }
       };
       crackedBrick3Image.src = crackedBrick3;
       
@@ -298,14 +308,16 @@ export const GameCanvas = forwardRef<HTMLCanvasElement, GameCanvasProps>(
 
     // Set cracked brick images for brick renderer when they load
     useEffect(() => {
-      if (crackedBrick1Ref.current && crackedBrick2Ref.current && crackedBrick3Ref.current) {
+      if (crackedImagesLoaded && crackedBrick1Ref.current && crackedBrick2Ref.current && crackedBrick3Ref.current) {
         brickRenderer.setCrackedImages(
           crackedBrick1Ref.current,
           crackedBrick2Ref.current,
           crackedBrick3Ref.current
         );
+        // Force cache rebuild to pick up new images
+        brickRenderer.invalidate();
       }
-    }, []);
+    }, [crackedImagesLoaded]);
 
     useEffect(() => {
       const canvas = ref as React.RefObject<HTMLCanvasElement>;
