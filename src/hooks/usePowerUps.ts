@@ -3,7 +3,7 @@ import type { PowerUp, PowerUpType, Ball, Paddle, Brick, Difficulty } from "@/ty
 import { POWERUP_SIZE, POWERUP_FALL_SPEED, POWERUP_DROP_CHANCE, CANVAS_HEIGHT, FIREBALL_DURATION } from "@/constants/game";
 import { debugToast as toast } from "@/utils/debugToast";
 import { soundManager } from "@/utils/sounds";
-import { powerUpPool } from "@/utils/entityPool";
+import { powerUpPool, getNextPowerUpId } from "@/utils/entityPool";
 
 const regularPowerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life", "slowdown", "paddleExtend", "paddleShrink", "shield", "secondChance"];
 const bossPowerUpTypes: PowerUpType[] = ["bossStunner", "reflectShield", "homingBall"];
@@ -60,6 +60,7 @@ export const usePowerUps = (
 
       // Use pool to acquire power-up
       return powerUpPool.acquire({
+        id: getNextPowerUpId(),
         x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
         y: brick.y,
         width: POWERUP_SIZE,
@@ -87,6 +88,7 @@ export const usePowerUps = (
       
       // Use pool to acquire power-up
       return powerUpPool.acquire({
+        id: getNextPowerUpId(),
         x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
         y: brick.y,
         width: POWERUP_SIZE,
@@ -105,6 +107,7 @@ export const usePowerUps = (
 
     // Use pool to acquire power-up
     return powerUpPool.acquire({
+      id: getNextPowerUpId(),
       x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
       y: brick.y,
       width: POWERUP_SIZE,
@@ -124,7 +127,8 @@ export const usePowerUps = (
         
         // Release back to pool if off-screen or inactive
         if (p.y >= CANVAS_HEIGHT || !p.active) {
-          powerUpPool.release(p);
+          // Release pooled power-ups (they have id from pool acquisition)
+          powerUpPool.release(p as PowerUp & { id: number });
           // Swap-and-pop removal
           const last = prev.length - 1;
           if (i !== last) {

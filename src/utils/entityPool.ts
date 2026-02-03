@@ -1,16 +1,19 @@
 /**
  * Generic Entity Pool for object reuse
  * Reduces GC pressure by reusing objects instead of creating/destroying them
+ * 
+ * OPTIMIZED: Uses Map for O(1) release lookups instead of O(n) indexOf
  */
 
 export interface Poolable {
   active?: boolean;
+  id?: number | string;
   [key: string]: any;
 }
 
 export class EntityPool<T extends Poolable> {
   private pool: T[] = [];
-  private activeList: T[] = [];
+  private activeMap: Map<number | string, T> = new Map(); // O(1) lookup by ID
   private maxPoolSize: number;
   private factory: () => T;
   private resetFn: (obj: T) => void;
@@ -42,7 +45,7 @@ export class EntityPool<T extends Poolable> {
 
     if (this.pool.length > 0) {
       obj = this.pool.pop()!;
-    } else if (this.activeList.length < this.maxPoolSize) {
+    } else if (this.activeMap.size < this.maxPoolSize) {
       obj = this.factory();
     } else {
       return null; // Pool exhausted
@@ -51,45 +54,73 @@ export class EntityPool<T extends Poolable> {
     // Apply initialization
     Object.assign(obj, init);
     obj.active = true;
-    this.activeList.push(obj);
+    
+    // Track by ID if available
+    const id = obj.id;
+    if (id !== undefined) {
+      this.activeMap.set(id, obj);
+    }
+    
     return obj;
   }
 
   /**
-   * Release an object back to the pool
-   * Uses swap-and-pop for O(1) removal
+   * Release an object back to the pool using its ID
+   * O(1) lookup via Map
    */
   release(obj: T): void {
-    const idx = this.activeList.indexOf(obj);
-    if (idx !== -1) {
-      // Swap-and-pop for O(1) removal
-      const last = this.activeList.length - 1;
-      if (idx !== last) {
-        this.activeList[idx] = this.activeList[last];
-      }
-      this.activeList.pop();
+    const id = obj.id;
+    if (id !== undefined && this.activeMap.has(id)) {
+      this.activeMap.delete(id);
       this.resetFn(obj);
       this.pool.push(obj);
     }
+  }
+
+  /**
+   * Release an object by its ID directly
+   * Useful when you only have the ID, not the object reference
+   */
+  releaseById(id: number | string): void {
+    const obj = this.activeMap.get(id);
+    if (obj) {
+      this.activeMap.delete(id);
+      this.resetFn(obj);
+      this.pool.push(obj);
+    }
+  }
+
+  /**
+   * Get an active object by ID
+   */
+  getById(id: number | string): T | undefined {
+    return this.activeMap.get(id);
+  }
+
+  /**
+   * Check if an ID is currently active
+   */
+  hasId(id: number | string): boolean {
+    return this.activeMap.has(id);
   }
 
   /**
    * Get array of currently active objects
    */
   getActive(): T[] {
-    return this.activeList;
+    return Array.from(this.activeMap.values());
   }
 
   /**
    * Release all active objects back to the pool
+   * Must be called whenever bulk clearing React state (e.g., setEnemies([]))
    */
   releaseAll(): void {
-    for (let i = this.activeList.length - 1; i >= 0; i--) {
-      const obj = this.activeList[i];
+    this.activeMap.forEach((obj) => {
       this.resetFn(obj);
       this.pool.push(obj);
-    }
-    this.activeList.length = 0;
+    });
+    this.activeMap.clear();
   }
 
   /**
@@ -97,7 +128,7 @@ export class EntityPool<T extends Poolable> {
    */
   getStats(): { active: number; pooled: number } {
     return {
-      active: this.activeList.length,
+      active: this.activeMap.size,
       pooled: this.pool.length
     };
   }
@@ -107,12 +138,21 @@ export class EntityPool<T extends Poolable> {
 
 import type { PowerUp, PowerUpType, Bullet, Bomb, ProjectileType, Enemy, EnemyType, BonusLetter, BonusLetterType } from "@/types/game";
 
+// ID counter for entities that need unique IDs
+let nextPowerUpId = 1;
+let nextBulletId = 1;
+
+// Extended types with required ID for pool tracking
+type PooledPowerUp = PowerUp & { id: number };
+type PooledBullet = Bullet & { id: number };
+
 /**
  * Power-up pool
  * Max 50 power-ups active at once (generous limit)
  */
-export const powerUpPool = new EntityPool<PowerUp>(
+export const powerUpPool = new EntityPool<PooledPowerUp>(
   () => ({
+    id: 0,
     x: 0,
     y: 0,
     width: 61,
@@ -134,8 +174,9 @@ export const powerUpPool = new EntityPool<PowerUp>(
  * Bullet pool
  * Max 100 bullets for intense turret action
  */
-export const bulletPool = new EntityPool<Bullet>(
+export const bulletPool = new EntityPool<PooledBullet>(
   () => ({
+    id: 0,
     x: 0,
     y: 0,
     width: 4,
@@ -261,4 +302,18 @@ export function getAllPoolStats(): Record<string, { active: number; pooled: numb
     enemies: enemyPool.getStats(),
     bonusLetters: bonusLetterPool.getStats()
   };
+}
+
+/**
+ * Get next unique ID for power-ups
+ */
+export function getNextPowerUpId(): number {
+  return nextPowerUpId++;
+}
+
+/**
+ * Get next unique ID for bullets
+ */
+export function getNextBulletId(): number {
+  return nextBulletId++;
 }
