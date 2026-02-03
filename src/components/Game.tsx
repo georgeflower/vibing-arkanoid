@@ -585,6 +585,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     brickRenderer.invalidate();
   }, [bricks]);
 
+  // ═══ POOL SYNC HELPERS ═══
+  // These helpers ensure pool state stays in sync when bulk-clearing React state
+  const clearAllEnemies = useCallback(() => {
+    enemyPool.releaseAll();
+    setEnemies([]);
+  }, []);
+
+  const clearAllBombs = useCallback(() => {
+    bombPool.releaseAll();
+    setBombs([]);
+  }, []);
+
   // Pause-aware timer management - save remaining durations on pause, restore on resume
   useEffect(() => {
     // Include bossRushStatsOverlayActive as a pause state
@@ -1171,9 +1183,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setBossVictoryOverlayActive(true); // Show victory celebration
         // Clean up game entities
         setBalls([]);
-        setEnemies([]);
+        clearAllEnemies();
         setBossAttacks([]);
-        setBombs([]);
+        clearAllBombs();
         setBullets([]);
         // Stop boss music and resume background music
         soundManager.stopBossMusic();
@@ -1207,9 +1219,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setBossVictoryOverlayActive(true); // Show victory celebration
         // Clean up game entities
         setBalls([]);
-        setEnemies([]);
+        clearAllEnemies();
         setBossAttacks([]);
-        setBombs([]);
+        clearAllBombs();
         setBullets([]);
         // Stop boss music and resume background music
         soundManager.stopBossMusic();
@@ -1265,9 +1277,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBossVictoryOverlayActive(true); // Show victory celebration
           // Clean up game entities
           setBalls([]);
-          setEnemies([]);
+          clearAllEnemies();
           setBossAttacks([]);
-          setBombs([]);
+          clearAllBombs();
           setBullets([]);
 
           // Boss Rush mode: show stats overlay instead of immediate transition
@@ -1790,8 +1802,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setTotalPlayTime(0);
     timerStartedRef.current = false;
     totalPlayTimeStartedRef.current = false;
-    setEnemies([]);
-    setBombs([]);
+    clearAllEnemies();
+    clearAllBombs();
     setBackgroundPhase(0);
     setExplosions([]);
     setEnemySpawnCount(0);
@@ -1933,8 +1945,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setPowerUps([]);
       setBullets([]);
       setTimer(0);
-      setEnemies([]);
-      setBombs([]);
+      clearAllEnemies();
+      clearAllBombs();
       setExplosions([]);
       setEnemySpawnCount(0);
       setLastEnemySpawnTime(0);
@@ -2024,8 +2036,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setPowerUps([]);
     setBullets([]);
     setTimer(0);
-    setEnemies([]);
-    setBombs([]);
+    clearAllEnemies();
+    clearAllBombs();
     setExplosions([]);
     setEnemySpawnCount(0);
     setLastEnemySpawnTime(0);
@@ -3216,9 +3228,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     setBossVictoryOverlayActive(true); // Show victory celebration
                     // Clean up game entities
                     setBalls([]);
-                    setEnemies([]);
+                    clearAllEnemies();
                     setBossAttacks([]);
-                    setBombs([]);
+                    clearAllBombs();
                     setBullets([]);
 
                     // Boss Rush mode: show stats overlay instead of immediate transition
@@ -3295,9 +3307,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       setBossVictoryOverlayActive(true); // Show victory celebration
                       // Clean up game entities
                       setBalls([]);
-                      setEnemies([]);
+                      clearAllEnemies();
                       setBossAttacks([]);
-                      setBombs([]);
+                      clearAllBombs();
                       setBullets([]);
 
                       // Boss Rush mode: show stats overlay instead of immediate transition
@@ -3416,9 +3428,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       setBossVictoryOverlayActive(true); // Show victory celebration
                       // Clean up game entities
                       setBalls([]);
-                      setEnemies([]);
+                      clearAllEnemies();
                       setBossAttacks([]);
-                      setBombs([]);
+                      clearAllBombs();
                       setBullets([]);
 
                       // Boss Rush mode: show stats overlay instead of immediate transition
@@ -4930,10 +4942,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             }
             setBrickHitSpeedAccumulated(0);
             setTimer(0);
-            setEnemies([]);
+            clearAllEnemies();
             setBossAttacks([]);
             setLaserWarnings([]);
-            setBombs([]);
+            clearAllBombs();
             setExplosions([]);
             bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
             bombIntervalsRef.current.clear();
@@ -5608,10 +5620,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setBrickHitSpeedAccumulated(0);
               setTimer(0);
               setLastEnemySpawnTime(0);
-              setEnemies([]); // Clear all enemies
+              clearAllEnemies(); // Clear all enemies
               setBossAttacks([]);
               setLaserWarnings([]);
-              setBombs([]); // Clear all bombs
+              clearAllBombs(); // Clear all bombs
               setExplosions([]);
               // Clear all bomb intervals
               bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
@@ -5777,10 +5789,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setBrickHitSpeedAccumulated(0);
               setTimer(0);
               setLastEnemySpawnTime(0);
-              setEnemies([]); // Clear all enemies
+              clearAllEnemies(); // Clear all enemies
               setBossAttacks([]);
               setLaserWarnings([]);
-              setBombs([]); // Clear all bombs
+              clearAllBombs(); // Clear all bombs
               setExplosions([]);
               // Clear all bomb intervals
               bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
@@ -6074,8 +6086,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBoss(null);
           setDangerBalls([]);
           setBossAttacks([]);
-          setEnemies([]);
-          setBombs([]);
+          clearAllEnemies();
+          clearAllBombs();
           setBullets([]);
 
           // Do NOT release the ball after phase 3 victory - keep it trapped
@@ -6612,9 +6624,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                 // Clean up game entities
                 setBalls([]);
-                setEnemies([]);
+                clearAllEnemies();
                 setBossAttacks([]);
-                setBombs([]);
+                clearAllBombs();
                 setBullets([]);
 
                 // Stop boss music and resume background music
@@ -6871,10 +6883,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setPowerUps([]);
               setBonusLetters([]);
               setBullets([]);
-              setEnemies([]);
+              clearAllEnemies();
               setBossAttacks([]);
               setLaserWarnings([]);
-              setBombs([]);
+              clearAllBombs();
               setExplosions([]);
               setPaddle((prev) =>
                 prev
@@ -7240,9 +7252,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 setBossActive(false);
                 setBossDefeatedTransitioning(true);
                 setBalls([]);
-                setEnemies([]);
+                clearAllEnemies();
                 setBossAttacks([]);
-                setBombs([]);
+                clearAllBombs();
                 setBullets([]);
                 soundManager.stopBossMusic();
                 soundManager.resumeBackgroundMusic();
@@ -7306,9 +7318,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 setBossActive(false);
                 setBossDefeatedTransitioning(true);
                 setBalls([]);
-                setEnemies([]);
+                clearAllEnemies();
                 setBossAttacks([]);
-                setBombs([]);
+                clearAllBombs();
                 setBullets([]);
                 soundManager.stopBossMusic();
                 soundManager.resumeBackgroundMusic();
@@ -7408,9 +7420,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setBossesKilled((k) => k + 1);
               setBossDefeatedTransitioning(true);
               setBalls([]);
-              setEnemies([]);
+              clearAllEnemies();
               setBossAttacks([]);
-              setBombs([]);
+              clearAllBombs();
               setBullets([]);
               soundManager.stopBossMusic();
               soundManager.resumeBackgroundMusic();
@@ -7566,10 +7578,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setPowerUps([]);
               setBonusLetters([]);
               setBullets([]);
-              setEnemies([]);
+              clearAllEnemies();
               setBossAttacks([]);
               setLaserWarnings([]);
-              setBombs([]);
+              clearAllBombs();
               setExplosions([]);
               setPaddle((prev) =>
                 prev
@@ -8401,8 +8413,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setTimer(0);
     setTotalPlayTime(0);
     totalPlayTimeStartedRef.current = false;
-    setEnemies([]);
-    setBombs([]);
+    clearAllEnemies();
+    clearAllBombs();
     setExplosions([]);
     setEnemySpawnCount(0);
     setLastEnemySpawnTime(0);

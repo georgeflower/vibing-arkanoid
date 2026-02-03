@@ -5,7 +5,7 @@ import { soundManager } from "@/utils/sounds";
 import { getHitColor } from "@/constants/game";
 import { toast } from "sonner";
 import { isMegaBoss, handleMegaBossOuterDamage, exposeMegaBossCore, MegaBoss } from "@/utils/megaBossUtils";
-import { bulletPool } from "@/utils/entityPool";
+import { bulletPool, getNextBulletId } from "@/utils/entityPool";
 
 export const useBullets = (
   setScore: React.Dispatch<React.SetStateAction<number>>,
@@ -35,8 +35,9 @@ export const useBullets = (
 
     const isSuper = paddle.hasSuperTurrets || false;
 
-    // Use pool to acquire bullets
+    // Use pool to acquire bullets with unique IDs
     const leftBullet = bulletPool.acquire({
+      id: getNextBulletId(),
       x: paddle.x + 10,
       y: paddle.y,
       width: BULLET_WIDTH,
@@ -47,6 +48,7 @@ export const useBullets = (
     });
 
     const rightBullet = bulletPool.acquire({
+      id: getNextBulletId(),
       x: paddle.x + paddle.width - 10 - BULLET_WIDTH,
       y: paddle.y,
       width: BULLET_WIDTH,
@@ -101,7 +103,8 @@ export const useBullets = (
           if (b.y > 0 && b.y < CANVAS_HEIGHT) {
             movedBullets.push(b);
           } else {
-            bulletPool.release(b);
+            // Release pooled bullets (they have id from pool acquisition)
+            bulletPool.release(b as Bullet & { id: number });
           }
         }
       }
@@ -383,7 +386,8 @@ export const useBullets = (
       const result: Bullet[] = [];
       for (let i = 0; i < movedBullets.length; i++) {
         if (bulletIndicesHit.has(i)) {
-          bulletPool.release(movedBullets[i]);
+          // Release pooled bullets (they have id from pool acquisition)
+          bulletPool.release(movedBullets[i] as Bullet & { id: number });
           continue;
         }
         const bullet = movedBullets[i];
