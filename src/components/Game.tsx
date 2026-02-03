@@ -104,7 +104,7 @@ import { performBossAttack } from "@/utils/bossAttacks";
 import { BOSS_LEVELS, BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
 import { processBallWithCCD } from "@/utils/gameCCD";
 import { brickSpatialHash } from "@/utils/spatialHash";
-import { resetAllPools } from "@/utils/entityPool";
+import { resetAllPools, enemyPool, bombPool } from "@/utils/entityPool";
 import { brickRenderer } from "@/utils/brickLayerCache";
 import { assignPowerUpsToBricks, reassignPowerUpsToBricks } from "@/utils/powerUpAssignment";
 import { MEGA_BOSS_LEVEL, MEGA_BOSS_CONFIG } from "@/constants/megaBossConfig";
@@ -5374,6 +5374,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
 
         if (shouldRemove) {
+          bombPool.release(bomb);
           prev.splice(i, 1);
           continue;
         }
@@ -5515,6 +5516,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             },
           ]);
 
+          bombPool.release(bomb);
           setBombs((prev) => prev.filter((b) => b.enemyId !== bomb.enemyId));
           setPaddle((prev) =>
             prev
@@ -5535,6 +5537,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         ) {
           // Bomb hits paddle - lose a life (reflect shield already checked above)
           soundManager.playLoseLife();
+          bombPool.release(bomb);
           setBombs((prev) => prev.filter((b) => b.enemyId !== bomb.enemyId));
           setLives((prev) => {
             const newLives = prev - 1;
@@ -6148,7 +6151,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             const enemyId = Date.now() + i;
             const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
 
-            newEnemies.push({
+            const newEnemy = enemyPool.acquire({
               id: enemyId,
               type: enemyType,
               x: spawnX,
@@ -6165,8 +6168,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               hits: 0,
             });
 
-            // Add to boss spawned enemies for power-up drops
-            bossSpawnedEnemiesRef.current.add(enemyId);
+            if (newEnemy) {
+              newEnemies.push(newEnemy);
+              // Add to boss spawned enemies for power-up drops
+              bossSpawnedEnemiesRef.current.add(enemyId);
+            }
           }
 
           if (newEnemies.length > 0) {
@@ -6734,6 +6740,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               attack.y < enemy.y + enemy.height
             ) {
               // Remove enemy by ID
+              enemyPool.release(enemy);
               setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
               setScore((prev) => prev + 100);
               setEnemiesKilled((prev) => prev + 1);
@@ -6957,7 +6964,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Create crossBall enemy
           const speed = 2.5;
           const angle = Math.random() * Math.PI * 2;
-          const crossBallEnemy: Enemy = {
+          const crossBallEnemy = enemyPool.acquire({
             id: Date.now() + Math.random() * 1000,
             type: "crossBall",
             x: midX - 17.5, // Center the 35x35 enemy
@@ -6975,9 +6982,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             isAngry: false,
             isCrossBall: true,
             spawnTime: nowForMerge, // Track spawn time for merge cooldown
-          };
+          });
 
-          newCrossBallEnemies.push(crossBallEnemy);
+          if (crossBallEnemy) {
+            newCrossBallEnemies.push(crossBallEnemy);
+          }
         }
 
         // Remove collided projectiles
@@ -7071,7 +7080,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Create large sphere enemy
           const speed = 3.0;
           const angle = Math.random() * Math.PI * 2;
-          const largeSphereEnemy: Enemy = {
+          const largeSphereEnemy = enemyPool.acquire({
             id: Date.now() + Math.random() * 1000,
             type: "sphere",
             x: midX - 27.5, // Center larger sprite (55/2)
@@ -7088,14 +7097,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             hits: 0,
             isAngry: false,
             isLargeSphere: true,
-          };
+          });
 
-          newLargeSpheres.push(largeSphereEnemy);
+          if (largeSphereEnemy) {
+            newLargeSpheres.push(largeSphereEnemy);
+          }
         }
 
-        // Remove collided crossBall enemies
+        // Remove collided crossBall enemies (release to pool)
         if (enemiesToRemove.size > 0) {
-          setEnemies((prev) => prev.filter((e) => !enemiesToRemove.has(e.id!)));
+          setEnemies((prev) => {
+            prev.filter((e) => enemiesToRemove.has(e.id!)).forEach((e) => enemyPool.release(e));
+            return prev.filter((e) => !enemiesToRemove.has(e.id!));
+          });
         }
 
         // Spawn new large sphere enemies (add separately to avoid filter interference)
@@ -7155,6 +7169,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const nowMs = Date.now();
 
         // Remove the bomb that hit the boss first
+        bombPool.release(bomb);
         setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
 
         // Apply damage with boss-local cooldown using CURRENT boss state
@@ -7351,6 +7366,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Check cooldown
           const lastHit = rb.lastHitAt || 0;
           if (reflectedBombNow - lastHit < REFLECTED_BOMB_COOLDOWN) {
+            bombPool.release(bomb);
             setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
             return;
           }
@@ -7419,6 +7435,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
 
           // Remove bomb by ID
+          bombPool.release(bomb);
           setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
           return;
         }
@@ -7433,6 +7450,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           bomb.y < enemy.y + enemy.height
         ) {
           // Remove enemy by ID
+          enemyPool.release(enemy);
           setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
           setScore((prev) => prev + 100);
           setEnemiesKilled((prev) => prev + 1);
@@ -7457,6 +7475,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           soundManager.playCrackedBrickBreakSound();
           toast.success("Reflected shot destroyed enemy!");
           // Remove bomb by ID
+          bombPool.release(bomb);
           setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
           return;
         }
@@ -7769,7 +7788,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Pyramid enemy - very slow random movement, 3 hits to destroy
           const angle = Math.random() * Math.PI * 2;
           const speed = 1 * speedIncrease; // Very slow
-          newEnemy = {
+          newEnemy = enemyPool.acquire({
             id: enemyId,
             type: "pyramid",
             x: Math.random() * (SCALED_CANVAS_WIDTH - 40),
@@ -7785,12 +7804,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             dy: Math.sin(angle) * speed,
             hits: 0,
             isAngry: false,
-          };
+          });
         } else if (enemyType === "sphere") {
           // Sphere enemy - random movement pattern
           const angle = Math.random() * Math.PI * 2;
           const speed = 2.5 * speedIncrease; // Slightly faster
-          newEnemy = {
+          newEnemy = enemyPool.acquire({
             id: enemyId,
             type: "sphere",
             x: Math.random() * (SCALED_CANVAS_WIDTH - 40),
@@ -7806,12 +7825,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             dy: Math.sin(angle) * speed,
             hits: 0,
             isAngry: false,
-          };
+          });
         } else {
           // Cube enemy - straight line movement
           const angle = Math.random() * Math.PI * 2;
           const speed = 2 * speedIncrease;
-          newEnemy = {
+          newEnemy = enemyPool.acquire({
             id: enemyId,
             type: "cube",
             x: Math.random() * (SCALED_CANVAS_WIDTH - 40),
@@ -7825,9 +7844,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             speed: speed,
             dx: Math.cos(angle) * speed,
             dy: Math.abs(Math.sin(angle)) * speed, // Always move downward initially
-          };
+          });
         }
-        setEnemies((prev) => [...prev, newEnemy]);
+        if (newEnemy) {
+          setEnemies((prev) => [...prev, newEnemy]);
+        }
         setLastEnemySpawnTime(timer);
         setEnemySpawnCount((prev) => prev + 1);
         const enemyName = enemyType === "sphere" ? "Sphere" : enemyType === "pyramid" ? "Pyramid" : "Cube";
@@ -7873,7 +7894,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (currentEnemy.type === "pyramid") {
               const randomAngle = (Math.random() * 160 - 80) * (Math.PI / 180); // -80 to +80 degrees
               const bulletSpeed = 4;
-              const newBullet: Bomb = {
+              const newBullet = bombPool.acquire({
                 id: Date.now() + Math.random(),
                 x: currentEnemy.x + currentEnemy.width / 2 - 4,
                 y: currentEnemy.y + currentEnemy.height,
@@ -7883,11 +7904,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 enemyId: enemyId,
                 type: "pyramidBullet",
                 dx: Math.sin(randomAngle) * bulletSpeed,
-              };
-              soundManager.playPyramidBulletSound();
-              setBombs((prev) => [...prev, newBullet]);
+              });
+              if (newBullet) {
+                soundManager.playPyramidBulletSound();
+                setBombs((prev) => [...prev, newBullet]);
+              }
             } else {
-              const newProjectile: Bomb = {
+              const newProjectile = bombPool.acquire({
                 id: Date.now() + Math.random(),
                 x: currentEnemy.x + currentEnemy.width / 2 - 5,
                 y: currentEnemy.y + currentEnemy.height,
@@ -7896,9 +7919,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 speed: 3,
                 enemyId: enemyId,
                 type: "bomb", // Both cube and sphere enemies drop bombs
-              };
-              soundManager.playBombDropSound();
-              setBombs((prev) => [...prev, newProjectile]);
+              });
+              if (newProjectile) {
+                soundManager.playBombDropSound();
+                setBombs((prev) => [...prev, newProjectile]);
+              }
             }
             return currentEnemies;
           });
@@ -7946,7 +7971,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         if (enemyType === "pyramid") {
           const angle = Math.random() * Math.PI * 2;
-          newEnemy = {
+          newEnemy = enemyPool.acquire({
             id: enemyId,
             type: "pyramid",
             x: boss.x + boss.width / 2 - 17.5 + spawnOffsetX,
@@ -7960,10 +7985,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             speed: baseSpeed,
             dx: Math.cos(angle) * baseSpeed,
             dy: Math.sin(angle) * baseSpeed,
-          };
+          });
         } else if (enemyType === "sphere") {
           const angle = Math.random() * Math.PI * 2;
-          newEnemy = {
+          newEnemy = enemyPool.acquire({
             id: enemyId,
             type: "sphere",
             x: boss.x + boss.width / 2 - 15 + spawnOffsetX,
@@ -7979,11 +8004,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             dy: Math.sin(angle) * baseSpeed * 1.25,
             hits: 0,
             isAngry: false,
-          };
+          });
         } else {
           // cube
           const angle = Math.random() * Math.PI * 2;
-          newEnemy = {
+          newEnemy = enemyPool.acquire({
             id: enemyId,
             type: "cube",
             x: boss.x + boss.width / 2 - 12.5 + spawnOffsetX,
@@ -7997,30 +8022,29 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             speed: baseSpeed,
             dx: Math.cos(angle) * baseSpeed,
             dy: Math.abs(Math.sin(angle)) * baseSpeed,
-          };
+          });
         }
 
-        newEnemies.push(newEnemy);
+        if (newEnemy) {
+          newEnemies.push(newEnemy);
 
-        // Set up bomb dropping for this enemy
-        const minInterval = 5;
-        const maxInterval = 10;
-        const randomInterval = minInterval * 1000 + Math.random() * (maxInterval - minInterval) * 1000;
+          // Set up bomb dropping for this enemy
+          const minInterval = 5;
+          const maxInterval = 10;
+          const randomInterval = minInterval * 1000 + Math.random() * (maxInterval - minInterval) * 1000;
 
-        const projectileInterval = setInterval(() => {
-          setEnemies((currentEnemies) => {
-            const currentEnemy = currentEnemies.find((e) => e.id === enemyId);
-            if (!currentEnemy) {
-              clearInterval(projectileInterval);
-              bombIntervalsRef.current.delete(enemyId);
-              return currentEnemies;
-            }
+          const projectileInterval = setInterval(() => {
+            setEnemies((currentEnemies) => {
+              const currentEnemy = currentEnemies.find((e) => e.id === enemyId);
+              if (!currentEnemy) {
+                clearInterval(projectileInterval);
+                bombIntervalsRef.current.delete(enemyId);
+                return currentEnemies;
+              }
 
-            const projectileType = enemyType === "pyramid" ? "pyramidBullet" : "bomb";
+              const projectileType = enemyType === "pyramid" ? "pyramidBullet" : "bomb";
 
-            setBombs((prev) => [
-              ...prev,
-              {
+              const newBomb = bombPool.acquire({
                 id: Date.now() + Math.random(),
                 x: currentEnemy.x + currentEnemy.width / 2 - 5,
                 y: currentEnemy.y + currentEnemy.height,
@@ -8029,23 +8053,29 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 speed: 3,
                 enemyId: enemyId,
                 type: projectileType,
-              },
-            ]);
+              });
 
-            if (enemyType === "pyramid") {
-              soundManager.playPyramidBulletSound();
-            } else {
-              soundManager.playBombDropSound();
-            }
+              if (newBomb) {
+                setBombs((prev) => [...prev, newBomb]);
 
-            return currentEnemies;
-          });
-        }, randomInterval);
+                if (enemyType === "pyramid") {
+                  soundManager.playPyramidBulletSound();
+                } else {
+                  soundManager.playBombDropSound();
+                }
+              }
 
-        bombIntervalsRef.current.set(enemyId, projectileInterval);
+              return currentEnemies;
+            });
+          }, randomInterval);
+
+          bombIntervalsRef.current.set(enemyId, projectileInterval);
+        }
       }
 
-      setEnemies((prev) => [...prev, ...newEnemies]);
+      if (newEnemies.length > 0) {
+        setEnemies((prev) => [...prev, ...newEnemies]);
+      }
       setLastBossSpawnTime(timer);
 
       // Trigger minion tutorial on first boss minion spawn
