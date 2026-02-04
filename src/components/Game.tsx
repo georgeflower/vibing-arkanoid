@@ -2240,6 +2240,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   );
   const activeTouchRef = useRef<number | null>(null);
   const secondTouchRef = useRef<number | null>(null);
+  
+  // Mobile touch optimization: cache canvas rect to avoid layout thrashing
+  const canvasRectRef = useRef<DOMRect | null>(null);
+  const canvasRectTimeRef = useRef(0);
+  const RECT_CACHE_MS = 500; // Refresh rect cache every 500ms
+  
+  const getCanvasRect = useCallback(() => {
+    const now = performance.now();
+    if (!canvasRectRef.current || now - canvasRectTimeRef.current > RECT_CACHE_MS) {
+      canvasRectRef.current = canvasRef.current?.getBoundingClientRect() || null;
+      canvasRectTimeRef.current = now;
+    }
+    return canvasRectRef.current;
+  }, []);
+  
+  // Mobile touch throttling: limit state updates to ~60fps
+  const lastTouchUpdateRef = useRef(0);
+  const TOUCH_THROTTLE_MS = 16; // ~60fps
+  
   const handleTouchStart = useCallback(
     (e: TouchEvent) => {
       // Don't process game input during tutorial - let TutorialOverlay handle it
@@ -2356,14 +2375,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     (e: TouchEvent) => {
       if (!canvasRef.current || !paddle || gameState === "paused") return;
       e.preventDefault();
+      
+      // Use cached canvas rect to avoid layout thrashing on every touch event
+      const rect = getCanvasRect();
+      if (!rect) return;
+      
+      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
       const waitingBall = balls.find((ball) => ball.waitingToLaunch);
 
       // Update launch angle if second finger is moving and ball is waiting
       if (waitingBall && secondTouchRef.current !== null) {
         for (let i = 0; i < e.touches.length; i++) {
           if (e.touches[i].identifier === secondTouchRef.current) {
-            const rect = canvasRef.current.getBoundingClientRect();
-            const scaleX = SCALED_CANVAS_WIDTH / rect.width;
             const touchX = (e.touches[i].clientX - rect.left) * scaleX;
 
             // Calculate angle from second finger position relative to paddle center
@@ -2393,8 +2416,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         activeTouchRef.current = activeTouch.identifier;
       }
       if (!activeTouch) return;
-      const rect = canvasRef.current.getBoundingClientRect();
-      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
+      
       const touchX = (activeTouch.clientX - rect.left) * scaleX;
 
       // Implement scaled touch control zone (middle 70% controls full paddle range)
@@ -2410,24 +2432,26 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Map to full paddle range
       const paddleRange = SCALED_CANVAS_WIDTH - paddle.width;
-      const targetX = normalizedPosition * paddleRange;
+      const newX = normalizedPosition * paddleRange;
 
-      const newX = targetX;
-
-      // Update ref immediately for high-priority collision detection
+      // Always update ref immediately for collision detection (no throttle)
       paddleXRef.current = newX;
+      
+      // Throttle React state updates to ~60fps to reduce GC pressure on mobile
+      const now = performance.now();
+      if (now - lastTouchUpdateRef.current < TOUCH_THROTTLE_MS) {
+        return; // Skip state update, ref is already updated for physics
+      }
+      lastTouchUpdateRef.current = now;
 
-      // Update state for rendering (may be delayed during low FPS)
-      setPaddle((prev) =>
-        prev
-          ? {
-              ...prev,
-              x: newX,
-            }
-          : null,
-      );
+      // Update state for rendering
+      setPaddle((prev) => {
+        if (!prev) return null;
+        if (prev.x === newX) return prev; // Skip if no change
+        return { ...prev, x: newX };
+      });
     },
-    [paddle, balls, SCALED_CANVAS_WIDTH, gameState],
+    [paddle, balls, SCALED_CANVAS_WIDTH, gameState, getCanvasRect],
   );
   const handleTouchEnd = useCallback((e: TouchEvent) => {
     // Clear active touches when they end
