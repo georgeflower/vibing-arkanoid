@@ -1,222 +1,234 @@
 
-# Fix: Mobile-Only Intermittent Freezes (500ms+ Frame Gaps)
 
-## ✅ IMPLEMENTED
+# Fix: Persistent Mobile Freezes (119ms-497ms Frame Gaps)
 
 ## Problem Summary
-After extensive codebase analysis, the game experiences intermittent freezes (500-600ms frame gaps) **only on mobile devices**. Desktop performance is stable. This is a mobile-specific issue with multiple contributing factors.
+Despite previous optimizations, the game still experiences intermittent freezes on mobile (Pixel 8a with Firefox) with debug features enabled. The LAG DETECTED logs show:
+- 119ms freeze at game start
+- 194ms freeze shortly after
+- 497ms freeze during gameplay with 2 balls and 1 enemy
 
-## Root Cause Analysis
+The data shows: `enemyCount: 0-1, particleCount: 0, powerUpCount: 0` - these are minimal object counts, meaning the freeze isn't from object overload.
 
-### 1. Non-Passive Touch Event Listeners Blocking Main Thread
-The game registers touch handlers with `{ passive: false }` for iOS Safari compatibility:
+## Root Causes Identified
+
+### 1. Frame Profiler Running Every Frame (Even When Disabled)
+The game loop calls `frameProfiler.startFrame()` unconditionally every frame:
+
 ```typescript
-// Game.tsx lines 2769-2777
-canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
-canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
-canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
+// Line 5120 - ALWAYS runs, regardless of whether profiler is enabled
+frameProfiler.startFrame();
 ```
 
-**Problem**: Non-passive listeners force the browser to wait for JavaScript execution before scrolling/rendering, introducing jank. On mobile, this can cause the compositor thread to stall waiting for the main thread.
+Even though `frameProfiler.startFrame()` has an early return when disabled, the function call overhead and the surrounding code structure remain. More importantly, it also calls `startTiming("rendering")`, `endTiming()`, etc. throughout the game loop - all of which add overhead.
 
-**Additional overhead**: The `handleTouchMove` callback performs multiple operations per event:
-- `getBoundingClientRect()` - forces layout recalculation
-- `Math` calculations for touch zone mapping
-- `setPaddle()` state update on every move event
+### 2. Debug Logger Still Creates Date Objects Per Log
+Despite the `addLogLite` optimization, the method still creates a `new Date().toISOString()` for every log entry:
 
-### 2. Debug Logger Serialization During Lag Events
-When a lag event is detected, `console.log` is intercepted and the debugLogger performs:
 ```typescript
-// debugLogger.ts lines 47-53
-const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-if (message.includes('[LAG') || ...) {
-  self.addLog('log', message, args.length > 1 ? args.slice(1) : undefined);
-}
-```
-
-Then `sanitizeData()` does **another** `JSON.stringify` + `JSON.parse`. This creates a cascade where detecting lag causes more lag - especially noticeable on mobile's slower JavaScript engines.
-
-### 3. localStorage Writes During Gameplay
-The debugLogger saves to localStorage with a 2-second debounce, but on mobile devices localStorage operations are significantly slower than on desktop (can be 50-200ms+ on some devices).
-
-### 4. Service Worker Update Checks on Visibility Change
-When returning from background (common on mobile with multitasking), the service worker hook triggers update checks:
-```typescript
-// useServiceWorkerUpdate.ts lines 85-88
-const handleVisibilityChange = () => {
-  if (!document.hidden && isMainMenu) {
-    checkForUpdate(); // Async operation on visibility change
-  }
+// debugLogger.ts lines 139-143
+const entry: DebugLogEntry = {
+  timestamp: new Date().toISOString(), // Expensive on mobile
+  level,
+  message,
+  data: undefined,
 };
 ```
 
-While this is gated to `isMainMenu`, the visibility change handler is still registered during gameplay.
+`new Date().toISOString()` involves:
+- Creating a Date object
+- Converting to ISO string (string allocation)
+- On mobile Firefox, this is especially slow
 
-### 5. Array Spread on Every Touch Update
-Every touch move creates a new paddle object:
+### 3. Lag Detection Creates Objects Every Check
+Even in the "fast path" for lag detection, the logger is still called:
+
 ```typescript
-setPaddle((prev) => prev ? { ...prev, x: newX } : null);
+// Game.tsx lines 5100-5113
+const context = {
+  level,
+  ballCount: balls.length,
+  enemyCount: enemies.length,
+  // ... creates object every time
+};
+debugLogger.error(`[DEBUG] [LAG DETECTED]...`, context);
 ```
 
-On mobile with high touch event frequency (120Hz+ touch sampling on modern phones), this creates significant garbage.
+This creates a new object that then needs to be serialized, even with `addLogLite`.
+
+### 4. Multiple performance.now() Calls Per Frame
+The game loop calls `performance.now()` multiple times:
+- Line 5054: `frameStart`
+- Line 5123: `now` (for FPS throttling)
+- Frame profiler calls it many more times via `startTiming`/`endTiming`
+
+On mobile, `performance.now()` can be slower than expected and calling it 10+ times per frame adds up.
+
+### 5. frameProfiler.startTiming/endTiming Calls Throughout Loop
+Even when the profiler is "disabled", the calls are still made throughout:
+- `frameProfiler.startTiming("rendering")` - line 5197
+- `frameProfiler.startTiming("bullets")` - line 5239
+- `frameProfiler.startTiming("enemies")` - line 5244
+- `frameProfiler.startTiming("particles")` - line 5297
+- And many more...
+
+Each call checks `if (!this.enabled) return;` - but the function call overhead on mobile is significant.
+
+### 6. Garbage Collection from Closures in gameLoop
+The `gameLoop` callback creates new closures and references each time it's called, which can trigger GC pauses. The dependency array includes many state variables that cause the callback to be recreated.
 
 ## Solution
 
-### Phase 1: Debounce Touch Move Handler (Major Impact)
-Create a throttled touch move handler that limits state updates to 60fps:
+### Phase 1: Gate All Debug Operations Behind Single Check
+Move all debug-related operations behind a single flag check at the start of the loop:
 
 ```typescript
-// Game.tsx - new ref and throttled handler
-const lastTouchUpdateRef = useRef(0);
-const TOUCH_THROTTLE_MS = 16; // ~60fps
+// Game.tsx - in gameLoop
+const shouldRunDebugCode = ENABLE_DEBUG_FEATURES && (
+  debugSettings.showFrameProfiler ||
+  debugSettings.enableLagLogging ||
+  debugSettings.enableGCLogging
+);
 
-const handleTouchMove = useCallback((e: TouchEvent) => {
-  // ... existing early returns ...
-  e.preventDefault();
-  
-  const now = performance.now();
-  // Throttle state updates to 60fps
-  if (now - lastTouchUpdateRef.current < TOUCH_THROTTLE_MS) {
-    // Still update paddleXRef for collision detection, but skip React state
-    if (activeTouch) {
-      const rect = canvasRef.current.getBoundingClientRect();
-      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
-      const touchX = (activeTouch.clientX - rect.left) * scaleX;
-      // ... calculate newX ...
-      paddleXRef.current = newX; // Update ref immediately
-    }
-    return;
-  }
-  lastTouchUpdateRef.current = now;
-  
-  // ... rest of existing logic ...
-}, [...]);
-```
+// Only run lag detection if debug is actually active
+if (shouldRunDebugCode) {
+  // ... existing lag detection code
+}
 
-### Phase 2: Skip Debug Serialization During Lag Events
-Prevent the lag-detecting-lag cascade:
-
-```typescript
-// debugLogger.ts - modify console.log override
-console.log = function (...args: any[]) {
-  self.originalConsole.log(...args);
-  
-  // Quick string check without JSON.stringify for common messages
-  const firstArg = args[0];
-  if (typeof firstArg === 'string') {
-    if (firstArg.includes('[LAG') || firstArg.includes('[CCD') || firstArg.includes('[DEBUG')) {
-      // Skip heavy serialization for lag events - just store message
-      if (firstArg.includes('[LAG')) {
-        self.addLogLite('log', firstArg); // New lightweight method
-      } else {
-        self.addLog('log', firstArg, args.length > 1 ? args.slice(1) : undefined);
-      }
-    }
-  }
-};
-
-// New lightweight log method
-addLogLite(level: DebugLogEntry['level'], message: string) {
-  if (!this.enabled) return;
-  
-  const entry: DebugLogEntry = {
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    data: undefined, // Skip serialization entirely
-  };
-  
-  if (this.logs.length >= MAX_LOGS) {
-    this.logs.shift();
-  }
-  this.logs.push(entry);
-  this.saveToStorage();
+// Only run frame profiler if specifically enabled
+if (ENABLE_DEBUG_FEATURES && debugSettings.showFrameProfiler) {
+  frameProfiler.startFrame();
 }
 ```
 
-### Phase 3: Increase localStorage Debounce for Mobile
-Increase the save debounce to reduce I/O pressure:
+### Phase 2: Use Cached Timestamp in Debug Logger
+Cache `Date.now()` at the start of each frame and reuse it:
 
 ```typescript
-// debugLogger.ts
-const SAVE_DEBOUNCE_MS = 5000; // Increase from 2000 to 5000ms
+// Game.tsx - add at component level
+const frameTimestampRef = useRef<number>(0);
+
+// In gameLoop, at very start:
+frameTimestampRef.current = Date.now();
+
+// debugLogger.ts - new method for frame-cached timestamps
+addLogWithTimestamp(level: DebugLogEntry['level'], message: string, cachedTimestamp: number) {
+  if (!this.enabled) return;
+  
+  const entry: DebugLogEntry = {
+    timestamp: cachedTimestamp, // Use pre-cached number
+    level,
+    message,
+    data: undefined,
+  };
+  // ...
+}
 ```
 
-### Phase 4: Cache getBoundingClientRect
-Cache the canvas rect to avoid forced layout recalculation:
+### Phase 3: Remove frameProfiler Calls When Debug Disabled
+Wrap all `frameProfiler.startTiming`/`endTiming` calls in conditional checks:
 
 ```typescript
-// Game.tsx - add cached rect
-const canvasRectRef = useRef<DOMRect | null>(null);
-const canvasRectTimeRef = useRef(0);
-const RECT_CACHE_MS = 500; // Refresh every 500ms
+// Instead of:
+frameProfiler.startTiming("rendering");
+// ... code ...
+frameProfiler.endTiming("rendering");
 
-// In touch handlers, use cached rect:
-const getCanvasRect = useCallback(() => {
-  const now = performance.now();
-  if (!canvasRectRef.current || now - canvasRectTimeRef.current > RECT_CACHE_MS) {
-    canvasRectRef.current = canvasRef.current?.getBoundingClientRect() || null;
-    canvasRectTimeRef.current = now;
-  }
-  return canvasRectRef.current;
-}, []);
+// Use:
+const profilerEnabled = ENABLE_DEBUG_FEATURES && debugSettings.showFrameProfiler;
+if (profilerEnabled) frameProfiler.startTiming("rendering");
+// ... code ...
+if (profilerEnabled) frameProfiler.endTiming("rendering");
+
+// Or better - create a helper:
+const startProfile = profilerEnabled ? frameProfiler.startTiming.bind(frameProfiler) : () => {};
+const endProfile = profilerEnabled ? frameProfiler.endTiming.bind(frameProfiler) : () => {};
 ```
 
-### Phase 5: Use Mutation Instead of Spread for Paddle
-Avoid object creation on every touch:
+### Phase 4: Reduce performance.now() Calls
+Cache the timestamp at the start of the frame and reuse:
 
 ```typescript
-// Game.tsx - mutate paddle in place
-setPaddle((prev) => {
-  if (!prev) return null;
-  if (prev.x === newX) return prev; // Skip if no change
-  prev.x = newX; // Mutate in place
-  return prev; // Return same reference - React won't re-render
-  // Actually need: return { ...prev }; // But only when changed
-});
+// Game.tsx - in gameLoop
+const frameNow = performance.now(); // Call ONCE
 
-// Better: Update ref immediately, let game loop sync to state
-paddleXRef.current = newX;
-// Game loop periodically syncs ref to state
+// Replace all subsequent performance.now() calls with frameNow
+const frameGap = lagDetectionRef.current.lastFrameEnd > 0 
+  ? frameNow - lagDetectionRef.current.lastFrameEnd 
+  : 0;
+
+// ... later in the loop
+const elapsed = frameNow - lastFrameTimeRef.current;
+```
+
+### Phase 5: Skip Lag Logging When Already Lagging
+Prevent cascade by skipping lag detection if we're already in a lag frame:
+
+```typescript
+// Game.tsx - in lag detection section
+if (frameGap > 50 && !lagDetectionRef.current.isCurrentlyLagging) {
+  lagDetectionRef.current.isCurrentlyLagging = true;
+  // ... log lag event without creating objects
+  debugLogger.logLiteLag(`Frame gap: ${frameGap.toFixed(0)}ms`);
+}
+
+// At end of frame:
+lagDetectionRef.current.isCurrentlyLagging = false;
+```
+
+### Phase 6: Disable Debug Features for Production Testing
+The simplest immediate fix: set `ENABLE_DEBUG_FEATURES = false` in `src/constants/game.ts` when testing mobile performance:
+
+```typescript
+// src/constants/game.ts
+export const ENABLE_DEBUG_FEATURES = false; // Disable for mobile testing
 ```
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/Game.tsx` | Throttle touch handler, cache canvas rect, optimize paddle updates |
-| `src/utils/debugLogger.ts` | Add lightweight log method, skip serialization for lag events, increase debounce |
+| `src/components/Game.tsx` | Gate all debug code, cache performance.now(), remove profiler calls when disabled |
+| `src/utils/debugLogger.ts` | Use numeric timestamp instead of Date object, add ultra-light lag logging |
+| `src/utils/frameProfiler.ts` | No-op implementation when disabled (optional) |
+| `src/constants/game.ts` | Set `ENABLE_DEBUG_FEATURES = false` for production |
 
 ## Technical Details
 
+### Performance Impact Analysis
+
+| Operation | Mobile Cost (approx) | Frequency | Total Impact |
+|-----------|---------------------|-----------|--------------|
+| `new Date().toISOString()` | 0.1-0.5ms | Every lag log | High |
+| `performance.now()` | 0.01-0.05ms | 10+ per frame | Medium |
+| Function call overhead | 0.001-0.01ms | 50+ per frame | Medium |
+| Object creation (`context`) | 0.05-0.2ms | Per lag event | High |
+| `frameProfiler.startTiming()` | 0.01-0.05ms | 8+ per frame | Medium |
+
 ### Why Mobile-Only?
-1. **JavaScript Engine Speed**: Mobile JS engines are 3-10x slower than desktop V8
-2. **Touch Event Frequency**: Modern phones sample touch at 120-240Hz, creating 2-4x more events than 60fps can process
-3. **Memory Pressure**: Mobile devices have tighter memory constraints, triggering more frequent GC
-4. **localStorage Performance**: Mobile localStorage is significantly slower due to flash storage limitations
-5. **Compositor Thread Blocking**: Non-passive listeners block the compositor, which is more noticeable on mobile's lower refresh budgets
+- Firefox on Android has slower JS execution than Chrome
+- Mobile CPUs throttle aggressively for battery savings
+- GC pressure is higher due to memory constraints
+- Debug operations that take 0.5ms on desktop can take 2-5ms on mobile
 
-### Expected Performance Impact
+### Quick Fix (Immediate)
+Set `ENABLE_DEBUG_FEATURES = false` in `src/constants/game.ts`. This will eliminate all debug overhead and likely resolve the freezes immediately.
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Touch events processed/sec | 120-240 | 60 (throttled) |
-| `getBoundingClientRect` calls/sec | 120-240 | 2 (cached) |
-| Lag event overhead | ~50-100ms | ~1ms |
-| localStorage writes/min | 30 | 12 |
+### Long-term Fix (This Plan)
+Properly gate all debug code so it has zero overhead when disabled, allowing debug mode to be left on without performance impact.
 
 ## Implementation Order
-1. ✅ Throttle touch move handler (biggest impact)
-2. ✅ Cache `getBoundingClientRect` result
-3. ✅ Add lightweight log method to debugLogger
-4. ✅ Increase localStorage debounce
-5. Test on mobile devices
+1. Disable debug features for immediate mobile testing (`ENABLE_DEBUG_FEATURES = false`)
+2. Cache `performance.now()` at frame start
+3. Gate all frameProfiler calls behind single check
+4. Optimize debugLogger timestamp creation
+5. Test on mobile to verify fix
+6. Re-enable debug features with optimizations in place
 
 ## Testing Checklist
-- [ ] Play levels 1-4 on mobile device
-- [ ] Watch console for LAG DETECTED warnings
-- [ ] Verify paddle responsiveness remains smooth
-- [ ] Check that touch controls feel as responsive
-- [ ] Test rapid touch movements
-- [ ] Verify no freeze during level transitions
-- [ ] Test with debug dashboard open vs closed
+- [ ] Set `ENABLE_DEBUG_FEATURES = false` and test mobile - verify no freezes
+- [ ] With debug ON, play levels 1-4 on mobile
+- [ ] Monitor console for LAG DETECTED warnings
+- [ ] Verify no performance regression on desktop
+- [ ] Test with frame profiler overlay enabled vs disabled
+
