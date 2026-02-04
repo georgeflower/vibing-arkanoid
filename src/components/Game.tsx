@@ -5050,96 +5050,88 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Clear newly reflected bombs ref at start of each frame
     newlyReflectedBombIdsRef.current.clear();
 
+    // ═══ MOBILE PERF: Cache performance.now() once per frame ═══
+    const frameNow = performance.now();
+    
+    // ═══ MOBILE PERF: Single flag to gate all debug overhead ═══
+    const shouldRunDebugCode = ENABLE_DEBUG_FEATURES && (
+      debugSettings.showFrameProfiler ||
+      debugSettings.enableLagLogging ||
+      debugSettings.enableGCLogging ||
+      debugSettings.enableDetailedFrameLogging
+    );
+    const profilerEnabled = ENABLE_DEBUG_FEATURES && debugSettings.showFrameProfiler;
+
     // ═══ LAG DETECTION: Track frame-to-frame time with GC detection ═══
-    const frameStart = performance.now();
-    const frameGap = lagDetectionRef.current.lastFrameEnd > 0 ? frameStart - lagDetectionRef.current.lastFrameEnd : 0;
+    const frameGap = lagDetectionRef.current.lastFrameEnd > 0 ? frameNow - lagDetectionRef.current.lastFrameEnd : 0;
 
-    // GC Detection: Check for significant heap drops (Chrome-only API)
-    if (ENABLE_DEBUG_FEATURES && (performance as any).memory) {
-      const currentHeap = (performance as any).memory.usedJSHeapSize;
-      const heapDrop = lagDetectionRef.current.lastUsedHeap - currentHeap;
+    // Only run debug detection code if debug features are actually enabled
+    if (shouldRunDebugCode) {
+      // GC Detection: Check for significant heap drops (Chrome-only API)
+      if (debugSettings.enableGCLogging && (performance as any).memory) {
+        const currentHeap = (performance as any).memory.usedJSHeapSize;
+        const heapDrop = lagDetectionRef.current.lastUsedHeap - currentHeap;
 
-      // If heap dropped significantly (>1MB), likely GC occurred
-      // Throttle GC logging to max once per second to reduce debug overhead
-      const GC_LOG_THROTTLE_MS = 1000;
-      if (lagDetectionRef.current.lastUsedHeap > 0 && heapDrop > 3_000_000) {
-        // Only log if enough time has passed since last GC log
-        if (
-          !lagDetectionRef.current.lastGCLogTime ||
-          frameStart - lagDetectionRef.current.lastGCLogTime > GC_LOG_THROTTLE_MS
-        ) {
-          if (debugSettings.enableGCLogging) {
-            const gcContext = {
-              heapDropMB: (heapDrop / 1_000_000).toFixed(2),
-              heapUsedMB: (currentHeap / 1_000_000).toFixed(1),
-              frameGapMs: frameGap.toFixed(1),
-              level,
-              ballCount: balls.length,
-              enemyCount: enemies.length,
-            };
-            debugLogger.warn(`[DEBUG] [GC DETECTED] Heap dropped by ${gcContext.heapDropMB}MB`, gcContext);
+        // If heap dropped significantly (>3MB), likely GC occurred
+        // Throttle GC logging to max once per second to reduce debug overhead
+        const GC_LOG_THROTTLE_MS = 1000;
+        if (lagDetectionRef.current.lastUsedHeap > 0 && heapDrop > 3_000_000) {
+          if (
+            !lagDetectionRef.current.lastGCLogTime ||
+            frameNow - lagDetectionRef.current.lastGCLogTime > GC_LOG_THROTTLE_MS
+          ) {
+            // Use lightweight logging - no object creation for lag events
+            debugLogger.addLogLite('warn', 
+              `[DEBUG] [GC DETECTED] Heap dropped by ${(heapDrop / 1_000_000).toFixed(2)}MB, heap: ${(currentHeap / 1_000_000).toFixed(1)}MB, gap: ${frameGap.toFixed(1)}ms`);
+            lagDetectionRef.current.lastGCLogTime = frameNow;
           }
-          lagDetectionRef.current.lastGCLogTime = frameStart;
         }
+        lagDetectionRef.current.lastUsedHeap = currentHeap;
       }
-      lagDetectionRef.current.lastUsedHeap = currentHeap;
-    }
 
-    // Log if frame gap exceeds 50ms (indicates lag between frames) - throttled to 1/sec
-    if (frameGap > 50) {
-      lagDetectionRef.current.lagCount++;
+      // Log if frame gap exceeds 50ms (indicates lag between frames) - throttled to 1/sec
+      if (frameGap > 50 && debugSettings.enableLagLogging) {
+        lagDetectionRef.current.lagCount++;
 
-      // Only log once per second max to avoid spam
-      if (frameStart - lagDetectionRef.current.lastLagLogTime > 1000) {
-        // Check if this was due to tab being backgrounded
-        if (lagDetectionRef.current.tabWasHidden && frameGap > 500) {
-          if (ENABLE_DEBUG_FEATURES && debugSettings.enableLagLogging) {
-            debugLogger.log(`[DEBUG] [TAB RESUME] Resumed after ${frameGap.toFixed(0)}ms (tab was backgrounded)`);
+        // Only log once per second max to avoid spam
+        if (frameNow - lagDetectionRef.current.lastLagLogTime > 1000) {
+          // Check if this was due to tab being backgrounded
+          if (lagDetectionRef.current.tabWasHidden && frameGap > 500) {
+            debugLogger.addLogLite('log', `[DEBUG] [TAB RESUME] Resumed after ${frameGap.toFixed(0)}ms (tab was backgrounded)`);
+            lagDetectionRef.current.tabWasHidden = false;
+          } else {
+            // Use lightweight logging - skip object serialization entirely
+            debugLogger.addLogLite('error', 
+              `[DEBUG] [LAG DETECTED] Frame gap: ${frameGap.toFixed(1)}ms, balls: ${balls.length}, enemies: ${enemies.length}, quality: ${quality || "unknown"}`);
           }
-          lagDetectionRef.current.tabWasHidden = false;
-        } else if (ENABLE_DEBUG_FEATURES && debugSettings.enableLagLogging) {
-          const context = {
-            level,
-            ballCount: balls.length,
-            enemyCount: enemies.length,
-            particleCount: particlePool.getStats().active,
-            powerUpCount: powerUps.length,
-            bossActive: !!boss,
-            quality: quality || "unknown",
-            heapUsedMB: (performance as any).memory?.usedJSHeapSize
-              ? ((performance as any).memory.usedJSHeapSize / 1_000_000).toFixed(1)
-              : "N/A",
-          };
-          debugLogger.error(`[DEBUG] [LAG DETECTED] Frame gap: ${frameGap.toFixed(1)}ms (expected ~16.67ms)`, context);
+          lagDetectionRef.current.lastLagLogTime = frameNow;
         }
-        lagDetectionRef.current.lastLagLogTime = frameStart;
       }
     }
 
-    // ═══ PHASE 1: Frame Profiler Start ═══
-    frameProfiler.startFrame();
+    // ═══ PHASE 1: Frame Profiler Start (only if explicitly enabled) ═══
+    if (profilerEnabled) frameProfiler.startFrame();
 
-    // Throttle to 60 FPS
-    const now = performance.now();
-    const elapsed = now - lastFrameTimeRef.current;
+    // Throttle to 60 FPS (use cached frameNow)
+    const elapsed = frameNow - lastFrameTimeRef.current;
 
     if (elapsed < targetFrameTime) {
       animationFrameRef.current = requestAnimationFrame(gameLoop);
-      lagDetectionRef.current.lastFrameEnd = performance.now();
+      lagDetectionRef.current.lastFrameEnd = frameNow;
       return;
     }
 
-    lastFrameTimeRef.current = now - (elapsed % targetFrameTime);
+    lastFrameTimeRef.current = frameNow - (elapsed % targetFrameTime);
 
-    // Track FPS
+    // Track FPS (use cached frameNow)
     fpsTrackerRef.current.frameCount++;
-    const deltaTime = now - fpsTrackerRef.current.lastTime;
+    const deltaTime = frameNow - fpsTrackerRef.current.lastTime;
 
     if (deltaTime >= 1000) {
       const fps = Math.min(60, Math.round((fpsTrackerRef.current.frameCount * 1000) / deltaTime));
       fpsTrackerRef.current.fps = fps;
       fpsTrackerRef.current.frameCount = 0;
-      fpsTrackerRef.current.lastTime = now;
+      fpsTrackerRef.current.lastTime = frameNow;
 
       // Update adaptive quality system and display
       updateFps(fps);
@@ -5194,12 +5186,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // FPS is already being updated once per second at line 3065, no need to duplicate here
 
     // ═══ PHASE 1: Time Rendering ═══
-    frameProfiler.startTiming("rendering");
+    if (profilerEnabled) frameProfiler.startTiming("rendering");
 
     // Update background animation
     setBackgroundPhase((prev) => (prev + 1) % 360);
 
-    frameProfiler.endTiming("rendering");
+    if (profilerEnabled) frameProfiler.endTiming("rendering");
 
     // Update balls rotation only (position is updated in checkCollision with substeps)
     // OPTIMIZED: In-place mutation instead of creating new objects
@@ -5236,12 +5228,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     checkBonusLetterCollision();
 
     // Update bullets
-    frameProfiler.startTiming("bullets");
+    if (profilerEnabled) frameProfiler.startTiming("bullets");
     updateBullets(bricks);
-    frameProfiler.endTiming("bullets");
+    if (profilerEnabled) frameProfiler.endTiming("bullets");
 
     // Update enemies
-    frameProfiler.startTiming("enemies");
+    if (profilerEnabled) frameProfiler.startTiming("enemies");
     // Check if stun is active (applies to all enemies)
     const isStunActive = bossStunnerEndTime !== null && Date.now() < bossStunnerEndTime;
 
@@ -5291,10 +5283,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         return [...prev]; // New array reference for React
       });
     }
-    frameProfiler.endTiming("enemies");
+    if (profilerEnabled) frameProfiler.endTiming("enemies");
 
     // Update explosions and their particles - OPTIMIZED: Use particle pool
-    frameProfiler.startTiming("particles");
+    if (profilerEnabled) frameProfiler.startTiming("particles");
     if (debugSettings.enableExplosions && debugSettings.enableParticles) {
       // Skip particle updates on alternate frames when quality is low
       const currentFrameTick = gameLoopRef.current?.getFrameTick() || 0;
@@ -5322,11 +5314,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Particles are now entirely in the pool - no separate state updates needed
     // The pool's updateParticles handles gameOver and highScore particles automatically
-    frameProfiler.endTiming("particles");
+    if (profilerEnabled) frameProfiler.endTiming("particles");
 
-    // Count particles for profiler - use pool stats only
-    const poolStats = particlePool.getStats();
-    frameProfiler.incrementCounter("particles", poolStats.active);
+    // Count particles for profiler - use pool stats only (skip if profiler disabled)
+    if (profilerEnabled) {
+      const poolStats = particlePool.getStats();
+      frameProfiler.incrementCounter("particles", poolStats.active);
+    }
 
     // Ball repels nearby enemy shots (1-5% based on proximity to paddle)
     // This creates a safety buffer to prevent impossible death situations
@@ -7668,27 +7662,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
 
     // ═══ PHASE 1: End Frame Profiling ═══
-    frameProfiler.endFrame();
-    if (debugSettings.enableFrameProfilerLogging && frameProfiler.isEnabled()) {
-      frameProfiler.logStats();
+    if (profilerEnabled) {
+      frameProfiler.endFrame();
+      if (debugSettings.enableFrameProfilerLogging && frameProfiler.isEnabled()) {
+        frameProfiler.logStats();
+      }
     }
 
-    // ═══ LAG DETECTION: Log frame duration spikes ═══
+    // ═══ LAG DETECTION: Update frame end time ═══
     const frameEnd = performance.now();
-    const frameDuration = frameEnd - frameStart;
     lagDetectionRef.current.lastFrameEnd = frameEnd;
 
-    if (frameDuration > 50) {
-      const stats = frameProfiler.getStats();
-      debugLogger.warn(`[SLOW FRAME] Duration: ${frameDuration.toFixed(1)}ms`, {
-        fps: stats?.fps || "N/A",
-        physics: stats?.timings?.physics || 0,
-        rendering: stats?.timings?.rendering || 0,
-        particles: stats?.timings?.particles || 0,
-        enemies: stats?.timings?.enemies || 0,
-        collisionCount: stats?.counters?.collisions || 0,
-        particleCount: stats?.counters?.particles || 0,
-      });
+    // Log slow frames if profiler is enabled (use frameNow from start of loop)
+    if (profilerEnabled) {
+      const frameDuration = frameEnd - frameNow;
+      if (frameDuration > 50) {
+        const stats = frameProfiler.getStats();
+        debugLogger.addLogLite('warn', 
+          `[SLOW FRAME] Duration: ${frameDuration.toFixed(1)}ms, fps: ${stats?.fps || "N/A"}, physics: ${stats?.timings?.physics.toFixed(1) || 0}ms`);
+      }
     }
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
