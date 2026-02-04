@@ -218,17 +218,16 @@ Set `ENABLE_DEBUG_FEATURES = false` in `src/constants/game.ts`. This will elimin
 Properly gate all debug code so it has zero overhead when disabled, allowing debug mode to be left on without performance impact.
 
 ## Implementation Order
-1. Disable debug features for immediate mobile testing (`ENABLE_DEBUG_FEATURES = false`)
-2. Cache `performance.now()` at frame start
-3. Gate all frameProfiler calls behind single check
-4. Optimize debugLogger timestamp creation
-5. Test on mobile to verify fix
-6. Re-enable debug features with optimizations in place
+1. ✅ Cache `performance.now()` at frame start - use `frameNow` throughout loop
+2. ✅ Gate all debug code behind `shouldRunDebugCode` and `profilerEnabled` flags
+3. ✅ Gate all frameProfiler calls behind `profilerEnabled` check
+4. ✅ Optimize debugLogger `addLogLite` to use numeric timestamps
+5. ✅ Use lightweight logging for lag/GC detection - no object serialization
+6. Test on mobile to verify fix
 
 ## Testing Checklist
-- [ ] Set `ENABLE_DEBUG_FEATURES = false` and test mobile - verify no freezes
-- [ ] With debug ON, play levels 1-4 on mobile
-- [ ] Monitor console for LAG DETECTED warnings
+- [ ] Play levels 1-4 on Pixel 8a with Firefox
+- [ ] Monitor console for LAG DETECTED warnings (should be much rarer)
 - [ ] Verify no performance regression on desktop
 - [ ] Test with frame profiler overlay enabled vs disabled
 

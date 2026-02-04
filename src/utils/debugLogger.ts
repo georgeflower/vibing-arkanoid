@@ -133,11 +133,16 @@ class DebugLogger {
    * Lightweight log entry - skips data serialization entirely
    * Use for high-frequency events like lag detection to avoid cascade effect
    */
+  /**
+   * Lightweight log entry - uses numeric timestamp to avoid Date object creation
+   * Use for high-frequency events like lag detection to avoid cascade effect
+   */
   addLogLite(level: DebugLogEntry['level'], message: string) {
     if (!this.enabled) return;
 
+    // Use numeric timestamp - format only when displaying/exporting
     const entry: DebugLogEntry = {
-      timestamp: new Date().toISOString(),
+      timestamp: String(Date.now()), // Numeric timestamp as string - much faster than toISOString()
       level,
       message,
       data: undefined, // Skip serialization entirely
