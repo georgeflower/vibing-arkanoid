@@ -74,6 +74,32 @@ const _tempPos1: Vec2 = { x: 0, y: 0 };
 const _tempMoveDir: Vec2 = { x: 0, y: 0 };
 const _tempSweptAabb = { x: 0, y: 0, w: 0, h: 0 };
 
+// Additional pre-allocated vectors for collision detection
+const _tempRayDir: Vec2 = { x: 0, y: 0 };
+const _tempHitPoint: Vec2 = { x: 0, y: 0 };
+const _tempReflectNormal: Vec2 = { x: 0, y: 0 };
+const _tempVelocity: Vec2 = { x: 0, y: 0 };
+
+// Pre-allocated array for corner checks to avoid per-brick allocations
+const _tempCorners: Vec2[] = [
+  { x: 0, y: 0 },
+  { x: 0, y: 0 },
+  { x: 0, y: 0 },
+  { x: 0, y: 0 }
+];
+
+// Reusable ball object to avoid spread allocation
+const _tempBall: Ball = {
+  id: 0,
+  x: 0,
+  y: 0,
+  dx: 0,
+  dy: 0,
+  radius: 0,
+  lastPaddleHitTime: undefined,
+  isFireball: false
+};
+
 // Mutable vector operations (modify first argument in place)
 const vAddTo = (out: Vec2, a: Vec2, b: Vec2): Vec2 => { out.x = a.x + b.x; out.y = a.y + b.y; return out; };
 const vSubTo = (out: Vec2, a: Vec2, b: Vec2): Vec2 => { out.x = a.x - b.x; out.y = a.y - b.y; return out; };
@@ -102,11 +128,16 @@ const reflect = (vel: Vec2, normal: Vec2): Vec2 => {
   return vSub(vel, vScale(n, 2 * vn));
 };
 
+// Pre-allocated result object for rayAABB to avoid per-call allocations
+const _rayAABBResult = { tEntry: 0, tExit: 0, normal: { x: 0, y: 0 } };
+
 /*
 Ray vs expanded AABB intersection (parametric)
 Returns { tEntry, tExit, normal } where tEntry is earliest entry in [0,1] along ray from r0->r1
 If no hit, returns null.
 normal: the collision normal at entry (approx axis-aligned)
+
+NOTE: Returns a reference to a reusable object - caller must copy values if needed beyond immediate use.
 */
 function rayAABB(
   r0: Vec2,
@@ -114,9 +145,11 @@ function rayAABB(
   aabb: { x: number; y: number; w: number; h: number },
 ): { tEntry: number; tExit: number; normal: Vec2 } | null {
   const EPS = 1e-9;
-  const dir = vSub(r1, r0);
-  const invDirX = dir.x === 0 ? 1e12 : 1 / dir.x;
-  const invDirY = dir.y === 0 ? 1e12 : 1 / dir.y;
+  // Calculate direction in-place (avoid vSub allocation)
+  const dirX = r1.x - r0.x;
+  const dirY = r1.y - r0.y;
+  const invDirX = dirX === 0 ? 1e12 : 1 / dirX;
+  const invDirY = dirY === 0 ? 1e12 : 1 / dirY;
   let tmin = (aabb.x - r0.x) * invDirX;
   let tmax = (aabb.x + aabb.w - r0.x) * invDirX;
   if (tmin > tmax) {
@@ -134,18 +167,24 @@ function rayAABB(
   const entry = Math.max(tmin, tymin);
   const exit = Math.min(tmax, tymax);
   if (entry > exit || exit < 0 || entry > 1) return null;
-  // determine normal: which axis gave entry (with epsilon for tie-breaking)
-  let normal: Vec2 = { x: 0, y: 0 };
+  
+  // Reuse result object to avoid allocation
+  _rayAABBResult.tEntry = Math.max(0, entry);
+  _rayAABBResult.tExit = Math.min(1, exit);
+  
+  // Determine normal: which axis gave entry (with epsilon for tie-breaking)
   if (Math.abs(tmin - tymin) < EPS) {
     // Tie - use direction magnitude to choose axis
-    normal.x = Math.abs(dir.x) > Math.abs(dir.y) ? (invDirX < 0 ? 1 : -1) : 0;
-    normal.y = Math.abs(dir.y) > Math.abs(dir.x) ? (invDirY < 0 ? 1 : -1) : 0;
+    _rayAABBResult.normal.x = Math.abs(dirX) > Math.abs(dirY) ? (invDirX < 0 ? 1 : -1) : 0;
+    _rayAABBResult.normal.y = Math.abs(dirY) > Math.abs(dirX) ? (invDirY < 0 ? 1 : -1) : 0;
   } else if (tmin > tymin) {
-    normal.x = invDirX < 0 ? 1 : -1;
+    _rayAABBResult.normal.x = invDirX < 0 ? 1 : -1;
+    _rayAABBResult.normal.y = 0;
   } else {
-    normal.y = invDirY < 0 ? 1 : -1;
+    _rayAABBResult.normal.x = 0;
+    _rayAABBResult.normal.y = invDirY < 0 ? 1 : -1;
   }
-  return { tEntry: Math.max(0, entry), tExit: Math.min(1, exit), normal };
+  return _rayAABBResult;
 }
 
 /*
@@ -270,10 +309,21 @@ export function processBallCCD(
 
   if (!ballIn) return { ball: null, events: [] };
 
-  // clone to avoid mutating external object until commit
-  const ball: Ball = { ...ballIn };
+  // Use reusable ball object instead of spread to avoid allocation
+  // Copy only the essential properties
+  _tempBall.id = ballIn.id;
+  _tempBall.x = ballIn.x;
+  _tempBall.y = ballIn.y;
+  _tempBall.dx = ballIn.dx;
+  _tempBall.dy = ballIn.dy;
+  _tempBall.radius = ballIn.radius;
+  _tempBall.lastPaddleHitTime = ballIn.lastPaddleHitTime;
+  _tempBall.isFireball = ballIn.isFireball ?? false;
+  _tempBall.lastHitTick = ballIn.lastHitTick;
+  const ball = _tempBall;
+  
   const events: CollisionEvent[] = [];
-  const debugArr: any[] = [];
+  const debugArr: any[] = debug ? [] : [];
 
   // velocities are px/sec; per-substep movement fraction
   const subDt = dt / Math.max(1, substeps);
@@ -515,17 +565,20 @@ export function processBallCCD(
         const exp = expandAABB(b, ball.radius);
         const rayHit = rayAABB(pos0, pos1, exp);
         if (rayHit) {
-          const hitPoint = vAdd(pos0, vScale(vSub(pos1, pos0), rayHit.tEntry));
-          if (!earliest || rayHit.tEntry < earliest.t) {
-            // normalize brick normal defensively
-            let bn = rayHit.normal;
-            const bnLen = Math.hypot(bn.x, bn.y);
-            if (bnLen > 1e-6) {
-              bn = { x: bn.x / bnLen, y: bn.y / bnLen };
-            }
+          // Copy values immediately since rayAABB returns reusable object
+          const rayT = rayHit.tEntry;
+          const hitPoint = vAdd(pos0, vScale(vSub(pos1, pos0), rayT));
+          if (!earliest || rayT < earliest.t) {
+            // normalize brick normal defensively - copy the normal
+            const bnX = rayHit.normal.x;
+            const bnY = rayHit.normal.y;
+            const bnLen = Math.hypot(bnX, bnY);
+            const normalizedBn = bnLen > 1e-6 
+              ? { x: bnX / bnLen, y: bnY / bnLen }
+              : { x: bnX, y: bnY };
             earliest = {
-              t: rayHit.tEntry,
-              normal: bn,
+              t: rayT,
+              normal: normalizedBn,
               objectType: "brick",
               objectId: b.id,
               point: hitPoint,
@@ -533,14 +586,14 @@ export function processBallCCD(
             };
           }
         } else {
-          // corner tests: check rectangle corners
-          const corners = [
-            { x: b.x, y: b.y },
-            { x: b.x + b.width, y: b.y },
-            { x: b.x, y: b.y + b.height },
-            { x: b.x + b.width, y: b.y + b.height },
-          ];
-          for (const c of corners) {
+          // corner tests: check rectangle corners using pre-allocated array
+          _tempCorners[0].x = b.x; _tempCorners[0].y = b.y;
+          _tempCorners[1].x = b.x + b.width; _tempCorners[1].y = b.y;
+          _tempCorners[2].x = b.x; _tempCorners[2].y = b.y + b.height;
+          _tempCorners[3].x = b.x + b.width; _tempCorners[3].y = b.y + b.height;
+          
+          for (let ci = 0; ci < 4; ci++) {
+            const c = _tempCorners[ci];
             const sc = segmentCircleTOI(pos0, pos1, c, ball.radius);
             if (sc && (!earliest || sc.t < earliest.t)) {
               earliest = {
@@ -691,10 +744,24 @@ export function processBallCCD(
     // after substep continue to next substep (ball.dx/dy already updated)
   } // end substeps loop
 
+  // Return a copy of the ball to avoid returning the reusable object
+  // (which would be overwritten on next call)
+  const resultBall: Ball = {
+    id: ball.id,
+    x: ball.x,
+    y: ball.y,
+    dx: ball.dx,
+    dy: ball.dy,
+    radius: ball.radius,
+    lastPaddleHitTime: ball.lastPaddleHitTime,
+    isFireball: ball.isFireball,
+    lastHitTick: ball.lastHitTick
+  };
+
   if (debug) {
     const perfEnd = performance.now();
-    return { ball, events, debug: { debugSteps: debugArr, perfMs: perfEnd - perfStart } };
+    return { ball: resultBall, events, debug: { debugSteps: debugArr, perfMs: perfEnd - perfStart } };
   }
 
-  return { ball, events, debug: debug ? debugArr : undefined };
+  return { ball: resultBall, events, debug: undefined };
 }

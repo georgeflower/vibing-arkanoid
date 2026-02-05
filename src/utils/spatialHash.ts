@@ -24,6 +24,10 @@ export class SpatialHash<T extends SpatialHashable> {
   private cols: number;
   private rows: number;
   private objectToKeys: Map<T, number[]> = new Map();
+  
+  // Pre-allocated containers for query() - reused to avoid per-call allocations
+  private _querySeen: Set<T> = new Set();
+  private _queryResults: T[] = [];
 
   constructor(config: SpatialHashConfig) {
     this.cellSize = config.cellSize;
@@ -128,8 +132,9 @@ export class SpatialHash<T extends SpatialHashable> {
     const minRow = Math.max(0, Math.floor(aabb.y / this.cellSize));
     const maxRow = Math.min(this.rows - 1, Math.floor((aabb.y + aabb.h) / this.cellSize));
 
-    const seen = new Set<T>();
-    const results: T[] = [];
+    // Reuse pre-allocated containers to avoid per-call allocations
+    this._querySeen.clear();
+    this._queryResults.length = 0;
 
     for (let row = minRow; row <= maxRow; row++) {
       for (let col = minCol; col <= maxCol; col++) {
@@ -138,11 +143,11 @@ export class SpatialHash<T extends SpatialHashable> {
         if (cell) {
           for (let i = 0; i < cell.length; i++) {
             const obj = cell[i];
-            if (!seen.has(obj) && obj.visible !== false) {
-              seen.add(obj);
+            if (!this._querySeen.has(obj) && obj.visible !== false) {
+              this._querySeen.add(obj);
               // Fine-grained AABB check
               if (this.overlaps(obj, aabb)) {
-                results.push(obj);
+                this._queryResults.push(obj);
               }
             }
           }
@@ -150,7 +155,7 @@ export class SpatialHash<T extends SpatialHashable> {
       }
     }
 
-    return results;
+    return this._queryResults;
   }
 
   /**
