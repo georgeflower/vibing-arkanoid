@@ -17,6 +17,10 @@ export class EntityPool<T extends Poolable> {
   private maxPoolSize: number;
   private factory: () => T;
   private resetFn: (obj: T) => void;
+  
+  // Cached active array - avoids Array.from() on every getActive() call
+  private _cachedActive: T[] = [];
+  private _cacheValid: boolean = false;
 
   constructor(
     factory: () => T,
@@ -61,6 +65,9 @@ export class EntityPool<T extends Poolable> {
       this.activeMap.set(id, obj);
     }
     
+    // Invalidate cache since active set changed
+    this._cacheValid = false;
+    
     return obj;
   }
 
@@ -74,6 +81,8 @@ export class EntityPool<T extends Poolable> {
       this.activeMap.delete(id);
       this.resetFn(obj);
       this.pool.push(obj);
+      // Invalidate cache since active set changed
+      this._cacheValid = false;
     }
   }
 
@@ -87,6 +96,8 @@ export class EntityPool<T extends Poolable> {
       this.activeMap.delete(id);
       this.resetFn(obj);
       this.pool.push(obj);
+      // Invalidate cache since active set changed
+      this._cacheValid = false;
     }
   }
 
@@ -106,9 +117,15 @@ export class EntityPool<T extends Poolable> {
 
   /**
    * Get array of currently active objects
+   * Uses cached array to avoid Array.from() allocation on every call
    */
   getActive(): T[] {
-    return Array.from(this.activeMap.values());
+    if (!this._cacheValid) {
+      this._cachedActive.length = 0;
+      this.activeMap.forEach(v => this._cachedActive.push(v));
+      this._cacheValid = true;
+    }
+    return this._cachedActive;
   }
 
   /**
@@ -121,6 +138,8 @@ export class EntityPool<T extends Poolable> {
       this.pool.push(obj);
     });
     this.activeMap.clear();
+    // Invalidate cache since all active objects were released
+    this._cacheValid = false;
   }
 
   /**
