@@ -1,233 +1,209 @@
 
-
-# Fix: Persistent Mobile Freezes (119ms-497ms Frame Gaps)
+# Fix: Mobile Performance Regression from Object Pooling Changes
 
 ## Problem Summary
-Despite previous optimizations, the game still experiences intermittent freezes on mobile (Pixel 8a with Firefox) with debug features enabled. The LAG DETECTED logs show:
-- 119ms freeze at game start
-- 194ms freeze shortly after
-- 497ms freeze during gameplay with 2 balls and 1 enemy
+The lag occurs across multiple mobile devices and browsers (Pixel/Firefox, iPhone/Edge, iPhone/Safari) and **started after the pooling optimizations**. Despite the pooling being intended to reduce allocations, several critical issues were introduced that create **more garbage than before** on hot paths.
 
-The data shows: `enemyCount: 0-1, particleCount: 0, powerUpCount: 0` - these are minimal object counts, meaning the freeze isn't from object overload.
+## Root Cause Analysis
 
-## Root Causes Identified
+The "optimizations" introduced several allocation patterns that are called thousands of times per frame:
 
-### 1. Frame Profiler Running Every Frame (Even When Disabled)
-The game loop calls `frameProfiler.startFrame()` unconditionally every frame:
-
+### 1. SpatialHash.query() Creates Garbage Every Call (CRITICAL)
 ```typescript
-// Line 5120 - ALWAYS runs, regardless of whether profiler is enabled
-frameProfiler.startFrame();
+// spatialHash.ts line 131 - called per ball, per substep
+const seen = new Set<T>();   // NEW SET every call
+const results: T[] = [];     // NEW ARRAY every call
+```
+With 2 balls and 10 substeps, this creates 40+ Set and Array objects per frame.
+
+### 2. gameCCD.ts Calls performance.now() Unconditionally (HIGH)
+```typescript
+// Lines 54, 70, 156, 174, 177, etc. - 7+ calls per ball
+const perfStart = performance.now();
+const bossFirstSweepStart = performance.now();
+const ccdCoreStart = performance.now();
+// ... even when NOT measuring performance
+```
+On mobile, `performance.now()` syscalls are expensive.
+
+### 3. processBallCCD.ts Creates Objects Per Collision (HIGH)
+```typescript
+// Line 274 - per ball per frame
+const ball: Ball = { ...ballIn };
+
+// Lines 84-92 - per collision check (many times per substep)
+const vAdd = (a, b) => ({ x: a.x + b.x, y: a.y + b.y });
+const vSub = (a, b) => ({ x: a.x - b.x, y: a.y - b.y });
 ```
 
-Even though `frameProfiler.startFrame()` has an early return when disabled, the function call overhead and the surrounding code structure remain. More importantly, it also calls `startTiming("rendering")`, `endTiming()`, etc. throughout the game loop - all of which add overhead.
-
-### 2. Debug Logger Still Creates Date Objects Per Log
-Despite the `addLogLite` optimization, the method still creates a `new Date().toISOString()` for every log entry:
-
+### 4. EntityPool.getActive() Uses Array.from() (MEDIUM)
 ```typescript
-// debugLogger.ts lines 139-143
-const entry: DebugLogEntry = {
-  timestamp: new Date().toISOString(), // Expensive on mobile
-  level,
-  message,
-  data: undefined,
-};
+// entityPool.ts line 111 - called during rendering
+return Array.from(this.activeMap.values());
+```
+Creates new array every render call.
+
+### 5. Game.tsx Array Spreads in State Updates (MEDIUM)
+```typescript
+// Multiple locations - per frame
+return [...prev];  // Creates new array even when content unchanged
 ```
 
-`new Date().toISOString()` involves:
-- Creating a Date object
-- Converting to ISO string (string allocation)
-- On mobile Firefox, this is especially slow
+## Quantifying the Problem
 
-### 3. Lag Detection Creates Objects Every Check
-Even in the "fast path" for lag detection, the logger is still called:
+| Operation | Frequency Per Frame | Objects Created |
+|-----------|---------------------|-----------------|
+| spatialHash.query() | 2 balls × 10 substeps = 20 | 40 (Set + Array) |
+| performance.now() | 7 per ball × 2 = 14 | 14 syscalls |
+| ball spread {...ballIn} | 2 balls | 2 |
+| vAdd/vSub/normalize | ~50 per ball × 2 = 100 | 100+ Vec2 objects |
+| Array.from() for pools | 2-3 per frame | 2-3 arrays |
 
-```typescript
-// Game.tsx lines 5100-5113
-const context = {
-  level,
-  ballCount: balls.length,
-  enemyCount: enemies.length,
-  // ... creates object every time
-};
-debugLogger.error(`[DEBUG] [LAG DETECTED]...`, context);
-```
-
-This creates a new object that then needs to be serialized, even with `addLogLite`.
-
-### 4. Multiple performance.now() Calls Per Frame
-The game loop calls `performance.now()` multiple times:
-- Line 5054: `frameStart`
-- Line 5123: `now` (for FPS throttling)
-- Frame profiler calls it many more times via `startTiming`/`endTiming`
-
-On mobile, `performance.now()` can be slower than expected and calling it 10+ times per frame adds up.
-
-### 5. frameProfiler.startTiming/endTiming Calls Throughout Loop
-Even when the profiler is "disabled", the calls are still made throughout:
-- `frameProfiler.startTiming("rendering")` - line 5197
-- `frameProfiler.startTiming("bullets")` - line 5239
-- `frameProfiler.startTiming("enemies")` - line 5244
-- `frameProfiler.startTiming("particles")` - line 5297
-- And many more...
-
-Each call checks `if (!this.enabled) return;` - but the function call overhead on mobile is significant.
-
-### 6. Garbage Collection from Closures in gameLoop
-The `gameLoop` callback creates new closures and references each time it's called, which can trigger GC pauses. The dependency array includes many state variables that cause the callback to be recreated.
+**Total: 150+ objects per frame**, triggering garbage collection every few seconds on mobile.
 
 ## Solution
 
-### Phase 1: Gate All Debug Operations Behind Single Check
-Move all debug-related operations behind a single flag check at the start of the loop:
+### Phase 1: Fix SpatialHash.query() - Reuse Set and Array
+
+Add instance-level reusable containers:
 
 ```typescript
-// Game.tsx - in gameLoop
-const shouldRunDebugCode = ENABLE_DEBUG_FEATURES && (
-  debugSettings.showFrameProfiler ||
-  debugSettings.enableLagLogging ||
-  debugSettings.enableGCLogging
-);
+// spatialHash.ts - add instance fields
+private _querySeen: Set<T> = new Set();
+private _queryResults: T[] = [];
 
-// Only run lag detection if debug is actually active
-if (shouldRunDebugCode) {
-  // ... existing lag detection code
-}
-
-// Only run frame profiler if specifically enabled
-if (ENABLE_DEBUG_FEATURES && debugSettings.showFrameProfiler) {
-  frameProfiler.startFrame();
-}
-```
-
-### Phase 2: Use Cached Timestamp in Debug Logger
-Cache `Date.now()` at the start of each frame and reuse it:
-
-```typescript
-// Game.tsx - add at component level
-const frameTimestampRef = useRef<number>(0);
-
-// In gameLoop, at very start:
-frameTimestampRef.current = Date.now();
-
-// debugLogger.ts - new method for frame-cached timestamps
-addLogWithTimestamp(level: DebugLogEntry['level'], message: string, cachedTimestamp: number) {
-  if (!this.enabled) return;
+query(aabb): T[] {
+  // Reuse containers instead of creating new ones
+  this._querySeen.clear();
+  this._queryResults.length = 0;
   
-  const entry: DebugLogEntry = {
-    timestamp: cachedTimestamp, // Use pre-cached number
-    level,
-    message,
-    data: undefined,
-  };
-  // ...
+  // ... existing logic using this._querySeen and this._queryResults
+  
+  return this._queryResults;
 }
 ```
 
-### Phase 3: Remove frameProfiler Calls When Debug Disabled
-Wrap all `frameProfiler.startTiming`/`endTiming` calls in conditional checks:
+### Phase 2: Remove performance.now() from gameCCD.ts Hot Path
+
+Only call performance.now() when debug is enabled:
+
+```typescript
+// gameCCD.ts - make timing conditional
+import { ENABLE_DEBUG_FEATURES } from '@/constants/game';
+
+export function processBallWithCCD(...) {
+  // Only measure if debug is on
+  const perfStart = ENABLE_DEBUG_FEATURES ? performance.now() : 0;
+  
+  // ... CCD logic ...
+  
+  // Only include performance data if measured
+  return {
+    ball: updatedBall,
+    events: result.events,
+    // ... other fields
+    performance: ENABLE_DEBUG_FEATURES ? { /* timing data */ } : undefined
+  };
+}
+```
+
+### Phase 3: Use Pre-allocated Vec2 Objects in processBallCCD.ts
+
+Extend the existing pre-allocation pattern to cover all vector operations:
+
+```typescript
+// processBallCCD.ts - add more pre-allocated vectors
+const _tempRayDir: Vec2 = { x: 0, y: 0 };
+const _tempHitPoint: Vec2 = { x: 0, y: 0 };
+const _tempReflect: Vec2 = { x: 0, y: 0 };
+
+// Replace immutable vAdd/vSub calls in hot path with mutable versions
+// Example: Instead of const dir = vSub(pos1, pos0);
+// Use: vSubTo(_tempRayDir, pos1, pos0);
+```
+
+### Phase 4: Cache EntityPool.getActive() Result
+
+Return a stable reference instead of creating new array:
+
+```typescript
+// entityPool.ts - cache the active array
+private _cachedActive: T[] = [];
+private _cacheValid: boolean = false;
+
+getActive(): T[] {
+  if (!this._cacheValid) {
+    this._cachedActive.length = 0;
+    this.activeMap.forEach(v => this._cachedActive.push(v));
+    this._cacheValid = true;
+  }
+  return this._cachedActive;
+}
+
+// Invalidate cache on acquire/release
+acquire(init): T | null {
+  // ... existing logic
+  this._cacheValid = false;
+  return obj;
+}
+```
+
+### Phase 5: Optimize Game.tsx State Updates
+
+Only create new array when content actually changed:
 
 ```typescript
 // Instead of:
-frameProfiler.startTiming("rendering");
-// ... code ...
-frameProfiler.endTiming("rendering");
+return [...prev];
 
 // Use:
-const profilerEnabled = ENABLE_DEBUG_FEATURES && debugSettings.showFrameProfiler;
-if (profilerEnabled) frameProfiler.startTiming("rendering");
-// ... code ...
-if (profilerEnabled) frameProfiler.endTiming("rendering");
-
-// Or better - create a helper:
-const startProfile = profilerEnabled ? frameProfiler.startTiming.bind(frameProfiler) : () => {};
-const endProfile = profilerEnabled ? frameProfiler.endTiming.bind(frameProfiler) : () => {};
-```
-
-### Phase 4: Reduce performance.now() Calls
-Cache the timestamp at the start of the frame and reuse:
-
-```typescript
-// Game.tsx - in gameLoop
-const frameNow = performance.now(); // Call ONCE
-
-// Replace all subsequent performance.now() calls with frameNow
-const frameGap = lagDetectionRef.current.lastFrameEnd > 0 
-  ? frameNow - lagDetectionRef.current.lastFrameEnd 
-  : 0;
-
-// ... later in the loop
-const elapsed = frameNow - lastFrameTimeRef.current;
-```
-
-### Phase 5: Skip Lag Logging When Already Lagging
-Prevent cascade by skipping lag detection if we're already in a lag frame:
-
-```typescript
-// Game.tsx - in lag detection section
-if (frameGap > 50 && !lagDetectionRef.current.isCurrentlyLagging) {
-  lagDetectionRef.current.isCurrentlyLagging = true;
-  // ... log lag event without creating objects
-  debugLogger.logLiteLag(`Frame gap: ${frameGap.toFixed(0)}ms`);
+return prev; // If no mutations needed
+// OR
+if (modified) {
+  return [...prev];
+} else {
+  return prev;
 }
-
-// At end of frame:
-lagDetectionRef.current.isCurrentlyLagging = false;
-```
-
-### Phase 6: Disable Debug Features for Production Testing
-The simplest immediate fix: set `ENABLE_DEBUG_FEATURES = false` in `src/constants/game.ts` when testing mobile performance:
-
-```typescript
-// src/constants/game.ts
-export const ENABLE_DEBUG_FEATURES = false; // Disable for mobile testing
 ```
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/components/Game.tsx` | Gate all debug code, cache performance.now(), remove profiler calls when disabled |
-| `src/utils/debugLogger.ts` | Use numeric timestamp instead of Date object, add ultra-light lag logging |
-| `src/utils/frameProfiler.ts` | No-op implementation when disabled (optional) |
-| `src/constants/game.ts` | Set `ENABLE_DEBUG_FEATURES = false` for production |
+| File | Changes | Priority |
+|------|---------|----------|
+| `src/utils/spatialHash.ts` | Reuse Set/Array in query() | CRITICAL |
+| `src/utils/gameCCD.ts` | Gate performance.now() behind debug flag | HIGH |
+| `src/utils/processBallCCD.ts` | Use more pre-allocated vectors, avoid ball spread | HIGH |
+| `src/utils/entityPool.ts` | Cache getActive() result | MEDIUM |
+| `src/components/Game.tsx` | Optimize array spread patterns | MEDIUM |
 
 ## Technical Details
 
-### Performance Impact Analysis
+### Why This Fixes Mobile But Not Desktop
+- Desktop V8's GC is generational and handles short-lived objects efficiently
+- Mobile Safari/Firefox have less sophisticated GC, causing longer pauses
+- Mobile CPUs run at lower clock speeds, amplifying GC impact
+- Memory pressure on mobile devices is tighter, triggering GC more often
 
-| Operation | Mobile Cost (approx) | Frequency | Total Impact |
-|-----------|---------------------|-----------|--------------|
-| `new Date().toISOString()` | 0.1-0.5ms | Every lag log | High |
-| `performance.now()` | 0.01-0.05ms | 10+ per frame | Medium |
-| Function call overhead | 0.001-0.01ms | 50+ per frame | Medium |
-| Object creation (`context`) | 0.05-0.2ms | Per lag event | High |
-| `frameProfiler.startTiming()` | 0.01-0.05ms | 8+ per frame | Medium |
+### Expected Performance Impact
 
-### Why Mobile-Only?
-- Firefox on Android has slower JS execution than Chrome
-- Mobile CPUs throttle aggressively for battery savings
-- GC pressure is higher due to memory constraints
-- Debug operations that take 0.5ms on desktop can take 2-5ms on mobile
-
-### Quick Fix (Immediate)
-Set `ENABLE_DEBUG_FEATURES = false` in `src/constants/game.ts`. This will eliminate all debug overhead and likely resolve the freezes immediately.
-
-### Long-term Fix (This Plan)
-Properly gate all debug code so it has zero overhead when disabled, allowing debug mode to be left on without performance impact.
+| Metric | Before | After |
+|--------|--------|-------|
+| Objects per frame | 150+ | ~10 |
+| GC pause frequency | Every 2-5 seconds | Every 30+ seconds |
+| performance.now() calls | 14 per ball | 0 (debug off) |
+| Array allocations | 40+ per frame | ~5 per frame |
 
 ## Implementation Order
-1. ✅ Cache `performance.now()` at frame start - use `frameNow` throughout loop
-2. ✅ Gate all debug code behind `shouldRunDebugCode` and `profilerEnabled` flags
-3. ✅ Gate all frameProfiler calls behind `profilerEnabled` check
-4. ✅ Optimize debugLogger `addLogLite` to use numeric timestamps
-5. ✅ Use lightweight logging for lag/GC detection - no object serialization
-6. Test on mobile to verify fix
+1. Fix spatialHash.query() (biggest impact - called most frequently)
+2. Remove performance.now() from gameCCD.ts (easy win)
+3. Extend pre-allocated vectors in processBallCCD.ts
+4. Cache EntityPool.getActive()
+5. Optimize Game.tsx array spreads
 
 ## Testing Checklist
-- [ ] Play levels 1-4 on Pixel 8a with Firefox
-- [ ] Monitor console for LAG DETECTED warnings (should be much rarer)
-- [ ] Verify no performance regression on desktop
-- [ ] Test with frame profiler overlay enabled vs disabled
-
+- [ ] Play level 1-4 on Pixel 8a Firefox - verify no 500ms+ freezes
+- [ ] Play on iPhone Safari - verify smooth gameplay
+- [ ] Play on iPhone Edge - verify smooth gameplay
+- [ ] Monitor for LAG DETECTED warnings (should be rare/none)
+- [ ] Verify game still functions correctly after optimizations
+- [ ] Test with 3+ balls active (multiball) to stress test allocations
