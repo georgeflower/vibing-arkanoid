@@ -12,7 +12,7 @@ export interface DebugLogEntry {
 
 const MAX_LOGS = 500;
 const STORAGE_KEY = 'vibing_arkanoid_debug_logs';
-const SAVE_DEBOUNCE_MS = 2000; // Debounce localStorage saves to 2 seconds
+const SAVE_DEBOUNCE_MS = 5000; // Debounce localStorage saves to 5 seconds (reduced from 2s for mobile perf)
 
 class DebugLogger {
   private logs: DebugLogEntry[] = [];
@@ -39,6 +39,7 @@ class DebugLogger {
 
   /**
    * Initialize console interception for debug-related logs
+   * Optimized to avoid expensive serialization during lag events (prevents lag-detecting-lag cascade)
    */
   intercept() {
     const self = this;
@@ -46,27 +47,51 @@ class DebugLogger {
     // Override console.log for [LAG] and [CCD] prefixed messages
     console.log = function (...args: any[]) {
       self.originalConsole.log(...args);
-      const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-      if (message.includes('[LAG') || message.includes('[CCD') || message.includes('[DEBUG')) {
-        self.addLog('log', message, args.length > 1 ? args.slice(1) : undefined);
+      
+      // Fast path: check first arg without serialization
+      const firstArg = args[0];
+      if (typeof firstArg === 'string') {
+        // Use startsWith for faster matching (avoids scanning full string)
+        if (firstArg.startsWith('[LAG')) {
+          // Lightweight logging for lag events - skip data serialization entirely
+          self.addLogLite('log', firstArg);
+          return;
+        }
+        if (firstArg.startsWith('[CCD') || firstArg.startsWith('[DEBUG')) {
+          self.addLog('log', firstArg, args.length > 1 ? args.slice(1) : undefined);
+        }
       }
     };
 
     // Override console.warn
     console.warn = function (...args: any[]) {
       self.originalConsole.warn(...args);
-      const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-      if (message.includes('[LAG') || message.includes('[CCD') || message.includes('[DEBUG')) {
-        self.addLog('warn', message, args.length > 1 ? args.slice(1) : undefined);
+      
+      const firstArg = args[0];
+      if (typeof firstArg === 'string') {
+        if (firstArg.startsWith('[LAG')) {
+          self.addLogLite('warn', firstArg);
+          return;
+        }
+        if (firstArg.startsWith('[CCD') || firstArg.startsWith('[DEBUG')) {
+          self.addLog('warn', firstArg, args.length > 1 ? args.slice(1) : undefined);
+        }
       }
     };
 
     // Override console.error
     console.error = function (...args: any[]) {
       self.originalConsole.error(...args);
-      const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-      if (message.includes('[LAG') || message.includes('[CCD') || message.includes('[DEBUG')) {
-        self.addLog('error', message, args.length > 1 ? args.slice(1) : undefined);
+      
+      const firstArg = args[0];
+      if (typeof firstArg === 'string') {
+        if (firstArg.startsWith('[LAG')) {
+          self.addLogLite('error', firstArg);
+          return;
+        }
+        if (firstArg.startsWith('[CCD') || firstArg.startsWith('[DEBUG')) {
+          self.addLog('error', firstArg, args.length > 1 ? args.slice(1) : undefined);
+        }
       }
     };
 
@@ -96,6 +121,33 @@ class DebugLogger {
     };
 
     // Circular buffer - remove oldest if at capacity
+    if (this.logs.length >= MAX_LOGS) {
+      this.logs.shift();
+    }
+
+    this.logs.push(entry);
+    this.saveToStorage();
+  }
+
+  /**
+   * Lightweight log entry - skips data serialization entirely
+   * Use for high-frequency events like lag detection to avoid cascade effect
+   */
+  /**
+   * Lightweight log entry - uses numeric timestamp to avoid Date object creation
+   * Use for high-frequency events like lag detection to avoid cascade effect
+   */
+  addLogLite(level: DebugLogEntry['level'], message: string) {
+    if (!this.enabled) return;
+
+    // Use numeric timestamp - format only when displaying/exporting
+    const entry: DebugLogEntry = {
+      timestamp: String(Date.now()), // Numeric timestamp as string - much faster than toISOString()
+      level,
+      message,
+      data: undefined, // Skip serialization entirely
+    };
+
     if (this.logs.length >= MAX_LOGS) {
       this.logs.shift();
     }
