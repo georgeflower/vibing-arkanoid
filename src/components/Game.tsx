@@ -505,6 +505,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [getReadyActive, setGetReadyActive] = useState(false);
   const getReadyStartTimeRef = useRef<number | null>(null);
   const baseSpeedMultiplierRef = useRef(1);
+  
+  // Debounce ref to prevent ball launch immediately after stats overlay closes
+  const statsOverlayJustClosedRef = useRef(false);
 
   // Mobile ball glow state for Get Ready sequence
   const [getReadyGlow, setGetReadyGlow] = useState<{ opacity: number } | null>(null);
@@ -2170,6 +2173,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, []); // Only run once on mount
   // Unified ball launch function - single source of truth for all launch paths
   const launchBallAtCurrentAngle = useCallback(() => {
+    // Block launch if stats overlay just closed (prevents accidental launch from continue click)
+    if (statsOverlayJustClosedRef.current) return;
+    
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (!waitingBall || gameState !== "playing") return;
 
@@ -9239,6 +9245,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     }
                     livesRemaining={lives}
                     onContinue={() => {
+                      // Set debounce to prevent immediate ball launch from this click
+                      statsOverlayJustClosedRef.current = true;
+                      setTimeout(() => {
+                        statsOverlayJustClosedRef.current = false;
+                      }, 150);
+                      
                       setBossRushStatsOverlayActive(false);
                       setBossRushTimeSnapshot(null); // Clear time snapshot
                       soundManager.stopBossMusic();
