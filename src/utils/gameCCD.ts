@@ -1,6 +1,5 @@
 import { processBallCCD, Ball as CCDBall, Brick as CCDBrick, Paddle as CCDPaddle, CollisionEvent } from './processBallCCD';
 import { Brick, Ball, Paddle, Boss, Enemy } from '@/types/game';
-import { ENABLE_DEBUG_FEATURES } from '@/constants/game';
 
 export interface CCDResult {
   ball: Ball | null;
@@ -51,9 +50,8 @@ export function processBallWithCCD(
     qualityLevel?: 'low' | 'medium' | 'high';
   }
 ): CCDResult {
-  // Only measure timing when debug is enabled (avoid syscall overhead on mobile)
-  const shouldMeasurePerf = ENABLE_DEBUG_FEATURES;
-  const perfStart = shouldMeasurePerf ? performance.now() : 0;
+  // Start total performance timer
+  const perfStart = performance.now();
   
   // Quality-aware substep limits
   const qualitySubstepCaps = {
@@ -68,9 +66,9 @@ export function processBallWithCCD(
   const desiredSubsteps = Math.ceil(ballSpeed * gameState.speedMultiplier / (gameState.minBrickDimension * 0.15));
   const PHYSICS_SUBSTEPS = Math.max(2, Math.min(desiredSubsteps, MAX_SUBSTEPS));
   
-  // Boss-first sweep timing (only when debug enabled)
-  const bossFirstSweepStart = shouldMeasurePerf ? performance.now() : 0;
-  const bossFirstSweepEnd = shouldMeasurePerf ? performance.now() : 0;
+  // Boss-first sweep timing
+  const bossFirstSweepStart = performance.now();
+  const bossFirstSweepEnd = performance.now();
 
   // Convert game types to CCD types
   const ccdBall: CCDBall = {
@@ -154,8 +152,8 @@ export function processBallWithCCD(
     height: gameState.paddle.height
   };
   
-  // CCD core timing (only when debug enabled)
-  const ccdCoreStart = shouldMeasurePerf ? performance.now() : 0;
+  // CCD core timing
+  const ccdCoreStart = performance.now();
   
   // Run CCD with paddle included
   // Pass brickCount directly to avoid .slice() allocation
@@ -170,25 +168,24 @@ export function processBallWithCCD(
     brickCount: totalBrickCount, // Limit to valid bricks only
     canvasSize: gameState.canvasSize,
     currentTick: frameTick, // Pass deterministic frame tick
-    maxSubstepTravelFactor: 0.9,
-    debug: ENABLE_DEBUG_FEATURES // Pass debug flag to CCD
+    maxSubstepTravelFactor: 0.9
   });
   
-  const ccdCoreEnd = shouldMeasurePerf ? performance.now() : 0;
+  const ccdCoreEnd = performance.now();
   
-  // Post-processing timing (only when debug enabled)
-  const postProcessingStart = shouldMeasurePerf ? performance.now() : 0;
+  // Post-processing timing
+  const postProcessingStart = performance.now();
 
   // Calculate collision count and max TOI iterations from debug data
   const collisionCount = result.events.length;
-  const toiIterationsUsed = ENABLE_DEBUG_FEATURES && result.debug && Array.isArray(result.debug) 
+  const toiIterationsUsed = result.debug && Array.isArray(result.debug) 
     ? Math.max(...result.debug.map((d: any) => d.iter || 0), 0)
     : 0;
 
   // Convert result back to game types
   if (!result.ball) {
-    const postProcessingEnd = shouldMeasurePerf ? performance.now() : 0;
-    const perfEnd = shouldMeasurePerf ? performance.now() : 0;
+    const postProcessingEnd = performance.now();
+    const perfEnd = performance.now();
     
     return {
       ball: null,
@@ -198,12 +195,12 @@ export function processBallWithCCD(
       maxIterations: 3,
       collisionCount,
       toiIterationsUsed,
-      performance: shouldMeasurePerf ? {
+      performance: {
         bossFirstSweepMs: bossFirstSweepEnd - bossFirstSweepStart,
         ccdCoreMs: ccdCoreEnd - ccdCoreStart,
         postProcessingMs: postProcessingEnd - postProcessingStart,
         totalMs: perfEnd - perfStart
-      } : undefined
+      }
     };
   }
 
@@ -216,8 +213,8 @@ export function processBallWithCCD(
     lastHitTime: result.ball.lastHitTick
   };
   
-  const postProcessingEnd = shouldMeasurePerf ? performance.now() : 0;
-  const perfEnd = shouldMeasurePerf ? performance.now() : 0;
+  const postProcessingEnd = performance.now();
+  const perfEnd = performance.now();
 
   return {
     ball: updatedBall,
@@ -227,11 +224,11 @@ export function processBallWithCCD(
     maxIterations: 3,
     collisionCount,
     toiIterationsUsed,
-    performance: shouldMeasurePerf ? {
+    performance: {
       bossFirstSweepMs: bossFirstSweepEnd - bossFirstSweepStart,
       ccdCoreMs: ccdCoreEnd - ccdCoreStart,
       postProcessingMs: postProcessingEnd - postProcessingStart,
       totalMs: perfEnd - perfStart
-    } : undefined
+    }
   };
 }

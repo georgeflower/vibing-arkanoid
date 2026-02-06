@@ -8,8 +8,6 @@
 // - currentTick: timestamp (ms) for paddle cooldown
 // - lastPaddleHitTime: timestamp of last paddle hit (ms)
 
-import { brickSpatialHash } from './spatialHash';
-
 export type Vec2 = { x: number; y: number };
 
 export type Ball = {
@@ -65,48 +63,6 @@ export type CCDConfig = {
   debug?: boolean; // optional debug gating
 };
 
-// Pre-allocated Vec2 objects to avoid per-frame allocations
-const _tempVec: Vec2 = { x: 0, y: 0 };
-const _tempMove: Vec2 = { x: 0, y: 0 };
-const _tempNormal: Vec2 = { x: 0, y: 0 };
-const _tempPos0: Vec2 = { x: 0, y: 0 };
-const _tempPos1: Vec2 = { x: 0, y: 0 };
-const _tempMoveDir: Vec2 = { x: 0, y: 0 };
-const _tempSweptAabb = { x: 0, y: 0, w: 0, h: 0 };
-
-// Additional pre-allocated vectors for collision detection
-const _tempRayDir: Vec2 = { x: 0, y: 0 };
-const _tempHitPoint: Vec2 = { x: 0, y: 0 };
-const _tempReflectNormal: Vec2 = { x: 0, y: 0 };
-const _tempVelocity: Vec2 = { x: 0, y: 0 };
-
-// Pre-allocated array for corner checks to avoid per-brick allocations
-const _tempCorners: Vec2[] = [
-  { x: 0, y: 0 },
-  { x: 0, y: 0 },
-  { x: 0, y: 0 },
-  { x: 0, y: 0 }
-];
-
-// Reusable ball object to avoid spread allocation
-const _tempBall: Ball = {
-  id: 0,
-  x: 0,
-  y: 0,
-  dx: 0,
-  dy: 0,
-  radius: 0,
-  lastPaddleHitTime: undefined,
-  isFireball: false
-};
-
-// Mutable vector operations (modify first argument in place)
-const vAddTo = (out: Vec2, a: Vec2, b: Vec2): Vec2 => { out.x = a.x + b.x; out.y = a.y + b.y; return out; };
-const vSubTo = (out: Vec2, a: Vec2, b: Vec2): Vec2 => { out.x = a.x - b.x; out.y = a.y - b.y; return out; };
-const vScaleTo = (out: Vec2, a: Vec2, s: number): Vec2 => { out.x = a.x * s; out.y = a.y * s; return out; };
-const vSet = (out: Vec2, x: number, y: number): Vec2 => { out.x = x; out.y = y; return out; };
-
-// Immutable operations (for places where we need new objects)
 const vAdd = (a: Vec2, b: Vec2): Vec2 => ({ x: a.x + b.x, y: a.y + b.y });
 const vSub = (a: Vec2, b: Vec2): Vec2 => ({ x: a.x - b.x, y: a.y - b.y });
 const vScale = (a: Vec2, s: number): Vec2 => ({ x: a.x * s, y: a.y * s });
@@ -116,28 +72,17 @@ const normalize = (a: Vec2): Vec2 => {
   const L = vLen(a) || 1;
   return { x: a.x / L, y: a.y / L };
 };
-const normalizeTo = (out: Vec2, a: Vec2): Vec2 => {
-  const L = vLen(a) || 1;
-  out.x = a.x / L;
-  out.y = a.y / L;
-  return out;
-};
 const reflect = (vel: Vec2, normal: Vec2): Vec2 => {
   const n = normalize(normal);
   const vn = vDot(vel, n);
   return vSub(vel, vScale(n, 2 * vn));
 };
 
-// Pre-allocated result object for rayAABB to avoid per-call allocations
-const _rayAABBResult = { tEntry: 0, tExit: 0, normal: { x: 0, y: 0 } };
-
 /*
 Ray vs expanded AABB intersection (parametric)
 Returns { tEntry, tExit, normal } where tEntry is earliest entry in [0,1] along ray from r0->r1
 If no hit, returns null.
 normal: the collision normal at entry (approx axis-aligned)
-
-NOTE: Returns a reference to a reusable object - caller must copy values if needed beyond immediate use.
 */
 function rayAABB(
   r0: Vec2,
@@ -145,11 +90,9 @@ function rayAABB(
   aabb: { x: number; y: number; w: number; h: number },
 ): { tEntry: number; tExit: number; normal: Vec2 } | null {
   const EPS = 1e-9;
-  // Calculate direction in-place (avoid vSub allocation)
-  const dirX = r1.x - r0.x;
-  const dirY = r1.y - r0.y;
-  const invDirX = dirX === 0 ? 1e12 : 1 / dirX;
-  const invDirY = dirY === 0 ? 1e12 : 1 / dirY;
+  const dir = vSub(r1, r0);
+  const invDirX = dir.x === 0 ? 1e12 : 1 / dir.x;
+  const invDirY = dir.y === 0 ? 1e12 : 1 / dir.y;
   let tmin = (aabb.x - r0.x) * invDirX;
   let tmax = (aabb.x + aabb.w - r0.x) * invDirX;
   if (tmin > tmax) {
@@ -167,24 +110,18 @@ function rayAABB(
   const entry = Math.max(tmin, tymin);
   const exit = Math.min(tmax, tymax);
   if (entry > exit || exit < 0 || entry > 1) return null;
-  
-  // Reuse result object to avoid allocation
-  _rayAABBResult.tEntry = Math.max(0, entry);
-  _rayAABBResult.tExit = Math.min(1, exit);
-  
-  // Determine normal: which axis gave entry (with epsilon for tie-breaking)
+  // determine normal: which axis gave entry (with epsilon for tie-breaking)
+  let normal: Vec2 = { x: 0, y: 0 };
   if (Math.abs(tmin - tymin) < EPS) {
     // Tie - use direction magnitude to choose axis
-    _rayAABBResult.normal.x = Math.abs(dirX) > Math.abs(dirY) ? (invDirX < 0 ? 1 : -1) : 0;
-    _rayAABBResult.normal.y = Math.abs(dirY) > Math.abs(dirX) ? (invDirY < 0 ? 1 : -1) : 0;
+    normal.x = Math.abs(dir.x) > Math.abs(dir.y) ? (invDirX < 0 ? 1 : -1) : 0;
+    normal.y = Math.abs(dir.y) > Math.abs(dir.x) ? (invDirY < 0 ? 1 : -1) : 0;
   } else if (tmin > tymin) {
-    _rayAABBResult.normal.x = invDirX < 0 ? 1 : -1;
-    _rayAABBResult.normal.y = 0;
+    normal.x = invDirX < 0 ? 1 : -1;
   } else {
-    _rayAABBResult.normal.x = 0;
-    _rayAABBResult.normal.y = invDirY < 0 ? 1 : -1;
+    normal.y = invDirY < 0 ? 1 : -1;
   }
-  return _rayAABBResult;
+  return { tEntry: Math.max(0, entry), tExit: Math.min(1, exit), normal };
 }
 
 /*
@@ -248,38 +185,19 @@ Assumes uniform bricks array on grid with known BRICK_WIDTH/HEIGHT; compute cand
 If user supplies tilemapQuery in config, it will be used instead.
 brickCount: optional limit on how many bricks to check (avoids .slice() overhead)
 */
-/**
- * Default tilemap query - uses spatial hash for O(k) broadphase when available,
- * falls back to linear scan for bosses/enemies added dynamically to bricks array
- */
 function defaultTilemapQuery(bricks: Brick[] | undefined, swept: { x: number; y: number; w: number; h: number }, brickCount?: number) {
   if (!bricks) return [];
-  
-  // Use spatial hash for main brick collision (fast path)
-  // Only query spatial hash if it has been populated (brickCount > 0 indicates bricks exist)
-  const spatialHashResult = brickSpatialHash.query(swept);
-  
-  // Also check for dynamically added entities (bosses, enemies with negative/large IDs)
-  // These are added to the bricks array but not in the spatial hash
+  // simple filter by AABB overlap
+  const res: Brick[] = [];
   const limit = brickCount ?? bricks.length;
-  const dynamicEntities: Brick[] = [];
-  
   for (let i = 0; i < limit; i++) {
     const b = bricks[i];
-    // Dynamic entities have id < 0 (bosses) or id >= 100000 (enemies)
-    if (b.id < 0 || b.id >= 100000) {
-      if (!b.visible) continue;
-      if (b.x + b.width < swept.x || b.x > swept.x + swept.w || b.y + b.height < swept.y || b.y > swept.y + swept.h)
-        continue;
-      dynamicEntities.push(b);
-    }
+    if (!b.visible) continue;
+    if (b.x + b.width < swept.x || b.x > swept.x + swept.w || b.y + b.height < swept.y || b.y > swept.y + swept.h)
+      continue;
+    res.push(b);
   }
-  
-  // Return spatial hash results + any dynamic entities
-  if (dynamicEntities.length === 0) {
-    return spatialHashResult;
-  }
-  return [...spatialHashResult, ...dynamicEntities];
+  return res;
 }
 
 /*
@@ -309,21 +227,10 @@ export function processBallCCD(
 
   if (!ballIn) return { ball: null, events: [] };
 
-  // Use reusable ball object instead of spread to avoid allocation
-  // Copy only the essential properties
-  _tempBall.id = ballIn.id;
-  _tempBall.x = ballIn.x;
-  _tempBall.y = ballIn.y;
-  _tempBall.dx = ballIn.dx;
-  _tempBall.dy = ballIn.dy;
-  _tempBall.radius = ballIn.radius;
-  _tempBall.lastPaddleHitTime = ballIn.lastPaddleHitTime;
-  _tempBall.isFireball = ballIn.isFireball ?? false;
-  _tempBall.lastHitTick = ballIn.lastHitTick;
-  const ball = _tempBall;
-  
+  // clone to avoid mutating external object until commit
+  const ball: Ball = { ...ballIn };
   const events: CollisionEvent[] = [];
-  const debugArr: any[] = debug ? [] : [];
+  const debugArr: any[] = [];
 
   // velocities are px/sec; per-substep movement fraction
   const subDt = dt / Math.max(1, substeps);
@@ -345,32 +252,29 @@ export function processBallCCD(
     let remaining = 1.0;
     let iter = 0;
 
-    // initial positions for this substep (use pre-allocated)
-    vSet(_tempPos0, ball.x, ball.y);
-    let pos0 = _tempPos0;
+    // initial positions for this substep
+    let pos0: Vec2 = { x: ball.x, y: ball.y };
 
-    // desired move over full substep (use pre-allocated)
-    vSet(_tempMove, ball.dx * subDt, ball.dy * subDt);
-    const fullMove = _tempMove;
+    // desired move over full substep
+    const fullMove: Vec2 = { x: ball.dx * subDt, y: ball.dy * subDt };
 
     // Safety: if zero movement, skip
     if (Math.abs(fullMove.x) < 1e-9 && Math.abs(fullMove.y) < 1e-9) break;
 
     while (remaining > 1e-6 && iter < maxToiIterations) {
       iter++;
-      // Calculate move for remaining portion
-      vScaleTo(_tempVec, fullMove, remaining);
-      vAddTo(_tempPos1, pos0, _tempVec);
-      const pos1 = _tempPos1;
-      const move = _tempVec; // reuse
+      const move = vScale(fullMove, remaining); // remaining portion of this substep
+      const pos1 = vAdd(pos0, move);
 
-      // broadphase swept AABB for candidate bricks (use pre-allocated)
-      _tempSweptAabb.x = Math.min(pos0.x, pos1.x) - ball.radius;
-      _tempSweptAabb.y = Math.min(pos0.y, pos1.y) - ball.radius;
-      _tempSweptAabb.w = Math.abs(pos1.x - pos0.x) + 2 * ball.radius;
-      _tempSweptAabb.h = Math.abs(pos1.y - pos0.y) + 2 * ball.radius;
+      // broadphase swept AABB for candidate bricks
+      const sweptAabb = {
+        x: Math.min(pos0.x, pos1.x) - ball.radius,
+        y: Math.min(pos0.y, pos1.y) - ball.radius,
+        w: Math.abs(pos1.x - pos0.x) + 2 * ball.radius,
+        h: Math.abs(pos1.y - pos0.y) + 2 * ball.radius,
+      };
 
-      const candidates = tilemapQuery ? tilemapQuery(_tempSweptAabb) : defaultTilemapQuery(bricks, _tempSweptAabb, brickCount);
+      const candidates = tilemapQuery ? tilemapQuery(sweptAabb) : defaultTilemapQuery(bricks, sweptAabb, brickCount);
       // Collect earliest hit among walls, paddle, bricks, corners
       let earliest: CollisionEvent | null = null;
 
@@ -565,20 +469,17 @@ export function processBallCCD(
         const exp = expandAABB(b, ball.radius);
         const rayHit = rayAABB(pos0, pos1, exp);
         if (rayHit) {
-          // Copy values immediately since rayAABB returns reusable object
-          const rayT = rayHit.tEntry;
-          const hitPoint = vAdd(pos0, vScale(vSub(pos1, pos0), rayT));
-          if (!earliest || rayT < earliest.t) {
-            // normalize brick normal defensively - copy the normal
-            const bnX = rayHit.normal.x;
-            const bnY = rayHit.normal.y;
-            const bnLen = Math.hypot(bnX, bnY);
-            const normalizedBn = bnLen > 1e-6 
-              ? { x: bnX / bnLen, y: bnY / bnLen }
-              : { x: bnX, y: bnY };
+          const hitPoint = vAdd(pos0, vScale(vSub(pos1, pos0), rayHit.tEntry));
+          if (!earliest || rayHit.tEntry < earliest.t) {
+            // normalize brick normal defensively
+            let bn = rayHit.normal;
+            const bnLen = Math.hypot(bn.x, bn.y);
+            if (bnLen > 1e-6) {
+              bn = { x: bn.x / bnLen, y: bn.y / bnLen };
+            }
             earliest = {
-              t: rayT,
-              normal: normalizedBn,
+              t: rayHit.tEntry,
+              normal: bn,
               objectType: "brick",
               objectId: b.id,
               point: hitPoint,
@@ -586,14 +487,14 @@ export function processBallCCD(
             };
           }
         } else {
-          // corner tests: check rectangle corners using pre-allocated array
-          _tempCorners[0].x = b.x; _tempCorners[0].y = b.y;
-          _tempCorners[1].x = b.x + b.width; _tempCorners[1].y = b.y;
-          _tempCorners[2].x = b.x; _tempCorners[2].y = b.y + b.height;
-          _tempCorners[3].x = b.x + b.width; _tempCorners[3].y = b.y + b.height;
-          
-          for (let ci = 0; ci < 4; ci++) {
-            const c = _tempCorners[ci];
+          // corner tests: check rectangle corners
+          const corners = [
+            { x: b.x, y: b.y },
+            { x: b.x + b.width, y: b.y },
+            { x: b.x, y: b.y + b.height },
+            { x: b.x + b.width, y: b.y + b.height },
+          ];
+          for (const c of corners) {
             const sc = segmentCircleTOI(pos0, pos1, c, ball.radius);
             if (sc && (!earliest || sc.t < earliest.t)) {
               earliest = {
@@ -609,24 +510,19 @@ export function processBallCCD(
         }
       }
 
-      if (debug) debugArr.push({ sweptAabb: { ..._tempSweptAabb }, candidates: candidates.map((b) => b.id), earliest, iter });
+      if (debug) debugArr.push({ sweptAabb, candidates: candidates.map((b) => b.id), earliest, iter });
 
       if (!earliest) {
         // no collision this iteration: commit full remaining move
-        // Copy values instead of reference assignment
-        pos0.x = pos1.x;
-        pos0.y = pos1.y;
+        pos0 = pos1;
         remaining = 0;
         break;
       }
 
       // Found earliest collision at fraction earliest.t of remaining
       const tHit = Math.max(0, Math.min(1, earliest.t));
-      // move to contact point (update pos0 in place)
-      const moveX = pos1.x - pos0.x;
-      const moveY = pos1.y - pos0.y;
-      pos0.x += moveX * tHit;
-      pos0.y += moveY * tHit;
+      // move to contact point
+      pos0 = vAdd(pos0, vScale(vSub(pos1, pos0), tHit));
 
       // Robust normal validation and fallback
       let n = earliest.normal;
@@ -744,24 +640,10 @@ export function processBallCCD(
     // after substep continue to next substep (ball.dx/dy already updated)
   } // end substeps loop
 
-  // Return a copy of the ball to avoid returning the reusable object
-  // (which would be overwritten on next call)
-  const resultBall: Ball = {
-    id: ball.id,
-    x: ball.x,
-    y: ball.y,
-    dx: ball.dx,
-    dy: ball.dy,
-    radius: ball.radius,
-    lastPaddleHitTime: ball.lastPaddleHitTime,
-    isFireball: ball.isFireball,
-    lastHitTick: ball.lastHitTick
-  };
-
   if (debug) {
     const perfEnd = performance.now();
-    return { ball: resultBall, events, debug: { debugSteps: debugArr, perfMs: perfEnd - perfStart } };
+    return { ball, events, debug: { debugSteps: debugArr, perfMs: perfEnd - perfStart } };
   }
 
-  return { ball: resultBall, events, debug: undefined };
+  return { ball, events, debug: debug ? debugArr : undefined };
 }

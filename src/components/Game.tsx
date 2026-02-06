@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { debugToast as toast } from "@/utils/debugToast";
 import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
-import { MobileGameControls } from "./MobileGameControls";
 import { useScaledConstants } from "@/hooks/useScaledConstants";
 import { useViewportFrame } from "@/hooks/useViewportFrame";
 import { useCanvasResize } from "@/hooks/useCanvasResize";
@@ -44,7 +43,7 @@ import { debugLogger } from "@/utils/debugLogger";
 import { particlePool } from "@/utils/particlePool";
 import { startBallTracking } from "@/utils/ballTracker";
 // ═══════════════════════════════════════════════════════════════
-import { Maximize2, Minimize2, Home, X } from "lucide-react";
+import { Maximize2, Minimize2, Home, X, Pause, Volume2, VolumeX } from "lucide-react";
 import { QualityIndicator } from "./QualityIndicator";
 import type {
   Brick,
@@ -103,9 +102,6 @@ import { createBoss, createResurrectedPyramid } from "@/utils/bossUtils";
 import { performBossAttack } from "@/utils/bossAttacks";
 import { BOSS_LEVELS, BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
 import { processBallWithCCD } from "@/utils/gameCCD";
-import { brickSpatialHash } from "@/utils/spatialHash";
-import { resetAllPools, enemyPool, bombPool } from "@/utils/entityPool";
-import { brickRenderer } from "@/utils/brickLayerCache";
 import { assignPowerUpsToBricks, reassignPowerUpsToBricks } from "@/utils/powerUpAssignment";
 import { MEGA_BOSS_LEVEL, MEGA_BOSS_CONFIG } from "@/constants/megaBossConfig";
 import {
@@ -329,8 +325,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const reflectedAttackLastHitRef = useRef<number>(0);
   // Track pending chain explosions for explosive bricks (delayed by 200ms)
   const pendingChainExplosionsRef = useRef<Array<{ brick: Brick; triggerTime: number }>>([]);
-
-  // ═══ Device Detection (needed early for multiple features) ═══
   const [isMobileDevice] = useState(() => {
     return (
       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
@@ -341,10 +335,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     return (
       /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-    );
+    ); // iPad Pro detection
   });
-
-  // ═══ Fullscreen and Layout State ═══
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
@@ -352,7 +344,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [titleVisible, setTitleVisible] = useState(true);
   const [gameScale, setGameScale] = useState(1);
   const [disableAutoZoom, setDisableAutoZoom] = useState(false);
-
   const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
   const [enemiesKilled, setEnemiesKilled] = useState(0);
   const [screenShake, setScreenShake] = useState(0);
@@ -572,30 +563,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     }
   }, [showDebugDashboard, gameState, debugDashboardPausedGame]);
-
-  // Rebuild spatial hash when bricks change (level load, brick destruction)
-  // This enables O(k) collision detection instead of O(n)
-  useEffect(() => {
-    if (bricks.length > 0) {
-      brickSpatialHash.rebuild(bricks);
-    } else {
-      brickSpatialHash.clear();
-    }
-    // Also invalidate brick layer cache to trigger re-render
-    brickRenderer.invalidate();
-  }, [bricks]);
-
-  // ═══ POOL SYNC HELPERS ═══
-  // These helpers ensure pool state stays in sync when bulk-clearing React state
-  const clearAllEnemies = useCallback(() => {
-    enemyPool.releaseAll();
-    setEnemies([]);
-  }, []);
-
-  const clearAllBombs = useCallback(() => {
-    bombPool.releaseAll();
-    setBombs([]);
-  }, []);
 
   // Pause-aware timer management - save remaining durations on pause, restore on resume
   useEffect(() => {
@@ -1183,9 +1150,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setBossVictoryOverlayActive(true); // Show victory celebration
         // Clean up game entities
         setBalls([]);
-        clearAllEnemies();
+        setEnemies([]);
         setBossAttacks([]);
-        clearAllBombs();
+        setBombs([]);
         setBullets([]);
         // Stop boss music and resume background music
         soundManager.stopBossMusic();
@@ -1219,9 +1186,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setBossVictoryOverlayActive(true); // Show victory celebration
         // Clean up game entities
         setBalls([]);
-        clearAllEnemies();
+        setEnemies([]);
         setBossAttacks([]);
-        clearAllBombs();
+        setBombs([]);
         setBullets([]);
         // Stop boss music and resume background music
         soundManager.stopBossMusic();
@@ -1277,9 +1244,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBossVictoryOverlayActive(true); // Show victory celebration
           // Clean up game entities
           setBalls([]);
-          clearAllEnemies();
+          setEnemies([]);
           setBossAttacks([]);
-          clearAllBombs();
+          setBombs([]);
           setBullets([]);
 
           // Boss Rush mode: show stats overlay instead of immediate transition
@@ -1802,8 +1769,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setTotalPlayTime(0);
     timerStartedRef.current = false;
     totalPlayTimeStartedRef.current = false;
-    clearAllEnemies();
-    clearAllBombs();
+    setEnemies([]);
+    setBombs([]);
     setBackgroundPhase(0);
     setExplosions([]);
     setEnemySpawnCount(0);
@@ -1945,8 +1912,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setPowerUps([]);
       setBullets([]);
       setTimer(0);
-      clearAllEnemies();
-      clearAllBombs();
+      setEnemies([]);
+      setBombs([]);
       setExplosions([]);
       setEnemySpawnCount(0);
       setLastEnemySpawnTime(0);
@@ -2036,8 +2003,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setPowerUps([]);
     setBullets([]);
     setTimer(0);
-    clearAllEnemies();
-    clearAllBombs();
+    setEnemies([]);
+    setBombs([]);
     setExplosions([]);
     setEnemySpawnCount(0);
     setLastEnemySpawnTime(0);
@@ -2240,25 +2207,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   );
   const activeTouchRef = useRef<number | null>(null);
   const secondTouchRef = useRef<number | null>(null);
-  
-  // Mobile touch optimization: cache canvas rect to avoid layout thrashing
-  const canvasRectRef = useRef<DOMRect | null>(null);
-  const canvasRectTimeRef = useRef(0);
-  const RECT_CACHE_MS = 500; // Refresh rect cache every 500ms
-  
-  const getCanvasRect = useCallback(() => {
-    const now = performance.now();
-    if (!canvasRectRef.current || now - canvasRectTimeRef.current > RECT_CACHE_MS) {
-      canvasRectRef.current = canvasRef.current?.getBoundingClientRect() || null;
-      canvasRectTimeRef.current = now;
-    }
-    return canvasRectRef.current;
-  }, []);
-  
-  // Mobile touch throttling: limit state updates to ~60fps
-  const lastTouchUpdateRef = useRef(0);
-  const TOUCH_THROTTLE_MS = 16; // ~60fps
-  
   const handleTouchStart = useCallback(
     (e: TouchEvent) => {
       // Don't process game input during tutorial - let TutorialOverlay handle it
@@ -2375,18 +2323,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     (e: TouchEvent) => {
       if (!canvasRef.current || !paddle || gameState === "paused") return;
       e.preventDefault();
-      
-      // Use cached canvas rect to avoid layout thrashing on every touch event
-      const rect = getCanvasRect();
-      if (!rect) return;
-      
-      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
       const waitingBall = balls.find((ball) => ball.waitingToLaunch);
 
       // Update launch angle if second finger is moving and ball is waiting
       if (waitingBall && secondTouchRef.current !== null) {
         for (let i = 0; i < e.touches.length; i++) {
           if (e.touches[i].identifier === secondTouchRef.current) {
+            const rect = canvasRef.current.getBoundingClientRect();
+            const scaleX = SCALED_CANVAS_WIDTH / rect.width;
             const touchX = (e.touches[i].clientX - rect.left) * scaleX;
 
             // Calculate angle from second finger position relative to paddle center
@@ -2416,7 +2360,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         activeTouchRef.current = activeTouch.identifier;
       }
       if (!activeTouch) return;
-      
+      const rect = canvasRef.current.getBoundingClientRect();
+      const scaleX = SCALED_CANVAS_WIDTH / rect.width;
       const touchX = (activeTouch.clientX - rect.left) * scaleX;
 
       // Implement scaled touch control zone (middle 70% controls full paddle range)
@@ -2432,26 +2377,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Map to full paddle range
       const paddleRange = SCALED_CANVAS_WIDTH - paddle.width;
-      const newX = normalizedPosition * paddleRange;
+      const targetX = normalizedPosition * paddleRange;
 
-      // Always update ref immediately for collision detection (no throttle)
+      const newX = targetX;
+
+      // Update ref immediately for high-priority collision detection
       paddleXRef.current = newX;
-      
-      // Throttle React state updates to ~60fps to reduce GC pressure on mobile
-      const now = performance.now();
-      if (now - lastTouchUpdateRef.current < TOUCH_THROTTLE_MS) {
-        return; // Skip state update, ref is already updated for physics
-      }
-      lastTouchUpdateRef.current = now;
 
-      // Update state for rendering
-      setPaddle((prev) => {
-        if (!prev) return null;
-        if (prev.x === newX) return prev; // Skip if no change
-        return { ...prev, x: newX };
-      });
+      // Update state for rendering (may be delayed during low FPS)
+      setPaddle((prev) =>
+        prev
+          ? {
+              ...prev,
+              x: newX,
+            }
+          : null,
+      );
     },
-    [paddle, balls, SCALED_CANVAS_WIDTH, gameState, getCanvasRect],
+    [paddle, balls, SCALED_CANVAS_WIDTH, gameState],
   );
   const handleTouchEnd = useCallback((e: TouchEvent) => {
     // Clear active touches when they end
@@ -3252,9 +3195,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     setBossVictoryOverlayActive(true); // Show victory celebration
                     // Clean up game entities
                     setBalls([]);
-                    clearAllEnemies();
+                    setEnemies([]);
                     setBossAttacks([]);
-                    clearAllBombs();
+                    setBombs([]);
                     setBullets([]);
 
                     // Boss Rush mode: show stats overlay instead of immediate transition
@@ -3331,9 +3274,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       setBossVictoryOverlayActive(true); // Show victory celebration
                       // Clean up game entities
                       setBalls([]);
-                      clearAllEnemies();
+                      setEnemies([]);
                       setBossAttacks([]);
-                      clearAllBombs();
+                      setBombs([]);
                       setBullets([]);
 
                       // Boss Rush mode: show stats overlay instead of immediate transition
@@ -3452,9 +3395,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       setBossVictoryOverlayActive(true); // Show victory celebration
                       // Clean up game entities
                       setBalls([]);
-                      clearAllEnemies();
+                      setEnemies([]);
                       setBossAttacks([]);
-                      clearAllBombs();
+                      setBombs([]);
                       setBullets([]);
 
                       // Boss Rush mode: show stats overlay instead of immediate transition
@@ -4966,10 +4909,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             }
             setBrickHitSpeedAccumulated(0);
             setTimer(0);
-            clearAllEnemies();
+            setEnemies([]);
             setBossAttacks([]);
             setLaserWarnings([]);
-            clearAllBombs();
+            setBombs([]);
             setExplosions([]);
             bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
             bombIntervalsRef.current.clear();
@@ -5050,88 +4993,96 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Clear newly reflected bombs ref at start of each frame
     newlyReflectedBombIdsRef.current.clear();
 
-    // ═══ MOBILE PERF: Cache performance.now() once per frame ═══
-    const frameNow = performance.now();
-    
-    // ═══ MOBILE PERF: Single flag to gate all debug overhead ═══
-    const shouldRunDebugCode = ENABLE_DEBUG_FEATURES && (
-      debugSettings.showFrameProfiler ||
-      debugSettings.enableLagLogging ||
-      debugSettings.enableGCLogging ||
-      debugSettings.enableDetailedFrameLogging
-    );
-    const profilerEnabled = ENABLE_DEBUG_FEATURES && debugSettings.showFrameProfiler;
-
     // ═══ LAG DETECTION: Track frame-to-frame time with GC detection ═══
-    const frameGap = lagDetectionRef.current.lastFrameEnd > 0 ? frameNow - lagDetectionRef.current.lastFrameEnd : 0;
+    const frameStart = performance.now();
+    const frameGap = lagDetectionRef.current.lastFrameEnd > 0 ? frameStart - lagDetectionRef.current.lastFrameEnd : 0;
 
-    // Only run debug detection code if debug features are actually enabled
-    if (shouldRunDebugCode) {
-      // GC Detection: Check for significant heap drops (Chrome-only API)
-      if (debugSettings.enableGCLogging && (performance as any).memory) {
-        const currentHeap = (performance as any).memory.usedJSHeapSize;
-        const heapDrop = lagDetectionRef.current.lastUsedHeap - currentHeap;
+    // GC Detection: Check for significant heap drops (Chrome-only API)
+    if (ENABLE_DEBUG_FEATURES && (performance as any).memory) {
+      const currentHeap = (performance as any).memory.usedJSHeapSize;
+      const heapDrop = lagDetectionRef.current.lastUsedHeap - currentHeap;
 
-        // If heap dropped significantly (>3MB), likely GC occurred
-        // Throttle GC logging to max once per second to reduce debug overhead
-        const GC_LOG_THROTTLE_MS = 1000;
-        if (lagDetectionRef.current.lastUsedHeap > 0 && heapDrop > 3_000_000) {
-          if (
-            !lagDetectionRef.current.lastGCLogTime ||
-            frameNow - lagDetectionRef.current.lastGCLogTime > GC_LOG_THROTTLE_MS
-          ) {
-            // Use lightweight logging - no object creation for lag events
-            debugLogger.addLogLite('warn', 
-              `[DEBUG] [GC DETECTED] Heap dropped by ${(heapDrop / 1_000_000).toFixed(2)}MB, heap: ${(currentHeap / 1_000_000).toFixed(1)}MB, gap: ${frameGap.toFixed(1)}ms`);
-            lagDetectionRef.current.lastGCLogTime = frameNow;
+      // If heap dropped significantly (>1MB), likely GC occurred
+      // Throttle GC logging to max once per second to reduce debug overhead
+      const GC_LOG_THROTTLE_MS = 1000;
+      if (lagDetectionRef.current.lastUsedHeap > 0 && heapDrop > 3_000_000) {
+        // Only log if enough time has passed since last GC log
+        if (
+          !lagDetectionRef.current.lastGCLogTime ||
+          frameStart - lagDetectionRef.current.lastGCLogTime > GC_LOG_THROTTLE_MS
+        ) {
+          if (debugSettings.enableGCLogging) {
+            const gcContext = {
+              heapDropMB: (heapDrop / 1_000_000).toFixed(2),
+              heapUsedMB: (currentHeap / 1_000_000).toFixed(1),
+              frameGapMs: frameGap.toFixed(1),
+              level,
+              ballCount: balls.length,
+              enemyCount: enemies.length,
+            };
+            debugLogger.warn(`[DEBUG] [GC DETECTED] Heap dropped by ${gcContext.heapDropMB}MB`, gcContext);
           }
+          lagDetectionRef.current.lastGCLogTime = frameStart;
         }
-        lagDetectionRef.current.lastUsedHeap = currentHeap;
       }
+      lagDetectionRef.current.lastUsedHeap = currentHeap;
+    }
 
-      // Log if frame gap exceeds 50ms (indicates lag between frames) - throttled to 1/sec
-      if (frameGap > 50 && debugSettings.enableLagLogging) {
-        lagDetectionRef.current.lagCount++;
+    // Log if frame gap exceeds 50ms (indicates lag between frames) - throttled to 1/sec
+    if (frameGap > 50) {
+      lagDetectionRef.current.lagCount++;
 
-        // Only log once per second max to avoid spam
-        if (frameNow - lagDetectionRef.current.lastLagLogTime > 1000) {
-          // Check if this was due to tab being backgrounded
-          if (lagDetectionRef.current.tabWasHidden && frameGap > 500) {
-            debugLogger.addLogLite('log', `[DEBUG] [TAB RESUME] Resumed after ${frameGap.toFixed(0)}ms (tab was backgrounded)`);
-            lagDetectionRef.current.tabWasHidden = false;
-          } else {
-            // Use lightweight logging - skip object serialization entirely
-            debugLogger.addLogLite('error', 
-              `[DEBUG] [LAG DETECTED] Frame gap: ${frameGap.toFixed(1)}ms, balls: ${balls.length}, enemies: ${enemies.length}, quality: ${quality || "unknown"}`);
+      // Only log once per second max to avoid spam
+      if (frameStart - lagDetectionRef.current.lastLagLogTime > 1000) {
+        // Check if this was due to tab being backgrounded
+        if (lagDetectionRef.current.tabWasHidden && frameGap > 500) {
+          if (ENABLE_DEBUG_FEATURES && debugSettings.enableLagLogging) {
+            debugLogger.log(`[DEBUG] [TAB RESUME] Resumed after ${frameGap.toFixed(0)}ms (tab was backgrounded)`);
           }
-          lagDetectionRef.current.lastLagLogTime = frameNow;
+          lagDetectionRef.current.tabWasHidden = false;
+        } else if (ENABLE_DEBUG_FEATURES && debugSettings.enableLagLogging) {
+          const context = {
+            level,
+            ballCount: balls.length,
+            enemyCount: enemies.length,
+            particleCount: particlePool.getStats().active,
+            powerUpCount: powerUps.length,
+            bossActive: !!boss,
+            quality: quality || "unknown",
+            heapUsedMB: (performance as any).memory?.usedJSHeapSize
+              ? ((performance as any).memory.usedJSHeapSize / 1_000_000).toFixed(1)
+              : "N/A",
+          };
+          debugLogger.error(`[DEBUG] [LAG DETECTED] Frame gap: ${frameGap.toFixed(1)}ms (expected ~16.67ms)`, context);
         }
+        lagDetectionRef.current.lastLagLogTime = frameStart;
       }
     }
 
-    // ═══ PHASE 1: Frame Profiler Start (only if explicitly enabled) ═══
-    if (profilerEnabled) frameProfiler.startFrame();
+    // ═══ PHASE 1: Frame Profiler Start ═══
+    frameProfiler.startFrame();
 
-    // Throttle to 60 FPS (use cached frameNow)
-    const elapsed = frameNow - lastFrameTimeRef.current;
+    // Throttle to 60 FPS
+    const now = performance.now();
+    const elapsed = now - lastFrameTimeRef.current;
 
     if (elapsed < targetFrameTime) {
       animationFrameRef.current = requestAnimationFrame(gameLoop);
-      lagDetectionRef.current.lastFrameEnd = frameNow;
+      lagDetectionRef.current.lastFrameEnd = performance.now();
       return;
     }
 
-    lastFrameTimeRef.current = frameNow - (elapsed % targetFrameTime);
+    lastFrameTimeRef.current = now - (elapsed % targetFrameTime);
 
-    // Track FPS (use cached frameNow)
+    // Track FPS
     fpsTrackerRef.current.frameCount++;
-    const deltaTime = frameNow - fpsTrackerRef.current.lastTime;
+    const deltaTime = now - fpsTrackerRef.current.lastTime;
 
     if (deltaTime >= 1000) {
       const fps = Math.min(60, Math.round((fpsTrackerRef.current.frameCount * 1000) / deltaTime));
       fpsTrackerRef.current.fps = fps;
       fpsTrackerRef.current.frameCount = 0;
-      fpsTrackerRef.current.lastTime = frameNow;
+      fpsTrackerRef.current.lastTime = now;
 
       // Update adaptive quality system and display
       updateFps(fps);
@@ -5150,7 +5101,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           // Object counts
           ballCount: balls.length,
-          visibleBrickCount: bricks.reduce((c, b) => c + (b.visible ? 1 : 0), 0),
+          visibleBrickCount: bricks.filter((b) => b.visible).length,
           totalBrickCount: bricks.length,
           enemyCount: enemies.length,
           powerUpCount: powerUps.length,
@@ -5186,12 +5137,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // FPS is already being updated once per second at line 3065, no need to duplicate here
 
     // ═══ PHASE 1: Time Rendering ═══
-    if (profilerEnabled) frameProfiler.startTiming("rendering");
+    frameProfiler.startTiming("rendering");
 
     // Update background animation
     setBackgroundPhase((prev) => (prev + 1) % 360);
 
-    if (profilerEnabled) frameProfiler.endTiming("rendering");
+    frameProfiler.endTiming("rendering");
 
     // Update balls rotation only (position is updated in checkCollision with substeps)
     // OPTIMIZED: In-place mutation instead of creating new objects
@@ -5228,12 +5179,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     checkBonusLetterCollision();
 
     // Update bullets
-    if (profilerEnabled) frameProfiler.startTiming("bullets");
+    frameProfiler.startTiming("bullets");
     updateBullets(bricks);
-    if (profilerEnabled) frameProfiler.endTiming("bullets");
+    frameProfiler.endTiming("bullets");
 
     // Update enemies
-    if (profilerEnabled) frameProfiler.startTiming("enemies");
+    frameProfiler.startTiming("enemies");
     // Check if stun is active (applies to all enemies)
     const isStunActive = bossStunnerEndTime !== null && Date.now() < bossStunnerEndTime;
 
@@ -5283,10 +5234,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         return [...prev]; // New array reference for React
       });
     }
-    if (profilerEnabled) frameProfiler.endTiming("enemies");
+    frameProfiler.endTiming("enemies");
 
     // Update explosions and their particles - OPTIMIZED: Use particle pool
-    if (profilerEnabled) frameProfiler.startTiming("particles");
+    frameProfiler.startTiming("particles");
     if (debugSettings.enableExplosions && debugSettings.enableParticles) {
       // Skip particle updates on alternate frames when quality is low
       const currentFrameTick = gameLoopRef.current?.getFrameTick() || 0;
@@ -5314,13 +5265,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Particles are now entirely in the pool - no separate state updates needed
     // The pool's updateParticles handles gameOver and highScore particles automatically
-    if (profilerEnabled) frameProfiler.endTiming("particles");
+    frameProfiler.endTiming("particles");
 
-    // Count particles for profiler - use pool stats only (skip if profiler disabled)
-    if (profilerEnabled) {
-      const poolStats = particlePool.getStats();
-      frameProfiler.incrementCounter("particles", poolStats.active);
-    }
+    // Count particles for profiler - use pool stats only
+    const poolStats = particlePool.getStats();
+    frameProfiler.incrementCounter("particles", poolStats.active);
 
     // Ball repels nearby enemy shots (1-5% based on proximity to paddle)
     // This creates a safety buffer to prevent impossible death situations
@@ -5404,7 +5353,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
 
         if (shouldRemove) {
-          bombPool.release(bomb);
           prev.splice(i, 1);
           continue;
         }
@@ -5546,7 +5494,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             },
           ]);
 
-          bombPool.release(bomb);
           setBombs((prev) => prev.filter((b) => b.enemyId !== bomb.enemyId));
           setPaddle((prev) =>
             prev
@@ -5567,7 +5514,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         ) {
           // Bomb hits paddle - lose a life (reflect shield already checked above)
           soundManager.playLoseLife();
-          bombPool.release(bomb);
           setBombs((prev) => prev.filter((b) => b.enemyId !== bomb.enemyId));
           setLives((prev) => {
             const newLives = prev - 1;
@@ -5638,10 +5584,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setBrickHitSpeedAccumulated(0);
               setTimer(0);
               setLastEnemySpawnTime(0);
-              clearAllEnemies(); // Clear all enemies
+              setEnemies([]); // Clear all enemies
               setBossAttacks([]);
               setLaserWarnings([]);
-              clearAllBombs(); // Clear all bombs
+              setBombs([]); // Clear all bombs
               setExplosions([]);
               // Clear all bomb intervals
               bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
@@ -5807,10 +5753,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setBrickHitSpeedAccumulated(0);
               setTimer(0);
               setLastEnemySpawnTime(0);
-              clearAllEnemies(); // Clear all enemies
+              setEnemies([]); // Clear all enemies
               setBossAttacks([]);
               setLaserWarnings([]);
-              clearAllBombs(); // Clear all bombs
+              setBombs([]); // Clear all bombs
               setExplosions([]);
               // Clear all bomb intervals
               bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
@@ -6104,8 +6050,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBoss(null);
           setDangerBalls([]);
           setBossAttacks([]);
-          clearAllEnemies();
-          clearAllBombs();
+          setEnemies([]);
+          setBombs([]);
           setBullets([]);
 
           // Do NOT release the ball after phase 3 victory - keep it trapped
@@ -6181,7 +6127,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             const enemyId = Date.now() + i;
             const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
 
-            const newEnemy = enemyPool.acquire({
+            newEnemies.push({
               id: enemyId,
               type: enemyType,
               x: spawnX,
@@ -6198,11 +6144,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               hits: 0,
             });
 
-            if (newEnemy) {
-              newEnemies.push(newEnemy);
-              // Add to boss spawned enemies for power-up drops
-              bossSpawnedEnemiesRef.current.add(enemyId);
-            }
+            // Add to boss spawned enemies for power-up drops
+            bossSpawnedEnemiesRef.current.add(enemyId);
           }
 
           if (newEnemies.length > 0) {
@@ -6642,9 +6585,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                 // Clean up game entities
                 setBalls([]);
-                clearAllEnemies();
+                setEnemies([]);
                 setBossAttacks([]);
-                clearAllBombs();
+                setBombs([]);
                 setBullets([]);
 
                 // Stop boss music and resume background music
@@ -6770,7 +6713,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               attack.y < enemy.y + enemy.height
             ) {
               // Remove enemy by ID
-              enemyPool.release(enemy);
               setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
               setScore((prev) => prev + 100);
               setEnemiesKilled((prev) => prev + 1);
@@ -6901,10 +6843,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setPowerUps([]);
               setBonusLetters([]);
               setBullets([]);
-              clearAllEnemies();
+              setEnemies([]);
               setBossAttacks([]);
               setLaserWarnings([]);
-              clearAllBombs();
+              setBombs([]);
               setExplosions([]);
               setPaddle((prev) =>
                 prev
@@ -6994,7 +6936,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Create crossBall enemy
           const speed = 2.5;
           const angle = Math.random() * Math.PI * 2;
-          const crossBallEnemy = enemyPool.acquire({
+          const crossBallEnemy: Enemy = {
             id: Date.now() + Math.random() * 1000,
             type: "crossBall",
             x: midX - 17.5, // Center the 35x35 enemy
@@ -7012,11 +6954,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             isAngry: false,
             isCrossBall: true,
             spawnTime: nowForMerge, // Track spawn time for merge cooldown
-          });
+          };
 
-          if (crossBallEnemy) {
-            newCrossBallEnemies.push(crossBallEnemy);
-          }
+          newCrossBallEnemies.push(crossBallEnemy);
         }
 
         // Remove collided projectiles
@@ -7110,7 +7050,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Create large sphere enemy
           const speed = 3.0;
           const angle = Math.random() * Math.PI * 2;
-          const largeSphereEnemy = enemyPool.acquire({
+          const largeSphereEnemy: Enemy = {
             id: Date.now() + Math.random() * 1000,
             type: "sphere",
             x: midX - 27.5, // Center larger sprite (55/2)
@@ -7127,19 +7067,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             hits: 0,
             isAngry: false,
             isLargeSphere: true,
-          });
+          };
 
-          if (largeSphereEnemy) {
-            newLargeSpheres.push(largeSphereEnemy);
-          }
+          newLargeSpheres.push(largeSphereEnemy);
         }
 
-        // Remove collided crossBall enemies (release to pool)
+        // Remove collided crossBall enemies
         if (enemiesToRemove.size > 0) {
-          setEnemies((prev) => {
-            prev.filter((e) => enemiesToRemove.has(e.id!)).forEach((e) => enemyPool.release(e));
-            return prev.filter((e) => !enemiesToRemove.has(e.id!));
-          });
+          setEnemies((prev) => prev.filter((e) => !enemiesToRemove.has(e.id!)));
         }
 
         // Spawn new large sphere enemies (add separately to avoid filter interference)
@@ -7199,7 +7134,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const nowMs = Date.now();
 
         // Remove the bomb that hit the boss first
-        bombPool.release(bomb);
         setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
 
         // Apply damage with boss-local cooldown using CURRENT boss state
@@ -7270,9 +7204,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 setBossActive(false);
                 setBossDefeatedTransitioning(true);
                 setBalls([]);
-                clearAllEnemies();
+                setEnemies([]);
                 setBossAttacks([]);
-                clearAllBombs();
+                setBombs([]);
                 setBullets([]);
                 soundManager.stopBossMusic();
                 soundManager.resumeBackgroundMusic();
@@ -7336,9 +7270,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 setBossActive(false);
                 setBossDefeatedTransitioning(true);
                 setBalls([]);
-                clearAllEnemies();
+                setEnemies([]);
                 setBossAttacks([]);
-                clearAllBombs();
+                setBombs([]);
                 setBullets([]);
                 soundManager.stopBossMusic();
                 soundManager.resumeBackgroundMusic();
@@ -7396,7 +7330,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Check cooldown
           const lastHit = rb.lastHitAt || 0;
           if (reflectedBombNow - lastHit < REFLECTED_BOMB_COOLDOWN) {
-            bombPool.release(bomb);
             setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
             return;
           }
@@ -7438,9 +7371,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setBossesKilled((k) => k + 1);
               setBossDefeatedTransitioning(true);
               setBalls([]);
-              clearAllEnemies();
+              setEnemies([]);
               setBossAttacks([]);
-              clearAllBombs();
+              setBombs([]);
               setBullets([]);
               soundManager.stopBossMusic();
               soundManager.resumeBackgroundMusic();
@@ -7465,7 +7398,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
 
           // Remove bomb by ID
-          bombPool.release(bomb);
           setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
           return;
         }
@@ -7480,7 +7412,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           bomb.y < enemy.y + enemy.height
         ) {
           // Remove enemy by ID
-          enemyPool.release(enemy);
           setEnemies((prev) => prev.filter((e) => e.id !== enemy.id));
           setScore((prev) => prev + 100);
           setEnemiesKilled((prev) => prev + 1);
@@ -7505,7 +7436,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           soundManager.playCrackedBrickBreakSound();
           toast.success("Reflected shot destroyed enemy!");
           // Remove bomb by ID
-          bombPool.release(bomb);
           setBombs((prev) => prev.filter((b) => b.id !== bomb.id));
           return;
         }
@@ -7596,10 +7526,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setPowerUps([]);
               setBonusLetters([]);
               setBullets([]);
-              clearAllEnemies();
+              setEnemies([]);
               setBossAttacks([]);
               setLaserWarnings([]);
-              clearAllBombs();
+              setBombs([]);
               setExplosions([]);
               setPaddle((prev) =>
                 prev
@@ -7662,25 +7592,27 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
 
     // ═══ PHASE 1: End Frame Profiling ═══
-    if (profilerEnabled) {
-      frameProfiler.endFrame();
-      if (debugSettings.enableFrameProfilerLogging && frameProfiler.isEnabled()) {
-        frameProfiler.logStats();
-      }
+    frameProfiler.endFrame();
+    if (debugSettings.enableFrameProfilerLogging && frameProfiler.isEnabled()) {
+      frameProfiler.logStats();
     }
 
-    // ═══ LAG DETECTION: Update frame end time ═══
+    // ═══ LAG DETECTION: Log frame duration spikes ═══
     const frameEnd = performance.now();
+    const frameDuration = frameEnd - frameStart;
     lagDetectionRef.current.lastFrameEnd = frameEnd;
 
-    // Log slow frames if profiler is enabled (use frameNow from start of loop)
-    if (profilerEnabled) {
-      const frameDuration = frameEnd - frameNow;
-      if (frameDuration > 50) {
-        const stats = frameProfiler.getStats();
-        debugLogger.addLogLite('warn', 
-          `[SLOW FRAME] Duration: ${frameDuration.toFixed(1)}ms, fps: ${stats?.fps || "N/A"}, physics: ${stats?.timings?.physics.toFixed(1) || 0}ms`);
-      }
+    if (frameDuration > 50) {
+      const stats = frameProfiler.getStats();
+      debugLogger.warn(`[SLOW FRAME] Duration: ${frameDuration.toFixed(1)}ms`, {
+        fps: stats?.fps || "N/A",
+        physics: stats?.timings?.physics || 0,
+        rendering: stats?.timings?.rendering || 0,
+        particles: stats?.timings?.particles || 0,
+        enemies: stats?.timings?.enemies || 0,
+        collisionCount: stats?.counters?.collisions || 0,
+        particleCount: stats?.counters?.particles || 0,
+      });
     }
 
     animationFrameRef.current = requestAnimationFrame(gameLoop);
@@ -7816,7 +7748,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Pyramid enemy - very slow random movement, 3 hits to destroy
           const angle = Math.random() * Math.PI * 2;
           const speed = 1 * speedIncrease; // Very slow
-          newEnemy = enemyPool.acquire({
+          newEnemy = {
             id: enemyId,
             type: "pyramid",
             x: Math.random() * (SCALED_CANVAS_WIDTH - 40),
@@ -7832,12 +7764,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             dy: Math.sin(angle) * speed,
             hits: 0,
             isAngry: false,
-          });
+          };
         } else if (enemyType === "sphere") {
           // Sphere enemy - random movement pattern
           const angle = Math.random() * Math.PI * 2;
           const speed = 2.5 * speedIncrease; // Slightly faster
-          newEnemy = enemyPool.acquire({
+          newEnemy = {
             id: enemyId,
             type: "sphere",
             x: Math.random() * (SCALED_CANVAS_WIDTH - 40),
@@ -7853,12 +7785,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             dy: Math.sin(angle) * speed,
             hits: 0,
             isAngry: false,
-          });
+          };
         } else {
           // Cube enemy - straight line movement
           const angle = Math.random() * Math.PI * 2;
           const speed = 2 * speedIncrease;
-          newEnemy = enemyPool.acquire({
+          newEnemy = {
             id: enemyId,
             type: "cube",
             x: Math.random() * (SCALED_CANVAS_WIDTH - 40),
@@ -7872,11 +7804,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             speed: speed,
             dx: Math.cos(angle) * speed,
             dy: Math.abs(Math.sin(angle)) * speed, // Always move downward initially
-          });
+          };
         }
-        if (newEnemy) {
-          setEnemies((prev) => [...prev, newEnemy]);
-        }
+        setEnemies((prev) => [...prev, newEnemy]);
         setLastEnemySpawnTime(timer);
         setEnemySpawnCount((prev) => prev + 1);
         const enemyName = enemyType === "sphere" ? "Sphere" : enemyType === "pyramid" ? "Pyramid" : "Cube";
@@ -7922,7 +7852,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (currentEnemy.type === "pyramid") {
               const randomAngle = (Math.random() * 160 - 80) * (Math.PI / 180); // -80 to +80 degrees
               const bulletSpeed = 4;
-              const newBullet = bombPool.acquire({
+              const newBullet: Bomb = {
                 id: Date.now() + Math.random(),
                 x: currentEnemy.x + currentEnemy.width / 2 - 4,
                 y: currentEnemy.y + currentEnemy.height,
@@ -7932,13 +7862,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 enemyId: enemyId,
                 type: "pyramidBullet",
                 dx: Math.sin(randomAngle) * bulletSpeed,
-              });
-              if (newBullet) {
-                soundManager.playPyramidBulletSound();
-                setBombs((prev) => [...prev, newBullet]);
-              }
+              };
+              soundManager.playPyramidBulletSound();
+              setBombs((prev) => [...prev, newBullet]);
             } else {
-              const newProjectile = bombPool.acquire({
+              const newProjectile: Bomb = {
                 id: Date.now() + Math.random(),
                 x: currentEnemy.x + currentEnemy.width / 2 - 5,
                 y: currentEnemy.y + currentEnemy.height,
@@ -7947,11 +7875,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 speed: 3,
                 enemyId: enemyId,
                 type: "bomb", // Both cube and sphere enemies drop bombs
-              });
-              if (newProjectile) {
-                soundManager.playBombDropSound();
-                setBombs((prev) => [...prev, newProjectile]);
-              }
+              };
+              soundManager.playBombDropSound();
+              setBombs((prev) => [...prev, newProjectile]);
             }
             return currentEnemies;
           });
@@ -7999,7 +7925,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         if (enemyType === "pyramid") {
           const angle = Math.random() * Math.PI * 2;
-          newEnemy = enemyPool.acquire({
+          newEnemy = {
             id: enemyId,
             type: "pyramid",
             x: boss.x + boss.width / 2 - 17.5 + spawnOffsetX,
@@ -8013,10 +7939,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             speed: baseSpeed,
             dx: Math.cos(angle) * baseSpeed,
             dy: Math.sin(angle) * baseSpeed,
-          });
+          };
         } else if (enemyType === "sphere") {
           const angle = Math.random() * Math.PI * 2;
-          newEnemy = enemyPool.acquire({
+          newEnemy = {
             id: enemyId,
             type: "sphere",
             x: boss.x + boss.width / 2 - 15 + spawnOffsetX,
@@ -8032,11 +7958,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             dy: Math.sin(angle) * baseSpeed * 1.25,
             hits: 0,
             isAngry: false,
-          });
+          };
         } else {
           // cube
           const angle = Math.random() * Math.PI * 2;
-          newEnemy = enemyPool.acquire({
+          newEnemy = {
             id: enemyId,
             type: "cube",
             x: boss.x + boss.width / 2 - 12.5 + spawnOffsetX,
@@ -8050,29 +7976,30 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             speed: baseSpeed,
             dx: Math.cos(angle) * baseSpeed,
             dy: Math.abs(Math.sin(angle)) * baseSpeed,
-          });
+          };
         }
 
-        if (newEnemy) {
-          newEnemies.push(newEnemy);
+        newEnemies.push(newEnemy);
 
-          // Set up bomb dropping for this enemy
-          const minInterval = 5;
-          const maxInterval = 10;
-          const randomInterval = minInterval * 1000 + Math.random() * (maxInterval - minInterval) * 1000;
+        // Set up bomb dropping for this enemy
+        const minInterval = 5;
+        const maxInterval = 10;
+        const randomInterval = minInterval * 1000 + Math.random() * (maxInterval - minInterval) * 1000;
 
-          const projectileInterval = setInterval(() => {
-            setEnemies((currentEnemies) => {
-              const currentEnemy = currentEnemies.find((e) => e.id === enemyId);
-              if (!currentEnemy) {
-                clearInterval(projectileInterval);
-                bombIntervalsRef.current.delete(enemyId);
-                return currentEnemies;
-              }
+        const projectileInterval = setInterval(() => {
+          setEnemies((currentEnemies) => {
+            const currentEnemy = currentEnemies.find((e) => e.id === enemyId);
+            if (!currentEnemy) {
+              clearInterval(projectileInterval);
+              bombIntervalsRef.current.delete(enemyId);
+              return currentEnemies;
+            }
 
-              const projectileType = enemyType === "pyramid" ? "pyramidBullet" : "bomb";
+            const projectileType = enemyType === "pyramid" ? "pyramidBullet" : "bomb";
 
-              const newBomb = bombPool.acquire({
+            setBombs((prev) => [
+              ...prev,
+              {
                 id: Date.now() + Math.random(),
                 x: currentEnemy.x + currentEnemy.width / 2 - 5,
                 y: currentEnemy.y + currentEnemy.height,
@@ -8081,29 +8008,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 speed: 3,
                 enemyId: enemyId,
                 type: projectileType,
-              });
+              },
+            ]);
 
-              if (newBomb) {
-                setBombs((prev) => [...prev, newBomb]);
+            if (enemyType === "pyramid") {
+              soundManager.playPyramidBulletSound();
+            } else {
+              soundManager.playBombDropSound();
+            }
 
-                if (enemyType === "pyramid") {
-                  soundManager.playPyramidBulletSound();
-                } else {
-                  soundManager.playBombDropSound();
-                }
-              }
+            return currentEnemies;
+          });
+        }, randomInterval);
 
-              return currentEnemies;
-            });
-          }, randomInterval);
-
-          bombIntervalsRef.current.set(enemyId, projectileInterval);
-        }
+        bombIntervalsRef.current.set(enemyId, projectileInterval);
       }
 
-      if (newEnemies.length > 0) {
-        setEnemies((prev) => [...prev, ...newEnemies]);
-      }
+      setEnemies((prev) => [...prev, ...newEnemies]);
       setLastBossSpawnTime(timer);
 
       // Trigger minion tutorial on first boss minion spawn
@@ -8334,7 +8255,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     soundManager.stopBackgroundMusic();
     setShowEndScreen(false);
     particlePool.releaseAll(); // Clear all particles
-    resetAllPools(); // Clear all entity pools
     onReturnToMenu();
   };
 
@@ -8420,7 +8340,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBricksDestroyedByTurrets(0);
     setBossesKilled(0);
     particlePool.releaseAll(); // Clear all particles
-    resetAllPools(); // Clear all entity pools (power-ups, bullets, enemies, etc.)
     setLives(settings.startingLives);
 
     // Clear all entities
@@ -8429,8 +8348,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setTimer(0);
     setTotalPlayTime(0);
     totalPlayTimeStartedRef.current = false;
-    clearAllEnemies();
-    clearAllBombs();
+    setEnemies([]);
+    setBombs([]);
     setExplosions([]);
     setEnemySpawnCount(0);
     setLastEnemySpawnTime(0);
@@ -9383,19 +9302,71 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                 {/* Tutorial Overlay moved inside scaled game-glow container above */}
 
-                {/* Mobile Controls - Pause button, Music toggle, Debug button */}
-                <MobileGameControls
-                  isMobileDevice={isMobileDevice}
-                  gameState={gameState}
-                  setGameState={setGameState}
-                  gameLoopRef={gameLoopRef}
-                  musicEnabled={musicEnabled}
-                  setMusicEnabled={setMusicEnabled}
-                  showFullscreenPrompt={showFullscreenPrompt}
-                  onFullscreenPromptClick={handleFullscreenPromptClick}
-                  showDebugDashboard={showDebugDashboard}
-                  setShowDebugDashboard={setShowDebugDashboard}
-                />
+                {/* Mobile Pause Button - always visible on mobile when playing */}
+                {isMobileDevice && gameState === "playing" && (
+                  <button
+                    onTouchStart={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onTouchEnd={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setGameState("paused");
+                      if (gameLoopRef.current) {
+                        gameLoopRef.current.pause();
+                      }
+                    }}
+                    onClick={() => {
+                      setGameState("paused");
+                      if (gameLoopRef.current) {
+                        gameLoopRef.current.pause();
+                      }
+                    }}
+                    className="fixed left-4 top-[116px] z-[100] w-12 h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 transition-transform touch-manipulation"
+                    aria-label="Pause Game"
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    <Pause className="w-6 h-6 text-white/70" />
+                  </button>
+                )}
+
+                {/* Music Toggle Button - right side */}
+                {gameState === "playing" && isMobileDevice && (
+                  <div className="fixed right-4 top-[116px] z-[100]">
+                    <button
+                      onTouchStart={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const newState = !musicEnabled;
+                        setMusicEnabled(newState);
+                        soundManager.setMusicEnabled(newState);
+                        if (newState) {
+                          soundManager.playBackgroundMusic();
+                        }
+                      }}
+                      onClick={() => {
+                        const newState = !musicEnabled;
+                        setMusicEnabled(newState);
+                        soundManager.setMusicEnabled(newState);
+                        if (newState) {
+                          soundManager.playBackgroundMusic();
+                        }
+                      }}
+                      className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-transparent border-2 border-white/30 flex items-center justify-center shadow-lg active:scale-95 hover:border-white/50 transition-all touch-manipulation"
+                      aria-label="Toggle Music"
+                      style={{ touchAction: "manipulation" }}
+                    >
+                      {musicEnabled ? (
+                        <Volume2 className="w-5 h-5 md:w-6 md:h-6 text-white/70" />
+                      ) : (
+                        <VolumeX className="w-5 h-5 md:w-6 md:h-6 text-white/40" />
+                      )}
+                    </button>
+                  </div>
+                )}
 
                 {/* ═══════════════════════════════════════════════════════════════
                      ████████╗ DEBUG UI COMPONENTS - REMOVE BEFORE PRODUCTION ████████╗
@@ -9419,7 +9390,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       onReset={resetDebugSettings}
                     />
 
-                    {/* Mobile Debug Button is now in MobileGameControls */}
+                    {/* Mobile Debug Button - floating icon for touch devices */}
+                    {isMobileDevice && !showDebugDashboard && (
+                      <button
+                        onTouchStart={(e) => {
+                          e.stopPropagation();
+                        }}
+                        onTouchEnd={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setShowDebugDashboard(true);
+                        }}
+                        onClick={() => setShowDebugDashboard(true)}
+                        className="fixed right-4 top-1/2 -translate-y-1/2 z-[100] w-12 h-12 rounded-full bg-yellow-500/90 flex items-center justify-center text-2xl shadow-lg active:scale-95 transition-transform touch-manipulation"
+                        aria-label="Open Debug Dashboard"
+                        style={{ touchAction: "manipulation" }}
+                      >
+                        🐛
+                      </button>
+                    )}
 
                     {/* Quality Indicator - Always visible */}
                     <QualityIndicator quality={quality} autoAdjustEnabled={autoAdjustEnabled} fps={currentFps} />
