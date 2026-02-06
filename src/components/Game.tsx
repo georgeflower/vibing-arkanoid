@@ -1970,6 +1970,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
       bombIntervalsRef.current.clear();
+
+      // Trigger Get Ready sequence for Boss Rush
+      baseSpeedMultiplierRef.current = newSpeedMultiplier;
+      setSpeedMultiplier(newSpeedMultiplier * 0.1); // Start at 10% speed
+      getReadyStartTimeRef.current = Date.now();
+      setGetReadyActive(true);
+      if (isMobileDevice) {
+        getReadyGlowStartTimeRef.current = Date.now();
+        setGetReadyGlow({ opacity: 1 });
+      }
+
       setGameState("playing");
       toast.success(`Boss ${nextBossIndex + 1}/4! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
       return;
@@ -2083,6 +2094,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
+
+    // Trigger Get Ready sequence for Normal mode
+    baseSpeedMultiplierRef.current = newSpeedMultiplier;
+    setSpeedMultiplier(newSpeedMultiplier * 0.1); // Start at 10% speed
+    getReadyStartTimeRef.current = Date.now();
+    setGetReadyActive(true);
+    if (isMobileDevice) {
+      getReadyGlowStartTimeRef.current = Date.now();
+      setGetReadyGlow({ opacity: 1 });
+    }
+
     setGameState("playing");
     if (newLevel === 10) {
       toast.success(`Level ${newLevel}! New music unlocked!`);
