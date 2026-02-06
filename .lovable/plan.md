@@ -1,138 +1,88 @@
 
-# Fix Boss Rush Stats Overlay Click-Through and GetReadyOverlay Position
+## Goal
+Make the “GET READY!” overlay independent of ball / canvas coordinates by removing the ball highlight entirely and centering the “GET READY!” text within the playable area (the scaled `.game-glow` container) on all devices.
 
-## Issues Identified
+This eliminates any coordinate mismatch problems because the overlay will no longer attempt to line up with the ball.
 
-### Issue 1: Ball Launches Immediately After Stats Overlay Continue
-When clicking "Continue" on the BossRushStatsOverlay, the click event propagates to the game canvas which triggers `launchBallAtCurrentAngle()`. The overlay's click handlers (`handlePointerDown`, `handleClick`, `handleKeyDown`) don't call `stopPropagation()` to block event bubbling.
+---
 
-### Issue 2: GetReadyOverlay Ball Highlight Mispositioned
-The GetReadyOverlay measures its container size using `getBoundingClientRect()`, but it's returning the wrong dimensions. The session replay shows coordinates like `left: 2001.92px` when the playing area is only `1806px` wide. This happens because:
-- The overlay div with `absolute inset-0` is inheriting the wrong container bounds
-- The scale calculation `scaleX = containerSize.width / canvasWidth` produces values > 1 when it should be close to 1
+## What I found in the codebase
+- `src/components/GetReadyOverlay.tsx` currently:
+  - Requires `ballPosition`, `canvasWidth`, `canvasHeight`
+  - Returns `null` when `ballPosition` is missing
+  - Positions a glow and text using `left/top` (desktop) and renders centered text only on mobile
+- `src/components/Game.tsx` renders the overlay like this:
+  - `getReadyActive && balls.length > 0` then passes `ballPosition={{ x: balls[0].x, y: balls[0].y }}` plus `canvasWidth/canvasHeight`
+- The overlay is already rendered inside the `.game-glow` container, which is the correct “playable area” coordinate space.
 
-## Solution
+---
 
-### Part 1: Prevent Ball Launch on Stats Overlay Continue
+## Implementation approach
+### A) Simplify `GetReadyOverlay` to “centered text only”
+**File:** `src/components/GetReadyOverlay.tsx`
 
-**File: `src/components/BossRushStatsOverlay.tsx`**
+Changes:
+1. **Remove ball/canvas coordinate props**
+   - Update `GetReadyOverlayProps` to only keep what’s needed:
+     - `onComplete: () => void`
+     - (Optionally keep `isMobile?: boolean`, but it becomes unnecessary if we use the same centered layout everywhere.)
+2. **Remove all highlight + coordinate math**
+   - Delete:
+     - `if (!ballPosition) return null;`
+     - `ringX/ringY/textY/ringRadius/glowSize` calculations
+     - The desktop “Ball glow effect” `<div>`
+     - The desktop absolute-positioned floating text
+3. **Render a single centered overlay for all devices**
+   - Use a single layout:
+     - Wrapper: `absolute inset-0 z-[150] pointer-events-none flex items-center justify-center`
+     - Centered “GET READY!” text with existing retro styling
+   - Keep the existing mount / fade / scale animation behavior and the 3-second progress timer that calls `onComplete()`.
 
-Add `stopPropagation()` and `preventDefault()` to all event handlers to block the click from reaching the game canvas:
+Result: The overlay always centers in the playable area; no dependency on ball position.
 
-1. **handlePointerDown** (line ~142): Add `e.stopPropagation()`
-2. **handleKeyDown** (line ~129): Add `e.stopPropagation()` 
-3. **onClick on main div** (line ~162): Add `e.stopPropagation()`
+---
 
-Additionally, add a debounce mechanism in `Game.tsx` to ignore launch attempts immediately after the overlay closes:
-- Add `statsOverlayJustClosedRef` boolean ref
-- Set to `true` on `onContinue`, clear after 100ms
-- Check this ref in `launchBallAtCurrentAngle()` and early-return if true
+### B) Update the call site in `Game.tsx`
+**File:** `src/components/Game.tsx`
 
-### Part 2: Fix GetReadyOverlay Positioning
+Changes:
+1. Update the render condition:
+   - From: `getReadyActive && balls.length > 0`
+   - To: `getReadyActive`
+   - Reason: centered overlay no longer depends on the ball existing.
+2. Update the component props:
+   - Remove `ballPosition`, `canvasWidth`, `canvasHeight` props (and `isMobile` if removed from the component).
+   - Keep `onComplete` exactly as-is (it already correctly ends the sequence and restores speed multiplier).
 
-**File: `src/components/GetReadyOverlay.tsx`**
+---
 
-The current approach of measuring `containerSize` and scaling ball coordinates is unnecessarily complex. Since the overlay is inside the `.game-glow` container which already has the correct dimensions, the ball coordinates should be used directly without scaling.
+## Edge cases / considerations
+- This change will intentionally remove any “highlight the ball” visuals. The overlay becomes purely informational.
+- Because it no longer depends on `balls[0]`, it will still show even if the balls array is temporarily empty during transitions (which is desirable for a simple centered message).
+- TypeScript: removing props requires updating both the props interface and every `GetReadyOverlay` usage to avoid compile errors.
 
-**Change the approach:**
-1. Remove the containerSize measurement logic
-2. Use the ball coordinates directly as pixel positions
-3. The overlay parent container (`.game-glow`) already has the correct pixel dimensions set by `useCanvasResize`, so absolute positioning will work correctly
+---
 
-**Before (current - broken):**
-```typescript
-const scaleX = containerSize.width > 0 ? containerSize.width / canvasWidth : 1;
-const ringX = ballPosition ? ballPosition.x * scaleX : 0;
-```
+## Files to change
+1. `src/components/GetReadyOverlay.tsx`
+   - Remove coordinate-based logic and glow highlight
+   - Center “GET READY!” text for all devices
+   - Simplify props
+2. `src/components/Game.tsx`
+   - Update the `GetReadyOverlay` render condition and props passed
 
-**After (fixed):**
-```typescript
-// Ball position is already in container coordinates
-// No scaling needed - parent container is sized correctly
-const ringX = ballPosition.x;
-const ringY = ballPosition.y;
-```
+---
 
-## Files Modified
+## Verification checklist (what you should see after implementation)
+1. Finish any level (normal mode) → “GET READY!” appears centered in the playable area.
+2. Boss Rush: defeat boss → stats overlay → Continue → next stage loads → “GET READY!” centered.
+3. Confirm there is **no ball glow / highlight** anymore.
+4. Confirm the text is centered consistently on:
+   - Desktop windowed
+   - Desktop fullscreen
+   - Mobile fullscreen mode
 
-| File | Changes |
-|------|---------|
-| `src/components/BossRushStatsOverlay.tsx` | Add `stopPropagation()` to click/pointer/keyboard handlers |
-| `src/components/GetReadyOverlay.tsx` | Remove container scaling, use ball coordinates directly |
-| `src/components/Game.tsx` | Add debounce ref to prevent ball launch after overlay close |
+---
 
-## Technical Details
-
-### BossRushStatsOverlay Changes
-
-```typescript
-// Line ~128-133: handleKeyDown
-const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.key === " " || e.key === "Enter") {
-    e.preventDefault();
-    e.stopPropagation();  // ADD THIS
-    onContinue();
-  }
-};
-
-// Line ~142-144: handlePointerDown  
-const handlePointerDown = (e: PointerEvent) => {
-  e.stopPropagation();  // ADD THIS
-  e.preventDefault();   // ADD THIS
-  onContinue();
-};
-
-// Line ~162: onClick on main div
-onClick={(e) => {
-  e.stopPropagation();  // ADD THIS
-  handleClick();
-}}
-```
-
-### GetReadyOverlay Changes
-
-```typescript
-// Remove containerSize state and measurement effect
-
-// Desktop version - use coordinates directly
-const ringX = ballPosition.x;
-const ringY = ballPosition.y;
-const textY = ringY - 60;
-const ringRadius = 30 + progress * 20;
-```
-
-### Game.tsx Debounce Ref
-
-```typescript
-// Near other refs
-const statsOverlayJustClosedRef = useRef(false);
-
-// In onContinue handler for BossRushStatsOverlay
-onContinue={() => {
-  statsOverlayJustClosedRef.current = true;
-  setTimeout(() => {
-    statsOverlayJustClosedRef.current = false;
-  }, 150);
-  // ... rest of handler
-}}
-
-// In launchBallAtCurrentAngle
-const launchBallAtCurrentAngle = useCallback(() => {
-  if (statsOverlayJustClosedRef.current) return; // Block during debounce
-  // ... rest of function
-}, [...]);
-```
-
-## Expected Behavior After Fix
-
-1. **Boss Rush Stats → Continue**:
-   - Click "Continue" on stats overlay
-   - Overlay closes, next boss loads
-   - Ball remains on paddle (NOT launched)
-   - "GET READY!" appears with glow positioned correctly at ball
-   - Second click launches ball
-
-2. **GetReadyOverlay Positioning**:
-   - Ball glow and "GET READY!" text appear directly over the ball
-   - Coordinates match the game's coordinate system
-   - Works on all screen sizes and platforms
+## Optional follow-up (not required for this request)
+If you later want a highlight again without coordinate bugs, we can reintroduce it using a single source of truth for render-space coordinates (e.g., passing a “render-space transform” down from the same logic that sizes the canvas). But for now, the simplest reliable fix is removing coordinate coupling entirely as requested.
