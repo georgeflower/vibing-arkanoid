@@ -1,122 +1,182 @@
 
-
-# Center All Text Overlays (Remove Coordinate Dependencies)
+# Center Power-Up Timers and Bonus Letter Text (Remove Coordinate Dependencies)
 
 ## Summary
-Modify the `BossPowerUpTimer` component to display its timer text centered in the playable area rather than positioned relative to the paddle coordinates.
-
-## Current State
-
-### Components Already Centered (No Changes Needed)
-| Component | Current Positioning |
-|-----------|-------------------|
-| `GetReadyOverlay.tsx` | ✓ Centered with `flex items-center justify-center` |
-| `BossVictoryOverlay.tsx` | ✓ Centered with `flex items-center justify-center` |
-| `BossRushVictoryOverlay.tsx` | ✓ Centered with `flex items-center justify-center` |
-| `BossRushStatsOverlay.tsx` | ✓ Centered with `flex items-center justify-center` |
-
-### Component Requiring Changes
-| Component | Current Issue |
-|-----------|--------------|
-| `BossPowerUpTimer.tsx` | Uses `paddleX` and `paddleY` for absolute positioning relative to paddle |
-
-### Special Case (No Change Recommended)
-| Component | Reason to Keep Coordinates |
-|-----------|---------------------------|
-| `TutorialOverlay.tsx` | Uses coordinates for **spotlight highlight** feature - intentionally points at game elements to teach players. This is not "text positioning" but "element highlighting" for tutorial purposes. |
-
-## Important Note
-The `BossPowerUpTimer` component is currently **not imported or used anywhere** in the codebase. It appears to be orphaned code. We have two options:
-1. **Delete it** - If not needed
-2. **Refactor it** - To be centered, ready for future use
-
-I will refactor it to be centered so it's ready if you want to use it later.
+Make the desktop power-up timer displays and bonus letter tutorial text independent of paddle/letter coordinates by centering them in the playable area, matching how mobile versions already work.
 
 ---
 
-## Changes to Make
+## Current State
 
-### File: `src/components/BossPowerUpTimer.tsx`
+### Elements Already Centered (No Changes Needed)
+| Element | Location | Current Positioning |
+|---------|----------|-------------------|
+| Mobile Power-Up Timers | Lines 9585-9639 | Centered with `flex justify-center items-center gap-3` |
+| Mobile Bonus Letter Text | Lines 9641-9672 | Centered with `flex justify-center` |
 
-**Before (Current - Paddle-based positioning):**
+### Elements Requiring Changes
+| Element | Location | Current Issue |
+|---------|----------|--------------|
+| Desktop Power-Up Timers | Lines 8946-9024 | Uses `paddle.x`, `paddle.y` for absolute positioning |
+| Desktop Bonus Letter Text | Lines 9026-9063 | Uses `letter.x`, `letter.y` for absolute positioning |
+
+---
+
+## Implementation Approach
+
+### A) Desktop Power-Up Timers - Center in Playable Area
+
+**File:** `src/components/Game.tsx` (lines 8946-9024)
+
+**Current (Paddle-relative positioning):**
 ```typescript
-interface BossPowerUpTimerProps {
-  label: string;
-  endTime: number;
-  duration: number;
-  paddleX: number;
-  paddleY: number;
-  canvasWidth: number;
-  isMobile?: boolean;
-}
-
-// Uses absolute positioning with paddleX, paddleY
-const leftPos = isMobile ? paddleX - 10 : paddleX + 50;
-const topPos = isMobile ? paddleY - 22 : paddleY - 35;
-
-return (
-  <div style={{ left: `${leftPos}px`, top: `${topPos}px`, ... }}>
-    {label}: {seconds}s
-  </div>
-);
-```
-
-**After (Centered - No coordinate dependencies):**
-```typescript
-interface BossPowerUpTimerProps {
-  label: string;
-  endTime: number;
-  duration: number;
-}
-
-// Uses flexbox centering
-return (
-  <div className="absolute inset-0 z-[100] pointer-events-none flex items-center justify-center">
-    <div style={{ transform: `scale(${scale})`, color, ... }}>
-      {label}: {seconds}s
+<div className="absolute pointer-events-none" style={{ ... }}>
+  {bossStunnerEndTime && ... && (
+    <div className="absolute retro-pixel-text" style={{
+      left: `${paddle.x + paddle.width / 2}px`,
+      top: `${paddle.y - 45}px`,
+      ...
+    }}>
+      STUN: {seconds}s
     </div>
-  </div>
-);
+  )}
+  {/* Similar for REFLECT, MAGNET, FIREBALL */}
+</div>
 ```
 
-### Props Removed
-- `paddleX` - No longer needed
-- `paddleY` - No longer needed  
-- `canvasWidth` - No longer needed
-- `isMobile` - No longer needed (same layout for all devices)
+**After (Centered with flexbox):**
+```typescript
+<div className="absolute inset-0 pointer-events-none z-[100] flex flex-col items-center justify-center gap-2">
+  {bossStunnerEndTime && ... && (
+    <div className="retro-pixel-text" style={{
+      transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
+      color: `hsl(...)`,
+      textShadow: `0 0 10px currentColor`,
+      fontSize: "14px",
+      fontWeight: "bold",
+    }}>
+      STUN: {seconds}s
+    </div>
+  )}
+  {/* Similar for REFLECT, MAGNET, FIREBALL */}
+</div>
+```
 
-### Styling Kept
-- Color transition (yellow → orange → red)
-- Pulse animation that speeds up as time runs low
-- Retro pixel text styling with glow
+**Changes:**
+- Remove the fixed-dimension wrapper div
+- Replace with `absolute inset-0 flex flex-col items-center justify-center gap-2`
+- Remove `left` and `top` style properties from each timer
+- Remove `translateX(-50%)` from transform (no longer needed when centered)
+- Slightly increase font size for better visibility in center
+
+---
+
+### B) Desktop Bonus Letter Floating Text - Center in Playable Area
+
+**File:** `src/components/Game.tsx` (lines 9026-9063)
+
+**Current (Letter-relative positioning):**
+```typescript
+<div className="absolute inset-0 pointer-events-none z-[150]">
+  {(() => {
+    const letter = bonusLetters[0];
+    ...
+    return (
+      <div className="absolute retro-pixel-text text-center whitespace-nowrap" style={{
+        left: `${letter.x + letter.width / 2}px`,
+        top: `${letter.y - 35}px`,
+        transform: `translateX(-50%) scale(${zoomScale})`,
+        ...
+      }}>
+        Catch all letters for megabonus!
+      </div>
+    );
+  })()}
+</div>
+```
+
+**After (Centered with flexbox):**
+```typescript
+<div className="absolute inset-0 pointer-events-none z-[150] flex items-center justify-center">
+  {(() => {
+    const elapsed = Date.now() - bonusLetterFloatingText.startTime;
+    const duration = 4000;
+    if (elapsed >= duration) { ... }
+    ...
+    return (
+      <div className="retro-pixel-text text-center whitespace-nowrap" style={{
+        transform: `scale(${zoomScale})`,
+        color: "hsl(48, 100%, 60%)",
+        textShadow: "0 0 10px hsl(48, 100%, 60%), 0 0 20px hsl(48, 100%, 50%)",
+        fontSize: "16px",
+        fontWeight: "bold",
+        opacity,
+      }}>
+        Catch all letters for megabonus!
+      </div>
+    );
+  })()}
+</div>
+```
+
+**Changes:**
+- Add `flex items-center justify-center` to wrapper div
+- Remove `left` and `top` style properties
+- Remove `translateX(-50%)` from transform
+- Remove the `letter` variable reference (no longer needed)
+- Remove the `bonusLetters.length > 0` condition since we only need the text, not the letter position
 
 ---
 
 ## Files Modified
 
-| File | Changes |
-|------|---------|
-| `src/components/BossPowerUpTimer.tsx` | Remove coordinate props, center using flexbox |
+| File | Lines | Changes |
+|------|-------|---------|
+| `src/components/Game.tsx` | 8946-9024 | Center desktop power-up timers using flexbox |
+| `src/components/Game.tsx` | 9026-9063 | Center desktop bonus letter text using flexbox |
 
 ---
 
-## Expected Behavior After Change
+## Expected Behavior After Changes
 
-The `BossPowerUpTimer` component will:
-1. Display centered in the playable area (when used)
-2. Show the timer label with countdown in seconds
-3. Transition color from yellow → orange → red as time expires
-4. Pulse faster as time gets low
-5. Work consistently across all screen sizes without coordinate math
+1. **Desktop Power-Up Timers:**
+   - STUN, REFLECT, MAGNET, FIREBALL timers appear centered in the playable area
+   - Stacked vertically with small gap between them
+   - Pulse animation and color transition preserved
+   - Do not move when paddle moves
+
+2. **Desktop Bonus Letter Text:**
+   - "Catch all letters for megabonus!" appears centered in the playable area
+   - Zoom animation and fade in/out preserved
+   - Does not follow the falling letter
+
+3. **Mobile (unchanged):**
+   - Already works correctly with centered positioning
 
 ---
 
-## What About TutorialOverlay?
+## Visual Reference
 
-The `TutorialOverlay` uses coordinates for its **spotlight/highlight feature** - this is intentional and serves a specific purpose:
-- It creates a visual "spotlight" effect that points at game elements
-- The coordinates are needed to draw the spotlight circle around power-ups, bosses, etc.
-- The tutorial **text** itself is already positioned dynamically (not at fixed coordinates)
+```text
+Before (paddle-following):
+┌────────────────────────────┐
+│        BOSS                │
+│                            │
+│                            │
+│                            │
+│                            │
+│          STUN: 3.2s        │ ← Follows paddle
+│        [paddle]            │
+└────────────────────────────┘
 
-This is different from "positioning text near the paddle" - it's "highlighting game elements for teaching purposes". **No changes recommended** for TutorialOverlay.
-
+After (centered):
+┌────────────────────────────┐
+│        BOSS                │
+│                            │
+│        STUN: 3.2s          │ ← Fixed center
+│       REFLECT: 12.5s       │
+│        MAGNET: 5.1s        │
+│                            │
+│        [paddle]            │
+└────────────────────────────┘
+```
