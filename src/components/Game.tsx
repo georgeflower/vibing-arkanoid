@@ -1284,11 +1284,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           // Boss Rush mode: show stats overlay instead of immediate transition
           if (isBossRush) {
-            // Pause game and show stats overlay after victory overlay
-            setTimeout(() => {
-              gameLoopRef.current?.pause();
-              setBossRushStatsOverlayActive(true);
-            }, 2000);
+            gameLoopRef.current?.pause();
+            setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
+            setBossRushStatsOverlayActive(true);
           } else {
             // Stop boss music and resume background music
             soundManager.stopBossMusic();
@@ -3259,13 +3257,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                     // Boss Rush mode: show stats overlay instead of immediate transition
                     if (isBossRush) {
-                      // Pause game and show stats overlay after victory overlay
-                      setTimeout(() => {
-                        gameLoopRef.current?.pause();
-                        // Capture time snapshot when overlay opens
-                        setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
-                        setBossRushStatsOverlayActive(true);
-                      }, 2000);
+                      gameLoopRef.current?.pause();
+                      setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
+                      setBossRushStatsOverlayActive(true);
                     } else {
                       // Stop boss music and resume background music
                       soundManager.stopBossMusic();
@@ -3338,13 +3332,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                       // Boss Rush mode: show stats overlay instead of immediate transition
                       if (isBossRush) {
-                        // Pause game and show stats overlay after victory overlay
-                        setTimeout(() => {
-                          gameLoopRef.current?.pause();
-                          // Capture time snapshot when overlay opens
-                          setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
-                          setBossRushStatsOverlayActive(true);
-                        }, 2000);
+                        gameLoopRef.current?.pause();
+                        setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
+                        setBossRushStatsOverlayActive(true);
                       } else {
                         // Stop boss music and resume background music
                         soundManager.stopBossMusic();
@@ -3459,13 +3449,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                       // Boss Rush mode: show stats overlay instead of immediate transition
                       if (isBossRush) {
-                        // Pause game and show stats overlay after victory overlay
-                        setTimeout(() => {
-                          gameLoopRef.current?.pause();
-                          // Capture time snapshot when overlay opens
-                          setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
-                          setBossRushStatsOverlayActive(true);
-                        }, 2000);
+                        gameLoopRef.current?.pause();
+                        setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
+                        setBossRushStatsOverlayActive(true);
                       } else {
                         // Stop boss music and resume background music
                         soundManager.stopBossMusic();
@@ -9196,9 +9182,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     )}
                   </div>
 
-                  {/* Boss Victory Celebration Overlay */}
+                  {/* Boss Victory Celebration Overlay - only shown in normal mode, not Boss Rush */}
                   <BossVictoryOverlay
-                    active={bossVictoryOverlayActive}
+                    active={bossVictoryOverlayActive && !isBossRush}
                     onComplete={() => setBossVictoryOverlayActive(false)}
                   />
 

@@ -103,7 +103,7 @@ export const BossRushStatsOverlay = ({
       // Show stats with a slight delay for dramatic effect
       const statsTimer = setTimeout(() => setShowStats(true), 300);
       // Allow continue after stats are shown
-      const continueTimer = setTimeout(() => setCanContinue(true), 2000);
+      const continueTimer = setTimeout(() => setCanContinue(true), 1200);
 
       return () => {
         clearTimeout(statsTimer);
