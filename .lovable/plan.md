@@ -1,121 +1,116 @@
 
-# Remove Boss Victory Overlay for Boss Rush & Clean Up Delays
+
+# Show Get Ready Overlay on All Level Transitions
 
 ## Summary
-This plan removes the redundant "Great Job! Boss Defeated!" overlay from Boss Rush mode (since the stats overlay serves that purpose), eliminates the 2000ms delays before showing the stats overlay, and ensures the time snapshot is captured correctly in all code paths.
+Add the "Get Ready!" overlay to appear on ALL level transitions, including:
+- Normal mode: when advancing from any level to the next
+- Boss Rush mode: when transitioning between boss fights
+- Currently it only shows after dismissing tutorial overlays
 
-## Changes Overview
+## Current Behavior
+The "Get Ready" overlay (with ball glow and floating text) only triggers in two places:
+1. When dismissing a tutorial popup (`onDismiss` handler - line 9090)
+2. When skipping all tutorials (`onSkipAll` handler - line 9120)
 
-| Location | Current | Change |
-|----------|---------|--------|
-| `BossVictoryOverlay` render | Always shows when `bossVictoryOverlayActive` | Only show when `bossVictoryOverlayActive && !isBossRush` |
-| Game.tsx line ~1289 | 2000ms delay, missing time snapshot | Remove delay, add time snapshot |
-| Game.tsx line ~3265 | 2000ms delay | Remove delay |
-| Game.tsx line ~3345 | 2000ms delay | Remove delay |
-| Game.tsx line ~3465 | 2000ms delay | Remove delay |
-| BossRushStatsOverlay.tsx line 106 | 2000ms before `canContinue` | Reduce to 1200ms (after animations complete) |
+## Required Changes
 
-## Detailed Changes
+### 1. Add Get Ready to Boss Rush Level Transitions
+**File:** `src/components/Game.tsx` (lines ~1971-1975)
 
-### 1. Gate BossVictoryOverlay for Normal Mode Only
-**File:** `src/components/Game.tsx` (line ~9200)
+In the Boss Rush section of `nextLevel()`, before `setGameState("playing")`:
 
-Change:
 ```typescript
-<BossVictoryOverlay
-  active={bossVictoryOverlayActive}
-  onComplete={() => setBossVictoryOverlayActive(false)}
-/>
-```
+// Add Get Ready sequence for Boss Rush
+baseSpeedMultiplierRef.current = newSpeedMultiplier;
+setSpeedMultiplier(newSpeedMultiplier * 0.1); // Start at 10% speed
+getReadyStartTimeRef.current = Date.now();
+setGetReadyActive(true);
 
-To:
-```typescript
-<BossVictoryOverlay
-  active={bossVictoryOverlayActive && !isBossRush}
-  onComplete={() => setBossVictoryOverlayActive(false)}
-/>
-```
-
-### 2. Fix Pyramid Phase 2 Turret Defeat Path (Missing Time Snapshot)
-**File:** `src/components/Game.tsx` (lines ~1286-1291)
-
-Current code:
-```typescript
-if (isBossRush) {
-  setTimeout(() => {
-    gameLoopRef.current?.pause();
-    setBossRushStatsOverlayActive(true);
-  }, 2000);
+// Start mobile glow effect
+if (isMobileDevice) {
+  getReadyGlowStartTimeRef.current = Date.now();
+  setGetReadyGlow({ opacity: 1 });
 }
 ```
 
-Change to:
+### 2. Add Get Ready to Normal Mode Level Transitions
+**File:** `src/components/Game.tsx` (lines ~2084-2086)
+
+In the normal mode section of `nextLevel()`, before `setGameState("playing")`:
+
 ```typescript
-if (isBossRush) {
-  gameLoopRef.current?.pause();
-  setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
-  setBossRushStatsOverlayActive(true);
+// Add Get Ready sequence for Normal mode
+baseSpeedMultiplierRef.current = newSpeedMultiplier;
+setSpeedMultiplier(newSpeedMultiplier * 0.1); // Start at 10% speed
+getReadyStartTimeRef.current = Date.now();
+setGetReadyActive(true);
+
+// Start mobile glow effect
+if (isMobileDevice) {
+  getReadyGlowStartTimeRef.current = Date.now();
+  setGetReadyGlow({ opacity: 1 });
 }
 ```
 
-### 3. Remove 2000ms Delay for Cube Boss Defeat
-**File:** `src/components/Game.tsx` (lines ~3261-3268)
+### 3. Update BossRushStatsOverlay onContinue Handler
+**File:** `src/components/Game.tsx` (lines ~9219-9236)
 
-Current code:
-```typescript
-if (isBossRush) {
-  setTimeout(() => {
-    gameLoopRef.current?.pause();
-    setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
-    setBossRushStatsOverlayActive(true);
-  }, 2000);
-}
-```
+The `onContinue` handler calls `nextLevel()` which will now trigger the Get Ready sequence. However, we need to ensure the speed multiplier is set correctly before calling `nextLevel()`:
 
-Change to:
-```typescript
-if (isBossRush) {
-  gameLoopRef.current?.pause();
-  setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
-  setBossRushStatsOverlayActive(true);
-}
-```
+The current flow will now be:
+1. Player clicks Continue on stats overlay
+2. `onContinue` resets stats, resumes game loop, calls `nextLevel()`
+3. `nextLevel()` sets up the new boss level AND triggers Get Ready overlay
+4. Get Ready overlay shows for 3 seconds with speed ramp
+5. Player clicks to launch ball
 
-### 4. Remove 2000ms Delay for Sphere Boss Defeat
-**File:** `src/components/Game.tsx` (lines ~3340-3347)
+No additional changes needed here since `nextLevel()` will handle the Get Ready activation.
 
-Same pattern - remove `setTimeout` wrapper, execute immediately.
+## Technical Details
 
-### 5. Remove 2000ms Delay for Pyramid/Resurrected Boss Defeat
-**File:** `src/components/Game.tsx` (lines ~3461-3468)
-
-Same pattern - remove `setTimeout` wrapper, execute immediately.
-
-### 6. Reduce Stats Overlay Continue Delay
-**File:** `src/components/BossRushStatsOverlay.tsx` (line 106)
-
-Current:
-```typescript
-const continueTimer = setTimeout(() => setCanContinue(true), 2000);
-```
-
-Change to:
-```typescript
-const continueTimer = setTimeout(() => setCanContinue(true), 1200);
-```
-
-This allows the stat animations (which take up to 1000ms with 900ms delay) to complete before enabling continue.
-
-## Technical Notes
-
-- The `BossVictoryOverlay` component itself remains in the codebase - it's still used in normal campaign mode when defeating bosses on levels 5, 10, 15, and 20.
-- The stats overlay now appears immediately after boss defeat in Boss Rush mode, rather than waiting 2 seconds.
-- The continue delay is reduced from 2000ms to 1200ms, allowing players to proceed faster while still seeing the animated stats.
-- All four boss defeat paths (Cube, Sphere, Pyramid phase 2, and Resurrected Pyramids) will now behave consistently.
-
-## Files Modified
-
+### Files Modified
 | File | Changes |
 |------|---------|
-| `src/components/Game.tsx` | Gate BossVictoryOverlay, remove 4x setTimeout delays, add missing time snapshot |
-| `src/components/BossRushStatsOverlay.tsx` | Reduce continue delay from 2000ms to 1200ms |
+| `src/components/Game.tsx` | Add Get Ready activation in both Boss Rush and Normal mode sections of `nextLevel()` |
+
+### Code Locations
+1. **Boss Rush path** (~line 1971): Insert Get Ready code before `setGameState("playing")`
+2. **Normal mode path** (~line 2084): Insert Get Ready code before `setGameState("playing")`
+
+### Speed Multiplier Flow
+1. Store the target speed in `baseSpeedMultiplierRef.current`
+2. Set immediate speed to 10% (`newSpeedMultiplier * 0.1`)
+3. `getReadyActive` triggers the ramp effect (existing code in `useEffect` at line 716)
+4. Over 3 seconds, speed ramps from 10% to 100% with ease-out curve
+5. When Get Ready overlay completes, speed is set to `baseSpeedMultiplierRef.current`
+
+### Existing Get Ready Infrastructure
+The following already exists and will be reused:
+- `getReadyActive` state (line 505)
+- `getReadyStartTimeRef` ref (line 506)
+- `baseSpeedMultiplierRef` ref (line 507)
+- Speed ramp effect (lines 716-742)
+- Mobile glow effect (lines 745-777)
+- `GetReadyOverlay` component render (lines 9069-9083)
+
+## Expected Behavior After Change
+
+1. **Normal Mode Level Transition:**
+   - Complete level by destroying all bricks
+   - Next level loads
+   - "GET READY!" text appears with ball glow
+   - Speed starts at 10%, ramps to 100% over 3 seconds
+   - Ball waits on paddle
+   - Click to launch
+
+2. **Boss Rush Between Bosses:**
+   - Defeat boss
+   - Stats overlay appears
+   - Click Continue
+   - Next boss level loads
+   - "GET READY!" text appears with ball glow
+   - Speed starts at 10%, ramps to 100% over 3 seconds
+   - Ball waits on paddle
+   - Click to launch
+
