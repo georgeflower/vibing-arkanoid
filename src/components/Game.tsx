@@ -9093,13 +9093,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     )}
                     {/* ═══════════════════════════════════════════════════════════════ */}
 
-                    {/* Get Ready Overlay - inside scaled container for correct positioning */}
-                    {getReadyActive && balls.length > 0 && (
+                    {/* Get Ready Overlay - centered in playable area */}
+                    {getReadyActive && (
                       <GetReadyOverlay
-                        ballPosition={{ x: balls[0].x, y: balls[0].y }}
-                        canvasWidth={SCALED_CANVAS_WIDTH}
-                        canvasHeight={SCALED_CANVAS_HEIGHT}
-                        isMobile={isMobileDevice}
                         onComplete={() => {
                           setGetReadyActive(false);
                           setSpeedMultiplier(baseSpeedMultiplierRef.current);
