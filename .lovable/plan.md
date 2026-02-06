@@ -1,88 +1,122 @@
 
-## Goal
-Make the “GET READY!” overlay independent of ball / canvas coordinates by removing the ball highlight entirely and centering the “GET READY!” text within the playable area (the scaled `.game-glow` container) on all devices.
 
-This eliminates any coordinate mismatch problems because the overlay will no longer attempt to line up with the ball.
+# Center All Text Overlays (Remove Coordinate Dependencies)
 
----
+## Summary
+Modify the `BossPowerUpTimer` component to display its timer text centered in the playable area rather than positioned relative to the paddle coordinates.
 
-## What I found in the codebase
-- `src/components/GetReadyOverlay.tsx` currently:
-  - Requires `ballPosition`, `canvasWidth`, `canvasHeight`
-  - Returns `null` when `ballPosition` is missing
-  - Positions a glow and text using `left/top` (desktop) and renders centered text only on mobile
-- `src/components/Game.tsx` renders the overlay like this:
-  - `getReadyActive && balls.length > 0` then passes `ballPosition={{ x: balls[0].x, y: balls[0].y }}` plus `canvasWidth/canvasHeight`
-- The overlay is already rendered inside the `.game-glow` container, which is the correct “playable area” coordinate space.
+## Current State
 
----
+### Components Already Centered (No Changes Needed)
+| Component | Current Positioning |
+|-----------|-------------------|
+| `GetReadyOverlay.tsx` | ✓ Centered with `flex items-center justify-center` |
+| `BossVictoryOverlay.tsx` | ✓ Centered with `flex items-center justify-center` |
+| `BossRushVictoryOverlay.tsx` | ✓ Centered with `flex items-center justify-center` |
+| `BossRushStatsOverlay.tsx` | ✓ Centered with `flex items-center justify-center` |
 
-## Implementation approach
-### A) Simplify `GetReadyOverlay` to “centered text only”
-**File:** `src/components/GetReadyOverlay.tsx`
+### Component Requiring Changes
+| Component | Current Issue |
+|-----------|--------------|
+| `BossPowerUpTimer.tsx` | Uses `paddleX` and `paddleY` for absolute positioning relative to paddle |
 
-Changes:
-1. **Remove ball/canvas coordinate props**
-   - Update `GetReadyOverlayProps` to only keep what’s needed:
-     - `onComplete: () => void`
-     - (Optionally keep `isMobile?: boolean`, but it becomes unnecessary if we use the same centered layout everywhere.)
-2. **Remove all highlight + coordinate math**
-   - Delete:
-     - `if (!ballPosition) return null;`
-     - `ringX/ringY/textY/ringRadius/glowSize` calculations
-     - The desktop “Ball glow effect” `<div>`
-     - The desktop absolute-positioned floating text
-3. **Render a single centered overlay for all devices**
-   - Use a single layout:
-     - Wrapper: `absolute inset-0 z-[150] pointer-events-none flex items-center justify-center`
-     - Centered “GET READY!” text with existing retro styling
-   - Keep the existing mount / fade / scale animation behavior and the 3-second progress timer that calls `onComplete()`.
+### Special Case (No Change Recommended)
+| Component | Reason to Keep Coordinates |
+|-----------|---------------------------|
+| `TutorialOverlay.tsx` | Uses coordinates for **spotlight highlight** feature - intentionally points at game elements to teach players. This is not "text positioning" but "element highlighting" for tutorial purposes. |
 
-Result: The overlay always centers in the playable area; no dependency on ball position.
+## Important Note
+The `BossPowerUpTimer` component is currently **not imported or used anywhere** in the codebase. It appears to be orphaned code. We have two options:
+1. **Delete it** - If not needed
+2. **Refactor it** - To be centered, ready for future use
+
+I will refactor it to be centered so it's ready if you want to use it later.
 
 ---
 
-### B) Update the call site in `Game.tsx`
-**File:** `src/components/Game.tsx`
+## Changes to Make
 
-Changes:
-1. Update the render condition:
-   - From: `getReadyActive && balls.length > 0`
-   - To: `getReadyActive`
-   - Reason: centered overlay no longer depends on the ball existing.
-2. Update the component props:
-   - Remove `ballPosition`, `canvasWidth`, `canvasHeight` props (and `isMobile` if removed from the component).
-   - Keep `onComplete` exactly as-is (it already correctly ends the sequence and restores speed multiplier).
+### File: `src/components/BossPowerUpTimer.tsx`
+
+**Before (Current - Paddle-based positioning):**
+```typescript
+interface BossPowerUpTimerProps {
+  label: string;
+  endTime: number;
+  duration: number;
+  paddleX: number;
+  paddleY: number;
+  canvasWidth: number;
+  isMobile?: boolean;
+}
+
+// Uses absolute positioning with paddleX, paddleY
+const leftPos = isMobile ? paddleX - 10 : paddleX + 50;
+const topPos = isMobile ? paddleY - 22 : paddleY - 35;
+
+return (
+  <div style={{ left: `${leftPos}px`, top: `${topPos}px`, ... }}>
+    {label}: {seconds}s
+  </div>
+);
+```
+
+**After (Centered - No coordinate dependencies):**
+```typescript
+interface BossPowerUpTimerProps {
+  label: string;
+  endTime: number;
+  duration: number;
+}
+
+// Uses flexbox centering
+return (
+  <div className="absolute inset-0 z-[100] pointer-events-none flex items-center justify-center">
+    <div style={{ transform: `scale(${scale})`, color, ... }}>
+      {label}: {seconds}s
+    </div>
+  </div>
+);
+```
+
+### Props Removed
+- `paddleX` - No longer needed
+- `paddleY` - No longer needed  
+- `canvasWidth` - No longer needed
+- `isMobile` - No longer needed (same layout for all devices)
+
+### Styling Kept
+- Color transition (yellow → orange → red)
+- Pulse animation that speeds up as time runs low
+- Retro pixel text styling with glow
 
 ---
 
-## Edge cases / considerations
-- This change will intentionally remove any “highlight the ball” visuals. The overlay becomes purely informational.
-- Because it no longer depends on `balls[0]`, it will still show even if the balls array is temporarily empty during transitions (which is desirable for a simple centered message).
-- TypeScript: removing props requires updating both the props interface and every `GetReadyOverlay` usage to avoid compile errors.
+## Files Modified
+
+| File | Changes |
+|------|---------|
+| `src/components/BossPowerUpTimer.tsx` | Remove coordinate props, center using flexbox |
 
 ---
 
-## Files to change
-1. `src/components/GetReadyOverlay.tsx`
-   - Remove coordinate-based logic and glow highlight
-   - Center “GET READY!” text for all devices
-   - Simplify props
-2. `src/components/Game.tsx`
-   - Update the `GetReadyOverlay` render condition and props passed
+## Expected Behavior After Change
+
+The `BossPowerUpTimer` component will:
+1. Display centered in the playable area (when used)
+2. Show the timer label with countdown in seconds
+3. Transition color from yellow → orange → red as time expires
+4. Pulse faster as time gets low
+5. Work consistently across all screen sizes without coordinate math
 
 ---
 
-## Verification checklist (what you should see after implementation)
-1. Finish any level (normal mode) → “GET READY!” appears centered in the playable area.
-2. Boss Rush: defeat boss → stats overlay → Continue → next stage loads → “GET READY!” centered.
-3. Confirm there is **no ball glow / highlight** anymore.
-4. Confirm the text is centered consistently on:
-   - Desktop windowed
-   - Desktop fullscreen
-   - Mobile fullscreen mode
+## What About TutorialOverlay?
 
----
+The `TutorialOverlay` uses coordinates for its **spotlight/highlight feature** - this is intentional and serves a specific purpose:
+- It creates a visual "spotlight" effect that points at game elements
+- The coordinates are needed to draw the spotlight circle around power-ups, bosses, etc.
+- The tutorial **text** itself is already positioned dynamically (not at fixed coordinates)
 
-## Optional follow-up (not required for this request)
-If you later want a highlight again without coordinate bugs, we can reintroduce it using a single source of truth for render-space coordinates (e.g., passing a “render-space transform” down from the same logic that sizes the canvas). But for now, the simplest reliable fix is removing coordinate coupling entirely as requested.
+This is different from "positioning text near the paddle" - it's "highlighting game elements for teaching purposes". **No changes recommended** for TutorialOverlay.
+
