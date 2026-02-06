@@ -8943,29 +8943,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       ballReleaseHighlight={ballReleaseHighlight}
                     />
 
-                    {/* Boss Power-Up Duration Timers - Desktop only (paddle-relative positioning) */}
+                    {/* Boss Power-Up Duration Timers - Desktop only (centered) */}
                     {!isMobileDevice &&
-                      paddle &&
                       (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
-                        <div
-                          className="absolute pointer-events-none"
-                          style={{
-                            top: 0,
-                            left: 0,
-                            width: `${SCALED_CANVAS_WIDTH}px`,
-                            height: `${SCALED_CANVAS_HEIGHT}px`,
-                          }}
-                        >
+                        <div className="absolute inset-0 pointer-events-none z-[100] flex flex-col items-center justify-center gap-2">
                           {bossStunnerEndTime && Date.now() < bossStunnerEndTime && (
                             <div
-                              className="absolute retro-pixel-text"
+                              className="retro-pixel-text"
                               style={{
-                                left: `${paddle.x + paddle.width / 2}px`,
-                                top: `${paddle.y - 45}px`,
-                                transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                                transform: `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                                 color: `hsl(${Math.max(0, 50 - (1 - (bossStunnerEndTime - Date.now()) / 5000) * 50)}, 100%, 50%)`,
                                 textShadow: `0 0 10px currentColor`,
-                                fontSize: "12px",
+                                fontSize: "14px",
                                 fontWeight: "bold",
                               }}
                             >
@@ -8974,14 +8963,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           )}
                           {reflectShieldEndTime && Date.now() < reflectShieldEndTime && (
                             <div
-                              className="absolute retro-pixel-text"
+                              className="retro-pixel-text"
                               style={{
-                                left: `${paddle.x + paddle.width / 2}px`,
-                                top: `${paddle.y - 60}px`,
-                                transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                                transform: `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                                 color: `hsl(${Math.max(0, 50 - (1 - (reflectShieldEndTime - Date.now()) / 15000) * 50)}, 100%, 50%)`,
                                 textShadow: `0 0 10px currentColor`,
-                                fontSize: "12px",
+                                fontSize: "14px",
                                 fontWeight: "bold",
                               }}
                             >
@@ -8990,14 +8977,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           )}
                           {homingBallEndTime && Date.now() < homingBallEndTime && (
                             <div
-                              className="absolute retro-pixel-text"
+                              className="retro-pixel-text"
                               style={{
-                                left: `${paddle.x + paddle.width / 2}px`,
-                                top: `${paddle.y - 75}px`,
-                                transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                                transform: `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                                 color: `hsl(${Math.max(0, 50 - (1 - (homingBallEndTime - Date.now()) / 8000) * 50)}, 100%, 50%)`,
                                 textShadow: `0 0 10px currentColor`,
-                                fontSize: "12px",
+                                fontSize: "14px",
                                 fontWeight: "bold",
                               }}
                             >
@@ -9006,14 +8991,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           )}
                           {fireballEndTime && Date.now() < fireballEndTime && (
                             <div
-                              className="absolute retro-pixel-text"
+                              className="retro-pixel-text"
                               style={{
-                                left: `${paddle.x + paddle.width / 2}px`,
-                                top: `${paddle.y - 90}px`,
-                                transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                                transform: `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                                 color: `hsl(${Math.max(0, 30 - (1 - (fireballEndTime - Date.now()) / FIREBALL_DURATION) * 30)}, 100%, 50%)`,
                                 textShadow: `0 0 10px currentColor`,
-                                fontSize: "12px",
+                                fontSize: "14px",
                                 fontWeight: "bold",
                               }}
                             >
@@ -9023,11 +9006,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         </div>
                       )}
 
-                    {/* Bonus Letter Floating Text Tutorial - Desktop only */}
-                    {!isMobileDevice && bonusLetterFloatingText?.active && bonusLetters.length > 0 && (
-                      <div className="absolute inset-0 pointer-events-none z-[150]">
+                    {/* Bonus Letter Floating Text Tutorial - Desktop only (centered) */}
+                    {!isMobileDevice && bonusLetterFloatingText?.active && (
+                      <div className="absolute inset-0 pointer-events-none z-[150] flex items-center justify-center">
                         {(() => {
-                          const letter = bonusLetters[0];
                           const elapsed = Date.now() - bonusLetterFloatingText.startTime;
                           const duration = 4000;
 
@@ -9043,14 +9025,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                           return (
                             <div
-                              className="absolute retro-pixel-text text-center whitespace-nowrap"
+                              className="retro-pixel-text text-center whitespace-nowrap"
                               style={{
-                                left: `${letter.x + letter.width / 2}px`,
-                                top: `${letter.y - 35}px`,
-                                transform: `translateX(-50%) scale(${zoomScale})`,
+                                transform: `scale(${zoomScale})`,
                                 color: "hsl(48, 100%, 60%)",
                                 textShadow: "0 0 10px hsl(48, 100%, 60%), 0 0 20px hsl(48, 100%, 50%)",
-                                fontSize: "14px",
+                                fontSize: "16px",
                                 fontWeight: "bold",
                                 opacity,
                               }}
