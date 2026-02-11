@@ -4,12 +4,20 @@ interface BossPowerUpTimerProps {
   label: string;
   endTime: number;
   duration: number;
+  paddleX: number;
+  paddleY: number;
+  canvasWidth: number;
+  isMobile?: boolean;
 }
 
 export const BossPowerUpTimer = ({
   label,
   endTime,
   duration,
+  paddleX,
+  paddleY,
+  canvasWidth,
+  isMobile = false,
 }: BossPowerUpTimerProps) => {
   const [remaining, setRemaining] = useState(0);
   const [scale, setScale] = useState(1);
@@ -49,21 +57,28 @@ export const BossPowerUpTimer = ({
 
   const seconds = (remaining / 1000).toFixed(1);
 
+  // Position adjustments for mobile - closer to paddle, slightly left
+  const leftPos = isMobile ? paddleX - 10 : paddleX + 50;
+  const topPos = isMobile ? paddleY - 22 : paddleY - 35;
+  const fontSize = isMobile ? "10px" : "14px";
+
   return (
-    <div className="absolute inset-0 z-[100] pointer-events-none flex items-center justify-center">
-      <div
-        className="retro-pixel-text text-sm md:text-base"
-        style={{
-          transform: `scale(${scale})`,
-          transformOrigin: "center",
-          color,
-          textShadow: `0 0 10px ${color}, 0 0 20px ${color}`,
-          fontWeight: "bold",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {label}: {seconds}s
-      </div>
+    <div
+      className="absolute pointer-events-none retro-pixel-text"
+      style={{
+        left: `${leftPos}px`,
+        top: `${topPos}px`,
+        transform: `scale(${scale})`,
+        transformOrigin: "center bottom",
+        color,
+        textShadow: `0 0 10px ${color}, 0 0 20px ${color}`,
+        fontSize,
+        fontWeight: "bold",
+        whiteSpace: "nowrap",
+        zIndex: 100,
+      }}
+    >
+      {label}: {seconds}s
     </div>
   );
 };

@@ -115,11 +115,7 @@ export const BossRushStatsOverlay = ({
     }
   }, [active]);
 
-  const handleClick = useCallback((e?: React.MouseEvent) => {
-    if (e) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
+  const handleClick = useCallback(() => {
     if (canContinue) {
       onContinue();
     }
@@ -143,9 +139,7 @@ export const BossRushStatsOverlay = ({
   useEffect(() => {
     if (!active || !canContinue) return;
 
-    const handlePointerDown = (e: PointerEvent) => {
-      e.stopPropagation();
-      e.preventDefault();
+    const handlePointerDown = () => {
       onContinue();
     };
 
@@ -165,7 +159,7 @@ export const BossRushStatsOverlay = ({
   const nextBossName = nextBossLevel !== null ? BOSS_RUSH_CONFIG.bossNames[nextBossLevel] : null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center cursor-pointer" onClick={(e) => handleClick(e)}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center cursor-pointer" onClick={handleClick}>
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
 

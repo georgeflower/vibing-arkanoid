@@ -505,9 +505,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [getReadyActive, setGetReadyActive] = useState(false);
   const getReadyStartTimeRef = useRef<number | null>(null);
   const baseSpeedMultiplierRef = useRef(1);
-  
-  // Debounce ref to prevent ball launch immediately after stats overlay closes
-  const statsOverlayJustClosedRef = useRef(false);
 
   // Mobile ball glow state for Get Ready sequence
   const [getReadyGlow, setGetReadyGlow] = useState<{ opacity: number } | null>(null);
@@ -1973,17 +1970,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
       bombIntervalsRef.current.clear();
-
-      // Trigger Get Ready sequence for Boss Rush
-      baseSpeedMultiplierRef.current = newSpeedMultiplier;
-      setSpeedMultiplier(newSpeedMultiplier * 0.1); // Start at 10% speed
-      getReadyStartTimeRef.current = Date.now();
-      setGetReadyActive(true);
-      if (isMobileDevice) {
-        getReadyGlowStartTimeRef.current = Date.now();
-        setGetReadyGlow({ opacity: 1 });
-      }
-
       setGameState("playing");
       toast.success(`Boss ${nextBossIndex + 1}/4! Speed: ${Math.round(newSpeedMultiplier * 100)}%`);
       return;
@@ -2097,17 +2083,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
     bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
     bombIntervalsRef.current.clear();
-
-    // Trigger Get Ready sequence for Normal mode
-    baseSpeedMultiplierRef.current = newSpeedMultiplier;
-    setSpeedMultiplier(newSpeedMultiplier * 0.1); // Start at 10% speed
-    getReadyStartTimeRef.current = Date.now();
-    setGetReadyActive(true);
-    if (isMobileDevice) {
-      getReadyGlowStartTimeRef.current = Date.now();
-      setGetReadyGlow({ opacity: 1 });
-    }
-
     setGameState("playing");
     if (newLevel === 10) {
       toast.success(`Level ${newLevel}! New music unlocked!`);
@@ -2173,9 +2148,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, []); // Only run once on mount
   // Unified ball launch function - single source of truth for all launch paths
   const launchBallAtCurrentAngle = useCallback(() => {
-    // Block launch if stats overlay just closed (prevents accidental launch from continue click)
-    if (statsOverlayJustClosedRef.current) return;
-    
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (!waitingBall || gameState !== "playing") return;
 
@@ -8943,18 +8915,29 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       ballReleaseHighlight={ballReleaseHighlight}
                     />
 
-                    {/* Boss Power-Up Duration Timers - Desktop only (centered) */}
+                    {/* Boss Power-Up Duration Timers - Desktop only (paddle-relative positioning) */}
                     {!isMobileDevice &&
+                      paddle &&
                       (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
-                        <div className="absolute inset-0 pointer-events-none z-[100] flex flex-col items-center justify-center gap-2">
+                        <div
+                          className="absolute pointer-events-none"
+                          style={{
+                            top: 0,
+                            left: 0,
+                            width: `${SCALED_CANVAS_WIDTH}px`,
+                            height: `${SCALED_CANVAS_HEIGHT}px`,
+                          }}
+                        >
                           {bossStunnerEndTime && Date.now() < bossStunnerEndTime && (
                             <div
-                              className="retro-pixel-text"
+                              className="absolute retro-pixel-text"
                               style={{
-                                transform: `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                                left: `${paddle.x + paddle.width / 2}px`,
+                                top: `${paddle.y - 45}px`,
+                                transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                                 color: `hsl(${Math.max(0, 50 - (1 - (bossStunnerEndTime - Date.now()) / 5000) * 50)}, 100%, 50%)`,
                                 textShadow: `0 0 10px currentColor`,
-                                fontSize: "14px",
+                                fontSize: "12px",
                                 fontWeight: "bold",
                               }}
                             >
@@ -8963,12 +8946,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           )}
                           {reflectShieldEndTime && Date.now() < reflectShieldEndTime && (
                             <div
-                              className="retro-pixel-text"
+                              className="absolute retro-pixel-text"
                               style={{
-                                transform: `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                                left: `${paddle.x + paddle.width / 2}px`,
+                                top: `${paddle.y - 60}px`,
+                                transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                                 color: `hsl(${Math.max(0, 50 - (1 - (reflectShieldEndTime - Date.now()) / 15000) * 50)}, 100%, 50%)`,
                                 textShadow: `0 0 10px currentColor`,
-                                fontSize: "14px",
+                                fontSize: "12px",
                                 fontWeight: "bold",
                               }}
                             >
@@ -8977,12 +8962,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           )}
                           {homingBallEndTime && Date.now() < homingBallEndTime && (
                             <div
-                              className="retro-pixel-text"
+                              className="absolute retro-pixel-text"
                               style={{
-                                transform: `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                                left: `${paddle.x + paddle.width / 2}px`,
+                                top: `${paddle.y - 75}px`,
+                                transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                                 color: `hsl(${Math.max(0, 50 - (1 - (homingBallEndTime - Date.now()) / 8000) * 50)}, 100%, 50%)`,
                                 textShadow: `0 0 10px currentColor`,
-                                fontSize: "14px",
+                                fontSize: "12px",
                                 fontWeight: "bold",
                               }}
                             >
@@ -8991,12 +8978,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           )}
                           {fireballEndTime && Date.now() < fireballEndTime && (
                             <div
-                              className="retro-pixel-text"
+                              className="absolute retro-pixel-text"
                               style={{
-                                transform: `scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
+                                left: `${paddle.x + paddle.width / 2}px`,
+                                top: `${paddle.y - 90}px`,
+                                transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                                 color: `hsl(${Math.max(0, 30 - (1 - (fireballEndTime - Date.now()) / FIREBALL_DURATION) * 30)}, 100%, 50%)`,
                                 textShadow: `0 0 10px currentColor`,
-                                fontSize: "14px",
+                                fontSize: "12px",
                                 fontWeight: "bold",
                               }}
                             >
@@ -9006,10 +8995,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         </div>
                       )}
 
-                    {/* Bonus Letter Floating Text Tutorial - Desktop only (centered) */}
-                    {!isMobileDevice && bonusLetterFloatingText?.active && (
-                      <div className="absolute inset-0 pointer-events-none z-[150] flex items-center justify-center">
+                    {/* Bonus Letter Floating Text Tutorial - Desktop only */}
+                    {!isMobileDevice && bonusLetterFloatingText?.active && bonusLetters.length > 0 && (
+                      <div className="absolute inset-0 pointer-events-none z-[150]">
                         {(() => {
+                          const letter = bonusLetters[0];
                           const elapsed = Date.now() - bonusLetterFloatingText.startTime;
                           const duration = 4000;
 
@@ -9025,12 +9015,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                           return (
                             <div
-                              className="retro-pixel-text text-center whitespace-nowrap"
+                              className="absolute retro-pixel-text text-center whitespace-nowrap"
                               style={{
-                                transform: `scale(${zoomScale})`,
+                                left: `${letter.x + letter.width / 2}px`,
+                                top: `${letter.y - 35}px`,
+                                transform: `translateX(-50%) scale(${zoomScale})`,
                                 color: "hsl(48, 100%, 60%)",
                                 textShadow: "0 0 10px hsl(48, 100%, 60%), 0 0 20px hsl(48, 100%, 50%)",
-                                fontSize: "16px",
+                                fontSize: "14px",
                                 fontWeight: "bold",
                                 opacity,
                               }}
@@ -9073,9 +9065,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     )}
                     {/* ═══════════════════════════════════════════════════════════════ */}
 
-                    {/* Get Ready Overlay - centered in playable area */}
-                    {getReadyActive && (
+                    {/* Get Ready Overlay - inside scaled container for correct positioning */}
+                    {getReadyActive && balls.length > 0 && (
                       <GetReadyOverlay
+                        ballPosition={{ x: balls[0].x, y: balls[0].y }}
+                        canvasWidth={SCALED_CANVAS_WIDTH}
+                        canvasHeight={SCALED_CANVAS_HEIGHT}
+                        isMobile={isMobileDevice}
                         onComplete={() => {
                           setGetReadyActive(false);
                           setSpeedMultiplier(baseSpeedMultiplierRef.current);
@@ -9221,12 +9217,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     }
                     livesRemaining={lives}
                     onContinue={() => {
-                      // Set debounce to prevent immediate ball launch from this click
-                      statsOverlayJustClosedRef.current = true;
-                      setTimeout(() => {
-                        statsOverlayJustClosedRef.current = false;
-                      }, 150);
-                      
                       setBossRushStatsOverlayActive(false);
                       setBossRushTimeSnapshot(null); // Clear time snapshot
                       soundManager.stopBossMusic();
