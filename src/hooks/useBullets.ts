@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { world } from "@/engine/state";
 import type { Bullet, Paddle, Brick, Enemy, Boss } from "@/types/game";
 import { BULLET_WIDTH, BULLET_HEIGHT, BULLET_SPEED, CANVAS_HEIGHT, BRICK_PADDING } from "@/constants/game";
 import { soundManager } from "@/utils/sounds";
@@ -26,7 +27,15 @@ export const useBullets = (
   onPyramidSplit?: (boss: Boss) => void,
   onBossHit?: (x: number, y: number, isSuper: boolean) => void
 ) => {
-  const [bullets, setBullets] = useState<Bullet[]>([]);
+  // ═══ PHASE 1: bullets lives in world.bullets (engine/state.ts) ═══
+  const bullets = world.bullets;
+  const setBullets = useCallback((updater: Bullet[] | ((prev: Bullet[]) => Bullet[])) => {
+    if (typeof updater === 'function') {
+      world.bullets = updater(world.bullets);
+    } else {
+      world.bullets = updater;
+    }
+  }, []);
 
   const fireBullets = useCallback((paddle: Paddle) => {
     if (!paddle.hasTurrets || !paddle.turretShots || paddle.turretShots <= 0) return;
