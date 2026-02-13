@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { world } from "@/engine/state";
 import { GameCanvas } from "./GameCanvas";
 import { GameUI } from "./GameUI";
 import { HighScoreTable } from "./HighScoreTable";
@@ -231,7 +232,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const { updateMaxLevel } = useLevelProgress();
   const [gameState, setGameState] = useState<GameState>("ready");
   const [bricks, setBricks] = useState<Brick[]>([]);
-  const [balls, setBalls] = useState<Ball[]>([]);
+  // ═══ PHASE 1: balls lives in world.balls (engine/state.ts) ═══
+  // Compatibility shim: setBalls writes to world.balls directly, no React re-render.
+  // `balls` is a getter so existing code reads the latest value.
+  const balls = world.balls;
+  const setBalls = useCallback((updater: Ball[] | ((prev: Ball[]) => Ball[])) => {
+    if (typeof updater === 'function') {
+      world.balls = updater(world.balls);
+    } else {
+      world.balls = updater;
+    }
+  }, []);
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   // Helper function to calculate speed multiplier for any level
   // Max total speed caps (including brick hit bonuses): 150% normal, 175% godlike
@@ -2198,7 +2209,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         return ball;
       }),
     );
-  }, [balls, gameState, launchAngle, bossVictoryOverlayActive]);
+  }, [gameState, launchAngle, bossVictoryOverlayActive]);
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
@@ -7676,7 +7687,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     updatePowerUps,
     updateBullets,
     paddle,
-    balls,
+    // balls removed — now lives in world.balls (no React dependency)
     checkPowerUpCollision,
     speedMultiplier,
     enemies,
@@ -8877,7 +8888,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       width={SCALED_CANVAS_WIDTH}
                       height={SCALED_CANVAS_HEIGHT}
                       bricks={bricks}
-                      balls={balls}
+                      balls={world.balls}
                       paddle={paddle}
                       gameState={gameState}
                       powerUps={powerUps}
