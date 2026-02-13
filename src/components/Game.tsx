@@ -9050,15 +9050,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           onSubmit={async (name) => {
             try {
               const { supabase } = await import("@/integrations/supabase/client");
-              await supabase.from("boss_rush_scores").insert({
-                player_name: name,
-                score: score,
-                completion_time_ms: bossRushCompletionTime,
-                boss_level: bossRushGameOverLevel,
+              const response = await supabase.functions.invoke('submit-score', {
+                body: {
+                  type: 'boss_rush',
+                  player_name: name,
+                  score: score,
+                  completion_time_ms: bossRushCompletionTime,
+                  boss_level: bossRushGameOverLevel,
+                },
               });
+              if (response.error) throw response.error;
+              const result = response.data as { error?: string };
+              if (result?.error) throw new Error(result.error);
               toast.success("🎉 BOSS RUSH SCORE SAVED! 🎉");
             } catch (err) {
               console.error("Failed to submit boss rush score:", err);
+              toast.error("Failed to submit boss rush score");
             }
             setShowBossRushScoreEntry(false);
             setShowHighScoreDisplay(true);
