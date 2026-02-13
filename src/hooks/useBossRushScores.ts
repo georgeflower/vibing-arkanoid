@@ -87,16 +87,19 @@ export const useBossRushScores = () => {
         }
       }
 
-      const { error: insertError } = await supabase
-        .from('boss_rush_scores')
-        .insert({
+      const response = await supabase.functions.invoke('submit-score', {
+        body: {
+          type: 'boss_rush',
           player_name: name,
           score,
           completion_time_ms: completionTimeMs,
           boss_level: bossLevel,
-        });
+        },
+      });
 
-      if (insertError) throw insertError;
+      if (response.error) throw response.error;
+      const result = response.data as { error?: string };
+      if (result?.error) throw new Error(result.error);
 
       sessionStorage.setItem(lastSubmissionKey, now.toString());
       toast.success('Boss Rush score submitted!');

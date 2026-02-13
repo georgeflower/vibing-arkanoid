@@ -269,9 +269,9 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => 
         }
       }
 
-      const { error: insertError } = await supabase
-        .from('high_scores')
-        .insert({
+      const response = await supabase.functions.invoke('submit-score', {
+        body: {
+          type: 'high_score',
           player_name: name,
           score,
           level,
@@ -279,9 +279,12 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => 
           beat_level_50: beatLevel50,
           collected_all_letters: collectedAllLetters,
           starting_lives: startingLives,
-        });
+        },
+      });
 
-      if (insertError) throw insertError;
+      if (response.error) throw response.error;
+      const result = response.data as { error?: string };
+      if (result?.error) throw new Error(result.error);
 
       // Record successful submission time
       sessionStorage.setItem(lastSubmissionKey, now.toString());
