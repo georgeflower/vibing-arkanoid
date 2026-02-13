@@ -1566,6 +1566,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     ],
   );
   const checkBonusLetterCollision = useCallback(() => {
+    const paddle = world.paddle; // live read from engine state
     if (!paddle) return;
     setBonusLetters((prev) => {
       const updated = prev.filter((letter) => {
@@ -2168,6 +2169,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, []); // Only run once on mount
   // Unified ball launch function - single source of truth for all launch paths
   const launchBallAtCurrentAngle = useCallback(() => {
+    const balls = world.balls; // live read from engine state
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (!waitingBall || gameState !== "playing") return;
 
@@ -2222,6 +2224,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
+      const paddle = world.paddle; // live read from engine state
       if (!canvasRef.current || !paddle || gameState === "paused") return;
 
       let targetX: number;
@@ -2282,6 +2285,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Don't process game input during tutorial - let TutorialOverlay handle it
       if (tutorialActive) return;
 
+      const paddle = world.paddle; // live read from engine state
       if (!canvasRef.current || !paddle) return;
       e.preventDefault();
 
@@ -2377,7 +2381,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     },
     [
-      paddle,
+      // paddle removed — reads world.paddle live
       balls,
       gameState,
       launchAngle,
@@ -2391,6 +2395,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   );
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
+      const paddle = world.paddle; // live read from engine state
       if (!canvasRef.current || !paddle || gameState === "paused") return;
       e.preventDefault();
       
@@ -2469,7 +2474,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         return { ...prev, x: newX };
       });
     },
-    [paddle, balls, SCALED_CANVAS_WIDTH, gameState, getCanvasRect],
+    [SCALED_CANVAS_WIDTH, gameState, getCanvasRect],
   );
   const handleTouchEnd = useCallback((e: TouchEvent) => {
     // Clear active touches when they end
@@ -2868,6 +2873,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, [balls, speedMultiplier, SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT]);
 
   const checkCollision = useCallback(() => {
+    const paddle = world.paddle; // live read from engine state
+    const balls = world.balls; // live read from engine state
     if (!paddle || balls.length === 0) return;
 
     const dtSeconds = 1 / 60; // Fixed timestep in seconds
@@ -4992,8 +4999,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       return updatedBalls;
     });
   }, [
-    paddle,
-    balls,
+    // paddle removed — reads world.paddle live
+    // balls removed — reads world.balls live
     bricks,
     boss,
     resurrectedBosses,
@@ -5051,6 +5058,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, []);
 
   const gameLoop = useCallback(() => {
+    const paddle = world.paddle; // live read from engine state
     if (gameState !== "playing") return;
 
     // Clear newly reflected bombs ref at start of each frame
