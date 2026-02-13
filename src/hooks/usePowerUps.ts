@@ -1,5 +1,4 @@
 import { useState, useCallback, useRef } from "react";
-import { world } from "@/engine/state";
 import type { PowerUp, PowerUpType, Ball, Paddle, Brick, Difficulty } from "@/types/game";
 import { POWERUP_SIZE, POWERUP_FALL_SPEED, POWERUP_DROP_CHANCE, CANVAS_HEIGHT, FIREBALL_DURATION } from "@/constants/game";
 import { debugToast as toast } from "@/utils/debugToast";
@@ -24,15 +23,7 @@ export const usePowerUps = (
   onFireballEnd?: () => void,
   onSecondChance?: () => void,
 ) => {
-  // ═══ PHASE 1: powerUps lives in world.powerUps (engine/state.ts) ═══
-  const powerUps = world.powerUps;
-  const setPowerUps = useCallback((updater: PowerUp[] | ((prev: PowerUp[]) => PowerUp[])) => {
-    if (typeof updater === 'function') {
-      world.powerUps = updater(world.powerUps);
-    } else {
-      world.powerUps = updater;
-    }
-  }, []);
+  const [powerUps, setPowerUps] = useState<PowerUp[]>([]);
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
   const fireballTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
