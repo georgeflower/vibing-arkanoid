@@ -333,8 +333,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [beatLevel50Completed, setBeatLevel50Completed] = useState(false);
   const [timer, setTimer] = useState(0);
   const [totalPlayTime, setTotalPlayTime] = useState(0);
-  const [enemies, setEnemies] = useState<Enemy[]>([]);
-  const [bombs, setBombs] = useState<Bomb[]>([]);
+  // ═══ PHASE 1: enemies lives in world.enemies (engine/state.ts) ═══
+  const enemies = world.enemies;
+  const setEnemies = useCallback((updater: Enemy[] | ((prev: Enemy[]) => Enemy[])) => {
+    if (typeof updater === 'function') {
+      world.enemies = updater(world.enemies);
+    } else {
+      world.enemies = updater;
+    }
+  }, []);
+  // ═══ PHASE 1: bombs lives in world.bombs (engine/state.ts) ═══
+  const bombs = world.bombs;
+  const setBombs = useCallback((updater: Bomb[] | ((prev: Bomb[]) => Bomb[])) => {
+    if (typeof updater === 'function') {
+      world.bombs = updater(world.bombs);
+    } else {
+      world.bombs = updater;
+    }
+  }, []);
   // ═══ PHASE 1: backgroundPhase lives in world.backgroundPhase (engine/state.ts) ═══
   const backgroundPhase = world.backgroundPhase;
   const setBackgroundPhase = useCallback((updater: number | ((prev: number) => number)) => {
@@ -365,7 +381,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [missedLetters, setMissedLetters] = useState<BonusLetterType[]>([]);
   const [boss, setBoss] = useState<Boss | null>(null);
   const [resurrectedBosses, setResurrectedBosses] = useState<Boss[]>([]);
-  const [bossAttacks, setBossAttacks] = useState<BossAttack[]>([]);
+  // ═══ PHASE 1: bossAttacks lives in world.bossAttacks (engine/state.ts) ═══
+  const bossAttacks = world.bossAttacks;
+  const setBossAttacks = useCallback((updater: BossAttack[] | ((prev: BossAttack[]) => BossAttack[])) => {
+    if (typeof updater === 'function') {
+      world.bossAttacks = updater(world.bossAttacks);
+    } else {
+      world.bossAttacks = updater;
+    }
+  }, []);
   const [bossDefeatedTransitioning, setBossDefeatedTransitioning] = useState(false);
   const [bossVictoryOverlayActive, setBossVictoryOverlayActive] = useState(false);
   const [bossActive, setBossActive] = useState(false);
@@ -2927,6 +2951,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const bricks = world.bricks; // live read from engine state
     const speedMultiplier = world.speedMultiplier; // live read from engine state
     const brickHitSpeedAccumulated = world.brickHitSpeedAccumulated; // live read from engine state
+    const enemies = world.enemies; // live read from engine state
     if (!paddle || balls.length === 0) return;
 
     const dtSeconds = 1 / 60; // Fixed timestep in seconds
@@ -5056,9 +5081,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // bricks removed — reads world.bricks live
     // speedMultiplier removed — reads world.speedMultiplier live
     // brickHitSpeedAccumulated removed — reads world.brickHitSpeedAccumulated live
+    // enemies removed — reads world.enemies live
     boss,
     resurrectedBosses,
-    enemies,
     createPowerUp,
     setPowerUps,
     nextLevel,
@@ -5116,6 +5141,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const speedMultiplier = world.speedMultiplier; // live read from engine state
     const launchAngle = world.launchAngle; // live read from engine state
     const backgroundPhase = world.backgroundPhase; // live read from engine state
+    const enemies = world.enemies; // live read from engine state
+    const bombs = world.bombs; // live read from engine state
+    const bossAttacks = world.bossAttacks; // live read from engine state
     if (gameState !== "playing") return;
 
     // Clear newly reflected bombs ref at start of each frame
@@ -7764,9 +7792,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // balls removed — now lives in world.balls (no React dependency)
     // bricks removed — now lives in world.bricks (no React dependency)
     // speedMultiplier removed — now lives in world.speedMultiplier (no React dependency)
+    // enemies removed — now lives in world.enemies (no React dependency)
+    // bombs removed — now lives in world.bombs (no React dependency)
+    // bossAttacks removed — now lives in world.bossAttacks (no React dependency)
     checkPowerUpCollision,
-    enemies,
-    bombs,
     score,
     isHighScore,
     explosions,
