@@ -231,7 +231,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Level progress tracking
   const { updateMaxLevel } = useLevelProgress();
   const [gameState, setGameState] = useState<GameState>("ready");
-  const [bricks, setBricks] = useState<Brick[]>([]);
+  // ═══ PHASE 1: bricks lives in world.bricks (engine/state.ts) ═══
+  const bricks = world.bricks;
+  const setBricks = useCallback((updater: Brick[] | ((prev: Brick[]) => Brick[])) => {
+    if (typeof updater === 'function') {
+      world.bricks = updater(world.bricks);
+    } else {
+      world.bricks = updater;
+    }
+  }, []);
   // ═══ PHASE 1: balls lives in world.balls (engine/state.ts) ═══
   // Compatibility shim: setBalls writes to world.balls directly, no React re-render.
   // `balls` is a getter so existing code reads the latest value.
@@ -284,27 +292,34 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     [],
   );
 
-  const [speedMultiplier, setSpeedMultiplier] = useState(() => {
-    // Boss Rush mode uses fixed speed for first boss
+  // ═══ PHASE 1: speedMultiplier lives in world.speedMultiplier (engine/state.ts) ═══
+  // Initialize world.speedMultiplier on first render
+  const [speedMultiplierInitialized] = useState(() => {
     if (settings.gameMode === "bossRush") {
-      return BOSS_RUSH_CONFIG.speedMultipliers[5]; // First boss is level 5
-    }
-
-    // Calculate speed for starting level
-    const startLevel = settings.startingLevel;
-    // 105% base for normal, 137.5% for godlike
-    const baseMultiplier = settings.difficulty === "godlike" ? 1.375 : 1.05;
-    const maxSpeedMultiplier = settings.difficulty === "godlike" ? 1.55 : 1.4;
-
-    let speedMult: number;
-    if (settings.difficulty === "godlike") {
-      speedMult = baseMultiplier + (startLevel - 1) * 0.05;
+      world.speedMultiplier = BOSS_RUSH_CONFIG.speedMultipliers[5];
     } else {
-      // Normal: always +3% per level
-      speedMult = baseMultiplier + (startLevel - 1) * 0.03;
+      const startLevel = settings.startingLevel;
+      const baseMultiplier = settings.difficulty === "godlike" ? 1.375 : 1.05;
+      const maxSpeedMultiplier = settings.difficulty === "godlike" ? 1.55 : 1.4;
+      let speedMult: number;
+      if (settings.difficulty === "godlike") {
+        speedMult = baseMultiplier + (startLevel - 1) * 0.05;
+      } else {
+        speedMult = baseMultiplier + (startLevel - 1) * 0.03;
+      }
+      world.speedMultiplier = Math.min(maxSpeedMultiplier, speedMult);
     }
-    return Math.min(maxSpeedMultiplier, speedMult);
+    return true;
   });
+  void speedMultiplierInitialized; // suppress unused warning
+  const speedMultiplier = world.speedMultiplier;
+  const setSpeedMultiplier = useCallback((updater: number | ((prev: number) => number)) => {
+    if (typeof updater === 'function') {
+      world.speedMultiplier = updater(world.speedMultiplier);
+    } else {
+      world.speedMultiplier = updater;
+    }
+  }, []);
   // High-priority paddle position ref for immediate input response during low FPS
   const paddleXRef = useRef(0);
   const [showHighScoreEntry, setShowHighScoreEntry] = useState(false);
@@ -320,11 +335,27 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [totalPlayTime, setTotalPlayTime] = useState(0);
   const [enemies, setEnemies] = useState<Enemy[]>([]);
   const [bombs, setBombs] = useState<Bomb[]>([]);
-  const [backgroundPhase, setBackgroundPhase] = useState(0);
+  // ═══ PHASE 1: backgroundPhase lives in world.backgroundPhase (engine/state.ts) ═══
+  const backgroundPhase = world.backgroundPhase;
+  const setBackgroundPhase = useCallback((updater: number | ((prev: number) => number)) => {
+    if (typeof updater === 'function') {
+      world.backgroundPhase = updater(world.backgroundPhase);
+    } else {
+      world.backgroundPhase = updater;
+    }
+  }, []);
   const [explosions, setExplosions] = useState<Explosion[]>([]);
   const [enemySpawnCount, setEnemySpawnCount] = useState(0);
   const [lastEnemySpawnTime, setLastEnemySpawnTime] = useState(0);
-  const [launchAngle, setLaunchAngle] = useState(-20);
+  // ═══ PHASE 1: launchAngle lives in world.launchAngle (engine/state.ts) ═══
+  const launchAngle = world.launchAngle;
+  const setLaunchAngle = useCallback((updater: number | ((prev: number) => number)) => {
+    if (typeof updater === 'function') {
+      world.launchAngle = updater(world.launchAngle);
+    } else {
+      world.launchAngle = updater;
+    }
+  }, []);
   const [showInstructions, setShowInstructions] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
@@ -373,8 +404,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [gameScale, setGameScale] = useState(1);
   const [disableAutoZoom, setDisableAutoZoom] = useState(false);
 
-  const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0);
-  const [enemiesKilled, setEnemiesKilled] = useState(0);
+  // ═══ PHASE 1: brickHitSpeedAccumulated lives in world (engine/state.ts) ═══
+  const brickHitSpeedAccumulated = world.brickHitSpeedAccumulated;
+  const setBrickHitSpeedAccumulated = useCallback((updater: number | ((prev: number) => number)) => {
+    if (typeof updater === 'function') {
+      world.brickHitSpeedAccumulated = updater(world.brickHitSpeedAccumulated);
+    } else {
+      world.brickHitSpeedAccumulated = updater;
+    }
+  }, []);
+  // ═══ PHASE 1: enemiesKilled lives in world (engine/state.ts) ═══
+  const enemiesKilled = world.enemiesKilled;
+  const setEnemiesKilled = useCallback((updater: number | ((prev: number) => number)) => {
+    if (typeof updater === 'function') {
+      world.enemiesKilled = updater(world.enemiesKilled);
+    } else {
+      world.enemiesKilled = updater;
+    }
+  }, []);
   const [screenShake, setScreenShake] = useState(0);
   const screenShakeStartRef = useRef<number | null>(null);
 
@@ -2846,6 +2893,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Get substep debug info for overlay
   const getSubstepDebugInfo = useCallback(() => {
+    const balls = world.balls; // live read
+    const speedMultiplier = world.speedMultiplier; // live read
     if (balls.length === 0) {
       return {
         substeps: 0,
@@ -2870,11 +2919,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       collisionsPerFrame: 0, // Will be updated by CCD results
       toiIterations: 0, // Will be updated by CCD results
     };
-  }, [balls, speedMultiplier, SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT]);
+  }, [SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT]);
 
   const checkCollision = useCallback(() => {
     const paddle = world.paddle; // live read from engine state
     const balls = world.balls; // live read from engine state
+    const bricks = world.bricks; // live read from engine state
+    const speedMultiplier = world.speedMultiplier; // live read from engine state
+    const brickHitSpeedAccumulated = world.brickHitSpeedAccumulated; // live read from engine state
     if (!paddle || balls.length === 0) return;
 
     const dtSeconds = 1 / 60; // Fixed timestep in seconds
@@ -5001,15 +5053,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, [
     // paddle removed — reads world.paddle live
     // balls removed — reads world.balls live
-    bricks,
+    // bricks removed — reads world.bricks live
+    // speedMultiplier removed — reads world.speedMultiplier live
+    // brickHitSpeedAccumulated removed — reads world.brickHitSpeedAccumulated live
     boss,
     resurrectedBosses,
     enemies,
     createPowerUp,
     setPowerUps,
     nextLevel,
-    speedMultiplier,
-    brickHitSpeedAccumulated,
     level,
     SCALED_CANVAS_WIDTH,
     SCALED_CANVAS_HEIGHT,
@@ -5059,6 +5111,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   const gameLoop = useCallback(() => {
     const paddle = world.paddle; // live read from engine state
+    const balls = world.balls; // live read from engine state
+    const bricks = world.bricks; // live read from engine state
+    const speedMultiplier = world.speedMultiplier; // live read from engine state
+    const launchAngle = world.launchAngle; // live read from engine state
+    const backgroundPhase = world.backgroundPhase; // live read from engine state
     if (gameState !== "playing") return;
 
     // Clear newly reflected bombs ref at start of each frame
@@ -7705,11 +7762,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     updateBullets,
     // paddle removed — now lives in world.paddle (no React dependency)
     // balls removed — now lives in world.balls (no React dependency)
+    // bricks removed — now lives in world.bricks (no React dependency)
+    // speedMultiplier removed — now lives in world.speedMultiplier (no React dependency)
     checkPowerUpCollision,
-    speedMultiplier,
     enemies,
     bombs,
-    bricks,
     score,
     isHighScore,
     explosions,
