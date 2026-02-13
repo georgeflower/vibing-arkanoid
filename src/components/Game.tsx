@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { world } from "@/engine/state";
+import { world, type LaserWarning, type SuperWarning, type BulletImpact } from "@/engine/state";
 import { GameCanvas } from "./GameCanvas";
 import { GameUI } from "./GameUI";
 import { HighScoreTable } from "./HighScoreTable";
@@ -360,9 +360,33 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       world.backgroundPhase = updater;
     }
   }, []);
-  const [explosions, setExplosions] = useState<Explosion[]>([]);
-  const [enemySpawnCount, setEnemySpawnCount] = useState(0);
-  const [lastEnemySpawnTime, setLastEnemySpawnTime] = useState(0);
+  // ═══ PHASE 1: explosions lives in world.explosions (engine/state.ts) ═══
+  const explosions = world.explosions;
+  const setExplosions = useCallback((updater: Explosion[] | ((prev: Explosion[]) => Explosion[])) => {
+    if (typeof updater === 'function') {
+      world.explosions = updater(world.explosions);
+    } else {
+      world.explosions = updater;
+    }
+  }, []);
+  // ═══ PHASE 1: enemySpawnCount lives in world.enemySpawnCount (engine/state.ts) ═══
+  const enemySpawnCount = world.enemySpawnCount;
+  const setEnemySpawnCount = useCallback((updater: number | ((prev: number) => number)) => {
+    if (typeof updater === 'function') {
+      world.enemySpawnCount = updater(world.enemySpawnCount);
+    } else {
+      world.enemySpawnCount = updater;
+    }
+  }, []);
+  // ═══ PHASE 1: lastEnemySpawnTime lives in world.lastEnemySpawnTime (engine/state.ts) ═══
+  const lastEnemySpawnTime = world.lastEnemySpawnTime;
+  const setLastEnemySpawnTime = useCallback((updater: number | ((prev: number) => number)) => {
+    if (typeof updater === 'function') {
+      world.lastEnemySpawnTime = updater(world.lastEnemySpawnTime);
+    } else {
+      world.lastEnemySpawnTime = updater;
+    }
+  }, []);
   // ═══ PHASE 1: launchAngle lives in world.launchAngle (engine/state.ts) ═══
   const launchAngle = world.launchAngle;
   const setLaunchAngle = useCallback((updater: number | ((prev: number) => number)) => {
@@ -374,13 +398,37 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, []);
   const [showInstructions, setShowInstructions] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [bonusLetters, setBonusLetters] = useState<BonusLetter[]>([]);
+  // ═══ PHASE 1: bonusLetters lives in world.bonusLetters (engine/state.ts) ═══
+  const bonusLetters = world.bonusLetters;
+  const setBonusLetters = useCallback((updater: BonusLetter[] | ((prev: BonusLetter[]) => BonusLetter[])) => {
+    if (typeof updater === 'function') {
+      world.bonusLetters = updater(world.bonusLetters);
+    } else {
+      world.bonusLetters = updater;
+    }
+  }, []);
   const [droppedLettersThisLevel, setDroppedLettersThisLevel] = useState<Set<BonusLetterType>>(new Set());
   const [collectedLetters, setCollectedLetters] = useState<Set<BonusLetterType>>(new Set());
   const [letterLevelAssignments, setLetterLevelAssignments] = useState<Record<number, BonusLetterType>>({});
   const [missedLetters, setMissedLetters] = useState<BonusLetterType[]>([]);
-  const [boss, setBoss] = useState<Boss | null>(null);
-  const [resurrectedBosses, setResurrectedBosses] = useState<Boss[]>([]);
+  // ═══ PHASE 1: boss lives in world.boss (engine/state.ts) ═══
+  const boss = world.boss;
+  const setBoss = useCallback((updater: Boss | null | ((prev: Boss | null) => Boss | null)) => {
+    if (typeof updater === 'function') {
+      world.boss = updater(world.boss);
+    } else {
+      world.boss = updater;
+    }
+  }, []);
+  // ═══ PHASE 1: resurrectedBosses lives in world.resurrectedBosses (engine/state.ts) ═══
+  const resurrectedBosses = world.resurrectedBosses;
+  const setResurrectedBosses = useCallback((updater: Boss[] | ((prev: Boss[]) => Boss[])) => {
+    if (typeof updater === 'function') {
+      world.resurrectedBosses = updater(world.resurrectedBosses);
+    } else {
+      world.resurrectedBosses = updater;
+    }
+  }, []);
   // ═══ PHASE 1: bossAttacks lives in world.bossAttacks (engine/state.ts) ═══
   const bossAttacks = world.bossAttacks;
   const setBossAttacks = useCallback((updater: BossAttack[] | ((prev: BossAttack[]) => BossAttack[])) => {
@@ -392,10 +440,42 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, []);
   const [bossDefeatedTransitioning, setBossDefeatedTransitioning] = useState(false);
   const [bossVictoryOverlayActive, setBossVictoryOverlayActive] = useState(false);
-  const [bossActive, setBossActive] = useState(false);
-  const [bossHitCooldown, setBossHitCooldown] = useState(0);
-  const [laserWarnings, setLaserWarnings] = useState<Array<{ x: number; startTime: number }>>([]);
-  const [superWarnings, setSuperWarnings] = useState<Array<{ x: number; y: number; startTime: number }>>([]);
+  // ═══ PHASE 1: bossActive lives in world.bossActive (engine/state.ts) ═══
+  const bossActive = world.bossActive;
+  const setBossActive = useCallback((updater: boolean | ((prev: boolean) => boolean)) => {
+    if (typeof updater === 'function') {
+      world.bossActive = updater(world.bossActive);
+    } else {
+      world.bossActive = updater;
+    }
+  }, []);
+  // ═══ PHASE 1: bossHitCooldown lives in world.bossHitCooldown (engine/state.ts) ═══
+  const bossHitCooldown = world.bossHitCooldown;
+  const setBossHitCooldown = useCallback((updater: number | ((prev: number) => number)) => {
+    if (typeof updater === 'function') {
+      world.bossHitCooldown = updater(world.bossHitCooldown);
+    } else {
+      world.bossHitCooldown = updater;
+    }
+  }, []);
+  // ═══ PHASE 1: laserWarnings lives in world.laserWarnings (engine/state.ts) ═══
+  const laserWarnings = world.laserWarnings;
+  const setLaserWarnings = useCallback((updater: LaserWarning[] | ((prev: LaserWarning[]) => LaserWarning[])) => {
+    if (typeof updater === 'function') {
+      world.laserWarnings = updater(world.laserWarnings);
+    } else {
+      world.laserWarnings = updater;
+    }
+  }, []);
+  // ═══ PHASE 1: superWarnings lives in world.superWarnings (engine/state.ts) ═══
+  const superWarnings = world.superWarnings;
+  const setSuperWarnings = useCallback((updater: SuperWarning[] | ((prev: SuperWarning[]) => SuperWarning[])) => {
+    if (typeof updater === 'function') {
+      world.superWarnings = updater(world.superWarnings);
+    } else {
+      world.superWarnings = updater;
+    }
+  }, []);
   const bossSpawnedEnemiesRef = useRef<Set<number>>(new Set());
   const firstBossMinionKilledRef = useRef(false);
   // Track newly reflected bombs synchronously to avoid stale closure issues
@@ -446,7 +526,21 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       world.enemiesKilled = updater;
     }
   }, []);
-  const [screenShake, setScreenShake] = useState(0);
+  // ═══ PHASE 1: screenShake lives in world.screenShake (engine/state.ts) ═══
+  const screenShake = world.screenShake;
+  const setScreenShake = useCallback((updater: number | ((prev: number) => number)) => {
+    if (typeof updater === 'function') {
+      world.screenShake = updater(world.screenShake);
+    } else {
+      world.screenShake = updater;
+    }
+    // Inline screen shake start tracking (was useEffect([screenShake]))
+    if (world.screenShake > 0 && screenShakeStartRef.current === null) {
+      screenShakeStartRef.current = Date.now();
+    } else if (world.screenShake === 0 && screenShakeStartRef.current !== null) {
+      screenShakeStartRef.current = null;
+    }
+  }, []);
   const screenShakeStartRef = useRef<number | null>(null);
 
   // ═══ SMART LOOP DETECTION ═══
@@ -505,26 +599,59 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     return false;
   }, []);
 
-  // Track screen shake state
-  useEffect(() => {
-    if (screenShake > 0 && screenShakeStartRef.current === null) {
-      screenShakeStartRef.current = Date.now();
-    } else if (screenShake === 0 && screenShakeStartRef.current !== null) {
-      screenShakeStartRef.current = null;
-    }
-  }, [screenShake]);
+  // Screen shake tracking is now inlined in setScreenShake
 
-  const [backgroundFlash, setBackgroundFlash] = useState(0);
-  const [highlightFlash, setHighlightFlash] = useState(0);
+  // ═══ PHASE 1: backgroundFlash lives in world.backgroundFlash (engine/state.ts) ═══
+  const backgroundFlash = world.backgroundFlash;
+  const setBackgroundFlash = useCallback((updater: number | ((prev: number) => number)) => {
+    if (typeof updater === 'function') {
+      world.backgroundFlash = updater(world.backgroundFlash);
+    } else {
+      world.backgroundFlash = updater;
+    }
+  }, []);
+  // ═══ PHASE 1: highlightFlash lives in world.highlightFlash (engine/state.ts) ═══
+  const highlightFlash = world.highlightFlash;
+  const setHighlightFlash = useCallback((updater: number | ((prev: number) => number)) => {
+    if (typeof updater === 'function') {
+      world.highlightFlash = updater(world.highlightFlash);
+    } else {
+      world.highlightFlash = updater;
+    }
+  }, []);
   const highlightFlashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [lastBossSpawnTime, setLastBossSpawnTime] = useState(0);
+  // ═══ PHASE 1: lastBossSpawnTime lives in world.lastBossSpawnTime (engine/state.ts) ═══
+  const lastBossSpawnTime = world.lastBossSpawnTime;
+  const setLastBossSpawnTime = useCallback((updater: number | ((prev: number) => number)) => {
+    if (typeof updater === 'function') {
+      world.lastBossSpawnTime = updater(world.lastBossSpawnTime);
+    } else {
+      world.lastBossSpawnTime = updater;
+    }
+  }, []);
   const [bossSpawnAnimation, setBossSpawnAnimation] = useState<{ active: boolean; startTime: number } | null>(null);
-  const [shieldImpacts, setShieldImpacts] = useState<ShieldImpact[]>([]);
+  // ═══ PHASE 1: shieldImpacts lives in world.shieldImpacts (engine/state.ts) ═══
+  const shieldImpacts = world.shieldImpacts;
+  const setShieldImpacts = useCallback((updater: ShieldImpact[] | ((prev: ShieldImpact[]) => ShieldImpact[])) => {
+    if (typeof updater === 'function') {
+      world.shieldImpacts = updater(world.shieldImpacts);
+    } else {
+      world.shieldImpacts = updater;
+    }
+  }, []);
   const [lastScoreMilestone, setLastScoreMilestone] = useState(0);
   const [scoreBlinking, setScoreBlinking] = useState(false);
 
   // ═══ MEGA BOSS (Level 20) State ═══
-  const [dangerBalls, setDangerBalls] = useState<DangerBall[]>([]);
+  // ═══ PHASE 1: dangerBalls lives in world.dangerBalls (engine/state.ts) ═══
+  const dangerBalls = world.dangerBalls;
+  const setDangerBalls = useCallback((updater: DangerBall[] | ((prev: DangerBall[]) => DangerBall[])) => {
+    if (typeof updater === 'function') {
+      world.dangerBalls = updater(world.dangerBalls);
+    } else {
+      world.dangerBalls = updater;
+    }
+  }, []);
   const [nextCannonMissileTime, setNextCannonMissileTime] = useState<number>(0);
   const [ballReleaseHighlight, setBallReleaseHighlight] = useState<{ active: boolean; startTime: number } | null>(null);
 
@@ -588,9 +715,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   } | null>(null);
 
   // Bullet impact effects for boss hits
-  const [bulletImpacts, setBulletImpacts] = useState<
-    Array<{ x: number; y: number; startTime: number; isSuper: boolean }>
-  >([]);
+  // ═══ PHASE 1: bulletImpacts lives in world.bulletImpacts (engine/state.ts) ═══
+  const bulletImpacts = world.bulletImpacts;
+  const setBulletImpacts = useCallback((updater: BulletImpact[] | ((prev: BulletImpact[]) => BulletImpact[])) => {
+    if (typeof updater === 'function') {
+      world.bulletImpacts = updater(world.bulletImpacts);
+    } else {
+      world.bulletImpacts = updater;
+    }
+  }, []);
 
   // Get Ready overlay state (after dismissing tutorials)
   const [getReadyActive, setGetReadyActive] = useState(false);
@@ -2948,6 +3081,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const checkCollision = useCallback(() => {
     const paddle = world.paddle; // live read from engine state
     const balls = world.balls; // live read from engine state
+    const boss = world.boss; // live read from engine state
+    const resurrectedBosses = world.resurrectedBosses; // live read from engine state
     const bricks = world.bricks; // live read from engine state
     const speedMultiplier = world.speedMultiplier; // live read from engine state
     const brickHitSpeedAccumulated = world.brickHitSpeedAccumulated; // live read from engine state
@@ -5082,8 +5217,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // speedMultiplier removed — reads world.speedMultiplier live
     // brickHitSpeedAccumulated removed — reads world.brickHitSpeedAccumulated live
     // enemies removed — reads world.enemies live
-    boss,
-    resurrectedBosses,
+    // boss removed — reads world.boss live
+    // resurrectedBosses removed — reads world.resurrectedBosses live
     createPowerUp,
     setPowerUps,
     nextLevel,
@@ -5144,6 +5279,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const enemies = world.enemies; // live read from engine state
     const bombs = world.bombs; // live read from engine state
     const bossAttacks = world.bossAttacks; // live read from engine state
+    const boss = world.boss; // live read from engine state
+    const resurrectedBosses = world.resurrectedBosses; // live read from engine state
+    const explosions = world.explosions; // live read from engine state
+    const bonusLetters = world.bonusLetters; // live read from engine state
+    const dangerBalls = world.dangerBalls; // live read from engine state
+    const screenShake = world.screenShake; // live read from engine state
     if (gameState !== "playing") return;
 
     // Clear newly reflected bombs ref at start of each frame
@@ -7795,10 +7936,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // enemies removed — now lives in world.enemies (no React dependency)
     // bombs removed — now lives in world.bombs (no React dependency)
     // bossAttacks removed — now lives in world.bossAttacks (no React dependency)
+    // explosions removed — now lives in world.explosions (no React dependency)
     checkPowerUpCollision,
     score,
     isHighScore,
-    explosions,
     lastScoreMilestone,
     updateFps,
     debugSettings,
