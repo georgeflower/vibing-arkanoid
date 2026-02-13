@@ -169,8 +169,28 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     brickOffsetLeft: SCALED_BRICK_OFFSET_LEFT,
   } = useScaledConstants();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(settings.startingLives);
+  // ═══ PHASE 1: score lives in world.score (engine/state.ts) ═══
+  const [scoreInitialized] = useState(() => { world.score = 0; return true; });
+  void scoreInitialized;
+  const score = world.score;
+  const setScore = useCallback((updater: number | ((prev: number) => number)) => {
+    if (typeof updater === 'function') {
+      world.score = updater(world.score);
+    } else {
+      world.score = updater;
+    }
+  }, []);
+  // ═══ PHASE 1: lives lives in world.lives (engine/state.ts) ═══
+  const [livesInitialized] = useState(() => { world.lives = settings.startingLives; return true; });
+  void livesInitialized;
+  const lives = world.lives;
+  const setLives = useCallback((updater: number | ((prev: number) => number)) => {
+    if (typeof updater === 'function') {
+      world.lives = updater(world.lives);
+    } else {
+      world.lives = updater;
+    }
+  }, []);
   const [level, setLevel] = useState(settings.startingLevel);
 
   // Boss Rush mode state
@@ -3087,6 +3107,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const speedMultiplier = world.speedMultiplier; // live read from engine state
     const brickHitSpeedAccumulated = world.brickHitSpeedAccumulated; // live read from engine state
     const enemies = world.enemies; // live read from engine state
+    const score = world.score; // live read from engine state
+    const lives = world.lives; // live read from engine state
     if (!paddle || balls.length === 0) return;
 
     const dtSeconds = 1 / 60; // Fixed timestep in seconds
@@ -5231,7 +5253,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     SCALED_BALL_RADIUS,
     scaleFactor,
     levelSkipped,
-    score,
+    // score removed — reads world.score live
     isHighScore,
     qualitySettings,
     bombIntervalsRef,
@@ -5285,6 +5307,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const bonusLetters = world.bonusLetters; // live read from engine state
     const dangerBalls = world.dangerBalls; // live read from engine state
     const screenShake = world.screenShake; // live read from engine state
+    const score = world.score; // live read from engine state
+    const lives = world.lives; // live read from engine state
+    const powerUps = world.powerUps; // live read from engine state
+    const bullets = world.bullets; // live read from engine state
     if (gameState !== "playing") return;
 
     // Clear newly reflected bombs ref at start of each frame
@@ -7938,7 +7964,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // bossAttacks removed — now lives in world.bossAttacks (no React dependency)
     // explosions removed — now lives in world.explosions (no React dependency)
     checkPowerUpCollision,
-    score,
+    // score removed — now lives in world.score (no React dependency)
     isHighScore,
     lastScoreMilestone,
     updateFps,
