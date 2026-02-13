@@ -243,7 +243,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       world.balls = updater;
     }
   }, []);
-  const [paddle, setPaddle] = useState<Paddle | null>(null);
+  // ═══ PHASE 1: paddle lives in world.paddle (engine/state.ts) ═══
+  // Compatibility shim: setPaddle writes to world.paddle directly, no React re-render.
+  const paddle = world.paddle;
+  const setPaddle = useCallback((updater: Paddle | null | ((prev: Paddle | null) => Paddle | null)) => {
+    if (typeof updater === 'function') {
+      world.paddle = updater(world.paddle);
+    } else {
+      world.paddle = updater;
+    }
+  }, []);
   // Helper function to calculate speed multiplier for any level
   // Max total speed caps (including brick hit bonuses): 150% normal, 175% godlike
   const MAX_TOTAL_SPEED_NORMAL = 1.5;
@@ -1611,7 +1620,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       });
       return updated;
     });
-  }, [paddle]);
+  }, []);
   const initBricksForLevel = useCallback((currentLevel: number) => {
     // Check if this is the Mega Boss level (level 20)
     if (currentLevel === MEGA_BOSS_LEVEL) {
@@ -2245,7 +2254,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           : null,
       );
     },
-    [gameState, paddle, isPointerLocked, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT],
+    [gameState, isPointerLocked, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT],
   );
   const activeTouchRef = useRef<number | null>(null);
   const secondTouchRef = useRef<number | null>(null);
@@ -7686,7 +7695,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     checkCollision,
     updatePowerUps,
     updateBullets,
-    paddle,
+    // paddle removed — now lives in world.paddle (no React dependency)
     // balls removed — now lives in world.balls (no React dependency)
     checkPowerUpCollision,
     speedMultiplier,
@@ -8889,7 +8898,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       height={SCALED_CANVAS_HEIGHT}
                       bricks={bricks}
                       balls={world.balls}
-                      paddle={paddle}
+                      paddle={world.paddle}
                       gameState={gameState}
                       powerUps={powerUps}
                       bullets={bullets}
