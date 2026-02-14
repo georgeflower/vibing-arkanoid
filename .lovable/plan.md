@@ -1,49 +1,44 @@
 
 
-# Fix: Game enters fullscreen on player death
+# Replace Loop Detection with Subtle Gravity
 
-## Problem
+## What changes
 
-The auto-fullscreen `useEffect` (line 8857) triggers whenever `gameState === "ready"`. When the player loses a life, the game sets `gameState` back to `"ready"` to wait for the player to click to re-launch the ball. This re-triggers the fullscreen effect, causing an unwanted fullscreen entry on every death.
+### Remove: Smart Loop Detection System
+The current system tracks the last 8 bounce angles and, when it detects a repeating pattern, forcibly rotates the ball's direction by 10 degrees. This triggers too often and creates visible, unnatural direction changes -- especially near the top wall where the ball bounces back and forth horizontally.
 
-## Solution
+The following will be completely removed:
+- `trajectoryHistoryRef`, `LOOP_HISTORY_SIZE`, `LOOP_ANGLE_TOLERANCE`, `LOOP_MIN_REPEATS` constants
+- `detectStuckLoop()` function
+- All places that push bounce angles into `trajectoryHistoryRef`
+- All places that clear `trajectoryHistoryRef` on paddle hits
+- The diversion block that rotates the ball by 10 degrees when a loop is detected
 
-Add a ref flag (`hasAutoFullscreened`) that tracks whether the initial auto-fullscreen has already happened. Set it to `true` after the first auto-fullscreen, and only reset it when the game truly restarts (e.g., returning to the menu or starting a new game).
+### Add: Subtle Downward Gravity for Nearly-Horizontal Balls
+Instead of forcibly changing direction, apply a tiny constant downward force (gravity) to the ball's vertical velocity each frame. This only has a meaningful effect when the ball is traveling nearly horizontally (small `dy`), gradually curving it downward toward the paddle. When the ball has significant vertical velocity, the gravity is imperceptible.
 
-### Changes in `src/components/Game.tsx`
+The gravity will be applied in the game loop's ball update section -- a single line per ball:
 
-1. **Add a ref**: `const hasAutoFullscreenedRef = useRef(false);`
-
-2. **Guard the auto-fullscreen effect** (line 8858): Add `!hasAutoFullscreenedRef.current` to the condition, and set it to `true` inside the block after calling `toggleFullscreen()`.
-
-3. **Reset the ref** when the game is fully restarted (in `handleReturnToMenu` or equivalent reset logic) so that the next game session will auto-fullscreen once.
-
-### Technical detail
-
-```typescript
-const hasAutoFullscreenedRef = useRef(false);
-
-// In the auto-fullscreen useEffect:
-const shouldAutoFullscreen = 
-  !isIOSDevice && 
-  gameState === "ready" && 
-  !isFullscreen && 
-  !hasAutoFullscreenedRef.current &&
-  fullscreenContainerRef.current;
-
-if (shouldAutoFullscreen) {
-  hasAutoFullscreenedRef.current = true;
-  const timer = setTimeout(() => {
-    toggleFullscreen();
-  }, 100);
-  return () => clearTimeout(timer);
-}
-
-// Reset when returning to menu:
-hasAutoFullscreenedRef.current = false;
+```
+ball.dy += BALL_GRAVITY;
 ```
 
-## Files changed
+Where `BALL_GRAVITY` is a small constant (around 0.03-0.05 pixels/frame). This is subtle enough to be invisible during normal play but strong enough to prevent infinite horizontal bouncing at the top of the screen.
 
-- `src/components/Game.tsx`
+## Technical details
 
+### Files changed
+
+**`src/components/Game.tsx`**
+- Remove ~80 lines of loop detection code (lines 551-605: refs, constants, `detectStuckLoop` function)
+- Remove trajectory recording after brick/wall bounces (lines 3926-3931, 4537-4542)
+- Remove trajectory clearing on paddle hits (lines 4048, 4132)
+- Remove the diversion block (lines 7900-7919)
+- Add `BALL_GRAVITY` constant (e.g., `const BALL_GRAVITY = 0.04;`)
+- Add gravity application in the ball physics update section (where ball positions are updated each frame), applying `ball.dy += BALL_GRAVITY` to each active ball
+
+### Why gravity works better
+- It's physics-based and feels natural -- players won't notice it
+- It prevents horizontal loops organically: a ball bouncing horizontally at the top will gradually curve downward
+- No pattern detection needed, so no false positives
+- No sudden visible direction changes
