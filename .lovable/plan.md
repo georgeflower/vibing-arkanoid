@@ -1,43 +1,56 @@
 
 
-# Fix: Gravity accumulates indefinitely -- should only activate after 5s without paddle contact
+# Gravity System Improvements
 
-## Problem
+## Changes
 
-Currently `ball.dy += BALL_GRAVITY` runs every frame unconditionally, so the downward pull compounds over time making the ball feel heavier and heavier. The intended behavior is:
+### 1. Increase delay to 10 seconds and reduce gravity strength
+- Change `GRAVITY_DELAY_MS` from `5000` to `10000`
+- Change `BALL_GRAVITY` from `0.04` to `0.015` (much gentler pull)
 
-- Gravity should only kick in after the ball hasn't touched the paddle for 5 seconds
-- Each paddle hit should reset the timer, removing gravity until 5 seconds pass again
+### 2. Track last collision time instead of just paddle hits
+- Rename the tracking concept: instead of only checking `lastPaddleHitTime`, introduce a new per-ball field `lastCollisionTime` (or reuse `lastPaddleHitTime` as a general "last gravity-resetting collision" timestamp). Since `lastPaddleHitTime` is also used for paddle hit cooldown logic, the cleanest approach is to add a separate field to the `Ball` type called `lastGravityResetTime`.
+- Reset `lastGravityResetTime` to `performance.now()` on:
+  - **Paddle hit** (two locations: normal paddle collision and corner paddle collision)
+  - **Brick collision** (inside the brick collision handler, after a valid non-duplicate hit)
+  - **Enemy collision** (inside the enemy collision handler, after a valid hit)
+  - **Ball launch** (when ball is first launched)
 
-## Solution
+### 3. Remove gravity-added speed on paddle hit
+- When a paddle collision occurs, recalculate the ball's speed to remove any gravity contribution. Specifically, after the paddle bounce, normalize the ball's velocity vector to the ball's base `speed` value (which doesn't include gravity). This ensures the ball leaves the paddle at its intended speed, not an inflated one.
 
-### 1. Track last paddle hit time per ball
-
-The `Ball` type already has a `lastPaddleHitTime` field. We'll ensure it's set on every paddle collision (it likely already is from the paddle collision logic). On ball launch, initialize it to `Date.now()`.
-
-### 2. Conditionally apply gravity
-
-Replace the unconditional gravity line with a check: only apply gravity if the ball hasn't hit the paddle in the last 5 seconds.
-
-```typescript
-const GRAVITY_DELAY_MS = 5000;
-
-ballResults.forEach((result) => {
-  if (result.ball && !result.ball.waitingToLaunch) {
-    const timeSincePaddle = Date.now() - (result.ball.lastPaddleHitTime ?? 0);
-    if (timeSincePaddle > GRAVITY_DELAY_MS) {
-      result.ball.dy += BALL_GRAVITY;
-    }
-  }
-});
-```
-
-### 3. Ensure `lastPaddleHitTime` is set
-
-- On paddle collision (already handled via the paddle collision code path) -- verify it sets `ball.lastPaddleHitTime = Date.now()`
-- On ball launch/reset -- set `lastPaddleHitTime = Date.now()` so the 5-second timer starts fresh
+### 4. Update debug overlay
+- Change the debug overlay timer to use `lastGravityResetTime` instead of `lastPaddleHitTime`, and update the countdown to reflect the new 10-second delay.
 
 ## Files changed
 
-- `src/components/Game.tsx` -- modify gravity application block (~3 lines changed), verify paddle hit timestamp is set on collision and ball launch
+- **`src/types/game.ts`** -- Add `lastGravityResetTime?: number` field to the `Ball` interface
+- **`src/components/Game.tsx`** -- Update constants, reset `lastGravityResetTime` on paddle/brick/enemy collisions, normalize speed on paddle hit, update gravity check and debug info
+- **`src/components/SubstepDebugOverlay.tsx`** -- No changes needed (it already displays whatever the parent passes)
 
+## Technical details
+
+```typescript
+// Constants
+const BALL_GRAVITY = 0.015;     // was 0.04
+const GRAVITY_DELAY_MS = 10000; // was 5000
+
+// Gravity application (unchanged logic, new field)
+const timeSinceCollision = performance.now() - (result.ball.lastGravityResetTime ?? 0);
+if (timeSinceCollision > GRAVITY_DELAY_MS) {
+  result.ball.dy += BALL_GRAVITY;
+}
+
+// On paddle hit - reset gravity timer AND normalize speed
+result.ball.lastGravityResetTime = performance.now();
+const currentSpeed = Math.hypot(result.ball.dx, result.ball.dy);
+const targetSpeed = result.ball.speed; // base speed without gravity
+if (currentSpeed > 0 && currentSpeed > targetSpeed) {
+  const scale = targetSpeed / currentSpeed;
+  result.ball.dx *= scale;
+  result.ball.dy *= scale;
+}
+
+// On brick/enemy collision - just reset the timer
+result.ball.lastGravityResetTime = performance.now();
+```
