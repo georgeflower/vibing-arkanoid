@@ -1,158 +1,61 @@
 
 
-# Migrate bricks, speedMultiplier, brickHitSpeedAccumulated to `world`
+# Fix: Game activity continues after boss defeat
 
-## Scope (strictly limited)
+## Problem
 
-Only these items move to `world` (plain mutable state):
+When a boss is defeated, the game loop keeps running because it only checks `gameState !== "playing"` (line 5288). Since `gameState` stays `"playing"` during the boss defeat transition, balls continue moving, enemies remain active, and the player can lose a life while the victory overlay is showing.
 
-| Variable | Current location | Notes |
-|---|---|---|
-| `bricks` | `useState<Brick[]>` (line 234) | ~35 `setBricks()` call sites |
-| `speedMultiplier` | `useState<number>` (line 287) | ~60 `setSpeedMultiplier()` call sites |
-| `brickHitSpeedAccumulated` | `useState<number>` (line 376) | ~53 references |
-| `enemiesKilled` | `useState<number>` (line 377) | Counter, mutated in game loop |
-| `launchAngle` | `useState<number>` (line 327) | Oscillates every frame pre-launch |
-| `backgroundPhase` | `useState<number>` (line 323) | Incremented every frame |
+The root cause has two parts:
 
-**NOT migrated** (per user request): enemies, bombs, power-ups, bullets, bosses, mega boss, tutorial, adaptive quality, screen shake, particles, laser warnings, bonuses, explosions, gameOverParticles, bulletImpacts, shieldImpacts.
+1. **The game loop has no early exit for boss defeat** -- `bossDefeatedTransitioning` is React state, but the game loop uses `useCallback` and doesn't include it in its dependency array (intentionally, to avoid recreation). So even if we added a check, the game loop would read a stale value.
 
-The `world` object already has fields for all of these -- they just need to be wired up.
+2. **Some boss defeat code paths are inconsistent** -- Several defeat paths inside `checkCollision` (around lines 6883-6900 and 6985-6993) set `bossDefeatedTransitioning` but don't call `setBossVictoryOverlayActive(true)`, and defer `setBossActive(false)` via `setTimeout`, leaving a 3-second window where the game loop runs freely.
 
----
+## Solution
 
-## Technical approach
+### 1. Add a ref mirror for `bossDefeatedTransitioning`
 
-### Pattern: Compatibility shim (same as balls/paddle)
-
-Each migrated variable gets:
+Create a `bossDefeatedTransitioningRef` that mirrors the React state. The game loop can read this ref without needing it in a dependency array (no stale closure issue).
 
 ```typescript
-// Read alias (live reference every render, but no useState)
-const bricks = world.bricks;
-
-// Write shim (supports both direct value and updater function)
-const setBricks = useCallback((updater: Brick[] | ((prev: Brick[]) => Brick[])) => {
-  if (typeof updater === 'function') {
-    world.bricks = updater(world.bricks);
-  } else {
-    world.bricks = updater;
-  }
-}, []);
+const bossDefeatedTransitioningRef = useRef(false);
+// Keep in sync:
+useEffect(() => {
+  bossDefeatedTransitioningRef.current = bossDefeatedTransitioning;
+}, [bossDefeatedTransitioning]);
 ```
 
-This preserves all ~35-60 existing call sites for each variable without changes.
+### 2. Add early return in the game loop
 
-### Stale closure prevention
+At the top of `gameLoop` (right after line 5288's `gameState` check), add:
 
-Any callback that currently reads these variables and has them removed from its dependency array must perform a **live read** from `world` at the top of execution (shadowing the outer variable). This is the same pattern already proven with `balls` and `paddle`.
-
-Key callbacks needing live reads:
-- `checkCollision` -- reads `bricks`, `speedMultiplier`, `brickHitSpeedAccumulated`
-- `gameLoop` -- reads `speedMultiplier`, `bricks`, `backgroundPhase`, `launchAngle`
-- `calculateSpeedForLevel` -- pure function, no issue
-- `handleKeyDown` (debug speed +/-) -- reads `speedMultiplier`
-
-### Spatial hash sync
-
-Currently: `useEffect([bricks])` rebuilds spatial hash on change. After migration, `bricks` no longer triggers React effects, so `brickSpatialHash.rebuild()` must be called directly after any mutation that changes brick visibility or layout. The existing `useEffect` on line 598 stays for now as a safety net (it still fires on render), but the critical path calls will be added inline.
-
-### Dependency array cleanup
-
-After migration, the `gameLoop` dependency array loses: `speedMultiplier`, `bricks`, and the `checkCollision` callback stabilizes (fewer deps = less recreation).
-
----
-
-## Step-by-step changes
-
-### 1. `src/engine/state.ts` -- no changes needed
-All fields (`bricks`, `speedMultiplier`, `brickHitSpeedAccumulated`, `enemiesKilled`, `launchAngle`, `backgroundPhase`) already exist in `GameWorld`.
-
-### 2. `src/components/Game.tsx` -- replace useState with shims
-
-**Remove these useState declarations:**
-- Line 234: `const [bricks, setBricks] = useState<Brick[]>([])`
-- Line 287-307: `const [speedMultiplier, setSpeedMultiplier] = useState(...)`
-- Line 376: `const [brickHitSpeedAccumulated, setBrickHitSpeedAccumulated] = useState(0)`
-- Line 377: `const [enemiesKilled, setEnemiesKilled] = useState(0)`
-- Line 327: `const [launchAngle, setLaunchAngle] = useState(-20)`
-- Line 323: `const [backgroundPhase, setBackgroundPhase] = useState(0)`
-
-**Replace with compatibility shims** (same pattern as balls/paddle):
 ```typescript
-// bricks
-const bricks = world.bricks;
-const setBricks = useCallback((updater) => { ... }, []);
-
-// speedMultiplier
-const speedMultiplier = world.speedMultiplier;
-const setSpeedMultiplier = useCallback((updater) => { ... }, []);
-
-// brickHitSpeedAccumulated
-const brickHitSpeedAccumulated = world.brickHitSpeedAccumulated;
-const setBrickHitSpeedAccumulated = useCallback((updater) => { ... }, []);
-
-// enemiesKilled
-const enemiesKilled = world.enemiesKilled;
-const setEnemiesKilled = useCallback((updater) => { ... }, []);
-
-// launchAngle
-const launchAngle = world.launchAngle;
-const setLaunchAngle = useCallback((updater) => { ... }, []);
-
-// backgroundPhase
-const backgroundPhase = world.backgroundPhase;
-const setBackgroundPhase = useCallback((updater) => { ... }, []);
+if (bossDefeatedTransitioningRef.current) return;
 ```
 
-**Initialize world values** in `startGame()` (line ~1800):
-```typescript
-world.speedMultiplier = startingSpeedMultiplier;
-world.brickHitSpeedAccumulated = 0;
-world.enemiesKilled = 0;
-world.launchAngle = -20;
-world.backgroundPhase = 0;
-```
+This completely freezes all game activity (ball movement, enemy updates, collision detection, life loss) while the boss defeat overlay is showing.
 
-### 3. Add live reads in key callbacks
+### 3. Fix inconsistent boss defeat paths in `checkCollision`
 
-In `checkCollision`:
-```typescript
-const bricks = world.bricks;
-const speedMultiplier = world.speedMultiplier;
-const brickHitSpeedAccumulated = world.brickHitSpeedAccumulated;
-```
+Several boss defeat code paths inside `checkCollision` (reflected attacks killing bosses, around lines 6883-6900 and 6985-6993) are missing:
+- `setBossVictoryOverlayActive(true)` -- so no overlay appears
+- Immediate `setBossActive(false)` -- they defer it via `setTimeout`, leaving a gap
 
-In `gameLoop`:
-```typescript
-const speedMultiplier = world.speedMultiplier;
-const bricks = world.bricks;
-const launchAngle = world.launchAngle;
-const backgroundPhase = world.backgroundPhase;
-```
+Update these paths to match the pattern used in the `useBullets` callbacks (lines 1404-1417):
+- Set `setBossVictoryOverlayActive(true)` immediately
+- Set `setBossActive(false)` immediately (not deferred)
+- Keep `setTimeout(() => nextLevel(), 3000)` for level transition timing
 
-### 4. Clean up dependency arrays
+### 4. Clear laser warnings on boss defeat
 
-Remove from `checkCollision` deps (line ~5001-5028):
-- `bricks`, `speedMultiplier`, `brickHitSpeedAccumulated`
+Add `setLaserWarnings([])` to all boss defeat cleanup blocks that are missing it, ensuring no visual artifacts remain.
 
-Remove from `gameLoop` deps (line ~7701-7719):
-- `speedMultiplier`, `bricks`
+## Files changed
 
-### 5. GameCanvas prop
-
-Line 8907: `bricks={bricks}` becomes `bricks={world.bricks}` (or stays as-is since `bricks` is already an alias).
-
----
-
-## What is NOT touched
-
-- No changes to `src/engine/state.ts` or `src/engine/hudSnapshot.ts`
-- No changes to `GameCanvas.tsx` (props interface unchanged for now)
-- No migration of enemies, bombs, boss, power-ups, bullets, explosions, screen shake, particles, laser warnings, bonuses, tutorial, adaptive quality, or mega boss state
-- The `useEffect` for spatial hash rebuild on line 598 remains as a safety net
+- `src/components/Game.tsx` -- all changes in this single file
 
 ## Risk
 
-Low. This follows the exact same proven pattern as the balls/paddle migration. The compatibility shim ensures all ~150 call sites continue working without modification.
+Low. The ref-mirror pattern is standard React. The early return prevents all game processing during the transition, which is the expected behavior per the user's requirement.
 
