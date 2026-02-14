@@ -9140,7 +9140,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 <div className="metal-game-area" ref={gameAreaRef}>
                   <div
                     ref={gameGlowRef}
-                    className={`game-glow ${isFullscreen ? "game-canvas-wrapper" : ""}`}
+                    className={`game-glow relative ${isFullscreen ? "game-canvas-wrapper" : ""}`}
                     style={
                       isMobileDevice
                         ? {
