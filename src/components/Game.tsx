@@ -875,6 +875,46 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         });
       }
 
+      // Adjust ball timestamps to account for pause duration
+      setBalls(prev => prev.map(ball => ({
+        ...ball,
+        lastGravityResetTime: ball.lastGravityResetTime 
+          ? ball.lastGravityResetTime + pauseDuration : ball.lastGravityResetTime,
+        lastPaddleHitTime: ball.lastPaddleHitTime 
+          ? ball.lastPaddleHitTime + pauseDuration : ball.lastPaddleHitTime,
+        releasedFromBossTime: ball.releasedFromBossTime 
+          ? ball.releasedFromBossTime + pauseDuration : ball.releasedFromBossTime,
+        lastHitTime: ball.lastHitTime
+          ? ball.lastHitTime + pauseDuration : ball.lastHitTime,
+        lastWallHitTime: ball.lastWallHitTime
+          ? ball.lastWallHitTime + pauseDuration : ball.lastWallHitTime,
+      })));
+
+      // Adjust boss lastHitAt
+      if (boss) {
+        setBoss(prev => prev ? { ...prev, lastHitAt: (prev.lastHitAt || 0) + pauseDuration } : null);
+      }
+
+      // Adjust resurrected bosses
+      setResurrectedBosses(prev => prev.map(rb => ({
+        ...rb,
+        lastHitAt: (rb.lastHitAt || 0) + pauseDuration,
+      })));
+
+      // Adjust boss attack timestamps
+      setBossAttacks(prev => prev.map(attack => ({
+        ...attack,
+        stopStartTime: attack.stopStartTime ? attack.stopStartTime + pauseDuration : attack.stopStartTime,
+        nextCourseChangeTime: attack.nextCourseChangeTime ? attack.nextCourseChangeTime + pauseDuration : attack.nextCourseChangeTime,
+        spawnTime: attack.spawnTime ? attack.spawnTime + pauseDuration : attack.spawnTime,
+      })));
+
+      // Adjust bonus letter spawnTime (used for sine wave animation)
+      setBonusLetters(prev => prev.map(letter => ({
+        ...letter,
+        spawnTime: letter.spawnTime + pauseDuration,
+      })));
+
       pauseStartTimeRef.current = null;
       savedTimerDurationsRef.current = { bossStunner: null, reflectShield: null, homingBall: null, fireball: null };
     }
