@@ -1,56 +1,81 @@
 
+# Fix: Pause-Aware Timers for Gravity, Boss Attacks, and Ball Timestamps
 
-# Gravity System Improvements
+## Problem
 
-## Changes
+Several timers use `performance.now()` or `Date.now()` but are not adjusted when the game pauses. This means time keeps "ticking" during pause, causing:
 
-### 1. Increase delay to 10 seconds and reduce gravity strength
-- Change `GRAVITY_DELAY_MS` from `5000` to `10000`
-- Change `BALL_GRAVITY` from `0.04` to `0.015` (much gentler pull)
+1. **Ball gravity timer** (`lastGravityResetTime`) -- gravity activates during pause, so after a long pause the ball immediately gets pulled down
+2. **Boss attack cross-projectile timers** (`stopStartTime`, `nextCourseChangeTime`, `spawnTime`) -- cross attacks resume incorrectly after pause
+3. **Ball `releasedFromBossTime`** -- the 2-second grace period for balls released from Mega Boss elapses during pause
+4. **Boss `lastHitAt`** -- the 1-second damage cooldown elapses during pause, which is minor but technically incorrect
+5. **Bonus letter `spawnTime`** -- affects sine wave position calculation, causing a visual jump after unpausing
 
-### 2. Track last collision time instead of just paddle hits
-- Rename the tracking concept: instead of only checking `lastPaddleHitTime`, introduce a new per-ball field `lastCollisionTime` (or reuse `lastPaddleHitTime` as a general "last gravity-resetting collision" timestamp). Since `lastPaddleHitTime` is also used for paddle hit cooldown logic, the cleanest approach is to add a separate field to the `Ball` type called `lastGravityResetTime`.
-- Reset `lastGravityResetTime` to `performance.now()` on:
-  - **Paddle hit** (two locations: normal paddle collision and corner paddle collision)
-  - **Brick collision** (inside the brick collision handler, after a valid non-duplicate hit)
-  - **Enemy collision** (inside the enemy collision handler, after a valid hit)
-  - **Ball launch** (when ball is first launched)
+## Solution
 
-### 3. Remove gravity-added speed on paddle hit
-- When a paddle collision occurs, recalculate the ball's speed to remove any gravity contribution. Specifically, after the paddle bounce, normalize the ball's velocity vector to the ball's base `speed` value (which doesn't include gravity). This ensures the ball leaves the paddle at its intended speed, not an inflated one.
+Add pause-duration adjustments to the resume block (lines 804-879 of Game.tsx) for all the missed timers:
 
-### 4. Update debug overlay
-- Change the debug overlay timer to use `lastGravityResetTime` instead of `lastPaddleHitTime`, and update the countdown to reflect the new 10-second delay.
+### 1. Ball timestamps (gravity, released-from-boss, paddle hit cooldown)
+On resume, shift `lastGravityResetTime`, `releasedFromBossTime`, and `lastPaddleHitTime` forward by `pauseDuration` for every ball.
 
-## Files changed
+### 2. Boss attack timestamps
+On resume, shift `stopStartTime`, `nextCourseChangeTime`, and `spawnTime` forward by `pauseDuration` for every active boss attack.
 
-- **`src/types/game.ts`** -- Add `lastGravityResetTime?: number` field to the `Ball` interface
-- **`src/components/Game.tsx`** -- Update constants, reset `lastGravityResetTime` on paddle/brick/enemy collisions, normalize speed on paddle hit, update gravity check and debug info
-- **`src/components/SubstepDebugOverlay.tsx`** -- No changes needed (it already displays whatever the parent passes)
+### 3. Boss `lastHitAt`
+On resume, shift `lastHitAt` forward by `pauseDuration` on the boss object (and any resurrected bosses).
+
+### 4. Bonus letter `spawnTime`
+On resume, shift `spawnTime` forward by `pauseDuration` for every active bonus letter.
 
 ## Technical details
 
+### File: `src/components/Game.tsx`
+
+In the resume block (after line 876, before `pauseStartTimeRef.current = null`), add adjustments:
+
 ```typescript
-// Constants
-const BALL_GRAVITY = 0.015;     // was 0.04
-const GRAVITY_DELAY_MS = 10000; // was 5000
+// Adjust ball timestamps to account for pause duration
+setBalls(prev => prev.map(ball => ({
+  ...ball,
+  lastGravityResetTime: ball.lastGravityResetTime 
+    ? ball.lastGravityResetTime + pauseDuration : ball.lastGravityResetTime,
+  lastPaddleHitTime: ball.lastPaddleHitTime 
+    ? ball.lastPaddleHitTime + pauseDuration : ball.lastPaddleHitTime,
+  releasedFromBossTime: ball.releasedFromBossTime 
+    ? ball.releasedFromBossTime + pauseDuration : ball.releasedFromBossTime,
+  lastHitTime: ball.lastHitTime
+    ? ball.lastHitTime + pauseDuration : ball.lastHitTime,
+  lastWallHitTime: ball.lastWallHitTime
+    ? ball.lastWallHitTime + pauseDuration : ball.lastWallHitTime,
+})));
 
-// Gravity application (unchanged logic, new field)
-const timeSinceCollision = performance.now() - (result.ball.lastGravityResetTime ?? 0);
-if (timeSinceCollision > GRAVITY_DELAY_MS) {
-  result.ball.dy += BALL_GRAVITY;
+// Adjust boss lastHitAt
+if (boss) {
+  setBoss(prev => prev ? { ...prev, lastHitAt: (prev.lastHitAt || 0) + pauseDuration } : null);
 }
 
-// On paddle hit - reset gravity timer AND normalize speed
-result.ball.lastGravityResetTime = performance.now();
-const currentSpeed = Math.hypot(result.ball.dx, result.ball.dy);
-const targetSpeed = result.ball.speed; // base speed without gravity
-if (currentSpeed > 0 && currentSpeed > targetSpeed) {
-  const scale = targetSpeed / currentSpeed;
-  result.ball.dx *= scale;
-  result.ball.dy *= scale;
-}
+// Adjust resurrected bosses
+setResurrectedBosses(prev => prev.map(rb => ({
+  ...rb,
+  lastHitAt: (rb.lastHitAt || 0) + pauseDuration,
+})));
 
-// On brick/enemy collision - just reset the timer
-result.ball.lastGravityResetTime = performance.now();
+// Adjust boss attack timestamps
+setBossAttacks(prev => prev.map(attack => ({
+  ...attack,
+  stopStartTime: attack.stopStartTime ? attack.stopStartTime + pauseDuration : attack.stopStartTime,
+  nextCourseChangeTime: attack.nextCourseChangeTime ? attack.nextCourseChangeTime + pauseDuration : attack.nextCourseChangeTime,
+  spawnTime: attack.spawnTime ? attack.spawnTime + pauseDuration : attack.spawnTime,
+})));
+
+// Adjust bonus letter spawnTime (used for sine wave animation)
+setBonusLetters(prev => prev.map(letter => ({
+  ...letter,
+  spawnTime: letter.spawnTime + pauseDuration,
+})));
 ```
+
+Note: The Mega Boss adjustments (danger balls, invulnerability, swarm spawn, etc.) are already handled correctly on lines 857-876. The `lastBossSpawnTime` and `lastEnemySpawnTime` are also already handled. This change covers the remaining gaps.
+
+### Files changed
+- **`src/components/Game.tsx`** -- Add timestamp adjustments in the pause-resume block for balls, boss attacks, boss hit cooldown, and bonus letters
