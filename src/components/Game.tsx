@@ -549,10 +549,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const screenShakeStartRef = useRef<number | null>(null);
 
    // ═══ SUBTLE BALL GRAVITY ═══
-   // Tiny downward force prevents infinite horizontal bouncing
-   // Only activates after 5 seconds without paddle contact
-   const BALL_GRAVITY = 0.04;
-   const GRAVITY_DELAY_MS = 5000;
+    // Tiny downward force prevents infinite horizontal bouncing
+    // Only activates after 10 seconds without any collision (paddle/brick/enemy)
+    const BALL_GRAVITY = 0.015;
+    const GRAVITY_DELAY_MS = 10000;
 
   // Screen shake tracking is now inlined in setScreenShake
 
@@ -2375,6 +2375,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             dy: -speed * Math.cos(angle),
             waitingToLaunch: false,
             lastPaddleHitTime: performance.now(),
+            lastGravityResetTime: performance.now(),
           };
         }
         return ball;
@@ -3027,9 +3028,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Gravity info
     const now = performance.now();
     const firstBall = balls[0];
-    const timeSincePaddle = now - (firstBall?.lastPaddleHitTime ?? now);
-    const gravityActive = timeSincePaddle > GRAVITY_DELAY_MS;
-    const gravityTimeLeft = gravityActive ? 0 : Math.max(0, (GRAVITY_DELAY_MS - timeSincePaddle) / 1000);
+    const timeSinceCollision = now - (firstBall?.lastGravityResetTime ?? now);
+    const gravityActive = timeSinceCollision > GRAVITY_DELAY_MS;
+    const gravityTimeLeft = gravityActive ? 0 : Math.max(0, (GRAVITY_DELAY_MS - timeSinceCollision) / 1000);
 
     return {
       substeps,
@@ -3963,6 +3964,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               result.ball.dx = speedBefore * Math.sin(angle);
               result.ball.dy = -Math.abs(speedBefore * Math.cos(angle));
               result.ball.lastPaddleHitTime = performance.now(); // Set cooldown
+              result.ball.lastGravityResetTime = performance.now(); // Reset gravity timer
+
+              // Normalize speed to remove gravity contribution
+              const currentSpd = Math.hypot(result.ball.dx, result.ball.dy);
+              const targetSpd = result.ball.speed;
+              if (currentSpd > 0 && currentSpd > targetSpd) {
+                const scale = targetSpd / currentSpd;
+                result.ball.dx *= scale;
+                result.ball.dy *= scale;
+              }
 
               if (!isDuplicate) {
                 if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
@@ -4044,6 +4055,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
               // CCD already applied natural reflection - just set cooldown
               result.ball.lastPaddleHitTime = nowCorner;
+              result.ball.lastGravityResetTime = nowCorner;
+
+              // Normalize speed to remove gravity contribution
+              const currentSpdCorner = Math.hypot(result.ball.dx, result.ball.dy);
+              const targetSpdCorner = result.ball.speed;
+              if (currentSpdCorner > 0 && currentSpdCorner > targetSpdCorner) {
+                const scaleCorner = targetSpdCorner / currentSpdCorner;
+                result.ball.dx *= scaleCorner;
+                result.ball.dy *= scaleCorner;
+              }
 
               if (!isDuplicate) {
                 if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
@@ -4108,6 +4129,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 const enemy = enemies[enemyIndex];
 
                 if (enemy && !isDuplicate) {
+                  result.ball.lastGravityResetTime = performance.now(); // Reset gravity timer on enemy hit
                   if (ENABLE_DEBUG_FEATURES && debugSettings.enableCollisionLogging && ballBefore) {
                     const timestamp = performance.now().toFixed(2);
                     const speedAfter = Math.hypot(result.ball.dx, result.ball.dy);
@@ -4423,6 +4445,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   });
                 }
                 const currentHitsRemaining = brick.hitsRemaining;
+                if (!isDuplicate) {
+                  result.ball.lastGravityResetTime = performance.now(); // Reset gravity timer on brick hit
+                }
                 const newHitsRemaining = currentHitsRemaining - 1;
                 const brickDestroyed = newHitsRemaining <= 0;
 
@@ -4909,8 +4934,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Apply subtle gravity to all active balls (prevents horizontal loops naturally)
       ballResults.forEach((result) => {
         if (result.ball && !result.ball.waitingToLaunch) {
-          const timeSincePaddle = performance.now() - (result.ball.lastPaddleHitTime ?? 0);
-          if (timeSincePaddle > GRAVITY_DELAY_MS) {
+          const timeSinceCollision = performance.now() - (result.ball.lastGravityResetTime ?? 0);
+          if (timeSinceCollision > GRAVITY_DELAY_MS) {
             result.ball.dy += BALL_GRAVITY;
           }
         }
