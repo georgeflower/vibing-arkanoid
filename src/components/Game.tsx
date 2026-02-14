@@ -548,9 +548,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, []);
   const screenShakeStartRef = useRef<number | null>(null);
 
-  // ═══ SUBTLE BALL GRAVITY ═══
-  // Tiny downward force prevents infinite horizontal bouncing
-  const BALL_GRAVITY = 0.04;
+   // ═══ SUBTLE BALL GRAVITY ═══
+   // Tiny downward force prevents infinite horizontal bouncing
+   // Only activates after 5 seconds without paddle contact
+   const BALL_GRAVITY = 0.04;
+   const GRAVITY_DELAY_MS = 5000;
 
   // Screen shake tracking is now inlined in setScreenShake
 
@@ -2372,6 +2374,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             dx: speed * Math.sin(angle),
             dy: -speed * Math.cos(angle),
             waitingToLaunch: false,
+            lastPaddleHitTime: performance.now(),
           };
         }
         return ball;
@@ -4895,7 +4898,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Apply subtle gravity to all active balls (prevents horizontal loops naturally)
       ballResults.forEach((result) => {
         if (result.ball && !result.ball.waitingToLaunch) {
-          result.ball.dy += BALL_GRAVITY;
+          const timeSincePaddle = performance.now() - (result.ball.lastPaddleHitTime ?? 0);
+          if (timeSincePaddle > GRAVITY_DELAY_MS) {
+            result.ball.dy += BALL_GRAVITY;
+          }
         }
       });
 
