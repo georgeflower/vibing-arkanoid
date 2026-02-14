@@ -3065,10 +3065,13 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const minBrickDimension = Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT);
     const substeps = Math.max(2, Math.ceil((maxBallSpeed * speedMultiplier) / (minBrickDimension * 0.15)));
 
-    // Gravity info
-    const now = performance.now();
+    // Gravity info — freeze display while paused so the countdown doesn't tick
+    const isPausedNow = gameState === "paused" || gameState === "ready" || tutorialActive || bossRushStatsOverlayActive;
+    const gravityNow = isPausedNow && pauseStartTimeRef.current !== null
+      ? performance.now() - (Date.now() - pauseStartTimeRef.current)
+      : performance.now();
     const firstBall = balls[0];
-    const timeSinceCollision = now - (firstBall?.lastGravityResetTime ?? now);
+    const timeSinceCollision = gravityNow - (firstBall?.lastGravityResetTime ?? gravityNow);
     const gravityActive = timeSinceCollision > GRAVITY_DELAY_MS;
     const gravityTimeLeft = gravityActive ? 0 : Math.max(0, (GRAVITY_DELAY_MS - timeSinceCollision) / 1000);
 
