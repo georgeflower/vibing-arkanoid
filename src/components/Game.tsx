@@ -439,6 +439,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
   }, []);
   const [bossDefeatedTransitioning, setBossDefeatedTransitioning] = useState(false);
+  const bossDefeatedTransitioningRef = useRef(false);
+  useEffect(() => {
+    bossDefeatedTransitioningRef.current = bossDefeatedTransitioning;
+  }, [bossDefeatedTransitioning]);
   const [bossVictoryOverlayActive, setBossVictoryOverlayActive] = useState(false);
   // ═══ PHASE 1: bossActive lives in world.bossActive (engine/state.ts) ═══
   const bossActive = world.bossActive;
@@ -5286,6 +5290,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const dangerBalls = world.dangerBalls; // live read from engine state
     const screenShake = world.screenShake; // live read from engine state
     if (gameState !== "playing") return;
+    if (bossDefeatedTransitioningRef.current) return;
 
     // Clear newly reflected bombs ref at start of each frame
     newlyReflectedBombIdsRef.current.clear();
@@ -6886,6 +6891,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 setBossAttacks([]);
                 clearAllBombs();
                 setBullets([]);
+                setLaserWarnings([]);
 
                 // Stop boss music and resume background music
                 soundManager.stopBossMusic();
@@ -6893,8 +6899,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
                 toast.success(`🎉 ${prevBoss.type.toUpperCase()} BOSS DEFEATED!`, { duration: 3000 });
                 setBossDefeatedTransitioning(true);
+                setBossActive(false);
+                setBossVictoryOverlayActive(true);
                 setTimeout(() => {
-                  setBossActive(false);
                   nextLevel();
                 }, 3000);
                 return { ...prevBoss, currentHealth: 0, phase: "defeated" as const, lastHitAt: nowMs };
@@ -6986,8 +6993,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   setBossesKilled((p) => p + 1);
                   toast.success("🎉 ALL MINI-BOSSES DEFEATED!", { duration: 3000 });
                   setBossDefeatedTransitioning(true);
+                  setBossActive(false);
+                  setBossVictoryOverlayActive(true);
+                  setBalls([]);
+                  clearAllEnemies();
+                  setBossAttacks([]);
+                  clearAllBombs();
+                  setBullets([]);
+                  setLaserWarnings([]);
+                  soundManager.stopBossMusic();
+                  soundManager.resumeBackgroundMusic();
                   setTimeout(() => {
-                    setBossActive(false);
                     nextLevel();
                   }, 3000);
                 }
