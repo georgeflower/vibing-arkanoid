@@ -366,14 +366,24 @@ export const useBullets = (
             return brick;
           });
           
-          // Check if level complete after turret shot
-          const remainingBricks = updatedBricks.filter(b => b.visible && !b.isIndestructible);
-          if (remainingBricks.length === 0) {
-            onLevelComplete?.();
-          }
-          
           return updatedBricks;
         });
+        
+        // Check if level complete AFTER setBricks has finished
+        // (onLevelComplete calls nextLevel which also sets bricks — 
+        //  calling it inside the updater would overwrite the new level's bricks)
+        const remainingBricks = currentBricks.filter((b, idx) => {
+          const wasDestroyed = brickIndicesToDestroy.has(idx);
+          if (wasDestroyed) {
+            // Check if this brick would become invisible
+            const newHits = b.hitsRemaining - 1;
+            return newHits > 0 && !b.isIndestructible;
+          }
+          return b.visible && !b.isIndestructible;
+        });
+        if (remainingBricks.length === 0) {
+          onLevelComplete?.();
+        }
       }
       
       // Return bullets: bounce the ones that hit enemies, remove ones that hit bricks/bosses
