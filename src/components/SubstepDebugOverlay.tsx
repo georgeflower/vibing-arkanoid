@@ -7,6 +7,10 @@ interface SubstepDebugInfo {
   maxSpeed: number;
   collisionsPerFrame: number;
   toiIterations: number;
+  gravityActive?: boolean;
+  gravityTimeLeft?: number;
+  ballDy?: number;
+  totalSpeed?: number;
 }
 
 interface SubstepDebugOverlayProps {
@@ -21,7 +25,11 @@ export const SubstepDebugOverlay = ({ getDebugInfo, visible = true }: SubstepDeb
     ballCount: 0,
     maxSpeed: 0,
     collisionsPerFrame: 0,
-    toiIterations: 0
+    toiIterations: 0,
+    gravityActive: false,
+    gravityTimeLeft: 0,
+    ballDy: 0,
+    totalSpeed: 0,
   });
 
   useEffect(() => {
@@ -29,7 +37,7 @@ export const SubstepDebugOverlay = ({ getDebugInfo, visible = true }: SubstepDeb
 
     const interval = setInterval(() => {
       setDebugInfo(getDebugInfo());
-    }, 1000); // Update once per second
+    }, 200);
 
     return () => clearInterval(interval);
   }, [getDebugInfo, visible]);
@@ -80,14 +88,43 @@ export const SubstepDebugOverlay = ({ getDebugInfo, visible = true }: SubstepDeb
             </span>
           </div>
         </div>
+
+        {/* Gravity section */}
+        <div className="pt-1 mt-1 border-t border-border/20">
+          <div className="font-bold text-cyan-400 mb-1">Gravity</div>
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Status:</span>
+            <span className={debugInfo.gravityActive ? "text-red-400" : "text-green-400"}>
+              {debugInfo.gravityActive ? "ACTIVE" : "OFF"}
+            </span>
+          </div>
+          {!debugInfo.gravityActive && (
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Activates in:</span>
+              <span className="text-yellow-400">{(debugInfo.gravityTimeLeft ?? 0).toFixed(1)}s</span>
+            </div>
+          )}
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Ball dy:</span>
+            <span className={Math.abs(debugInfo.ballDy ?? 0) > 3 ? "text-red-400" : "text-green-400"}>
+              {(debugInfo.ballDy ?? 0).toFixed(3)}
+            </span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Total Speed:</span>
+            <span className={(debugInfo.totalSpeed ?? 0) > 8 ? "text-red-400" : (debugInfo.totalSpeed ?? 0) > 5 ? "text-yellow-400" : "text-green-400"}>
+              {(debugInfo.totalSpeed ?? 0).toFixed(2)}
+            </span>
+          </div>
+        </div>
       </div>
       
       <div className="mt-2 pt-2 border-t border-border/20 text-[10px] text-muted-foreground">
         {debugInfo.substeps > 1 && (
           <div className="text-yellow-400">⚡ Multi-substep CCD active</div>
         )}
-        {debugInfo.collisionsPerFrame > 0 && (
-          <div className="text-cyan-400">🎯 Zero tunneling guaranteed</div>
+        {debugInfo.gravityActive && (
+          <div className="text-red-400">🌍 Gravity pulling ball down</div>
         )}
         Press 'TAB' to toggle this overlay
       </div>

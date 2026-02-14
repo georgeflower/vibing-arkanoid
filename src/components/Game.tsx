@@ -3024,13 +3024,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const minBrickDimension = Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT);
     const substeps = Math.max(2, Math.ceil((maxBallSpeed * speedMultiplier) / (minBrickDimension * 0.15)));
 
+    // Gravity info
+    const now = performance.now();
+    const firstBall = balls[0];
+    const timeSincePaddle = now - (firstBall?.lastPaddleHitTime ?? now);
+    const gravityActive = timeSincePaddle > GRAVITY_DELAY_MS;
+    const gravityTimeLeft = gravityActive ? 0 : Math.max(0, (GRAVITY_DELAY_MS - timeSincePaddle) / 1000);
+
     return {
       substeps,
       ballSpeed: maxBallSpeed * speedMultiplier,
       ballCount: balls.length,
       maxSpeed: maxBallSpeed,
-      collisionsPerFrame: 0, // Will be updated by CCD results
-      toiIterations: 0, // Will be updated by CCD results
+      collisionsPerFrame: 0,
+      toiIterations: 0,
+      gravityActive,
+      gravityTimeLeft,
+      ballDy: firstBall ? firstBall.dy : 0,
+      totalSpeed: firstBall ? Math.sqrt(firstBall.dx * firstBall.dx + firstBall.dy * firstBall.dy) * speedMultiplier : 0,
     };
   }, [SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT]);
 
