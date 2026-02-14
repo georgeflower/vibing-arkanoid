@@ -439,7 +439,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
   }, []);
   const [bossDefeatedTransitioning, setBossDefeatedTransitioning] = useState(false);
-  const bossDefeatedTransitioningRef = useRef(false);
+   const bossDefeatedTransitioningRef = useRef(false);
+   const hasAutoFullscreenedRef = useRef(false);
   useEffect(() => {
     bossDefeatedTransitioningRef.current = bossDefeatedTransitioning;
   }, [bossDefeatedTransitioning]);
@@ -8586,6 +8587,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   };
 
   const handleEndScreenReturnToMenu = () => {
+    hasAutoFullscreenedRef.current = false;
     soundManager.stopHighScoreMusic();
     soundManager.stopBossMusic();
     soundManager.stopBackgroundMusic();
@@ -8603,6 +8605,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     } else {
       // If coming back from end screen, go to menu
       soundManager.stopHighScoreMusic();
+      hasAutoFullscreenedRef.current = false;
       onReturnToMenu();
     }
   };
@@ -8859,9 +8862,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       !isIOSDevice && 
       gameState === "ready" && 
       !isFullscreen && 
+      !hasAutoFullscreenedRef.current &&
       fullscreenContainerRef.current;
       
     if (shouldAutoFullscreen) {
+      hasAutoFullscreenedRef.current = true;
       // Small delay to ensure DOM is ready
       const timer = setTimeout(() => {
         toggleFullscreen();
@@ -9629,6 +9634,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                           </Button>
                           <Button
                             onClick={() => {
+                              hasAutoFullscreenedRef.current = false;
                               soundManager.stopBackgroundMusic();
                               soundManager.stopBossMusic();
                               soundManager.playMenuClick();
