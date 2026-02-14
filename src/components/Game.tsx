@@ -9206,19 +9206,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
                         <div
                           className="absolute pointer-events-none"
-                          style={{
-                            top: 0,
-                            left: 0,
-                            width: `${SCALED_CANVAS_WIDTH}px`,
-                            height: `${SCALED_CANVAS_HEIGHT}px`,
-                          }}
+                          style={{ inset: 0 }}
                         >
                           {bossStunnerEndTime && Date.now() < bossStunnerEndTime && (
                             <div
                               className="absolute retro-pixel-text"
                               style={{
-                                left: `${paddle.x + paddle.width / 2}px`,
-                                top: `${paddle.y - 45}px`,
+                                left: `${((paddle.x + paddle.width / 2) / SCALED_CANVAS_WIDTH) * 100}%`,
+                                top: `${((paddle.y - 45) / SCALED_CANVAS_HEIGHT) * 100}%`,
                                 transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                                 color: `hsl(${Math.max(0, 50 - (1 - (bossStunnerEndTime - Date.now()) / 5000) * 50)}, 100%, 50%)`,
                                 textShadow: `0 0 10px currentColor`,
@@ -9233,8 +9228,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             <div
                               className="absolute retro-pixel-text"
                               style={{
-                                left: `${paddle.x + paddle.width / 2}px`,
-                                top: `${paddle.y - 60}px`,
+                                left: `${((paddle.x + paddle.width / 2) / SCALED_CANVAS_WIDTH) * 100}%`,
+                                top: `${((paddle.y - 60) / SCALED_CANVAS_HEIGHT) * 100}%`,
                                 transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                                 color: `hsl(${Math.max(0, 50 - (1 - (reflectShieldEndTime - Date.now()) / 15000) * 50)}, 100%, 50%)`,
                                 textShadow: `0 0 10px currentColor`,
@@ -9249,8 +9244,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             <div
                               className="absolute retro-pixel-text"
                               style={{
-                                left: `${paddle.x + paddle.width / 2}px`,
-                                top: `${paddle.y - 75}px`,
+                                left: `${((paddle.x + paddle.width / 2) / SCALED_CANVAS_WIDTH) * 100}%`,
+                                top: `${((paddle.y - 75) / SCALED_CANVAS_HEIGHT) * 100}%`,
                                 transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                                 color: `hsl(${Math.max(0, 50 - (1 - (homingBallEndTime - Date.now()) / 8000) * 50)}, 100%, 50%)`,
                                 textShadow: `0 0 10px currentColor`,
@@ -9265,8 +9260,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             <div
                               className="absolute retro-pixel-text"
                               style={{
-                                left: `${paddle.x + paddle.width / 2}px`,
-                                top: `${paddle.y - 90}px`,
+                                left: `${((paddle.x + paddle.width / 2) / SCALED_CANVAS_WIDTH) * 100}%`,
+                                top: `${((paddle.y - 90) / SCALED_CANVAS_HEIGHT) * 100}%`,
                                 transform: `translateX(-50%) scale(${1 + Math.sin(Date.now() * 0.01 * 4) * 0.1})`,
                                 color: `hsl(${Math.max(0, 30 - (1 - (fireballEndTime - Date.now()) / FIREBALL_DURATION) * 30)}, 100%, 50%)`,
                                 textShadow: `0 0 10px currentColor`,
@@ -9302,8 +9297,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             <div
                               className="absolute retro-pixel-text text-center whitespace-nowrap"
                               style={{
-                                left: `${letter.x + letter.width / 2}px`,
-                                top: `${letter.y - 35}px`,
+                                left: `${((letter.x + letter.width / 2) / SCALED_CANVAS_WIDTH) * 100}%`,
+                                top: `${((letter.y - 35) / SCALED_CANVAS_HEIGHT) * 100}%`,
                                 transform: `translateX(-50%) scale(${zoomScale})`,
                                 color: "hsl(48, 100%, 60%)",
                                 textShadow: "0 0 10px hsl(48, 100%, 60%), 0 0 20px hsl(48, 100%, 50%)",
