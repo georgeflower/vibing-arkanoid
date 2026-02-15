@@ -1399,17 +1399,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setBossesKilled((k) => k + 1);
         setBossActive(false);
         setBossDefeatedTransitioning(true);
-        setBossVictoryOverlayActive(true); // Show victory celebration
         // Clean up game entities
         setBalls([]);
         clearAllEnemies();
         setBossAttacks([]);
         clearAllBombs();
         setBullets([]);
-        // Stop boss music and resume background music
-        soundManager.stopBossMusic();
-        soundManager.resumeBackgroundMusic();
-        setTimeout(() => nextLevel(), 3000);
+
+        // Boss Rush mode: show stats overlay instead of immediate transition
+        if (isBossRush) {
+          gameLoopRef.current?.pause();
+          setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
+          setBossRushStatsOverlayActive(true);
+        } else {
+          setBossVictoryOverlayActive(true);
+          soundManager.stopBossMusic();
+          soundManager.resumeBackgroundMusic();
+          setTimeout(() => nextLevel(), 3000);
+        }
       } else if (bossType === "sphere") {
         // Sphere phase 2 defeat
         soundManager.playExplosion();
@@ -1435,17 +1442,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setBossesKilled((k) => k + 1);
         setBossActive(false);
         setBossDefeatedTransitioning(true);
-        setBossVictoryOverlayActive(true); // Show victory celebration
         // Clean up game entities
         setBalls([]);
         clearAllEnemies();
         setBossAttacks([]);
         clearAllBombs();
         setBullets([]);
-        // Stop boss music and resume background music
-        soundManager.stopBossMusic();
-        soundManager.resumeBackgroundMusic();
-        setTimeout(() => nextLevel(), 3000);
+
+        // Boss Rush mode: show stats overlay instead of immediate transition
+        if (isBossRush) {
+          gameLoopRef.current?.pause();
+          setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
+          setBossRushStatsOverlayActive(true);
+        } else {
+          setBossVictoryOverlayActive(true);
+          soundManager.stopBossMusic();
+          soundManager.resumeBackgroundMusic();
+          setTimeout(() => nextLevel(), 3000);
+        }
       }
     },
     // Resurrected boss defeat callback
