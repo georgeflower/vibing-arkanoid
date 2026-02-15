@@ -184,6 +184,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // Boss Rush inter-boss stats tracking
   const [bossRushStatsOverlayActive, setBossRushStatsOverlayActive] = useState(false);
+  const statsOverlayJustClosedRef = useRef(0);
   const [bossRushTimeSnapshot, setBossRushTimeSnapshot] = useState<number | null>(null);
   // Per-boss stats (reset between bosses)
   const [bossRushLivesLostThisBoss, setBossRushLivesLostThisBoss] = useState(0);
@@ -2382,6 +2383,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, []); // Only run once on mount
   // Unified ball launch function - single source of truth for all launch paths
   const launchBallAtCurrentAngle = useCallback(() => {
+    // Block launch if stats overlay just closed (debounce)
+    if (Date.now() - statsOverlayJustClosedRef.current < 200) return;
     const balls = world.balls; // live read from engine state
     const waitingBall = balls.find((ball) => ball.waitingToLaunch);
     if (!waitingBall || gameState !== "playing") return;
@@ -9511,6 +9514,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                     }
                     livesRemaining={lives}
                     onContinue={() => {
+                      statsOverlayJustClosedRef.current = Date.now();
                       setBossRushStatsOverlayActive(false);
                       setBossRushTimeSnapshot(null); // Clear time snapshot
                       soundManager.stopBossMusic();
