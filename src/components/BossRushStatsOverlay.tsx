@@ -115,8 +115,10 @@ export const BossRushStatsOverlay = ({
     }
   }, [active]);
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((e: React.MouseEvent) => {
     if (canContinue) {
+      e.stopPropagation();
+      e.preventDefault();
       onContinue();
     }
   }, [canContinue, onContinue]);
@@ -127,6 +129,7 @@ export const BossRushStatsOverlay = ({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === " " || e.key === "Enter") {
+        e.stopPropagation();
         e.preventDefault();
         onContinue();
       }
@@ -139,7 +142,9 @@ export const BossRushStatsOverlay = ({
   useEffect(() => {
     if (!active || !canContinue) return;
 
-    const handlePointerDown = () => {
+    const handlePointerDown = (e: PointerEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
       onContinue();
     };
 
