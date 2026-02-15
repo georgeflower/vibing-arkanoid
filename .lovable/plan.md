@@ -1,65 +1,88 @@
 
-# Fix: Boss Rush Stats Overlay Not Appearing on Turret Boss Defeat
+
+# Fix: Boss Rush Stats Overlay Click Also Launches Ball
 
 ## Problem
 
-When defeating a boss with a turret shot in Boss Rush mode, the Boss Rush statistics overlay does not appear. Instead, the game shows the standard "BOSS DEFEATED!" victory overlay and advances to the next level after 3 seconds.
+When clicking "Continue" on the Boss Rush statistics overlay, the overlay dismisses and advances to the next boss, but the ball is also immediately launched. The user wants two separate actions: one click to dismiss the overlay, then a separate click to launch the ball.
 
 ## Root Cause
 
-The turret boss defeat callbacks for **Cube** and **Sphere** bosses (lines ~1400-1449 in Game.tsx) always execute the non-Boss-Rush path:
-- `setBossVictoryOverlayActive(true)` -- shows standard victory overlay
-- `setTimeout(() => nextLevel(), 3000)` -- advances after 3 seconds
+The `BossRushStatsOverlay` component registers a `window.addEventListener("pointerdown", ...)` handler that calls `onContinue()`. This triggers `nextLevel()`, which creates a new ball in `waitingToLaunch` state. However, the same pointerdown event propagates to the canvas click handler in Game.tsx, which detects the waiting ball and immediately calls `launchBallAtCurrentAngle()`.
 
-They never check `isBossRush` to conditionally show the Boss Rush stats overlay instead. The **Pyramid** (resurrected bosses) callback at line ~1504 already has the correct Boss Rush check, but Cube and Sphere do not.
-
-For comparison, the ball-based boss defeat paths (at lines ~3510, ~3585, ~3702) all correctly check `isBossRush` and show the stats overlay.
+The overlay's `handlePointerDown` does not call `stopPropagation()`, and there is no debounce mechanism to block ball launches immediately after the overlay closes.
 
 ## Solution
 
-Add the same `isBossRush` conditional to the Cube and Sphere turret defeat callbacks, matching the pattern already used by the Pyramid callback and the ball-based defeat paths.
+Two-part fix to reliably prevent the ball launch:
+
+### 1. BossRushStatsOverlay.tsx -- Stop event propagation
+
+In the `pointerdown` handler (line 142) and the `handleClick` (line 118), call `stopPropagation()` and `preventDefault()` to prevent the event from reaching the canvas click handler.
+
+### 2. Game.tsx -- Add a debounce ref
+
+Add a `statsOverlayJustClosedRef` (a timestamp ref) that is set in the `onContinue` callback. In `launchBallAtCurrentAngle`, check this ref and skip launch if fewer than 200ms have elapsed since the overlay closed. This guards against edge cases where `stopPropagation` alone may not suffice (e.g., Pointer Lock re-dispatching events).
 
 ## Technical Details
 
-### File: `src/components/Game.tsx`
+### File: `src/components/BossRushStatsOverlay.tsx`
 
-**1. Cube boss turret defeat (lines ~1400-1412)**
-
-Replace the unconditional victory overlay + `setTimeout` with a Boss Rush check:
-
+**pointerdown handler (line 142):**
 ```typescript
-setBossActive(false);
-setBossDefeatedTransitioning(true);
-// Clean up game entities
-setBalls([]);
-clearAllEnemies();
-setBossAttacks([]);
-clearAllBombs();
-setBullets([]);
-
-if (isBossRush) {
-  gameLoopRef.current?.pause();
-  setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
-  setBossRushStatsOverlayActive(true);
-} else {
-  setBossVictoryOverlayActive(true);
-  soundManager.stopBossMusic();
-  soundManager.resumeBackgroundMusic();
-  setTimeout(() => nextLevel(), 3000);
-}
+const handlePointerDown = (e: PointerEvent) => {
+  e.stopPropagation();
+  e.preventDefault();
+  onContinue();
+};
 ```
 
-**2. Sphere boss turret defeat (lines ~1436-1448)**
+**handleClick (line 118):**
+```typescript
+const handleClick = useCallback((e: React.MouseEvent) => {
+  if (canContinue) {
+    e.stopPropagation();
+    e.preventDefault();
+    onContinue();
+  }
+}, [canContinue, onContinue]);
+```
 
-Apply the same pattern as above.
+**keydown handler (line 128):**
+```typescript
+const handleKeyDown = (e: KeyboardEvent) => {
+  if (e.key === " " || e.key === "Enter") {
+    e.stopPropagation();
+    e.preventDefault();
+    onContinue();
+  }
+};
+```
 
-### Summary
+### File: `src/components/Game.tsx`
 
-| Boss Type | Ball defeat path | Turret defeat path (current) | Turret defeat path (fixed) |
-|-----------|-----------------|------------------------------|---------------------------|
-| Cube | Checks isBossRush | Always standard overlay | Checks isBossRush |
-| Sphere | Checks isBossRush | Always standard overlay | Checks isBossRush |
-| Pyramid | Checks isBossRush | Checks isBossRush | No change needed |
+**Add ref near other refs:**
+```typescript
+const statsOverlayJustClosedRef = useRef(0);
+```
+
+**In onContinue callback (line ~9513), set the ref:**
+```typescript
+onContinue={() => {
+  statsOverlayJustClosedRef.current = Date.now();
+  // ... existing code
+}}
+```
+
+**In launchBallAtCurrentAngle (line ~2384), add guard:**
+```typescript
+const launchBallAtCurrentAngle = useCallback(() => {
+  // Block launch if stats overlay just closed
+  if (Date.now() - statsOverlayJustClosedRef.current < 200) return;
+  // ... existing code
+});
+```
 
 ### Files changed
-- **`src/components/Game.tsx`** -- Add `isBossRush` conditionals to Cube and Sphere turret defeat callbacks
+- `src/components/BossRushStatsOverlay.tsx` -- Add stopPropagation/preventDefault to all event handlers
+- `src/components/Game.tsx` -- Add debounce ref to block ball launch immediately after overlay closes
