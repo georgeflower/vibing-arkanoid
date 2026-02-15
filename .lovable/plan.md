@@ -1,59 +1,65 @@
 
-
-# Fix: Overlay Positioning for Power-Up Timers and Bonus Letter Text
+# Fix: Boss Rush Stats Overlay Not Appearing on Turret Boss Defeat
 
 ## Problem
 
-After the canvas resize migration, the power-up timer overlays (STUN, REFLECT, MAGNET, FIREBALL) and the bonus letter tutorial text are misaligned -- shifted left and too high relative to the paddle/letters.
+When defeating a boss with a turret shot in Boss Rush mode, the Boss Rush statistics overlay does not appear. Instead, the game shows the standard "BOSS DEFEATED!" victory overlay and advances to the next level after 3 seconds.
 
-**Root cause**: The overlays use absolute pixel positions in the logical coordinate system (`SCALED_CANVAS_WIDTH/HEIGHT` space, e.g. 800x600), but the game-glow container is resized by `useCanvasResize` to display dimensions (e.g. 700x500). The canvas visually scales down via CSS `max-width`/`max-height` + `width: auto !important`, but the overlay divs still use raw pixel values from the logical space, creating a mismatch.
+## Root Cause
+
+The turret boss defeat callbacks for **Cube** and **Sphere** bosses (lines ~1400-1449 in Game.tsx) always execute the non-Boss-Rush path:
+- `setBossVictoryOverlayActive(true)` -- shows standard victory overlay
+- `setTimeout(() => nextLevel(), 3000)` -- advances after 3 seconds
+
+They never check `isBossRush` to conditionally show the Boss Rush stats overlay instead. The **Pyramid** (resurrected bosses) callback at line ~1504 already has the correct Boss Rush check, but Cube and Sphere do not.
+
+For comparison, the ball-based boss defeat paths (at lines ~3510, ~3585, ~3702) all correctly check `isBossRush` and show the stats overlay.
 
 ## Solution
 
-Convert the overlay positioning from pixel-based logical coordinates to percentage-based coordinates. Since the overlay container uses `inset: 0` (filling game-glow), percentages will automatically scale correctly regardless of the display size.
+Add the same `isBossRush` conditional to the Cube and Sphere turret defeat callbacks, matching the pattern already used by the Pyramid callback and the ball-based defeat paths.
 
-## Changes
+## Technical Details
 
 ### File: `src/components/Game.tsx`
 
-**1. Power-Up Timer Overlay (lines ~9207-9280)**
+**1. Cube boss turret defeat (lines ~1400-1412)**
 
-Change the wrapper div from fixed pixel dimensions to `inset: 0`, and convert each timer's `left`/`top` from pixel values to percentages:
+Replace the unconditional victory overlay + `setTimeout` with a Boss Rush check:
 
-```text
-Before:  left: `${paddle.x + paddle.width / 2}px`
-         top: `${paddle.y - 45}px`
+```typescript
+setBossActive(false);
+setBossDefeatedTransitioning(true);
+// Clean up game entities
+setBalls([]);
+clearAllEnemies();
+setBossAttacks([]);
+clearAllBombs();
+setBullets([]);
 
-After:   left: `${((paddle.x + paddle.width / 2) / SCALED_CANVAS_WIDTH) * 100}%`
-         top: `${((paddle.y - 45) / SCALED_CANVAS_HEIGHT) * 100}%`
+if (isBossRush) {
+  gameLoopRef.current?.pause();
+  setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
+  setBossRushStatsOverlayActive(true);
+} else {
+  setBossVictoryOverlayActive(true);
+  soundManager.stopBossMusic();
+  soundManager.resumeBackgroundMusic();
+  setTimeout(() => nextLevel(), 3000);
+}
 ```
 
-Apply the same conversion for all four timers (STUN at -45, REFLECT at -60, MAGNET at -75, FIREBALL at -90).
+**2. Sphere boss turret defeat (lines ~1436-1448)**
 
-**2. Bonus Letter Tutorial Text (lines ~9284-9320)**
+Apply the same pattern as above.
 
-Convert the bonus letter text overlay positioning from pixels to percentages:
+### Summary
 
-```text
-Before:  left: `${letter.x + letter.width / 2}px`
-         top: `${letter.y - 35}px`
+| Boss Type | Ball defeat path | Turret defeat path (current) | Turret defeat path (fixed) |
+|-----------|-----------------|------------------------------|---------------------------|
+| Cube | Checks isBossRush | Always standard overlay | Checks isBossRush |
+| Sphere | Checks isBossRush | Always standard overlay | Checks isBossRush |
+| Pyramid | Checks isBossRush | Checks isBossRush | No change needed |
 
-After:   left: `${((letter.x + letter.width / 2) / SCALED_CANVAS_WIDTH) * 100}%`
-         top: `${((letter.y - 35) / SCALED_CANVAS_HEIGHT) * 100}%`
-```
-
-### Summary of coordinate conversions
-
-| Element | Property | Before (px) | After (%) |
-|---------|----------|-------------|-----------|
-| Timer wrapper | dimensions | explicit w/h | `inset: 0` |
-| STUN | top | `paddle.y - 45` | `((paddle.y - 45) / SCALED_CANVAS_HEIGHT) * 100` |
-| REFLECT | top | `paddle.y - 60` | `((paddle.y - 60) / SCALED_CANVAS_HEIGHT) * 100` |
-| MAGNET | top | `paddle.y - 75` | `((paddle.y - 75) / SCALED_CANVAS_HEIGHT) * 100` |
-| FIREBALL | top | `paddle.y - 90` | `((paddle.y - 90) / SCALED_CANVAS_HEIGHT) * 100` |
-| All timers | left | `paddle.x + paddle.width/2` | `((paddle.x + paddle.width/2) / SCALED_CANVAS_WIDTH) * 100` |
-| Bonus text | left | `letter.x + letter.width/2` | `((letter.x + letter.width/2) / SCALED_CANVAS_WIDTH) * 100` |
-| Bonus text | top | `letter.y - 35` | `((letter.y - 35) / SCALED_CANVAS_HEIGHT) * 100` |
-
-This approach ensures the overlays align with the canvas content regardless of how the container is scaled or resized.
-
+### Files changed
+- **`src/components/Game.tsx`** -- Add `isBossRush` conditionals to Cube and Sphere turret defeat callbacks
