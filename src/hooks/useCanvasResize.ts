@@ -1,5 +1,4 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { MAX_DISPLAY_WIDTH, MAX_DISPLAY_HEIGHT } from "@/constants/game";
 
 interface CanvasResizeOptions {
   enabled: boolean;
@@ -66,16 +65,6 @@ export function useCanvasResize({
       displayWidth = availableWidth;
       displayHeight = displayWidth / aspectRatio;
     }
-
-    // Cap display size so it never exceeds what a 1920x1200 monitor would show
-    const maxW = MAX_DISPLAY_WIDTH - 16;
-    const maxH = MAX_DISPLAY_HEIGHT - 16;
-    const maxAspectFit = (maxW / maxH > aspectRatio)
-      ? { w: maxH * aspectRatio, h: maxH }
-      : { w: maxW, h: maxW / aspectRatio };
-
-    displayWidth = Math.min(displayWidth, maxAspectFit.w);
-    displayHeight = Math.min(displayHeight, maxAspectFit.h);
 
     const scale = displayWidth / logicalWidth;
 
