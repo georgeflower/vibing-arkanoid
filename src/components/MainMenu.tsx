@@ -21,7 +21,7 @@ import { TopScoresDisplay } from "./TopScoresDisplay";
 import { X, ChevronUp, ChevronDown } from "lucide-react";
 import { useTutorial } from "@/hooks/useTutorial";
 import { useLevelProgress } from "@/hooks/useLevelProgress";
-import { FINAL_LEVEL, ENABLE_DEBUG_FEATURES } from "@/constants/game";
+import { FINAL_LEVEL, ENABLE_DEBUG_FEATURES, ENABLE_HIGH_QUALITY } from "@/constants/game";
 import { BOSS_RUSH_CONFIG } from "@/constants/bossRushConfig";
 
 interface MainMenuProps {
@@ -55,7 +55,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   // Use adaptive quality hook for CRT effects
   const { quality, qualitySettings } = useAdaptiveQuality({
-    initialQuality: "high",
+    initialQuality: ENABLE_HIGH_QUALITY ? "high" : "medium",
     autoAdjust: false,
   });
 

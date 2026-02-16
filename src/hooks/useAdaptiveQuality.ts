@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { debugToast as toast } from '@/utils/debugToast';
+import { ENABLE_HIGH_QUALITY } from '@/constants/game';
 
 export type QualityLevel = 'low' | 'medium' | 'high';
 
@@ -62,7 +63,7 @@ interface PerformanceLogEntry {
 
 export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
   const {
-    initialQuality = 'high',
+    initialQuality = ENABLE_HIGH_QUALITY ? 'high' : 'medium',
     autoAdjust = true,
     lowFpsThreshold = 45,
     mediumFpsThreshold = 52,
@@ -154,8 +155,8 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
       // If locked to low, don't upgrade to medium
       targetQuality = lockedToLow ? 'low' : 'medium';
     } else if (avgFps >= highFpsThreshold) {
-      // If locked to low, don't upgrade to high
-      targetQuality = lockedToLow ? 'low' : 'high';
+      // If locked to low, don't upgrade; cap to medium when high quality is disabled
+      targetQuality = lockedToLow ? 'low' : (ENABLE_HIGH_QUALITY ? 'high' : 'medium');
     }
 
     // Only adjust if quality level changes
@@ -195,10 +196,11 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
 
   // Manual quality change
   const setManualQuality = useCallback((newQuality: QualityLevel) => {
-    setQuality(newQuality);
+    const capped = (!ENABLE_HIGH_QUALITY && newQuality === 'high') ? 'medium' : newQuality;
+    setQuality(capped);
     fpsHistoryRef.current = [];
     lastAdjustmentTimeRef.current = performance.now();
-    toast.success(`Quality set to ${newQuality}`);
+    toast.success(`Quality set to ${capped}`);
   }, []);
 
   // Toggle auto-adjust
@@ -214,7 +216,7 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
   const resetQualityLockout = useCallback(() => {
     lowQualityDropCountRef.current = 0;
     setLockedToLow(false);
-    setQuality(initialQuality);
+    setQuality(ENABLE_HIGH_QUALITY ? initialQuality : 'medium');
     fpsHistoryRef.current = [];
   }, [initialQuality]);
 

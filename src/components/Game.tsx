@@ -90,6 +90,7 @@ import {
   FIREBALL_DURATION,
   ENABLE_DEBUG_FEATURES,
   PHYSICS_CONFIG,
+  ENABLE_HIGH_QUALITY,
 } from "@/constants/game";
 import { useTutorial } from "@/hooks/useTutorial";
 import { TutorialOverlay } from "./TutorialOverlay";
@@ -1595,7 +1596,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Adaptive quality system
   const { quality, qualitySettings, updateFps, setQuality, toggleAutoAdjust, autoAdjustEnabled, resetQualityLockout } =
     useAdaptiveQuality({
-      initialQuality: "high",
+      initialQuality: ENABLE_HIGH_QUALITY ? "high" : "medium",
       autoAdjust: true,
       lowFpsThreshold: 50,
       mediumFpsThreshold: 55,
