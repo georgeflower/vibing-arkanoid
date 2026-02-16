@@ -1,88 +1,53 @@
 
 
-# Fix: Boss Rush Stats Overlay Click Also Launches Ball
+# Remove Shadow Effects: Cap Quality to Medium
 
-## Problem
+## Overview
 
-When clicking "Continue" on the Boss Rush statistics overlay, the overlay dismisses and advances to the next boss, but the ball is also immediately launched. The user wants two separate actions: one click to dismiss the overlay, then a separate click to launch the ball.
+Make "medium" the maximum quality level by default, disabling the high-quality shadow/glow effects on enemies and bosses. Add a single constant toggle so high quality can be easily re-enabled later.
 
-## Root Cause
+## Changes
 
-The `BossRushStatsOverlay` component registers a `window.addEventListener("pointerdown", ...)` handler that calls `onContinue()`. This triggers `nextLevel()`, which creates a new ball in `waitingToLaunch` state. However, the same pointerdown event propagates to the canvas click handler in Game.tsx, which detects the waiting ball and immediately calls `launchBallAtCurrentAngle()`.
+### 1. Add constant in `src/constants/game.ts`
 
-The overlay's `handlePointerDown` does not call `stopPropagation()`, and there is no debounce mechanism to block ball launches immediately after the overlay closes.
+Add a new flag:
 
-## Solution
+```typescript
+// Set to true to re-enable high quality rendering (glow, extra shadows)
+export const ENABLE_HIGH_QUALITY = false;
+```
 
-Two-part fix to reliably prevent the ball launch:
+### 2. Cap quality in `src/hooks/useAdaptiveQuality.ts`
 
-### 1. BossRushStatsOverlay.tsx -- Stop event propagation
+- Import `ENABLE_HIGH_QUALITY` from the constants file
+- Change default `initialQuality` from `'high'` to `ENABLE_HIGH_QUALITY ? 'high' : 'medium'`
+- In the `updateFps` auto-adjust logic, cap `targetQuality` so it never exceeds `'medium'` when `ENABLE_HIGH_QUALITY` is false
+- In `setManualQuality`, clamp to `'medium'` when the flag is off
+- In `resetQualityLockout`, reset to capped initial quality
 
-In the `pointerdown` handler (line 142) and the `handleClick` (line 118), call `stopPropagation()` and `preventDefault()` to prevent the event from reaching the canvas click handler.
+This approach is clean because all glow/shadow checks in `GameCanvas.tsx` already use `qualitySettings.glowEnabled`, which is `false` for medium quality. No changes needed in `GameCanvas.tsx` or any rendering code.
 
-### 2. Game.tsx -- Add a debounce ref
+### 3. Cap quality in call sites
 
-Add a `statsOverlayJustClosedRef` (a timestamp ref) that is set in the `onContinue` callback. In `launchBallAtCurrentAngle`, check this ref and skip launch if fewer than 200ms have elapsed since the overlay closed. This guards against edge cases where `stopPropagation` alone may not suffice (e.g., Pointer Lock re-dispatching events).
+- `src/components/Game.tsx` line 1598: Change `initialQuality: "high"` to `initialQuality: ENABLE_HIGH_QUALITY ? "high" : "medium"`
+- `src/components/MainMenu.tsx` line 58: Same change
 
 ## Technical Details
 
-### File: `src/components/BossRushStatsOverlay.tsx`
+### Why this works without touching rendering code
 
-**pointerdown handler (line 142):**
-```typescript
-const handlePointerDown = (e: PointerEvent) => {
-  e.stopPropagation();
-  e.preventDefault();
-  onContinue();
-};
-```
+The `QUALITY_PRESETS` already define:
+- **medium**: `glowEnabled: false`, `shadowsEnabled: true`
+- **high**: `glowEnabled: true`, `shadowsEnabled: true`
 
-**handleClick (line 118):**
-```typescript
-const handleClick = useCallback((e: React.MouseEvent) => {
-  if (canContinue) {
-    e.stopPropagation();
-    e.preventDefault();
-    onContinue();
-  }
-}, [canContinue, onContinue]);
-```
+All boss/enemy shadow effects in `GameCanvas.tsx` are gated behind `qualitySettings.glowEnabled`. By capping the quality level to `medium`, `glowEnabled` will always be `false`, which disables all the extra shadow/glow rendering on bosses, enemies, particles, and boss attacks.
 
-**keydown handler (line 128):**
-```typescript
-const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.key === " " || e.key === "Enter") {
-    e.stopPropagation();
-    e.preventDefault();
-    onContinue();
-  }
-};
-```
+### Re-enabling high quality
 
-### File: `src/components/Game.tsx`
-
-**Add ref near other refs:**
-```typescript
-const statsOverlayJustClosedRef = useRef(0);
-```
-
-**In onContinue callback (line ~9513), set the ref:**
-```typescript
-onContinue={() => {
-  statsOverlayJustClosedRef.current = Date.now();
-  // ... existing code
-}}
-```
-
-**In launchBallAtCurrentAngle (line ~2384), add guard:**
-```typescript
-const launchBallAtCurrentAngle = useCallback(() => {
-  // Block launch if stats overlay just closed
-  if (Date.now() - statsOverlayJustClosedRef.current < 200) return;
-  // ... existing code
-});
-```
+Simply set `ENABLE_HIGH_QUALITY = true` in `src/constants/game.ts`. No other changes needed.
 
 ### Files changed
-- `src/components/BossRushStatsOverlay.tsx` -- Add stopPropagation/preventDefault to all event handlers
-- `src/components/Game.tsx` -- Add debounce ref to block ball launch immediately after overlay closes
+- `src/constants/game.ts` -- Add `ENABLE_HIGH_QUALITY` constant
+- `src/hooks/useAdaptiveQuality.ts` -- Import constant, cap quality level
+- `src/components/Game.tsx` -- Use capped initial quality
+- `src/components/MainMenu.tsx` -- Use capped initial quality
