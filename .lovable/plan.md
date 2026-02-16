@@ -1,53 +1,50 @@
 
 
-# Remove Shadow Effects: Cap Quality to Medium
+# Cap Game Display Size to 1920x1200 Maximum
 
-## Overview
+## Problem
 
-Make "medium" the maximum quality level by default, disabling the high-quality shadow/glow effects on enemies and bosses. Add a single constant toggle so high quality can be easily re-enabled later.
+On monitors with resolutions higher than 1920x1200, the game scales up beyond what it would look like on a 1920x1200 display. This causes the game to appear overly zoomed in, making it look worse.
 
-## Changes
+## Solution
 
-### 1. Add constant in `src/constants/game.ts`
-
-Add a new flag:
-
-```typescript
-// Set to true to re-enable high quality rendering (glow, extra shadows)
-export const ENABLE_HIGH_QUALITY = false;
-```
-
-### 2. Cap quality in `src/hooks/useAdaptiveQuality.ts`
-
-- Import `ENABLE_HIGH_QUALITY` from the constants file
-- Change default `initialQuality` from `'high'` to `ENABLE_HIGH_QUALITY ? 'high' : 'medium'`
-- In the `updateFps` auto-adjust logic, cap `targetQuality` so it never exceeds `'medium'` when `ENABLE_HIGH_QUALITY` is false
-- In `setManualQuality`, clamp to `'medium'` when the flag is off
-- In `resetQualityLockout`, reset to capped initial quality
-
-This approach is clean because all glow/shadow checks in `GameCanvas.tsx` already use `qualitySettings.glowEnabled`, which is `false` for medium quality. No changes needed in `GameCanvas.tsx` or any rendering code.
-
-### 3. Cap quality in call sites
-
-- `src/components/Game.tsx` line 1598: Change `initialQuality: "high"` to `initialQuality: ENABLE_HIGH_QUALITY ? "high" : "medium"`
-- `src/components/MainMenu.tsx` line 58: Same change
+Add a maximum display size constant and clamp the calculated dimensions in `useCanvasResize` so the game never renders larger than it would on a 1920x1200 screen.
 
 ## Technical Details
 
-### Why this works without touching rendering code
+### 1. Add constants in `src/constants/game.ts`
 
-The `QUALITY_PRESETS` already define:
-- **medium**: `glowEnabled: false`, `shadowsEnabled: true`
-- **high**: `glowEnabled: true`, `shadowsEnabled: true`
+```typescript
+// Maximum display resolution cap - game won't scale beyond this
+export const MAX_DISPLAY_WIDTH = 1920;
+export const MAX_DISPLAY_HEIGHT = 1200;
+```
 
-All boss/enemy shadow effects in `GameCanvas.tsx` are gated behind `qualitySettings.glowEnabled`. By capping the quality level to `medium`, `glowEnabled` will always be `false`, which disables all the extra shadow/glow rendering on bosses, enemies, particles, and boss attacks.
+### 2. Clamp display dimensions in `src/hooks/useCanvasResize.ts`
 
-### Re-enabling high quality
+After calculating `displayWidth` and `displayHeight` (the aspect-ratio-preserving fit), clamp both to the maximum values. Since the aspect ratio is maintained, we calculate what the display size would be on a 1920x1200 screen (accounting for padding and side panels) and cap at that.
 
-Simply set `ENABLE_HIGH_QUALITY = true` in `src/constants/game.ts`. No other changes needed.
+The key change is after line 67, before the scale calculation:
+
+```typescript
+// Cap display size so it never exceeds what a 1920x1200 monitor would show
+const maxW = MAX_DISPLAY_WIDTH - 16;   // same padding deduction
+const maxH = MAX_DISPLAY_HEIGHT - 16;
+const maxAspectFit = (maxW / maxH > aspectRatio)
+  ? { w: maxH * aspectRatio, h: maxH }
+  : { w: maxW, h: maxW / aspectRatio };
+
+displayWidth = Math.min(displayWidth, maxAspectFit.w);
+displayHeight = Math.min(displayHeight, maxAspectFit.h);
+```
+
+This ensures:
+- On screens at or below 1920x1200, behavior is unchanged (the available space is already smaller)
+- On larger screens, the game caps at the size it would have been on a 1920x1200 display
+- Aspect ratio is always preserved
+- Works in both windowed and fullscreen mode since both use the same hook
 
 ### Files changed
-- `src/constants/game.ts` -- Add `ENABLE_HIGH_QUALITY` constant
-- `src/hooks/useAdaptiveQuality.ts` -- Import constant, cap quality level
-- `src/components/Game.tsx` -- Use capped initial quality
-- `src/components/MainMenu.tsx` -- Use capped initial quality
+- `src/constants/game.ts` -- Add `MAX_DISPLAY_WIDTH` and `MAX_DISPLAY_HEIGHT` constants
+- `src/hooks/useCanvasResize.ts` -- Import constants and clamp calculated dimensions
+
