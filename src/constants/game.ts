@@ -123,3 +123,7 @@ export const HOMING_MAX_TURN = 0.1; // Maximum turn rate per frame (radians)
 
 // Set to true to re-enable high quality rendering (glow, extra shadows)
 export const ENABLE_HIGH_QUALITY = false;
+
+// Maximum display resolution cap - game won't scale beyond this
+export const MAX_DISPLAY_WIDTH = 1920;
+export const MAX_DISPLAY_HEIGHT = 1200;
