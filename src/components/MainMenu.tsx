@@ -202,29 +202,26 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
           </h2>
 
           <div className="space-y-2 sm:space-y-3 text-white">
-            <div className="bg-gradient-to-r from-[hsl(0,85%,55%)]/20 to-[hsl(45,100%,50%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(0,85%,55%)]/50">
-              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(0,85%,55%)]">👹 MEGA BOSS - Level 20</h3>
+            <div className="bg-gradient-to-r from-[hsl(45,100%,50%)]/20 to-[hsl(30,100%,60%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(45,100%,50%)]/50">
+              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(45,100%,50%)]">⚡ Faster, Smoother Engine</h3>
               <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-xs">
                 <li>
-                  Ultimate final boss with{" "}
-                  <span className="text-[hsl(45,100%,50%)] font-bold">4 challenging phases</span>
+                  The entire game engine has been{" "}
+                  <span className="text-[hsl(45,100%,50%)] font-bold">rebuilt under the hood</span>
                 </li>
-                <li>Spawns protective orbs that shield the core</li>
-                <li>Captures and releases balls for unpredictable gameplay</li>
-                <li>Devastating super attack in final phase</li>
+                <li>All game objects (ball, paddle, bricks, bosses) now run in a dedicated high-speed engine</li>
+                <li>
+                  Result: <span className="text-[hsl(120,60%,50%)] font-bold">less lag, fewer frame drops, and more responsive controls</span>
+                </li>
+                <li>Heavy glow and shadow effects trimmed for consistently smooth gameplay</li>
               </ul>
             </div>
 
             <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(120,60%,50%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(120,60%,50%)]/50">
-              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(120,60%,50%)]">🛡️ Boss Rush mode!</h3>
+              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(120,60%,50%)]">🎯 Boss Rush Improvements</h3>
               <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-xs">
-                <li>
-                  Test your skills in <span className="text-[hsl(200,70%,50%)] font-bold">Boss Rush mode!</span>
-                </li>
-                <li>Defeat all 4 bosses in a row</li>
-                <li>
-                  Separate high score - <span className="text-[hsl(45,100%,50%)] font-bold">defeat the best time!</span>
-                </li>
+                <li>Stats screen now always appears after defeating a boss (including turret kills)</li>
+                <li>Ball no longer auto-launches when dismissing the results screen</li>
               </ul>
             </div>
           </div>

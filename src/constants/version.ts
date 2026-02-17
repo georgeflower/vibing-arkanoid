@@ -1,6 +1,29 @@
-export const GAME_VERSION = "0.9.7";
+export const GAME_VERSION = "0.9.91";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.91",
+    changes: [
+      "Performance boost: reduced heavy visual effects (glow and shadows) for smoother gameplay on all devices",
+      "Game engine overhaul: all game objects — ball, paddle, bricks, bosses, enemies — now run in a dedicated high-speed engine, separate from the user interface",
+      "This means fewer stutters, more consistent frame rates, and snappier controls, especially during intense boss fights and explosions",
+      "The paddle, ball, and everything on screen now updates at full speed without being slowed down by menu or HUD updates",
+    ],
+  },
+  {
+    version: "0.9.9",
+    changes: [
+      "Fixed: clicking 'Continue' on the Boss Rush results screen no longer accidentally launches the ball",
+      "You now get a proper moment to aim before sending the ball at the next boss",
+    ],
+  },
+  {
+    version: "0.9.8",
+    changes: [
+      "Fixed: Boss Rush results screen now correctly appears when you defeat a boss with turret shots",
+      "Previously, turret kills would skip the stats screen and jump straight to the next boss",
+    ],
+  },
   {
     version: "0.9.7",
     changes: [
