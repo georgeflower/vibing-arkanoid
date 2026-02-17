@@ -1,53 +1,48 @@
 
 
-# Remove Shadow Effects: Cap Quality to Medium
+# Update Changelog and What's New with Engine Migration Info
 
 ## Overview
 
-Make "medium" the maximum quality level by default, disabling the high-quality shadow/glow effects on enemies and bosses. Add a single constant toggle so high quality can be easily re-enabled later.
+Add player-friendly descriptions of the engine migration (game state moved out of React into a dedicated game engine) to the changelog entries and the What's New screen. The language should explain the *benefits* players experience, not the technical internals.
 
 ## Changes
 
-### 1. Add constant in `src/constants/game.ts`
+### 1. `src/constants/version.ts`
 
-Add a new flag:
+Add three new changelog entries before the existing v0.9.7 entry and update the version to `0.9.91`:
 
-```typescript
-// Set to true to re-enable high quality rendering (glow, extra shadows)
-export const ENABLE_HIGH_QUALITY = false;
-```
+**v0.9.91 -- Smoother Gameplay**
+- "Performance boost: reduced heavy visual effects (glow and shadows) for smoother gameplay on all devices"
+- "Game engine overhaul: game physics and entities now run in a dedicated high-speed engine, separate from the user interface"
+- "This means fewer stutters, more consistent frame rates, and snappier controls -- especially during intense boss fights and explosions"
+- "The paddle, ball, and all on-screen objects now update at full speed without being slowed down by screen updates"
 
-### 2. Cap quality in `src/hooks/useAdaptiveQuality.ts`
+**v0.9.9 -- Boss Rush Flow**
+- "Fixed: clicking 'Continue' on the Boss Rush results screen no longer accidentally launches the ball"
+- "You now get a proper moment to aim before sending the ball at the next boss"
 
-- Import `ENABLE_HIGH_QUALITY` from the constants file
-- Change default `initialQuality` from `'high'` to `ENABLE_HIGH_QUALITY ? 'high' : 'medium'`
-- In the `updateFps` auto-adjust logic, cap `targetQuality` so it never exceeds `'medium'` when `ENABLE_HIGH_QUALITY` is false
-- In `setManualQuality`, clamp to `'medium'` when the flag is off
-- In `resetQualityLockout`, reset to capped initial quality
+**v0.9.8 -- Boss Rush Stats Fix**
+- "Fixed: Boss Rush results screen now correctly appears when you defeat a boss with turret shots"
+- "Previously, turret kills would skip the stats screen and jump straight to the next boss"
 
-This approach is clean because all glow/shadow checks in `GameCanvas.tsx` already use `qualitySettings.glowEnabled`, which is `false` for medium quality. No changes needed in `GameCanvas.tsx` or any rendering code.
+### 2. `src/components/MainMenu.tsx` -- What's New screen
 
-### 3. Cap quality in call sites
+Replace the current What's New content (Mega Boss and Boss Rush from older versions) with updated content covering v0.9.8--v0.9.91:
 
-- `src/components/Game.tsx` line 1598: Change `initialQuality: "high"` to `initialQuality: ENABLE_HIGH_QUALITY ? "high" : "medium"`
-- `src/components/MainMenu.tsx` line 58: Same change
+**Section 1: "Faster, Smoother Engine" (highlight color)**
+- The entire game engine has been rebuilt under the hood
+- All game objects (ball, paddle, bricks, enemies, bosses) now run in a dedicated high-speed engine
+- Result: less lag, fewer frame drops, and more responsive controls
+- Heavy glow and shadow effects trimmed for consistently smooth gameplay
 
-## Technical Details
+**Section 2: "Boss Rush Improvements" (secondary color)**
+- Stats screen now always appears after defeating a boss (including turret kills)
+- Ball no longer auto-launches when dismissing the results screen
 
-### Why this works without touching rendering code
-
-The `QUALITY_PRESETS` already define:
-- **medium**: `glowEnabled: false`, `shadowsEnabled: true`
-- **high**: `glowEnabled: true`, `shadowsEnabled: true`
-
-All boss/enemy shadow effects in `GameCanvas.tsx` are gated behind `qualitySettings.glowEnabled`. By capping the quality level to `medium`, `glowEnabled` will always be `false`, which disables all the extra shadow/glow rendering on bosses, enemies, particles, and boss attacks.
-
-### Re-enabling high quality
-
-Simply set `ENABLE_HIGH_QUALITY = true` in `src/constants/game.ts`. No other changes needed.
+Keep the existing "View Full Changelog" and "Back to Menu" buttons unchanged.
 
 ### Files changed
-- `src/constants/game.ts` -- Add `ENABLE_HIGH_QUALITY` constant
-- `src/hooks/useAdaptiveQuality.ts` -- Import constant, cap quality level
-- `src/components/Game.tsx` -- Use capped initial quality
-- `src/components/MainMenu.tsx` -- Use capped initial quality
+- `src/constants/version.ts` -- Update version to 0.9.91, add 3 new changelog entries
+- `src/components/MainMenu.tsx` -- Refresh What's New screen content
+
