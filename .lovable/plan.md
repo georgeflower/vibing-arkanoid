@@ -1,105 +1,63 @@
 
 
-# Pool Explosion Objects and Clean Up Dead Particle Code
+# Add Pool/Cache Performance Overlay
 
-## Problem
+## Overview
 
-While particles are already fully pooled via `particlePool`, two allocation sources remain:
+Create a new `PoolStatsOverlay` component that displays real-time statistics for entity pools, spatial hash usage, brick cache rebuilds, and particle pool -- all behind the existing debug flag system.
 
-1. **Explosion objects**: Every enemy/boss defeat creates a new `Explosion` object literal (`{ x, y, frame: 0, maxFrames: 30, enemyType, particles: [] }`) and pushes it into `world.explosions` with array spread. During intense fights with many enemies, this creates garbage for every kill.
+## Changes
 
-2. **Dead code**: `createHighScoreParticles` (lines 1669-1696) manually allocates `Particle[]` arrays but is never called -- the pool's `acquireForHighScore` replaced it. The refs `gameOverParticlesRef` and `highScoreParticlesRef` are also unused since particles moved to the pool.
+### 1. Add `showPoolStats` to Debug Settings
 
-## Solution
+**File: `src/hooks/useDebugSettings.ts`**
+- Add `showPoolStats: boolean` to the `DebugSettings` interface
+- Default to `false`
 
-### 1. Explosion Object Pool
+### 2. Create `PoolStatsOverlay` Component
 
-Create a small pool for `Explosion` objects using the existing `EntityPool` pattern:
+**File: `src/components/PoolStatsOverlay.tsx`** (new)
 
-- Factory creates empty Explosion objects
-- Reset function zeros out frame/position
-- Max 30 active explosions (generous -- typically < 10 concurrent)
-- Replace all `setExplosions(e => [...e, { x, y, ... }])` calls with `explosionPool.acquire({ x, y, ... })`
-- Replace the per-frame `setExplosions` update loop with in-place mutation of pooled explosions
-- On `setExplosions([])` calls (level reset, game over), call `explosionPool.releaseAll()`
+A polling overlay (updates every 200ms) that reads from existing stats APIs:
 
-### 2. Remove Dead Code
+| Section | Data Source | Metrics Shown |
+|---------|-----------|---------------|
+| Entity Pools | `getAllPoolStats()` | Active / pooled count per pool (powerUps, bullets, bombs, enemies, bonusLetters, explosions) |
+| Particle Pool | `particlePool.getStats()` | Active / pooled / total |
+| Spatial Hash | `brickSpatialHash.getStats()` | Occupied cells, total objects, avg objects/cell |
+| Brick Cache | `brickRenderer.getStats()` | Cache version (= rebuild count), dimensions, ready status |
 
-- Delete `createHighScoreParticles` callback (unused)
-- Delete `gameOverParticlesRef` and `highScoreParticlesRef` refs (unused since pool migration)
-- Delete `particleRenderTick` state (no longer needed)
+Styled to match existing overlays (black/80 bg, cyan accent, mono font, fixed position). Positioned at bottom-left to avoid overlap with other debug overlays that use top-left/top-right.
+
+Color coding:
+- Pool utilization > 80%: red
+- Pool utilization > 50%: yellow  
+- Otherwise: green
+
+### 3. Add Toggle to Debug Dashboard
+
+**File: `src/components/DebugDashboard.tsx`**
+- Add a `DebugToggle` for "Pool Stats" in the Visual Overlays section
+
+### 4. Render Overlay in Game
+
+**File: `src/components/Game.tsx`**
+- Import `PoolStatsOverlay`
+- Render it inside the debug overlays block, gated by `debugSettings.showPoolStats`
 
 ## Technical Details
 
-### Explosion Pool (in `src/utils/entityPool.ts`)
-
-```text
-export const explosionPool = new EntityPool<Explosion & { id: number }>(
-  () => ({ id: 0, x: 0, y: 0, frame: 0, maxFrames: 30,
-           enemyType: undefined, particles: [] }),
-  (e) => { e.frame = 0; e.maxFrames = 30; e.enemyType = undefined; },
-  10, 30
-);
-```
-
-### Usage Pattern Change
-
-Before (allocates new object + array spread):
-```text
-setExplosions(e => [...e, {
-  x: pos.x, y: pos.y, frame: 0,
-  maxFrames: 30, enemyType: "cube", particles: []
-}]);
-```
-
-After (reuses pooled object):
-```text
-explosionPool.acquire({
-  id: getNextExplosionId(),
-  x: pos.x, y: pos.y, frame: 0,
-  maxFrames: 30, enemyType: "cube", particles: []
-});
-world.explosions = explosionPool.getActive();
-```
-
-### Per-Frame Update Change
-
-Before (splice + spread):
-```text
-setExplosions(prev => {
-  for (let i = prev.length - 1; i >= 0; i--) {
-    prev[i].frame += 1;
-    if (prev[i].frame >= prev[i].maxFrames) prev.splice(i, 1);
-  }
-  return prev.length > 0 ? [...prev] : [];
-});
-```
-
-After (in-place, release expired):
-```text
-const active = explosionPool.getActive();
-for (let i = active.length - 1; i >= 0; i--) {
-  active[i].frame += 1;
-  if (active[i].frame >= active[i].maxFrames) {
-    explosionPool.release(active[i]);
-  }
-}
-world.explosions = explosionPool.getActive();
-```
+- All data sources already expose `.getStats()` methods -- no new instrumentation needed
+- The overlay uses `setInterval(200ms)` like existing overlays to avoid per-frame React re-renders
+- No per-frame allocations: stats objects are small and only created on the 200ms polling interval
+- The brick cache `version` field increments on every rebuild, so displaying it over time shows rebuild frequency
 
 ## Files Changed
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/utils/entityPool.ts` | Edit | Add `explosionPool`, `getNextExplosionId()`, update `resetAllPools` and `getAllPoolStats` |
-| `src/components/Game.tsx` | Edit | Replace explosion object creation with pool acquire; replace per-frame update with in-place mutation; delete dead `createHighScoreParticles`, unused refs, unused `particleRenderTick` |
-| `src/engine/state.ts` | Edit | Update `resetWorld` to call `explosionPool.releaseAll()` |
-
-## Impact
-
-- Eliminates all `Explosion` object allocations after first use (reuses pooled objects)
-- Removes array spread (`[...e, newExplosion]`) on every explosion -- replaces with O(1) pool acquire
-- Removes per-frame `splice` + spread in explosion update loop
-- Cleans up ~30 lines of dead particle code
-- No visual changes
+| `src/hooks/useDebugSettings.ts` | Edit | Add `showPoolStats` field |
+| `src/components/PoolStatsOverlay.tsx` | Create | New overlay component |
+| `src/components/DebugDashboard.tsx` | Edit | Add toggle for pool stats |
+| `src/components/Game.tsx` | Edit | Import and render overlay |
 
