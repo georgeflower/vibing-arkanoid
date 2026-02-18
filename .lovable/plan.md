@@ -1,63 +1,121 @@
 
 
-# Add Pool/Cache Performance Overlay
+# Production Telemetry: Performance and Collision Analytics
 
 ## Overview
 
-Create a new `PoolStatsOverlay` component that displays real-time statistics for entity pools, spatial hash usage, brick cache rebuilds, and particle pool -- all behind the existing debug flag system.
+Add a lightweight, non-intrusive telemetry system that collects performance snapshots and collision statistics during real gameplay sessions and stores them in Lovable Cloud. No debug overlays -- data is collected silently in the background and batched for efficient submission.
 
-## Changes
+## Architecture
 
-### 1. Add `showPoolStats` to Debug Settings
+The system has three parts:
 
-**File: `src/hooks/useDebugSettings.ts`**
-- Add `showPoolStats: boolean` to the `DebugSettings` interface
-- Default to `false`
+1. **Client-side collector** (`src/utils/telemetry.ts`) -- samples metrics every few seconds, buffers them, and flushes a batch to the backend periodically or on game-over
+2. **Backend function** (`supabase/functions/submit-telemetry/index.ts`) -- validates and inserts telemetry batches
+3. **Database table** (`game_telemetry`) -- stores session snapshots
 
-### 2. Create `PoolStatsOverlay` Component
+## What Gets Tracked
 
-**File: `src/components/PoolStatsOverlay.tsx`** (new)
+Each telemetry snapshot (sampled every 5 seconds) captures:
 
-A polling overlay (updates every 200ms) that reads from existing stats APIs:
+| Category | Fields |
+|----------|--------|
+| Session | session_id (UUID), timestamp, level, difficulty, game_mode |
+| Performance | avg_fps, min_fps, quality_level |
+| Objects | ball_count, visible_brick_count, enemy_count, particle_count, explosion_count |
+| CCD/Physics | ccd_total_ms, ccd_substeps, ccd_collisions, toi_iterations |
+| Collisions | total_collisions_since_last, wall/brick/paddle/boss breakdown |
+| Boss | boss_active, boss_type |
 
-| Section | Data Source | Metrics Shown |
-|---------|-----------|---------------|
-| Entity Pools | `getAllPoolStats()` | Active / pooled count per pool (powerUps, bullets, bombs, enemies, bonusLetters, explosions) |
-| Particle Pool | `particlePool.getStats()` | Active / pooled / total |
-| Spatial Hash | `brickSpatialHash.getStats()` | Occupied cells, total objects, avg objects/cell |
-| Brick Cache | `brickRenderer.getStats()` | Cache version (= rebuild count), dimensions, ready status |
+A summary row is also written at game-over with session totals (duration, final score, final level, total collisions, min FPS seen, quality changes count).
 
-Styled to match existing overlays (black/80 bg, cyan accent, mono font, fixed position). Positioned at bottom-left to avoid overlap with other debug overlays that use top-left/top-right.
+## Database Schema
 
-Color coding:
-- Pool utilization > 80%: red
-- Pool utilization > 50%: yellow  
-- Otherwise: green
+```sql
+CREATE TABLE game_telemetry (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  snapshot_type text NOT NULL DEFAULT 'periodic',  -- 'periodic' | 'summary'
+  level integer,
+  difficulty text,
+  game_mode text,
+  -- Performance
+  avg_fps real,
+  min_fps real,
+  quality_level text,
+  -- Object counts
+  ball_count integer,
+  brick_count integer,
+  enemy_count integer,
+  particle_count integer,
+  explosion_count integer,
+  -- CCD
+  ccd_total_ms real,
+  ccd_substeps integer,
+  ccd_collisions integer,
+  toi_iterations integer,
+  -- Collision breakdown
+  wall_collisions integer,
+  brick_collisions integer,
+  paddle_collisions integer,
+  boss_collisions integer,
+  -- Boss state
+  boss_active boolean DEFAULT false,
+  boss_type text,
+  -- Summary-only fields
+  duration_seconds real,
+  final_score integer,
+  total_quality_changes integer,
+  user_agent text
+);
+```
 
-### 3. Add Toggle to Debug Dashboard
+RLS: SELECT for everyone (lets you query from Cloud View), INSERT only via service_role (edge function).
 
-**File: `src/components/DebugDashboard.tsx`**
-- Add a `DebugToggle` for "Pool Stats" in the Visual Overlays section
+## Edge Function: `submit-telemetry`
 
-### 4. Render Overlay in Game
+- Accepts a JSON array of snapshots (max 50 per batch)
+- Validates field types and ranges
+- IP-based rate limiting (1 batch per 5 seconds)
+- Inserts via service_role
+- Config: `verify_jwt = false` in config.toml
 
-**File: `src/components/Game.tsx`**
-- Import `PoolStatsOverlay`
-- Render it inside the debug overlays block, gated by `debugSettings.showPoolStats`
+## Client Collector: `src/utils/telemetry.ts`
 
-## Technical Details
+- `TelemetryCollector` class with:
+  - `startSession(difficulty, gameMode)` -- generates session UUID
+  - `recordSnapshot(metrics)` -- called every 5s from the game loop, pushes to buffer
+  - `recordCollision(type)` -- increments collision counters (called from CCD event processing)
+  - `flush()` -- sends buffered snapshots to edge function, clears buffer
+  - `endSession(finalScore, finalLevel)` -- writes summary snapshot, flushes
+- Auto-flushes when buffer reaches 10 snapshots
+- Uses `navigator.sendBeacon` as fallback on page unload
+- Completely silent -- no toasts, no console logs in production
+- Gated behind a simple `ENABLE_TELEMETRY = true` constant (easy kill switch)
 
-- All data sources already expose `.getStats()` methods -- no new instrumentation needed
-- The overlay uses `setInterval(200ms)` like existing overlays to avoid per-frame React re-renders
-- No per-frame allocations: stats objects are small and only created on the 200ms polling interval
-- The brick cache `version` field increments on every rebuild, so displaying it over time shows rebuild frequency
+## Integration in Game.tsx
+
+- Import `telemetryCollector` singleton
+- Call `startSession()` when game starts
+- Sample metrics every 300 frames (~5s at 60fps) from the existing `performanceProfiler` and `collisionHistory`
+- Call `endSession()` on game-over / return to menu
+- Zero impact on game loop -- sampling reads existing data, no new per-frame work
 
 ## Files Changed
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/hooks/useDebugSettings.ts` | Edit | Add `showPoolStats` field |
-| `src/components/PoolStatsOverlay.tsx` | Create | New overlay component |
-| `src/components/DebugDashboard.tsx` | Edit | Add toggle for pool stats |
-| `src/components/Game.tsx` | Edit | Import and render overlay |
+| `supabase/config.toml` | Edit | Add `[functions.submit-telemetry]` with `verify_jwt = false` |
+| `supabase/functions/submit-telemetry/index.ts` | Create | Edge function for batch telemetry insert |
+| Database migration | Create | `game_telemetry` table with RLS |
+| `src/utils/telemetry.ts` | Create | Client-side telemetry collector |
+| `src/components/Game.tsx` | Edit | Wire up telemetry start/sample/end calls |
+
+## Performance Impact
+
+- No per-frame allocations -- collector increments counters in-place
+- Sampling every 300 frames reads existing profiler data (already computed)
+- Network: ~1 request every 50 seconds (10 snapshots x 5s interval), ~2KB per batch
+- `sendBeacon` fallback ensures data isn't lost on tab close
 
