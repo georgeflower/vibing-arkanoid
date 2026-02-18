@@ -18,12 +18,6 @@ import powerupHoming from "@/assets/powerup-homing.png";
 import powerupShrink from "@/assets/powerup-shrink.png";
 import powerupSecondchance from "@/assets/powerup-secondchance.png";
 
-// Screenshots
-import screenshotLevel from "@/assets/screenshot-level.png";
-import screenshotBoss from "@/assets/screenshot-boss.png";
-import screenshotPowerups from "@/assets/screenshot-powerups.png";
-import screenshotMegaboss from "@/assets/screenshot-megaboss.png";
-
 // Bonus letter images
 import bonusQ from "@/assets/bonus-q.png";
 import bonusU from "@/assets/bonus-u.png";
@@ -55,13 +49,6 @@ const bonusLetters = [
   { img: bonusR, letter: "R" },
   { img: bonusA, letter: "A" },
   { img: bonusN, letter: "N" },
-];
-
-const screenshots = [
-  { img: screenshotLevel, caption: "Classic Brick-Breaking Action", desc: "Navigate 20 levels of colorful brick formations" },
-  { img: screenshotBoss, caption: "Epic Boss Battles", desc: "Face off against powerful bosses every 5 levels" },
-  { img: screenshotPowerups, caption: "Power-Ups & Explosions", desc: "Multiball, fireball, and chain reactions" },
-  { img: screenshotMegaboss, caption: "The Mega Boss", desc: "The ultimate challenge awaits on level 20" },
 ];
 
 const tips = [
@@ -245,41 +232,7 @@ const Home = () => {
           </p>
         </section>
 
-        {/* ===== SCREENSHOT GALLERY ===== */}
-        <section className="amiga-box rounded-lg p-6 sm:p-8 mb-10">
-          <SectionTitle>Screenshots</SectionTitle>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {screenshots.map((s) => (
-              <div
-                key={s.caption}
-                className="rounded overflow-hidden"
-                style={{
-                  background: "hsl(210,20%,14%)",
-                  border: "3px ridge hsl(210,15%,40%)",
-                  borderTopColor: "hsl(210,15%,50%)",
-                  borderLeftColor: "hsl(210,15%,50%)",
-                }}
-              >
-                <img
-                  src={s.img}
-                  alt={s.caption}
-                  className="w-full aspect-video object-cover"
-                  loading="lazy"
-                />
-                <div className="p-3">
-                  <h4 className="retro-pixel-text" style={{ fontSize: "9px", color: "hsl(200,70%,50%)" }}>
-                    {s.caption}
-                  </h4>
-                  <p className="retro-pixel-text mt-1" style={{ fontSize: "7px", color: "hsl(0,0%,55%)" }}>
-                    {s.desc}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-
+        {/* ===== RULES ===== */}
         <section className="amiga-box rounded-lg p-6 sm:p-8 mb-10">
           <SectionTitle>Rules</SectionTitle>
 
