@@ -1,73 +1,104 @@
-# Welcome to your Lovable project
+# 🕹️ Vibing Arkanoid
 
-## Project info
+A loving tribute to the legendary **Arkanoid** (Taito, 1986) — rebuilt from scratch as a modern browser game with retro Amiga aesthetics, epic boss battles, and a high-performance canvas engine.
 
-**URL**: https://lovable.dev/projects/af30a682-7a2c-4be6-bca5-b3076218b0ae
+**[▶ Play Now](https://vibing-arkanoid.lovable.app)** · **v0.9.92**
 
-## How can I edit this code?
+![Vibing Arkanoid](src/assets/start-screen-new.webp)
 
-There are several ways of editing your application.
+---
 
-**Use Lovable**
+## ✨ Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/af30a682-7a2c-4be6-bca5-b3076218b0ae) and start prompting.
+- **20 levels** of increasing difficulty with hand-crafted brick layouts
+- **4 boss battles** (levels 5, 10, 15) + a Mega Boss on level 20
+- **Boss Rush mode** — fight all bosses back-to-back
+- **13 power-ups**: Fireball, Multi-Ball, Extend, Shield, Barrier, Slow Down, Turrets, Stunner, Reflect, Homing, Shrink, Extra Life, Second Chance
+- **Q-U-M-R-A-N bonus letters** — collect all 6 for 5 extra lives
+- **Two difficulty modes**: Normal (3 lives) and Godlike (1 life, faster speed)
+- **Online leaderboards** for high scores and Boss Rush times
+- **CRT overlay** and authentic retro pixel styling
+- **Adaptive quality** — automatically adjusts visual effects for smooth performance
+- **Mobile support** with touch controls and swipe gestures
+- **Original chiptune soundtrack** with per-level music
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🏗️ Architecture
 
-**Use your preferred IDE**
+The game runs a **decoupled engine** — all game objects (ball, paddle, bricks, bosses, enemies) update in a dedicated loop, separate from React's render cycle. The canvas draws directly from the engine world in its own `requestAnimationFrame` loop, bypassing React reconciliation entirely.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Key technical details:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **Continuous Collision Detection (CCD)** with sub-stepping and TOI (Time of Impact) calculations
+- **Spatial hashing** for efficient brick/entity collision lookups
+- **Object pooling** for balls, power-ups, bullets, bombs, enemies, particles, and bonus letters
+- **Cached gradients** and single `Date.now()` per frame to minimize allocations
+- **Adaptive quality system** that scales visual effects (CRT overlay, glow, shadows) based on FPS
+- **Production telemetry** for anonymous performance metrics
 
-Follow these steps:
+## 🛠️ Tech Stack
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+| Layer | Technology |
+|-------|-----------|
+| UI Framework | React 18 + TypeScript |
+| Build Tool | Vite + PWA plugin |
+| Styling | Tailwind CSS + custom retro design system |
+| Components | shadcn/ui (menus, dialogs) |
+| Rendering | HTML5 Canvas (manual 2D context) |
+| Backend | Supabase (leaderboards, telemetry) |
+| Hosting | Lovable Cloud |
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## 🚀 Getting Started
 
-# Step 3: Install the necessary dependencies.
-npm i
+```bash
+# Clone the repo
+git clone https://github.com/georgeflower/vibing-arkanoid.git
+cd vibing-arkanoid
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Install dependencies
+npm install
+
+# Start dev server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The game runs at `http://localhost:5173`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🎮 Controls
 
-**Use GitHub Codespaces**
+| Input | Action |
+|-------|--------|
+| Mouse / Arrow Keys | Move paddle |
+| Touch drag | Move paddle (mobile) |
+| Space | Launch ball / Shoot turrets |
+| Escape | Pause menu |
+| F | Toggle fullscreen |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 📁 Project Structure
 
-## What technologies are used for this project?
+```
+src/
+├── engine/          # Decoupled game engine (state, render loop, canvas renderer)
+├── components/      # React components (Game, HUD, menus, overlays)
+├── constants/       # Game config, level layouts, boss configs
+├── hooks/           # React hooks (power-ups, bullets, resize, quality)
+├── utils/           # Collision detection, spatial hash, pools, sound, particles
+├── assets/          # Sprites, backgrounds, power-up images
+└── pages/           # Home page, game page, level editor
+```
 
-This project is built with:
+## 🤝 Contributing
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+This project is **100% open source** and proudly **vibe coded**. Contributions, bug reports, and feature requests are welcome!
 
-## How can I deploy this project?
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Commit your changes
+4. Push to the branch and open a Pull Request
 
-Simply open [Lovable](https://lovable.dev/projects/af30a682-7a2c-4be6-bca5-b3076218b0ae) and click on Share -> Publish.
+## 📝 License
 
-## Can I connect a custom domain to my Lovable project?
+Open source. See the repository for license details.
 
-Yes, you can!
+---
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+*Built with [Lovable](https://lovable.dev)*
