@@ -56,12 +56,10 @@ const tips = [
     title: "Paddle Edges",
     tip: "Hit the ball with paddle edges for sharp angles — great for reaching tricky corners.",
   },
-  { title: "Fireball First", tip: "Prioritize Fireball and Multi-Ball power-ups. They clear bricks fastest." },
   { title: "Boss Patterns", tip: "Learn each boss's attack pattern. Dodge first, attack when safe." },
   { title: "Q-U-M-R-A-N", tip: "Collect all 6 bonus letters for 5 extra lives. They fall from certain bricks!" },
   { title: "Save Turrets", tip: "Turrets persist across levels and stack ammo. Use them wisely on bosses." },
   { title: "Reflect Shield", tip: "Reflect Shield turns boss attacks against them. Devastating on later bosses." },
-  { title: "Stay Central", tip: "Keep the paddle centered. React time matters more than prediction." },
   { title: "Boss Rush", tip: "Practice Boss Rush mode to master all 4 bosses back-to-back." },
 ];
 
