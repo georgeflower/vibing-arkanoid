@@ -8,6 +8,7 @@ export interface DebugSettings {
   showCollisionHistory: boolean;
   showFrameProfiler: boolean;
   showPowerUpWeights: boolean;
+  showPoolStats: boolean;
   enableCollisionLogging: boolean;
   enablePowerUpLogging: boolean;
   enablePerformanceLogging: boolean;
@@ -34,6 +35,7 @@ const DEFAULT_SETTINGS: DebugSettings = {
   showCollisionHistory: false,
   showFrameProfiler: false,
   showPowerUpWeights: false,
+  showPoolStats: false,
   enableCollisionLogging: false,
   enablePowerUpLogging: false,
   enablePerformanceLogging: true,
