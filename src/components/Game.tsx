@@ -5528,7 +5528,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
         ball.rotation = ((ball.rotation || 0) + 3) % 360; // Spinning rotation
       }
-      return [...prev]; // New array reference for React
+      return prev; // In-place mutation — world.balls is authoritative
     });
 
     // Update power-ups
@@ -5545,7 +5545,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         const sinePhase = (elapsed / 4000) * 2 * Math.PI;
         letter.x = letter.originX + 30 * Math.sin(sinePhase);
       }
-      return [...prev];
+      return prev; // In-place mutation — world.bonusLetters is authoritative
     });
 
     // Check bonus letter collisions
@@ -5604,7 +5604,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           enemy.rotationZ +=
             enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.06 : 0.03;
         }
-        return [...prev]; // New array reference for React
+        return prev; // In-place mutation — world.enemies is authoritative
       });
     }
     if (profilerEnabled) frameProfiler.endTiming("enemies");
@@ -5810,7 +5810,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           bomb.y += bomb.speed;
         }
       }
-      return [...prev];
+      return prev; // In-place mutation — world.bombs is authoritative
     });
 
     // Check bomb-paddle collision
