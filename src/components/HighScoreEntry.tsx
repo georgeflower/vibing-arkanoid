@@ -15,6 +15,7 @@ interface HighScoreEntryProps {
 export const HighScoreEntry = ({ score, level, onSubmit, qualifiedLeaderboards }: HighScoreEntryProps) => {
   const [name, setName] = useState("");
   const [displayScore, setDisplayScore] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Prevent game keyboard shortcuts from interfering with input
   useEffect(() => {
@@ -40,7 +41,8 @@ export const HighScoreEntry = ({ score, level, onSubmit, qualifiedLeaderboards }
   };
 
   const handleSubmit = () => {
-    if (name.length === 3) {
+    if (name.length === 3 && !isSubmitting) {
+      setIsSubmitting(true);
       onSubmit(name);
     }
   };
@@ -157,10 +159,10 @@ export const HighScoreEntry = ({ score, level, onSubmit, qualifiedLeaderboards }
         
         <Button
           onClick={handleSubmit}
-          disabled={name.length !== 3}
+          disabled={name.length !== 3 || isSubmitting}
           className="px-12 py-6 text-2xl font-bold font-mono bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-lg disabled:opacity-30 disabled:cursor-not-allowed retro-button"
         >
-          SUBMIT SCORE
+          {isSubmitting ? "SUBMITTING..." : "SUBMIT SCORE"}
         </Button>
         
         {/* Extra space for mobile keyboard scrolling */}
