@@ -131,7 +131,7 @@ const Home = () => {
             </p>
 
             <Link
-              to="/"
+              to="/play"
               className="inline-block retro-pixel-text retro-button px-8 py-4 rounded"
               style={{
                 fontSize: "clamp(12px, 2.5vw, 20px)",
@@ -398,7 +398,7 @@ const Home = () => {
             Created by Qumran • v{GAME_VERSION}
           </p>
           <Link
-            to="/"
+            to="/play"
             className="retro-pixel-text inline-block"
             style={{ fontSize: "10px", color: "hsl(200,70%,50%)", textDecoration: "none" }}
           >
