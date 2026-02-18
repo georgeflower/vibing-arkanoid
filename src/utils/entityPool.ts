@@ -155,7 +155,7 @@ export class EntityPool<T extends Poolable> {
 
 // ===================== Pool Instances =====================
 
-import type { PowerUp, PowerUpType, Bullet, Bomb, ProjectileType, Enemy, EnemyType, BonusLetter, BonusLetterType } from "@/types/game";
+import type { PowerUp, PowerUpType, Bullet, Bomb, ProjectileType, Enemy, EnemyType, BonusLetter, BonusLetterType, Explosion, Particle } from "@/types/game";
 
 // ID counter for entities that need unique IDs
 let nextPowerUpId = 1;
@@ -299,6 +299,43 @@ export const bonusLetterPool = new EntityPool<BonusLetter>(
   30
 );
 
+// ===================== Explosion Pool =====================
+
+let nextExplosionId = 1;
+
+type PooledExplosion = Explosion & { id: number };
+
+/**
+ * Explosion pool
+ * Max 30 active explosions (generous -- typically < 10 concurrent)
+ */
+export const explosionPool = new EntityPool<PooledExplosion>(
+  () => ({
+    id: 0,
+    x: 0,
+    y: 0,
+    frame: 0,
+    maxFrames: 30,
+    enemyType: undefined,
+    particles: [] as Particle[],
+  }),
+  (e) => {
+    e.frame = 0;
+    e.maxFrames = 30;
+    e.enemyType = undefined;
+    // particles array is always [] (pool manages particles separately)
+  },
+  10,
+  30
+);
+
+/**
+ * Get next unique ID for explosions
+ */
+export function getNextExplosionId(): number {
+  return nextExplosionId++;
+}
+
 /**
  * Reset all pools - call on game reset or level change
  */
@@ -308,6 +345,7 @@ export function resetAllPools(): void {
   bombPool.releaseAll();
   enemyPool.releaseAll();
   bonusLetterPool.releaseAll();
+  explosionPool.releaseAll();
 }
 
 /**
@@ -319,7 +357,8 @@ export function getAllPoolStats(): Record<string, { active: number; pooled: numb
     bullets: bulletPool.getStats(),
     bombs: bombPool.getStats(),
     enemies: enemyPool.getStats(),
-    bonusLetters: bonusLetterPool.getStats()
+    bonusLetters: bonusLetterPool.getStats(),
+    explosions: explosionPool.getStats(),
   };
 }
 

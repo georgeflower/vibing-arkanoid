@@ -24,6 +24,7 @@ import type {
   BossAttack,
   ShieldImpact,
 } from "@/types/game";
+import { explosionPool } from "@/utils/entityPool";
 import type { DangerBall } from "@/utils/megaBossAttacks";
 
 // ─── Visual-effect sub-types (inline, no separate file needed) ───
@@ -181,6 +182,9 @@ export function resetWorld(overrides?: Partial<GameWorld>): void {
 
   // Fresh mutable arrays
   freshArrays();
+
+  // Release pooled explosions back to pool
+  explosionPool.releaseAll();
 
   // Apply caller overrides last
   if (overrides) {
