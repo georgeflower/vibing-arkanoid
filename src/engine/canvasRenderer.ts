@@ -19,6 +19,53 @@ import { particlePool } from "@/utils/particlePool";
 
 let dashOffset = 0;
 
+// ─── Gradient Cache ──────────────────────────────────────────
+// Avoids recreating identical CanvasGradient objects every frame.
+// Gradients are defined at the origin and repositioned via ctx.translate().
+// Cache is invalidated when the canvas context changes (resize / remount).
+
+const gradientCache: Record<string, CanvasGradient> = {};
+let cacheCtx: CanvasRenderingContext2D | null = null;
+
+function ensureCacheCtx(ctx: CanvasRenderingContext2D): void {
+  if (cacheCtx !== ctx) {
+    for (const k in gradientCache) delete gradientCache[k];
+    cacheCtx = ctx;
+  }
+}
+
+function getCachedRadialGradient(
+  ctx: CanvasRenderingContext2D,
+  key: string,
+  x0: number, y0: number, r0: number,
+  x1: number, y1: number, r1: number,
+  stops: [number, string][],
+): CanvasGradient {
+  ensureCacheCtx(ctx);
+  if (!gradientCache[key]) {
+    const g = ctx.createRadialGradient(x0, y0, r0, x1, y1, r1);
+    for (let i = 0; i < stops.length; i++) g.addColorStop(stops[i][0], stops[i][1]);
+    gradientCache[key] = g;
+  }
+  return gradientCache[key];
+}
+
+function getCachedLinearGradient(
+  ctx: CanvasRenderingContext2D,
+  key: string,
+  x0: number, y0: number,
+  x1: number, y1: number,
+  stops: [number, string][],
+): CanvasGradient {
+  ensureCacheCtx(ctx);
+  if (!gradientCache[key]) {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    for (let i = 0; i < stops.length; i++) g.addColorStop(stops[i][0], stops[i][1]);
+    gradientCache[key] = g;
+  }
+  return gradientCache[key];
+}
+
 // ─── Helpers ─────────────────────────────────────────────────
 
 function isImageValid(img: HTMLImageElement | null): img is HTMLImageElement {
@@ -449,18 +496,13 @@ export function renderFrame(
     ctx.save();
     ctx.translate(ball.x, ball.y);
 
-    const gradient = ctx.createRadialGradient(-visualRadius * 0.3, -visualRadius * 0.3, 0, 0, 0, visualRadius);
-    if (ball.isFireball) {
-      gradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
-      gradient.addColorStop(0.3, "hsl(30, 85%, 65%)");
-      gradient.addColorStop(0.7, ballColor);
-      gradient.addColorStop(1, "hsl(30, 85%, 35%)");
-    } else {
-      gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
-      gradient.addColorStop(0.3, "hsl(0, 0%, 95%)");
-      gradient.addColorStop(0.7, ballColor);
-      gradient.addColorStop(1, "hsl(0, 0%, 60%)");
-    }
+    const gradient = ball.isFireball
+      ? getCachedRadialGradient(ctx, `ball_fire_${visualRadius}`,
+          -visualRadius * 0.3, -visualRadius * 0.3, 0, 0, 0, visualRadius,
+          [[0, "rgba(255,255,255,0.9)"], [0.3, "hsl(30,85%,65%)"], [0.7, "hsl(30,85%,55%)"], [1, "hsl(30,85%,35%)"]])
+      : getCachedRadialGradient(ctx, `ball_norm_${visualRadius}`,
+          -visualRadius * 0.3, -visualRadius * 0.3, 0, 0, 0, visualRadius,
+          [[0, "rgba(255,255,255,1)"], [0.3, "hsl(0,0%,95%)"], [0.7, "hsl(0,0%,92%)"], [1, "hsl(0,0%,60%)"]]);
 
     if (qualitySettings.shadowsEnabled) {
       const dynamicShadowBlur = 14 + chaosLevel * 20;
@@ -590,12 +632,9 @@ export function renderFrame(
     const rectHeight = size + padding * 2;
     const radius = 6;
 
-    const metalGradient = ctx.createLinearGradient(rectX, rectY, rectX, rectY + rectHeight);
-    metalGradient.addColorStop(0, "hsl(220, 10%, 65%)");
-    metalGradient.addColorStop(0.3, "hsl(220, 8%, 50%)");
-    metalGradient.addColorStop(0.5, "hsl(220, 10%, 60%)");
-    metalGradient.addColorStop(0.7, "hsl(220, 8%, 45%)");
-    metalGradient.addColorStop(1, "hsl(220, 10%, 35%)");
+    const metalGradient = getCachedLinearGradient(ctx, `pu_metal_${size}`,
+      rectX, rectY, rectX, rectY + rectHeight,
+      [[0, "hsl(220,10%,65%)"], [0.3, "hsl(220,8%,50%)"], [0.5, "hsl(220,10%,60%)"], [0.7, "hsl(220,8%,45%)"], [1, "hsl(220,10%,35%)"]]);
 
     ctx.beginPath();
     ctx.moveTo(rectX + radius, rectY);
@@ -625,18 +664,20 @@ export function renderFrame(
       { x: rectX + rectWidth - rivetOffset, y: rectY + rectHeight - rivetOffset },
     ];
 
+    const rivetGrad = getCachedRadialGradient(ctx, "pu_rivet",
+      -0.5, -0.5, 0, 0, 0, rivetRadius,
+      [[0, "hsl(220,8%,70%)"], [0.4, "hsl(220,8%,50%)"], [1, "hsl(220,10%,30%)"]]);
     rivetPositions.forEach((pos) => {
-      const rivetGradient = ctx.createRadialGradient(pos.x - 0.5, pos.y - 0.5, 0, pos.x, pos.y, rivetRadius);
-      rivetGradient.addColorStop(0, "hsl(220, 8%, 70%)");
-      rivetGradient.addColorStop(0.4, "hsl(220, 8%, 50%)");
-      rivetGradient.addColorStop(1, "hsl(220, 10%, 30%)");
+      ctx.save();
+      ctx.translate(pos.x, pos.y);
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, rivetRadius, 0, Math.PI * 2);
-      ctx.fillStyle = rivetGradient;
+      ctx.arc(0, 0, rivetRadius, 0, Math.PI * 2);
+      ctx.fillStyle = rivetGrad;
       ctx.fill();
       ctx.strokeStyle = "hsla(220, 10%, 20%, 0.5)";
       ctx.lineWidth = 0.5;
       ctx.stroke();
+      ctx.restore();
     });
 
     // Outline
@@ -1551,13 +1592,19 @@ function drawEnemies(
         ctx.stroke();
       }
 
-      const specGradient = ctx.createRadialGradient(centerX + lightX * 0.7, centerY + lightY * 0.7, 0, centerX + lightX * 0.7, centerY + lightY * 0.7, radius * 0.4);
-      specGradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
-      specGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+      const specR = radius * 0.4;
+      const specGradient = getCachedRadialGradient(ctx, `enemy_spec_${radius}`,
+        0, 0, 0, 0, 0, specR,
+        [[0, "rgba(255,255,255,0.9)"], [1, "rgba(255,255,255,0)"]]);
+      const specX = centerX + lightX * 0.7;
+      const specY = centerY + lightY * 0.7;
+      ctx.save();
+      ctx.translate(specX, specY);
       ctx.fillStyle = specGradient;
       ctx.beginPath();
-      ctx.arc(centerX + lightX * 0.7, centerY + lightY * 0.7, radius * 0.3, 0, Math.PI * 2);
+      ctx.arc(0, 0, radius * 0.3, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
 
       if (singleEnemy.isAngry) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
