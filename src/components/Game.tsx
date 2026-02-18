@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { world, type LaserWarning, type SuperWarning, type BulletImpact } from "@/engine/state";
+import { renderState } from "@/engine/renderState";
 import { GameCanvas } from "./GameCanvas";
 import { GameUI } from "./GameUI";
 import { HighScoreTable } from "./HighScoreTable";
@@ -690,6 +691,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Mobile ball glow state for Get Ready sequence
   const [getReadyGlow, setGetReadyGlow] = useState<{ opacity: number } | null>(null);
   const getReadyGlowStartTimeRef = useRef<number | null>(null);
+
+
+  
 
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG STATE - REMOVE BEFORE PRODUCTION ████████╗
@@ -1604,6 +1608,30 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       sampleWindow: 3,
       enableLogging: ENABLE_DEBUG_FEATURES && debugSettings.enableFPSLogging,
     });
+
+  // ═══ Sync React state → renderState singleton (for decoupled canvas rendering) ═══
+  useEffect(() => {
+    renderState.gameState = gameState;
+    renderState.level = level;
+    renderState.collectedLetters = collectedLetters;
+    renderState.powerUps = powerUps;
+    renderState.bullets = bullets;
+    renderState.qualitySettings = qualitySettings;
+    renderState.showHighScoreEntry = showHighScoreEntry;
+    renderState.bossIntroActive = bossIntroActive;
+    renderState.bossSpawnAnimation = bossSpawnAnimation;
+    renderState.tutorialHighlight = tutorialStep?.highlight ?? null;
+    renderState.debugEnabled = ENABLE_DEBUG_FEATURES;
+    renderState.isMobile = isMobileDevice;
+    renderState.getReadyGlow = isMobileDevice ? getReadyGlow : null;
+    renderState.secondChanceImpact = secondChanceImpact;
+    renderState.ballReleaseHighlight = ballReleaseHighlight;
+  }, [
+    gameState, level, collectedLetters, powerUps, bullets,
+    qualitySettings, showHighScoreEntry, bossIntroActive,
+    bossSpawnAnimation, tutorialStep, isMobileDevice,
+    getReadyGlow, secondChanceImpact, ballReleaseHighlight,
+  ]);
 
   // Desktop viewport frame - fills entire screen on desktop
   useViewportFrame({
@@ -9179,43 +9207,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                       ref={canvasRef}
                       width={SCALED_CANVAS_WIDTH}
                       height={SCALED_CANVAS_HEIGHT}
-                      bricks={bricks}
-                      balls={world.balls}
-                      paddle={world.paddle}
-                      gameState={gameState}
-                      powerUps={powerUps}
-                      bullets={bullets}
-                      enemy={enemies}
-                      bombs={bombs}
-                      level={level}
-                      backgroundPhase={backgroundPhase}
-                      explosions={explosions}
-                      launchAngle={launchAngle}
-                      bonusLetters={bonusLetters}
-                      collectedLetters={collectedLetters}
-                      screenShake={screenShake}
-                      backgroundFlash={backgroundFlash}
-                      highlightFlash={highlightFlash}
-                      qualitySettings={qualitySettings}
-                      boss={boss}
-                      resurrectedBosses={resurrectedBosses}
-                      bossAttacks={bossAttacks}
-                      laserWarnings={laserWarnings}
-                      superWarnings={superWarnings}
-                      gameOverParticles={[]}
-                      highScoreParticles={[]}
-                      showHighScoreEntry={showHighScoreEntry}
-                      bossIntroActive={bossIntroActive}
-                      bossSpawnAnimation={bossSpawnAnimation}
-                      shieldImpacts={shieldImpacts}
-                      bulletImpacts={bulletImpacts}
-                      tutorialHighlight={tutorialStep?.highlight}
-                      debugEnabled={ENABLE_DEBUG_FEATURES}
-                      getReadyGlow={isMobileDevice ? getReadyGlow : null}
-                      isMobile={isMobileDevice}
-                      secondChanceImpact={secondChanceImpact}
-                      dangerBalls={dangerBalls}
-                      ballReleaseHighlight={ballReleaseHighlight}
                     />
 
                     {/* Boss Power-Up Duration Timers - Desktop only (paddle-relative positioning) */}
