@@ -304,7 +304,7 @@ export default function LevelEditor() {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-[hsl(200,70%,50%)]">Level Editor</h1>
             <Button
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/play")}
               variant="outline"
               className="border-[hsl(200,70%,50%)] text-[hsl(200,70%,50%)] hover:bg-[hsl(200,70%,50%)] hover:text-white"
             >
