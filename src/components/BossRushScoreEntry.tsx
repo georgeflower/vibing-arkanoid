@@ -13,6 +13,7 @@ interface BossRushScoreEntryProps {
 export const BossRushScoreEntry = ({ score, completionTimeMs, bossLevel, completed, onSubmit }: BossRushScoreEntryProps) => {
   const [name, setName] = useState("");
   const [displayScore, setDisplayScore] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Format time as M:SS.CC
   const formatTime = (ms: number): string => {
@@ -44,7 +45,8 @@ export const BossRushScoreEntry = ({ score, completionTimeMs, bossLevel, complet
   };
 
   const handleSubmit = () => {
-    if (name.length === 3) {
+    if (name.length === 3 && !isSubmitting) {
+      setIsSubmitting(true);
       onSubmit(name);
     }
   };
@@ -158,10 +160,10 @@ export const BossRushScoreEntry = ({ score, completionTimeMs, bossLevel, complet
 
         <Button
           onClick={handleSubmit}
-          disabled={name.length !== 3}
+          disabled={name.length !== 3 || isSubmitting}
           className="px-12 py-6 text-2xl font-bold font-mono bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white rounded-lg disabled:opacity-30 disabled:cursor-not-allowed retro-button"
         >
-          SUBMIT SCORE
+          {isSubmitting ? "SUBMITTING..." : "SUBMIT SCORE"}
         </Button>
 
         <div className="h-[50vh] sm:h-0" />
