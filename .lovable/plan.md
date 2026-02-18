@@ -1,80 +1,119 @@
-# Homepage for Vibing Arkanoid
 
-## Overview
 
-Create a dedicated homepage at `/home` that presents the game with retro Amiga aesthetics, multiple content sections, a clear Arkanoid tribute, open-source callout with GitHub link, and a prominent "Play Now" button that navigates to the game at `/`.
+# Decouple GameCanvas Rendering from React
 
-## Routing Change
+## Problem
 
-- Move the current game (Index.tsx) to remain at `/` (no change needed -- players go straight to the game)
-- Add a new route `/home` for the homepage
-- The homepage links to `/` to launch the game
+GameCanvas is a 3,800-line React component with a single massive `useEffect` that redraws the entire canvas. It receives ~30 props from Game.tsx, creating two problems:
 
-## New File: `src/pages/Home.tsx`
+1. **Unnecessary coupling**: Game.tsx reads `world.*` properties and passes them as props. Since `world` mutations don't trigger React re-renders, canvas redraws only happen as a side-effect of other React state changes -- making frame timing unpredictable.
+2. **React overhead**: When a re-render *does* happen, React must diff the entire GameCanvas component, compare all 30+ props, and re-run the 3,800-line useEffect -- all wasted work since the canvas is imperatively drawn anyway.
 
-A full scrollable page with retro Amiga styling using the existing design system (amiga-box, retro-pixel-text, metal-frame aesthetics, CRT effects). Sections:
+## Solution
 
-### Hero Section
+Replace the React-driven rendering with a standalone `requestAnimationFrame` loop that reads directly from `world` (engine/state.ts) and draws to the canvas every frame, completely bypassing React's reconciliation.
 
-- Large title "VIBING ARKANOID" with retro gradient text
-- Subtitle: "A loving tribute to the legendary Arkanoid"
-- Start screen image as background/hero visual
-- Prominent "PLAY NOW" button linking to `/`
-- Amiga-style beveled border frame around the hero
+## Architecture
 
-### Section 1: "A Tribute to Arkanoid"
+```text
+BEFORE:
+  Game.tsx (React) --> props --> GameCanvas (useEffect draws)
+     ^                              |
+     |-- world.* reads as props ----+
 
-- Text explaining that this is a tribute to Taito's 1986 classic Arkanoid, one of the greatest breakout-style games ever made
-- Acknowledge the original game's legacy and influence
-- Styled with the amiga-box class and retro colors
+AFTER:
+  Game.tsx (React) --> owns <canvas> element (ref)
+                        |
+  canvasRenderer.ts --> requestAnimationFrame loop
+     reads world.* directly
+     reads renderState.* for non-entity data (level, gameState, etc.)
+```
 
-### Section 2: "Gameplay"
+## Implementation Steps
 
-- Overview of the 20 levels, boss battles on levels 5/10/15/20
-- Power-ups showcase using the existing power-up images (powerup-fireball.png, powerup-multiball.png, etc.)
-- Mention of special brick types, enemies, and the Q-U-M-R-A-N bonus letters
-- Grid layout showing power-up icons with labels
+### Step 1: Create `src/engine/renderState.ts`
 
-### Section 3: "Rules"
+A small mutable singleton (like `world` and `hudSnapshot`) for rendering-only state that doesn't live in `world`:
 
-- Controls (mouse, keyboard, mobile touch)
-- Objective: break all bricks to advance
-- Lives system, ball physics, paddle mechanics
-- Difficulty modes (Normal vs Godlike)
-- Game modes (Normal 20 levels vs Boss Rush)
+- `level`, `gameState`, `collectedLetters`, `qualitySettings`
+- `showHighScoreEntry`, `bossIntroActive`, `bossSpawnAnimation`
+- `tutorialHighlight`, `debugEnabled`, `isMobile`
+- `getReadyGlow`, `secondChanceImpact`, `ballReleaseHighlight`
+- Canvas dimensions (`width`, `height`)
 
-### Section 4: "Best Tips"
+Game.tsx writes to this whenever these values change. The render loop reads it directly.
 
-- Strategic advice for new players
-- Tips like: use paddle edges for sharp angles, prioritize multiball/fireball power-ups, learn boss attack patterns, collect Q-U-M-R-A-N letters for 5 extra lives, use turrets wisely on bosses, etc.
-- Styled as retro "tip cards" with amiga-box styling
+### Step 2: Create `src/engine/canvasRenderer.ts`
 
-### Section 5: "Open Source"
+Extract the 3,500+ lines of drawing logic from GameCanvas.tsx's useEffect into a pure function:
 
-- Clear statement that Vibing Arkanoid is open source
-- Direct link to GitHub: [https://github.com/georgeflower/vibing-arkanoid](https://github.com/georgeflower/vibing-arkanoid)
-- Invite contributions
-- "Vibe coded" mention
-- GitHub icon/link button
+```
+export function renderFrame(
+  ctx: CanvasRenderingContext2D,
+  world: GameWorld,
+  renderState: RenderState,
+  assets: AssetRefs
+): void { ... }
+```
 
-### Footer
+- Reads all entity data from `world` (balls, bricks, paddle, boss, etc.)
+- Reads UI/config data from `renderState`
+- Receives pre-loaded image assets via an `assets` object (refs populated once on mount)
+- Captures `Date.now()` once at the top and passes it to all sub-functions (eliminates 50+ redundant calls)
 
-- Created by Qumran
-- Version number
-- Link back to play
+### Step 3: Create `src/engine/renderLoop.ts`
 
-## Styling Approach
+A standalone rAF loop manager:
 
-- Reuse existing CSS classes: `amiga-box`, `retro-pixel-text`, `metal-frame` aesthetics
-- Dark background gradient matching the game: `from-[hsl(220,25%,12%)] to-[hsl(220,30%,8%)]`
-- Section borders using the Amiga beveled ridge style
-- Color palette from the game: `hsl(200,70%,50%)` cyan, `hsl(330,100%,65%)` pink, `hsl(30,100%,60%)` orange, `hsl(0,85%,55%)` red
-- Press Start 2P font (already loaded globally)
-- Scrollable page with smooth scrolling
-- CRT overlay on the page for atmosphere
-- Responsive: works on mobile and desktop
+```
+export function startRenderLoop(
+  canvas: HTMLCanvasElement,
+  assets: AssetRefs
+): () => void  // returns cleanup/stop function
+```
+
+- Calls `requestAnimationFrame` independently of the game logic loop
+- Calls `renderFrame()` each frame
+- No React dependency -- just reads `world` and `renderState`
+- Returns a stop function for cleanup
+
+### Step 4: Simplify GameCanvas component
+
+Reduce GameCanvas to a thin wrapper:
+
+- Renders `<canvas>` element
+- Loads image assets into refs on mount (keeps existing image loading useEffects)
+- On mount: calls `startRenderLoop(canvas, assets)`
+- On unmount: calls the stop function
+- No more massive prop list -- only needs `width`, `height`
+- Remove the 3,800-line drawing useEffect entirely
+
+### Step 5: Update Game.tsx
+
+- Remove all GameCanvas prop-passing (bricks, balls, paddle, etc.)
+- Write to `renderState` when UI-only values change (level, gameState, quality, etc.)
+- GameCanvas becomes `<GameCanvas ref={canvasRef} width={w} height={h} />`
+
+## Key Design Decisions
+
+- **`Date.now()` caching**: Captured once per frame and threaded through all drawing functions. Eliminates 50+ system calls per frame.
+- **Asset management**: Image refs stay in React (loaded on mount), passed to the render loop as a stable object. No per-frame image loading.
+- **Gradients**: Frequently-used gradients (ball glow, shield effects) will be cached and reused rather than recreated every frame.
+- **No breaking changes to game logic**: Game.tsx's game loop, physics, and all callbacks remain untouched. Only the rendering pipeline changes.
 
 ## Files Changed
 
-- `src/pages/Home.tsx` -- New homepage component (new file)
-- `src/App.tsx` -- Add `/home` route
+| File | Action | Description |
+|------|--------|-------------|
+| `src/engine/renderState.ts` | New | Mutable singleton for render-only config |
+| `src/engine/canvasRenderer.ts` | New | Pure render function (extracted from GameCanvas) |
+| `src/engine/renderLoop.ts` | New | rAF loop manager |
+| `src/components/GameCanvas.tsx` | Rewrite | Thin wrapper: canvas element + asset loading + loop start/stop |
+| `src/components/Game.tsx` | Edit | Remove GameCanvas props, write to renderState |
+
+## Risk Mitigation
+
+- The drawing code is a direct extraction -- logic stays identical, just reads from `world`/`renderState` instead of props
+- Image loading remains in React useEffects (proven stable)
+- If any rendering breaks, the old GameCanvas code is the reference for exact behavior
+
