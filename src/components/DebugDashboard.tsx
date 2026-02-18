@@ -98,6 +98,12 @@ export const DebugDashboard = ({ isOpen, onClose, settings, onToggle, onReset }:
               onChange={() => onToggle("showFrameProfiler")}
               description="Shows per-subsystem timing breakdown"
             />
+            <DebugToggle
+              label="Pool Stats"
+              checked={settings.showPoolStats}
+              onChange={() => onToggle("showPoolStats")}
+              description="Entity pools, spatial hash, brick cache"
+            />
           </div>
         </section>
 
