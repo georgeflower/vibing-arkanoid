@@ -1,6 +1,15 @@
-export const GAME_VERSION = "0.9.91";
+export const GAME_VERSION = "0.9.92";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.92",
+    changes: [
+      "NEW: Production telemetry system — silently tracks performance metrics and collision statistics in the background",
+      "Telemetry data stored in the cloud for real-world performance analysis across devices",
+      "Homepage is now the default landing page at the root URL — game moved to /play",
+      "Changelog section added to the homepage for easy version tracking",
+    ],
+  },
   {
     version: "0.9.91",
     changes: [
