@@ -107,7 +107,7 @@ import { performBossAttack } from "@/utils/bossAttacks";
 import { BOSS_LEVELS, BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
 import { processBallWithCCD } from "@/utils/gameCCD";
 import { brickSpatialHash } from "@/utils/spatialHash";
-import { resetAllPools, enemyPool, bombPool } from "@/utils/entityPool";
+import { resetAllPools, enemyPool, bombPool, explosionPool, getNextExplosionId } from "@/utils/entityPool";
 import { brickRenderer } from "@/utils/brickLayerCache";
 import { assignPowerUpsToBricks, reassignPowerUpsToBricks } from "@/utils/powerUpAssignment";
 import { MEGA_BOSS_LEVEL, MEGA_BOSS_CONFIG } from "@/constants/megaBossConfig";
@@ -364,12 +364,51 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
   }, []);
   // ═══ PHASE 1: explosions lives in world.explosions (engine/state.ts) ═══
+  // Explosions are now managed by explosionPool — world.explosions is the cached active array.
   const explosions = world.explosions;
+
+  /**
+   * Compatibility shim: intercepts setExplosions calls and routes them through the pool.
+   * - Empty array argument → releaseAll (bulk clear)
+   * - Updater function → run the updater, then diff to find new explosions and pool them
+   * - Direct array → pool all entries
+   */
   const setExplosions = useCallback((updater: Explosion[] | ((prev: Explosion[]) => Explosion[])) => {
+    if (Array.isArray(updater) && updater.length === 0) {
+      // Bulk clear: setExplosions([])
+      explosionPool.releaseAll();
+      world.explosions = explosionPool.getActive();
+      return;
+    }
+
     if (typeof updater === 'function') {
-      world.explosions = updater(world.explosions);
-    } else {
-      world.explosions = updater;
+      // Updater pattern: setExplosions(prev => [...prev, newExplosion])
+      // We pass the current active list to the updater, then pool any new entries
+      const prevActive = explosionPool.getActive();
+      const prevIds = new Set<number | string>();
+      for (const e of prevActive) {
+        if (e.id !== undefined) prevIds.add(e.id);
+      }
+
+      const result = updater(prevActive);
+
+      // Pool any newly added explosions
+      for (const exp of result) {
+        const eid = (exp as any).id;
+        if (eid !== undefined && prevIds.has(eid)) continue; // already pooled
+        // Acquire from pool with a new ID
+        explosionPool.acquire({
+          id: getNextExplosionId(),
+          x: exp.x,
+          y: exp.y,
+          frame: exp.frame,
+          maxFrames: exp.maxFrames,
+          enemyType: exp.enemyType,
+          particles: exp.particles,
+        });
+      }
+
+      world.explosions = explosionPool.getActive();
     }
   }, []);
   // ═══ PHASE 1: enemySpawnCount lives in world.enemySpawnCount (engine/state.ts) ═══
@@ -1013,10 +1052,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [livesLostOnCurrentLevel, setLivesLostOnCurrentLevel] = useState(0);
   const [bossFirstHitShieldDropped, setBossFirstHitShieldDropped] = useState(false);
   const [bossIntroActive, setBossIntroActive] = useState(false);
-  // Use refs for particles to avoid state churn - render trigger via counter
-  const gameOverParticlesRef = useRef<Particle[]>([]);
-  const highScoreParticlesRef = useRef<Particle[]>([]);
-  const [particleRenderTick, setParticleRenderTick] = useState(0);
+  // Dead refs removed: gameOverParticlesRef, highScoreParticlesRef, particleRenderTick
+  // (particles are fully managed by particlePool)
   const [retryLevelData, setRetryLevelData] = useState<{ level: number; layout: any } | null>(null);
   const [powerUpsCollectedTypes, setPowerUpsCollectedTypes] = useState<Set<string>>(new Set());
   const [bricksDestroyedByTurrets, setBricksDestroyedByTurrets] = useState(0);
@@ -1666,34 +1703,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     [qualitySettings.explosionParticles],
   );
 
-  const createHighScoreParticles = useCallback((): Particle[] => {
-    const particles: Particle[] = [];
-    const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
-    const centerX = SCALED_CANVAS_WIDTH / 2;
-    const centerY = SCALED_CANVAS_HEIGHT / 2;
-
-    const colors = ["#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F", "#BB8FCE"];
-
-    for (let i = 0; i < particleCount; i++) {
-      const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.5;
-      const speed = 3 + Math.random() * 5;
-      const vx = Math.cos(angle) * speed;
-      const vy = Math.sin(angle) * speed - 2;
-
-      particles.push({
-        x: centerX + (Math.random() - 0.5) * 200,
-        y: centerY + (Math.random() - 0.5) * 100,
-        vx,
-        vy,
-        size: 4 + Math.random() * 6,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        life: 120,
-        maxLife: 120,
-      });
-    }
-
-    return particles;
-  }, [qualitySettings.explosionParticles, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT]);
+  // createHighScoreParticles removed — replaced by particlePool.acquireForHighScore
 
   // Initialize sound settings - always enabled
   useEffect(() => {
@@ -5145,7 +5155,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             // Create game over particles using pool method
             particlePool.acquireForGameOver(SCALED_CANVAS_WIDTH / 2, SCALED_CANVAS_HEIGHT / 2, 100);
-            setParticleRenderTick((t) => t + 1);
+            // particleRenderTick removed — pool renders directly
 
             // Check for high score - separate Boss Rush from Campaign
             if (isBossRush) {
@@ -5166,7 +5176,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   // Create high score particles using pool
                   const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
                   particlePool.acquireForHighScore(SCALED_CANVAS_WIDTH / 2, SCALED_CANVAS_HEIGHT / 2, particleCount);
-                  setParticleRenderTick((t) => t + 1);
+                  // particleRenderTick removed — pool renders directly
                   soundManager.playHighScoreMusic();
                   toast.error("Game Over - New High Score!");
                 } else {
@@ -5610,19 +5620,19 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Update pooled particles in place (no new objects created)
         particlePool.updateParticles(0.2);
 
-        // Update legacy explosion state for frame tracking only
-        setExplosions((prev) => {
-          for (let i = prev.length - 1; i >= 0; i--) {
-            prev[i].frame += 1;
-            if (prev[i].frame >= prev[i].maxFrames) {
-              prev.splice(i, 1);
-            }
+        // Update explosion frames in-place via pool (no array spread/splice)
+        const activeExplosions = explosionPool.getActive();
+        for (let i = activeExplosions.length - 1; i >= 0; i--) {
+          activeExplosions[i].frame += 1;
+          if (activeExplosions[i].frame >= activeExplosions[i].maxFrames) {
+            explosionPool.release(activeExplosions[i]);
           }
-          return prev.length > 0 ? [...prev] : [];
-        });
+        }
+        world.explosions = explosionPool.getActive();
       }
     } else {
-      setExplosions([]);
+      explosionPool.releaseAll();
+      world.explosions = explosionPool.getActive();
       particlePool.releaseAll();
     }
 
@@ -6411,7 +6421,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Create victory confetti particles using pool
           const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
           particlePool.acquireForHighScore(bossCenter.x, bossCenter.y, particleCount);
-          setParticleRenderTick((t) => t + 1);
+          // particleRenderTick removed — pool renders directly
 
           setBossesKilled((k) => k + 1);
           setBossActive(false);
@@ -8598,7 +8608,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       // Create a burst of particles on submission using pool
       const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
       particlePool.acquireForHighScore(SCALED_CANVAS_WIDTH / 2, SCALED_CANVAS_HEIGHT / 2, particleCount);
-      setParticleRenderTick((t) => t + 1);
+      // particleRenderTick removed — pool renders directly
 
       // Flash the screen
       setBackgroundFlash(1);
