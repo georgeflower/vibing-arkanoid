@@ -1,1 +1,4 @@
 project_id = "hndjtxesjymhmzfktpwk"
+
+[functions.submit-telemetry]
+verify_jwt = false
