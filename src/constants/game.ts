@@ -122,4 +122,4 @@ export const HOMING_STRENGTH = 0.15; // How strongly ball curves toward boss
 export const HOMING_MAX_TURN = 0.1; // Maximum turn rate per frame (radians)
 
 // Set to true to re-enable high quality rendering (glow, extra shadows)
-export const ENABLE_HIGH_QUALITY = false;
+export const ENABLE_HIGH_QUALITY = true;
