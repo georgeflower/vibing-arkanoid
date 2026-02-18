@@ -4,10 +4,14 @@ export const CHANGELOG = [
   {
     version: "0.9.92",
     changes: [
-      "NEW: Production telemetry system — silently tracks performance metrics and collision statistics in the background",
-      "Telemetry data stored in the cloud for real-world performance analysis across devices",
-      "Homepage is now the default landing page at the root URL — game moved to /play",
-      "Changelog section added to the homepage for easy version tracking",
+      "Canvas rendering fully decoupled from React — draws directly from the engine world in its own requestAnimationFrame loop, bypassing React reconciliation entirely",
+      "Single Date.now() call cached per frame and passed to all drawing functions, eliminating redundant timestamp calls",
+      "CRT overlay simplified on lower quality settings — expensive mix-blend-mode and animated layers skipped for smoother performance",
+      "Eliminated per-frame array spreading — removed [...prev] patterns in setBalls, setEnemies etc. that defeated the purpose of the engine migration",
+      "Static gradients cached for power-up backgrounds, ball surfaces, and other reused visual elements",
+      "Background animation driven by frame timestamp directly — removed backgroundPhase React state updates from the render loop",
+      "Entity object pooling expanded — PowerUps, Bullets, Bombs, Enemies, and BonusLetters use cached active arrays to prevent per-frame allocations",
+      "Production telemetry system added — silently tracks performance and collision metrics in the cloud",
     ],
   },
   {
