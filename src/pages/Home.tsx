@@ -39,7 +39,6 @@ const powerUps = [
   { img: powerupReflect, name: "Reflect", desc: "Reflects boss attacks" },
   { img: powerupHoming, name: "Homing", desc: "Ball tracks boss" },
   { img: powerupShrink, name: "Shrink", desc: "Shrinks paddle" },
-  { img: powerupSecondchance, name: "2nd Chance", desc: "Saves ball once" },
 ];
 
 const bonusLetters = [
@@ -52,7 +51,10 @@ const bonusLetters = [
 ];
 
 const tips = [
-  { title: "Paddle Edges", tip: "Hit the ball with paddle edges for sharp angles — great for reaching tricky corners." },
+  {
+    title: "Paddle Edges",
+    tip: "Hit the ball with paddle edges for sharp angles — great for reaching tricky corners.",
+  },
   { title: "Fireball First", tip: "Prioritize Fireball and Multi-Ball power-ups. They clear bricks fastest." },
   { title: "Boss Patterns", tip: "Learn each boss's attack pattern. Dodge first, attack when safe." },
   { title: "Q-U-M-R-A-N", tip: "Collect all 6 bonus letters for 5 extra lives. They fall from certain bricks!" },
@@ -93,22 +95,12 @@ const Home = () => {
       <CRTOverlay quality="medium" />
 
       {/* Scrollable content */}
-      <div
-        className="relative z-10 max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8"
-        style={{ minHeight: "100vh" }}
-      >
+      <div className="relative z-10 max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8" style={{ minHeight: "100vh" }}>
         {/* ===== HERO ===== */}
-        <section
-          className="amiga-box rounded-lg p-6 sm:p-10 mb-12 text-center relative overflow-hidden"
-        >
+        <section className="amiga-box rounded-lg p-6 sm:p-10 mb-12 text-center relative overflow-hidden">
           {/* Background image */}
           <div className="absolute inset-0 opacity-20">
-            <img
-              src={startScreen}
-              alt=""
-              className="w-full h-full object-cover"
-              style={{ imageRendering: "auto" }}
-            />
+            <img src={startScreen} alt="" className="w-full h-full object-cover" style={{ imageRendering: "auto" }} />
           </div>
 
           <div className="relative z-10">
@@ -116,7 +108,8 @@ const Home = () => {
               className="retro-pixel-text mb-4"
               style={{
                 fontSize: "clamp(20px, 5vw, 48px)",
-                background: "linear-gradient(90deg, hsl(200,70%,50%), hsl(330,100%,65%), hsl(30,100%,60%), hsl(200,70%,50%))",
+                background:
+                  "linear-gradient(90deg, hsl(200,70%,50%), hsl(330,100%,65%), hsl(30,100%,60%), hsl(200,70%,50%))",
                 backgroundSize: "200% auto",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
@@ -156,15 +149,22 @@ const Home = () => {
         {/* ===== TRIBUTE ===== */}
         <section className="amiga-box rounded-lg p-6 sm:p-8 mb-10">
           <SectionTitle>A Tribute to Arkanoid</SectionTitle>
-          <div className="space-y-4" style={{ color: "hsl(0,0%,78%)", fontSize: "clamp(9px, 1.5vw, 13px)", lineHeight: 1.8 }}>
+          <div
+            className="space-y-4"
+            style={{ color: "hsl(0,0%,78%)", fontSize: "clamp(9px, 1.5vw, 13px)", lineHeight: 1.8 }}
+          >
             <p className="retro-pixel-text">
-              In 1986, Taito released <span style={{ color: "hsl(30,100%,60%)" }}>Arkanoid</span> — a breakout-style arcade game that became an instant classic and one of the most influential games ever made.
+              In 1986, Taito released <span style={{ color: "hsl(30,100%,60%)" }}>Arkanoid</span> — a breakout-style
+              arcade game that became an instant classic and one of the most influential games ever made.
             </p>
             <p className="retro-pixel-text">
-              Vibing Arkanoid is a heartfelt tribute to that legendary game. We've reimagined the brick-breaking formula with 20 challenging levels, epic boss battles, 13 unique power-ups, and an authentic retro Amiga aesthetic — all running in your browser.
+              Vibing Arkanoid is a heartfelt tribute to that legendary game. We've reimagined the brick-breaking formula
+              with 20 challenging levels, epic boss battles, 13 unique power-ups, and an authentic retro Amiga aesthetic
+              — all running in your browser.
             </p>
             <p className="retro-pixel-text">
-              The original Arkanoid's DNA is everywhere: the satisfying physics, the strategic power-up choices, the "just one more level" pull. We hope Taito would approve.
+              The original Arkanoid's DNA is everywhere: the satisfying physics, the strategic power-up choices, the
+              "just one more level" pull. We hope Taito would approve.
             </p>
           </div>
         </section>
@@ -173,12 +173,19 @@ const Home = () => {
         <section className="amiga-box rounded-lg p-6 sm:p-8 mb-10">
           <SectionTitle>Gameplay</SectionTitle>
 
-          <div className="space-y-6" style={{ color: "hsl(0,0%,78%)", fontSize: "clamp(9px, 1.5vw, 13px)", lineHeight: 1.8 }}>
+          <div
+            className="space-y-6"
+            style={{ color: "hsl(0,0%,78%)", fontSize: "clamp(9px, 1.5vw, 13px)", lineHeight: 1.8 }}
+          >
             <p className="retro-pixel-text">
-              Battle through <span style={{ color: "hsl(200,70%,50%)" }}>20 levels</span> of increasing difficulty. Face epic <span style={{ color: "hsl(0,85%,55%)" }}>boss battles</span> on levels 5, 10, 15, and the ultimate Mega Boss on level 20.
+              Battle through <span style={{ color: "hsl(200,70%,50%)" }}>20 levels</span> of increasing difficulty. Face
+              epic <span style={{ color: "hsl(0,85%,55%)" }}>boss battles</span> on levels 5, 10, 15, and the ultimate
+              Mega Boss on level 20.
             </p>
             <p className="retro-pixel-text">
-              Encounter special brick types: <span style={{ color: "hsl(0,0%,60%)" }}>Metal</span> (indestructible), <span style={{ color: "hsl(30,100%,60%)" }}>Cracked</span> (3 hits), and <span style={{ color: "hsl(0,85%,55%)" }}>Explosive</span> (chain reactions).
+              Encounter special brick types: <span style={{ color: "hsl(0,0%,60%)" }}>Metal</span> (indestructible),{" "}
+              <span style={{ color: "hsl(30,100%,60%)" }}>Cracked</span> (3 hits), and{" "}
+              <span style={{ color: "hsl(0,85%,55%)" }}>Explosive</span> (chain reactions).
             </p>
           </div>
 
@@ -199,9 +206,18 @@ const Home = () => {
                   border: "2px inset hsl(210,15%,40%)",
                 }}
               >
-                <img src={pu.img} alt={pu.name} className="w-8 h-8 sm:w-10 sm:h-10 mb-1" style={{ imageRendering: "pixelated" }} />
-                <span className="retro-pixel-text text-center" style={{ fontSize: "7px", color: "hsl(200,70%,50%)" }}>{pu.name}</span>
-                <span className="retro-pixel-text text-center" style={{ fontSize: "6px", color: "hsl(0,0%,55%)" }}>{pu.desc}</span>
+                <img
+                  src={pu.img}
+                  alt={pu.name}
+                  className="w-8 h-8 sm:w-10 sm:h-10 mb-1"
+                  style={{ imageRendering: "pixelated" }}
+                />
+                <span className="retro-pixel-text text-center" style={{ fontSize: "7px", color: "hsl(200,70%,50%)" }}>
+                  {pu.name}
+                </span>
+                <span className="retro-pixel-text text-center" style={{ fontSize: "6px", color: "hsl(0,0%,55%)" }}>
+                  {pu.desc}
+                </span>
               </div>
             ))}
           </div>
@@ -223,7 +239,12 @@ const Home = () => {
                   border: "2px inset hsl(210,15%,40%)",
                 }}
               >
-                <img src={bl.img} alt={bl.letter} className="w-8 h-8 sm:w-10 sm:h-10" style={{ imageRendering: "pixelated" }} />
+                <img
+                  src={bl.img}
+                  alt={bl.letter}
+                  className="w-8 h-8 sm:w-10 sm:h-10"
+                  style={{ imageRendering: "pixelated" }}
+                />
               </div>
             ))}
           </div>
@@ -242,7 +263,9 @@ const Home = () => {
               className="p-4 rounded"
               style={{ background: "hsl(210,20%,16%)", border: "2px inset hsl(210,15%,40%)" }}
             >
-              <h4 className="retro-pixel-text mb-3" style={{ fontSize: "10px", color: "hsl(200,70%,50%)" }}>Controls</h4>
+              <h4 className="retro-pixel-text mb-3" style={{ fontSize: "10px", color: "hsl(200,70%,50%)" }}>
+                Controls
+              </h4>
               <ul className="space-y-2" style={{ fontSize: "8px", color: "hsl(0,0%,70%)" }}>
                 <li className="retro-pixel-text">🖱️ Mouse — move paddle</li>
                 <li className="retro-pixel-text">⌨️ Arrow keys — move paddle</li>
@@ -258,7 +281,9 @@ const Home = () => {
               className="p-4 rounded"
               style={{ background: "hsl(210,20%,16%)", border: "2px inset hsl(210,15%,40%)" }}
             >
-              <h4 className="retro-pixel-text mb-3" style={{ fontSize: "10px", color: "hsl(200,70%,50%)" }}>Objective</h4>
+              <h4 className="retro-pixel-text mb-3" style={{ fontSize: "10px", color: "hsl(200,70%,50%)" }}>
+                Objective
+              </h4>
               <ul className="space-y-2" style={{ fontSize: "8px", color: "hsl(0,0%,70%)" }}>
                 <li className="retro-pixel-text">Break all bricks to advance</li>
                 <li className="retro-pixel-text">Defeat bosses on levels 5, 10, 15 & 20</li>
@@ -272,10 +297,16 @@ const Home = () => {
               className="p-4 rounded"
               style={{ background: "hsl(210,20%,16%)", border: "2px inset hsl(210,15%,40%)" }}
             >
-              <h4 className="retro-pixel-text mb-3" style={{ fontSize: "10px", color: "hsl(330,100%,65%)" }}>Difficulty Modes</h4>
+              <h4 className="retro-pixel-text mb-3" style={{ fontSize: "10px", color: "hsl(330,100%,65%)" }}>
+                Difficulty Modes
+              </h4>
               <ul className="space-y-2" style={{ fontSize: "8px", color: "hsl(0,0%,70%)" }}>
-                <li className="retro-pixel-text"><span style={{ color: "hsl(120,50%,50%)" }}>Normal</span> — 3 lives, balanced speed</li>
-                <li className="retro-pixel-text"><span style={{ color: "hsl(0,85%,55%)" }}>Godlike</span> — 1 life, faster speed, higher caps</li>
+                <li className="retro-pixel-text">
+                  <span style={{ color: "hsl(120,50%,50%)" }}>Normal</span> — 3 lives, balanced speed
+                </li>
+                <li className="retro-pixel-text">
+                  <span style={{ color: "hsl(0,85%,55%)" }}>Godlike</span> — 1 life, faster speed, higher caps
+                </li>
               </ul>
             </div>
 
@@ -284,10 +315,16 @@ const Home = () => {
               className="p-4 rounded"
               style={{ background: "hsl(210,20%,16%)", border: "2px inset hsl(210,15%,40%)" }}
             >
-              <h4 className="retro-pixel-text mb-3" style={{ fontSize: "10px", color: "hsl(330,100%,65%)" }}>Game Modes</h4>
+              <h4 className="retro-pixel-text mb-3" style={{ fontSize: "10px", color: "hsl(330,100%,65%)" }}>
+                Game Modes
+              </h4>
               <ul className="space-y-2" style={{ fontSize: "8px", color: "hsl(0,0%,70%)" }}>
-                <li className="retro-pixel-text"><span style={{ color: "hsl(200,70%,50%)" }}>Normal</span> — 20 levels + bosses</li>
-                <li className="retro-pixel-text"><span style={{ color: "hsl(0,85%,55%)" }}>Boss Rush</span> — All 4 bosses back-to-back</li>
+                <li className="retro-pixel-text">
+                  <span style={{ color: "hsl(200,70%,50%)" }}>Normal</span> — 20 levels + bosses
+                </li>
+                <li className="retro-pixel-text">
+                  <span style={{ color: "hsl(0,85%,55%)" }}>Boss Rush</span> — All 4 bosses back-to-back
+                </li>
               </ul>
             </div>
           </div>
@@ -324,13 +361,15 @@ const Home = () => {
         <section className="amiga-box rounded-lg p-6 sm:p-8 mb-10 text-center">
           <SectionTitle>Open Source</SectionTitle>
 
-          <div className="space-y-4" style={{ color: "hsl(0,0%,78%)", fontSize: "clamp(9px, 1.5vw, 12px)", lineHeight: 1.8 }}>
+          <div
+            className="space-y-4"
+            style={{ color: "hsl(0,0%,78%)", fontSize: "clamp(9px, 1.5vw, 12px)", lineHeight: 1.8 }}
+          >
             <p className="retro-pixel-text">
-              Vibing Arkanoid is <span style={{ color: "hsl(120,50%,50%)" }}>100% open source</span> and proudly <span style={{ color: "hsl(330,100%,65%)" }}>vibe coded</span>.
+              Vibing Arkanoid is <span style={{ color: "hsl(120,50%,50%)" }}>100% open source</span> and proudly{" "}
+              <span style={{ color: "hsl(330,100%,65%)" }}>vibe coded</span>.
             </p>
-            <p className="retro-pixel-text">
-              Explore the code, report issues, or contribute on GitHub!
-            </p>
+            <p className="retro-pixel-text">Explore the code, report issues, or contribute on GitHub!</p>
           </div>
 
           <a
