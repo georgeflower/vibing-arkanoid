@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import CRTOverlay from "@/components/CRTOverlay";
 import { GAME_VERSION } from "@/constants/version";
+import { CHANGELOG } from "@/constants/version";
 import startScreen from "@/assets/start-screen-new.webp";
 
 // Power-up images
@@ -352,6 +353,44 @@ const Home = () => {
                 <p className="retro-pixel-text" style={{ fontSize: "8px", color: "hsl(0,0%,70%)", lineHeight: 1.8 }}>
                   {t.tip}
                 </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ===== CHANGELOG ===== */}
+        <section className="amiga-box rounded-lg p-6 sm:p-8 mb-10">
+          <SectionTitle>Changelog</SectionTitle>
+
+          <div className="space-y-5" style={{ maxHeight: "60vh", overflowY: "auto" }}>
+            {CHANGELOG.map((entry) => (
+              <div
+                key={entry.version}
+                className="p-4 rounded"
+                style={{
+                  background: "hsl(210,20%,16%)",
+                  border: "2px inset hsl(210,15%,40%)",
+                  borderLeftWidth: "4px",
+                  borderLeftColor: "hsl(200,70%,50%)",
+                }}
+              >
+                <h4
+                  className="retro-pixel-text mb-2"
+                  style={{ fontSize: "clamp(9px, 1.8vw, 13px)", color: "hsl(30,100%,60%)" }}
+                >
+                  v{entry.version}
+                </h4>
+                <ul className="space-y-1">
+                  {entry.changes.map((change, idx) => (
+                    <li
+                      key={idx}
+                      className="retro-pixel-text"
+                      style={{ fontSize: "clamp(7px, 1.3vw, 10px)", color: "hsl(0,0%,70%)", lineHeight: 1.7 }}
+                    >
+                      • {change}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
