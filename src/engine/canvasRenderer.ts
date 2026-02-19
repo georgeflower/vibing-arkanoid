@@ -85,6 +85,23 @@ function getBackgroundPattern(
   return assets.patterns[key];
 }
 
+// ─── Drop Shadow Helper ─────────────────────────────────────
+// Cheap alternative to ctx.shadowBlur (Gaussian blur). Draws a dark
+// ellipse beneath an entity — nearly zero GPU cost vs blur which
+// scales with radius² × DPR².
+
+function drawDropShadow(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  width: number, height: number,
+  offsetY: number = 4,
+) {
+  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+  ctx.beginPath();
+  ctx.ellipse(x, y + offsetY, width * 0.45, height * 0.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 // ─── Main Render Function ────────────────────────────────────
 
 export function renderFrame(
@@ -1569,12 +1586,13 @@ function drawEnemies(
       gradient.addColorStop(0.7, `hsl(${hue}, 60%, 25%)`);
       gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
 
-      if (qualitySettings.glowEnabled) { ctx.shadowBlur = 25; ctx.shadowColor = baseColor; }
+      if (qualitySettings.shadowsEnabled) {
+        drawDropShadow(ctx, centerX, centerY, singleEnemy.width, singleEnemy.height);
+      }
       ctx.fillStyle = gradient;
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.fill();
-      ctx.shadowBlur = 0;
 
       const pulse = Math.abs(Math.sin(now / 100));
       ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + pulse * 0.5})`;
@@ -1668,12 +1686,13 @@ function drawEnemies(
       gradient.addColorStop(0.7, darkColor);
       gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
 
-      if (qualitySettings.glowEnabled) { ctx.shadowBlur = 20; ctx.shadowColor = baseColor; }
+      if (qualitySettings.shadowsEnabled) {
+        drawDropShadow(ctx, centerX, centerY, singleEnemy.width, singleEnemy.height);
+      }
       ctx.fillStyle = gradient;
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.fill();
-      ctx.shadowBlur = 0;
 
       // Latitude/longitude lines
       ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
@@ -1748,15 +1767,16 @@ function drawEnemies(
         avgZ: face.indices.reduce((sum, i) => sum + projected[i][2], 0) / face.indices.length,
       })).sort((a, b) => a.avgZ - b.avgZ);
 
+      if (qualitySettings.shadowsEnabled) {
+        drawDropShadow(ctx, centerX, centerY, singleEnemy.width, singleEnemy.height);
+      }
       sortedFaces.forEach((face) => {
-        if (qualitySettings.glowEnabled) { ctx.shadowBlur = 15; ctx.shadowColor = `hsl(${baseHue}, ${colorIntensity}%, 55%)`; }
         ctx.fillStyle = face.color;
         ctx.beginPath();
         ctx.moveTo(projected[face.indices[0]][0], projected[face.indices[0]][1]);
         face.indices.forEach((i) => ctx.lineTo(projected[i][0], projected[i][1]));
         ctx.closePath();
         ctx.fill();
-        ctx.shadowBlur = 0;
         ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
         ctx.lineWidth = 2;
         ctx.stroke();
@@ -1825,15 +1845,16 @@ function drawEnemies(
         avgZ: face.indices.reduce((sum, i) => sum + projected[i][2], 0) / 4,
       })).sort((a, b) => a.avgZ - b.avgZ);
 
+      if (qualitySettings.shadowsEnabled) {
+        drawDropShadow(ctx, centerX, centerY, singleEnemy.width, singleEnemy.height);
+      }
       sortedFaces.forEach((face) => {
-        if (qualitySettings.glowEnabled) { ctx.shadowBlur = 15; ctx.shadowColor = "hsl(0, 85%, 55%)"; }
         ctx.fillStyle = face.color;
         ctx.beginPath();
         ctx.moveTo(projected[face.indices[0]][0], projected[face.indices[0]][1]);
         face.indices.forEach((i) => ctx.lineTo(projected[i][0], projected[i][1]));
         ctx.closePath();
         ctx.fill();
-        ctx.shadowBlur = 0;
         ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
         ctx.lineWidth = 1.5;
         ctx.stroke();
@@ -1852,7 +1873,6 @@ function drawBombs(
   now: number,
   assets: AssetRefs,
 ): void {
-  const enableGlow = qualitySettings.glowEnabled;
 
   bombs.forEach((bomb) => {
     const bombCenterX = bomb.x + bomb.width / 2;
@@ -1864,7 +1884,7 @@ function drawBombs(
     ctx.rotate((bombRotation * Math.PI) / 180);
 
     if (bomb.type === "pyramidBullet") {
-      if (enableGlow) { ctx.shadowBlur = 8; ctx.shadowColor = "hsl(280, 70%, 55%)"; }
+      if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, 0, 0, bomb.width, bomb.height); }
       ctx.fillStyle = "hsl(280, 70%, 55%)";
       ctx.beginPath();
       ctx.moveTo(0, -bomb.height / 2);
@@ -1877,7 +1897,6 @@ function drawBombs(
       ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + pyramidPulse * 0.5})`;
       ctx.lineWidth = 1.5 + pyramidPulse * 1.5;
       ctx.stroke();
-      ctx.shadowBlur = 0;
       ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
       ctx.beginPath();
       ctx.arc(-1, -2, bomb.width / 5, 0, Math.PI * 2);
@@ -1899,7 +1918,7 @@ function drawBombs(
       ctx.quadraticCurveTo(0, rocketLength * 1.2, rocketWidth * 0.5, rocketLength * 0.3);
       ctx.fill();
 
-      if (enableGlow) { ctx.shadowBlur = 12; ctx.shadowColor = "rgba(255, 255, 255, 0.8)"; }
+      if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, 0, 0, bomb.width * 1.8, bomb.width * 0.6); }
       const bodyGrad = ctx.createLinearGradient(-rocketWidth, 0, rocketWidth, 0);
       bodyGrad.addColorStop(0, "#cccccc");
       bodyGrad.addColorStop(0.3, "#ffffff");
@@ -1936,9 +1955,8 @@ function drawBombs(
       ctx.lineTo(rocketWidth * 0.5, rocketLength * 0.3);
       ctx.closePath();
       ctx.fill();
-      ctx.shadowBlur = 0;
     } else {
-      if (enableGlow) { ctx.shadowBlur = 8; ctx.shadowColor = "hsl(0, 85%, 55%)"; }
+      if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, 0, 0, bomb.width, bomb.height); }
       ctx.fillStyle = "hsl(0, 85%, 55%)";
       ctx.beginPath();
       ctx.arc(0, 0, bomb.width / 2, 0, Math.PI * 2);
@@ -1947,7 +1965,6 @@ function drawBombs(
       ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + bombPulse * 0.5})`;
       ctx.lineWidth = 1.5 + bombPulse * 1.5;
       ctx.stroke();
-      ctx.shadowBlur = 0;
       ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
       ctx.beginPath();
       ctx.arc(-2, -2, bomb.width / 4, 0, Math.PI * 2);
@@ -1966,11 +1983,10 @@ function drawBossAttacks(
   now: number,
   assets: AssetRefs,
 ): void {
-  const enableGlow = qualitySettings.glowEnabled;
 
   bossAttacks.forEach((attack) => {
     if (attack.type === "laser") {
-      if (enableGlow) { ctx.shadowBlur = 15; ctx.shadowColor = "rgba(255, 0, 0, 0.8)"; }
+      if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, attack.x + attack.width / 2, attack.y + attack.height / 2, attack.width, attack.height); }
       ctx.fillStyle = "rgba(255, 50, 50, 0.9)";
       ctx.fillRect(attack.x, attack.y, attack.width, attack.height);
       ctx.fillStyle = "rgba(255, 200, 200, 0.6)";
@@ -1979,7 +1995,6 @@ function drawBossAttacks(
       ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 + laserPulse * 0.4})`;
       ctx.lineWidth = 2 + laserPulse * 2;
       ctx.strokeRect(attack.x, attack.y, attack.width, attack.height);
-      ctx.shadowBlur = 0;
     } else if (attack.type === "rocket") {
       ctx.save();
       ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
@@ -2065,7 +2080,7 @@ function drawBossAttacks(
       const rotationSpeed = attack.isStopped ? 100 : 30;
       ctx.rotate(((now / rotationSpeed) * Math.PI) / 180);
       const fillColor = `hsl(${hue}, 100%, 50%)`;
-      if (enableGlow) { ctx.shadowBlur = 12; ctx.shadowColor = fillColor; }
+      if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, 0, 0, attack.width, attack.height); }
       ctx.fillStyle = fillColor;
       ctx.beginPath();
       ctx.arc(0, 0, attack.width / 2, 0, Math.PI * 2);
@@ -2074,7 +2089,6 @@ function drawBossAttacks(
       ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + pulse * 0.5})`;
       ctx.lineWidth = 2 + pulse * 2;
       ctx.stroke();
-      ctx.shadowBlur = 0;
       ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
       ctx.beginPath();
       ctx.arc(-3, -3, attack.width / 5, 0, Math.PI * 2);
@@ -2106,9 +2120,8 @@ function drawBossAttacks(
       ctx.save();
       ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
       ctx.rotate(((now / 30) * Math.PI) / 180);
-      if (enableGlow) {
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = attack.type === "super" ? "hsl(280, 100%, 60%)" : "hsl(25, 100%, 50%)";
+      if (qualitySettings.shadowsEnabled) {
+        drawDropShadow(ctx, 0, 0, attack.width, attack.height);
       }
       ctx.fillStyle = attack.type === "super" ? "hsl(280, 80%, 60%)" : "hsl(25, 85%, 50%)";
       ctx.beginPath();
@@ -2118,7 +2131,6 @@ function drawBossAttacks(
       ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + projectilePulse * 0.5})`;
       ctx.lineWidth = 1.5 + projectilePulse * 1.5;
       ctx.stroke();
-      ctx.shadowBlur = 0;
       ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
       ctx.beginPath();
       ctx.arc(-2, -2, attack.width / 4, 0, Math.PI * 2);
@@ -2180,7 +2192,7 @@ function drawBoss(
     const baseHue = boss.isAngry ? 0 : 280;
     const intensity = boss.isSuperAngry ? 75 : boss.isAngry ? 65 : 60;
     ctx.rotate(boss.rotationY);
-    if (qualitySettings.glowEnabled) { ctx.shadowBlur = 25; ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`; }
+    if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, 0, 0, boss.width, boss.height); }
     ctx.fillStyle = `hsl(${baseHue}, 80%, ${intensity}%)`;
     ctx.beginPath();
     ctx.moveTo(0, -size);
@@ -2263,15 +2275,14 @@ function drawCubeBoss(
     avgZ: face.indices.reduce((sum, i) => sum + projected[i][2], 0) / 4,
   })).sort((a, b) => a.avgZ - b.avgZ);
 
+  if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, 0, 0, boss.width, boss.height); }
   sortedFaces.forEach((face) => {
-    if (qualitySettings.glowEnabled) { ctx.shadowBlur = 20; ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`; }
     ctx.fillStyle = `hsl(${baseHue}, 80%, ${face.lightness}%)`;
     ctx.beginPath();
     ctx.moveTo(projected[face.indices[0]][0], projected[face.indices[0]][1]);
     face.indices.forEach((i) => ctx.lineTo(projected[i][0], projected[i][1]));
     ctx.closePath();
     ctx.fill();
-    ctx.shadowBlur = 0;
     ctx.strokeStyle = `hsl(${baseHue}, 90%, 70%)`;
     ctx.lineWidth = 2;
     ctx.stroke();
@@ -2296,12 +2307,11 @@ function drawSphereBoss(
   mainGrad.addColorStop(0.7, `hsl(${baseHue}, 60%, 35%)`);
   mainGrad.addColorStop(1, `hsl(${baseHue}, 50%, 15%)`);
 
-  if (qualitySettings.glowEnabled) { ctx.shadowBlur = 30; ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`; }
+  if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, 0, 0, boss.width, boss.height); }
   ctx.fillStyle = mainGrad;
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.fill();
-  ctx.shadowBlur = 0;
 
   // Grid lines
   ctx.strokeStyle = `hsla(${baseHue}, 60%, 60%, 0.3)`;
@@ -2352,16 +2362,13 @@ function drawSphereBoss(
     ctx.fillRect(mouthWidth * 0.5, mouthY + eyeSize * 0.4, mouthWidth * 0.3, eyeSize * 0.6);
   }
 
-  if (boss.isAngry && qualitySettings.glowEnabled) {
+  if (boss.isAngry) {
     const pulse = Math.sin(now / 100) * 0.5 + 0.5;
-    ctx.shadowBlur = 35 * pulse;
-    ctx.shadowColor = "hsl(0, 100%, 50%)";
     ctx.strokeStyle = `hsla(0, 100%, 70%, ${0.5 + pulse * 0.5})`;
     ctx.lineWidth = 3 + pulse * 2;
     ctx.beginPath();
     ctx.arc(0, 0, radius + 2, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.shadowBlur = 0;
   }
 }
 
@@ -2389,10 +2396,8 @@ function drawMegaBoss(
   ctx.save();
   ctx.rotate(hexRotation);
 
-  if (qualitySettings.glowEnabled) {
-    ctx.shadowBlur = 30;
-    const glowColor = megaBoss.corePhase === 3 ? "rgba(255, 50, 50, 0.9)" : megaBoss.corePhase === 2 ? "rgba(255, 150, 50, 0.9)" : "rgba(50, 150, 255, 0.9)";
-    ctx.shadowColor = glowColor;
+  if (qualitySettings.shadowsEnabled) {
+    drawDropShadow(ctx, 0, 0, boss.width, boss.height);
   }
 
   // Outer shield hexagon
@@ -2521,14 +2526,11 @@ function drawMegaBoss(
     ctx.lineWidth = 2;
     ctx.strokeRect(-cannonWidth / 2, cannonBaseY, cannonWidth, cannonLength);
 
-    const muzzlePulse = Math.sin(now / 150) * 0.5 + 0.5;
-    ctx.shadowBlur = 20 * muzzlePulse;
-    ctx.shadowColor = "rgba(255, 100, 100, 0.9)";
     ctx.beginPath();
     ctx.arc(0, cannonBaseY + cannonLength, 10, 0, Math.PI * 2);
+    const muzzlePulse = Math.sin(now / 150) * 0.5 + 0.5;
     ctx.fillStyle = `rgba(255, 200, 100, ${muzzlePulse})`;
     ctx.fill();
-    ctx.shadowBlur = 0;
     ctx.restore();
   }
 
