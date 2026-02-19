@@ -8,7 +8,7 @@
  * no Proxy, no reactivity.
  */
 
-import type { GameState, PowerUp, Bullet, BonusLetterType } from "@/types/game";
+import type { GameState, PowerUp, BonusLetterType } from "@/types/game";
 import type { QualitySettings } from "@/hooks/useAdaptiveQuality";
 import { QUALITY_PRESETS } from "@/hooks/useAdaptiveQuality";
 
@@ -28,7 +28,7 @@ export interface RenderState {
 
   // Entity arrays still managed by React hooks (bridge)
   powerUps: PowerUp[];
-  bullets: Bullet[];
+  // bullets live in world.bullets — rendered directly from there, no renderState bridge needed
 
   // Quality
   qualitySettings: QualitySettings;
@@ -88,7 +88,7 @@ export const renderState: RenderState = {
   collectedLetters: new Set(),
 
   powerUps: [],
-  bullets: [],
+  // bullets: lives in world.bullets
 
   qualitySettings: { level: 'medium', ...QUALITY_PRESETS.medium, autoAdjust: true },
 
