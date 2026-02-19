@@ -1,6 +1,14 @@
-export const GAME_VERSION = "0.9.93";
+export const GAME_VERSION = "0.9.94";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.94",
+    changes: [
+      "Fixed: turret bullets sometimes travelling at double speed after engine decoupling",
+      "Root cause: bullets were mutated in-place and shared between React state and the render loop, causing the renderer to see mid-tick position updates before the game tick committed them",
+      "Fix: bullets migrated to the world singleton (same as balls, paddle, bricks) — renderer now reads world.bullets directly, eliminating the renderState race condition",
+    ],
+  },
   {
     version: "0.9.93",
     changes: [
