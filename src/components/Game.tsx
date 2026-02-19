@@ -1428,91 +1428,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Boss defeat callback
     (bossType, defeatedBoss) => {
       if (bossType === "cube") {
-        // Cube boss defeat
-        soundManager.playExplosion();
-        soundManager.playBossDefeatSound();
-        setScore((s) => s + BOSS_CONFIG.cube.points);
-        setLives((prev) => prev + 1); // Bonus life for defeating boss
-        toast.success(`CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points + BONUS LIFE!`);
-        setExplosions((e) => [
-          ...e,
-          {
-            x: defeatedBoss.x + defeatedBoss.width / 2,
-            y: defeatedBoss.y + defeatedBoss.height / 2,
-            frame: 0,
-            maxFrames: 30,
-            enemyType: "cube" as EnemyType,
-            particles: createExplosionParticles(
-              defeatedBoss.x + defeatedBoss.width / 2,
-              defeatedBoss.y + defeatedBoss.height / 2,
-              "cube" as EnemyType,
-            ),
-          },
-        ]);
-        setBossesKilled((k) => k + 1);
-        setBossActive(false);
-        setBossDefeatedTransitioning(true);
-        // Clean up game entities
-        setBalls([]);
-        clearAllEnemies();
-        setBossAttacks([]);
-        clearAllBombs();
-        setBullets([]);
-
-        // Boss Rush mode: show stats overlay instead of immediate transition
-        if (isBossRush) {
-          gameLoopRef.current?.pause();
-          setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
-          setBossRushStatsOverlayActive(true);
-        } else {
-          setBossVictoryOverlayActive(true);
-          soundManager.stopBossMusic();
-          soundManager.resumeBackgroundMusic();
-          setTimeout(() => nextLevel(), 3000);
-        }
+        handleBossDefeat("cube", defeatedBoss, BOSS_CONFIG.cube.points,
+          `CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points + BONUS LIFE!`);
       } else if (bossType === "sphere") {
-        // Sphere phase 2 defeat
-        soundManager.playExplosion();
-        soundManager.playBossDefeatSound();
-        setScore((s) => s + BOSS_CONFIG.sphere.points);
-        setLives((prev) => prev + 1); // Bonus life for defeating boss
-        toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points + BONUS LIFE!`);
-        setExplosions((e) => [
-          ...e,
-          {
-            x: defeatedBoss.x + defeatedBoss.width / 2,
-            y: defeatedBoss.y + defeatedBoss.height / 2,
-            frame: 0,
-            maxFrames: 30,
-            enemyType: "sphere" as EnemyType,
-            particles: createExplosionParticles(
-              defeatedBoss.x + defeatedBoss.width / 2,
-              defeatedBoss.y + defeatedBoss.height / 2,
-              "sphere" as EnemyType,
-            ),
-          },
-        ]);
-        setBossesKilled((k) => k + 1);
-        setBossActive(false);
-        setBossDefeatedTransitioning(true);
-        // Clean up game entities
-        setBalls([]);
-        clearAllEnemies();
-        setBossAttacks([]);
-        clearAllBombs();
-        setBullets([]);
-
-        // Boss Rush mode: show stats overlay instead of immediate transition
-        if (isBossRush) {
-          gameLoopRef.current?.pause();
-          setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
-          setBossRushStatsOverlayActive(true);
-        } else {
-          setBossVictoryOverlayActive(true);
-          soundManager.stopBossMusic();
-          soundManager.resumeBackgroundMusic();
-          setTimeout(() => nextLevel(), 3000);
-        }
+        handleBossDefeat("sphere", defeatedBoss, BOSS_CONFIG.sphere.points,
+          `SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points + BONUS LIFE!`);
       }
     },
     // Resurrected boss defeat callback
@@ -1555,26 +1475,25 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         // Check if all defeated
         if (remaining.length === 0) {
-          setLives((prev) => prev + 1); // Bonus life for defeating all pyramids
+          // Use a simplified version since handleBossDefeat expects a single boss object
+          // and pyramid all-defeated doesn't award per-boss points (already awarded per-pyramid)
+          setLives((prev) => prev + 1);
           toast.success("ALL PYRAMIDS DEFEATED! + BONUS LIFE!");
           setBossActive(false);
           setBossesKilled((k) => k + 1);
           setBossDefeatedTransitioning(true);
-          setBossVictoryOverlayActive(true); // Show victory celebration
-          // Clean up game entities
+          setBossVictoryOverlayActive(true);
           setBalls([]);
           clearAllEnemies();
           setBossAttacks([]);
           clearAllBombs();
           setBullets([]);
 
-          // Boss Rush mode: show stats overlay instead of immediate transition
           if (isBossRush) {
             gameLoopRef.current?.pause();
             setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
             setBossRushStatsOverlayActive(true);
           } else {
-            // Stop boss music and resume background music
             soundManager.stopBossMusic();
             soundManager.resumeBackgroundMusic();
             setTimeout(() => nextLevel(), 3000);
@@ -1712,6 +1631,191 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     },
     [qualitySettings.explosionParticles],
   );
+
+  // ═══ SHARED LIFE-LOSS & BOSS DEFEAT HELPERS ═══
+  // Extracted from 5+ duplicate blocks to fix bugs and reduce code.
+
+  /** Game-over branch: stops music, checks high scores, shows appropriate screen. */
+  const handleGameOver = useCallback(() => {
+    setGameState("gameOver");
+    soundManager.stopBossMusic();
+    soundManager.stopBackgroundMusic();
+    setBossAttacks([]);
+    setLaserWarnings([]);
+
+    if (isBossRush) {
+      const currentBossLevel = BOSS_RUSH_CONFIG.bossOrder[bossRushIndex] || 5;
+      setBossRushGameOverLevel(currentBossLevel);
+      const completionTime = bossRushStartTime ? Date.now() - bossRushStartTime : 0;
+      setBossRushCompletionTime(completionTime);
+      setShowBossRushScoreEntry(true);
+      soundManager.playHighScoreMusic();
+      toast.error("Boss Rush Over!");
+    } else {
+      getQualifiedLeaderboards(score).then((qualification) => {
+        if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
+          setQualifiedLeaderboards(qualification);
+          setShowHighScoreEntry(true);
+          soundManager.playHighScoreMusic();
+          toast.error("Game Over - New High Score!");
+        } else {
+          setShowEndScreen(true);
+          toast.error("Game Over!");
+        }
+      });
+    }
+  }, [isBossRush, bossRushIndex, bossRushStartTime, score, levelSkipped, getQualifiedLeaderboards]);
+
+  /**
+   * Survive-death branch: resets ball (with proper angle math), clears all power-up
+   * timers, entities, and bomb intervals. Optionally spawns mercy power-ups.
+   */
+  const handleSurviveDeath = useCallback((toastMessage: string, opts?: { spawnMercy?: boolean }) => {
+    const baseSpeed = 4.5;
+    const initialAngle = (-20 * Math.PI) / 180;
+    const resetBall: Ball = {
+      x: SCALED_CANVAS_WIDTH / 2,
+      y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
+      dx: baseSpeed * Math.sin(initialAngle),
+      dy: -baseSpeed * Math.cos(initialAngle),
+      radius: SCALED_BALL_RADIUS,
+      speed: baseSpeed,
+      id: nextBallId.current++,
+      isFireball: false,
+      waitingToLaunch: true,
+    };
+    setBalls([resetBall]);
+    setLaunchAngle(-20);
+    launchAngleDirectionRef.current = 1;
+    setShowInstructions(true);
+
+    // Mercy power-ups (only for allBallsLost path)
+    if (opts?.spawnMercy) {
+      setLivesLostOnCurrentLevel((prev) => {
+        const newCount = prev + 1;
+        if (settings.difficulty === "godlike") {
+          setPowerUps([]);
+          return newCount;
+        }
+        let mercyType: PowerUpType;
+        if (newCount >= 3) {
+          mercyType = "life";
+        } else {
+          const mercyTypes: PowerUpType[] = ["turrets", "secondChance", "shield"];
+          mercyType = mercyTypes[Math.floor(Math.random() * mercyTypes.length)];
+        }
+        const mercyPowerUp: PowerUp = {
+          type: mercyType,
+          x: SCALED_CANVAS_WIDTH / 2 - POWERUP_SIZE / 2,
+          y: 100,
+          width: POWERUP_SIZE,
+          height: POWERUP_SIZE,
+          speed: POWERUP_FALL_SPEED,
+          active: true,
+          isMercyLife: mercyType === "life",
+        };
+        setPowerUps([mercyPowerUp]);
+        return newCount;
+      });
+    } else {
+      setPowerUps([]);
+    }
+
+    setBonusLetters([]);
+    setPaddle((prev) =>
+      prev
+        ? { ...prev, hasTurrets: false, hasShield: false, hasReflectShield: false, width: SCALED_PADDLE_WIDTH }
+        : null,
+    );
+
+    // Clear all power-up timers
+    setBossStunnerEndTime(null);
+    setReflectShieldEndTime(null);
+    setHomingBallEndTime(null);
+    setFireballEndTime(null);
+    setReflectShieldActive(false);
+    setHomingBallActive(false);
+    if (reflectShieldTimeoutRef.current) {
+      clearTimeout(reflectShieldTimeoutRef.current);
+      reflectShieldTimeoutRef.current = null;
+    }
+    if (homingBallTimeoutRef.current) {
+      clearTimeout(homingBallTimeoutRef.current);
+      homingBallTimeoutRef.current = null;
+    }
+
+    setBullets([]);
+    if (world.speedMultiplier < 1) setSpeedMultiplier(1);
+    setBrickHitSpeedAccumulated(0);
+    setTimer(0);
+    setLastEnemySpawnTime(0);
+    clearAllEnemies();
+    setBossAttacks([]);
+    setLaserWarnings([]);
+    clearAllBombs();
+    setExplosions([]);
+    bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
+    bombIntervalsRef.current.clear();
+    setGameState("ready");
+    toast(toastMessage);
+  }, [
+    SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT, SCALED_PADDLE_START_Y,
+    SCALED_BALL_RADIUS, SCALED_PADDLE_WIDTH, settings.difficulty,
+    clearAllEnemies, clearAllBombs,
+  ]);
+
+  /**
+   * Boss defeat: plays sounds, awards points + bonus life, creates explosion,
+   * cleans up entities, and transitions to victory overlay or next Boss Rush stage.
+   */
+  const handleBossDefeat = useCallback((
+    bossType: EnemyType,
+    defeatedBoss: Boss,
+    points: number,
+    toastMessage: string,
+  ) => {
+    soundManager.playExplosion();
+    soundManager.playBossDefeatSound();
+    setScore((s) => s + points);
+    setLives((prev) => prev + 1);
+    toast.success(toastMessage);
+
+    setExplosions((e) => [
+      ...e,
+      {
+        x: defeatedBoss.x + defeatedBoss.width / 2,
+        y: defeatedBoss.y + defeatedBoss.height / 2,
+        frame: 0,
+        maxFrames: 30,
+        enemyType: bossType,
+        particles: createExplosionParticles(
+          defeatedBoss.x + defeatedBoss.width / 2,
+          defeatedBoss.y + defeatedBoss.height / 2,
+          bossType,
+        ),
+      },
+    ]);
+
+    setBossesKilled((k) => k + 1);
+    setBossActive(false);
+    setBossDefeatedTransitioning(true);
+    setBossVictoryOverlayActive(true);
+    setBalls([]);
+    clearAllEnemies();
+    setBossAttacks([]);
+    clearAllBombs();
+    setBullets([]);
+
+    if (isBossRush) {
+      gameLoopRef.current?.pause();
+      setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
+      setBossRushStatsOverlayActive(true);
+    } else {
+      soundManager.stopBossMusic();
+      soundManager.resumeBackgroundMusic();
+      setTimeout(() => nextLevelRef.current?.(), 3000);
+    }
+  }, [isBossRush, bossRushStartTime, createExplosionParticles, clearAllEnemies, clearAllBombs]);
 
   // createHighScoreParticles removed — replaced by particlePool.acquireForHighScore
 
@@ -3338,40 +3442,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (prev.type === "mega") return prev;
 
             if (prev.type === "cube") {
-              soundManager.playExplosion();
-              soundManager.playBossDefeatSound();
-              setScore((s) => s + BOSS_CONFIG.cube.points);
-              setLives((l) => l + 1);
-              toast.success(`CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points + BONUS LIFE!`);
-              setExplosions((e) => [
-                ...e,
-                {
-                  x: prev.x + prev.width / 2,
-                  y: prev.y + prev.height / 2,
-                  frame: 0,
-                  maxFrames: 30,
-                  enemyType: "cube" as EnemyType,
-                  particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, "cube" as EnemyType),
-                },
-              ]);
-              setBossesKilled((k) => k + 1);
-              setBossActive(false);
-              setBossDefeatedTransitioning(true);
-              setBossVictoryOverlayActive(true);
-              setBalls([]);
-              clearAllEnemies();
-              setBossAttacks([]);
-              clearAllBombs();
-              setBullets([]);
-              if (isBossRush) {
-                gameLoopRef.current?.pause();
-                setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
-                setBossRushStatsOverlayActive(true);
-              } else {
-                soundManager.stopBossMusic();
-                soundManager.resumeBackgroundMusic();
-                setTimeout(() => nextLevel(), 3000);
-              }
+              handleBossDefeat("cube", prev, BOSS_CONFIG.cube.points,
+                `CUBE GUARDIAN DEFEATED! +${BOSS_CONFIG.cube.points} points + BONUS LIFE!`);
               return null;
             } else if (prev.type === "sphere") {
               if (prev.currentStage === 1) {
@@ -3397,40 +3469,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   lastHitAt: hit.nowMs,
                 };
               } else {
-                soundManager.playExplosion();
-                soundManager.playBossDefeatSound();
-                setScore((s) => s + BOSS_CONFIG.sphere.points);
-                setLives((l) => l + 1);
-                toast.success(`SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points + BONUS LIFE!`);
-                setExplosions((e) => [
-                  ...e,
-                  {
-                    x: prev.x + prev.width / 2,
-                    y: prev.y + prev.height / 2,
-                    frame: 0,
-                    maxFrames: 30,
-                    enemyType: "sphere" as EnemyType,
-                    particles: createExplosionParticles(prev.x + prev.width / 2, prev.y + prev.height / 2, "sphere" as EnemyType),
-                  },
-                ]);
-                setBossesKilled((k) => k + 1);
-                setBossActive(false);
-                setBossDefeatedTransitioning(true);
-                setBossVictoryOverlayActive(true);
-                setBalls([]);
-                clearAllEnemies();
-                setBossAttacks([]);
-                clearAllBombs();
-                setBullets([]);
-                if (isBossRush) {
-                  gameLoopRef.current?.pause();
-                  setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
-                  setBossRushStatsOverlayActive(true);
-                } else {
-                  soundManager.stopBossMusic();
-                  soundManager.resumeBackgroundMusic();
-                  setTimeout(() => nextLevel(), 3000);
-                }
+                handleBossDefeat("sphere", prev, BOSS_CONFIG.sphere.points,
+                  `SPHERE DESTROYER DEFEATED! +${BOSS_CONFIG.sphere.points} points + BONUS LIFE!`);
                 return null;
               }
             } else if (prev.type === "pyramid") {
@@ -3520,6 +3560,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               setBossAttacks([]);
               clearAllBombs();
               setBullets([]);
+
               if (isBossRush) {
                 gameLoopRef.current?.pause();
                 setBossRushTimeSnapshot(bossRushStartTime ? Date.now() - bossRushStartTime : 0);
@@ -3767,116 +3808,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setLives((prev) => {
         const newLives = prev - 1;
         soundManager.playLoseLife();
-
         if (newLives <= 0) {
-          setGameState("gameOver");
-          soundManager.stopBossMusic();
-          soundManager.stopBackgroundMusic();
-          setBossAttacks([]);
           particlePool.acquireForGameOver(SCALED_CANVAS_WIDTH / 2, SCALED_CANVAS_HEIGHT / 2, 100);
-
-          if (isBossRush) {
-            const currentBossLevel = BOSS_RUSH_CONFIG.bossOrder[bossRushIndex] || 5;
-            setBossRushGameOverLevel(currentBossLevel);
-            const completionTime = bossRushStartTime ? Date.now() - bossRushStartTime : 0;
-            setBossRushCompletionTime(completionTime);
-            setShowBossRushScoreEntry(true);
-            soundManager.playHighScoreMusic();
-            toast.error("Boss Rush Over!");
-          } else {
-            getQualifiedLeaderboards(score).then((qualification) => {
-              if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
-                setQualifiedLeaderboards(qualification);
-                setShowHighScoreEntry(true);
-                const particleCount = Math.round(150 * (qualitySettings.explosionParticles / 50));
-                particlePool.acquireForHighScore(SCALED_CANVAS_WIDTH / 2, SCALED_CANVAS_HEIGHT / 2, particleCount);
-                soundManager.playHighScoreMusic();
-                toast.error("Game Over - New High Score!");
-              } else {
-                setShowEndScreen(true);
-                toast.error("Game Over!");
-              }
-            });
-          }
+          handleGameOver();
         } else {
-          // Reset ball and continue
-          const baseSpeed = 4.5;
-          const initialAngle = (-20 * Math.PI) / 180;
-          const resetBall: Ball = {
-            x: SCALED_CANVAS_WIDTH / 2,
-            y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
-            dx: baseSpeed * Math.sin(initialAngle),
-            dy: -baseSpeed * Math.cos(initialAngle),
-            radius: SCALED_BALL_RADIUS,
-            speed: baseSpeed,
-            id: nextBallId.current++,
-            isFireball: false,
-            waitingToLaunch: true,
-          };
-          setBalls([resetBall]);
-          setLaunchAngle(-20);
-          launchAngleDirectionRef.current = 1;
-          setShowInstructions(true);
-
-          setLivesLostOnCurrentLevel((prev) => {
-            const newCount = prev + 1;
-            if (settings.difficulty === "godlike") {
-              setPowerUps([]);
-              return newCount;
-            }
-            let mercyType: PowerUpType;
-            if (newCount >= 3) {
-              mercyType = "life";
-            } else {
-              const mercyTypes: PowerUpType[] = ["turrets", "secondChance", "shield"];
-              mercyType = mercyTypes[Math.floor(Math.random() * mercyTypes.length)];
-            }
-            const mercyPowerUp: PowerUp = {
-              type: mercyType,
-              x: SCALED_CANVAS_WIDTH / 2 - POWERUP_SIZE / 2,
-              y: 100,
-              width: POWERUP_SIZE,
-              height: POWERUP_SIZE,
-              speed: POWERUP_FALL_SPEED,
-              active: true,
-              isMercyLife: mercyType === "life",
-            };
-            setPowerUps([mercyPowerUp]);
-            return newCount;
-          });
-
-          setPaddle((prev) =>
-            prev
-              ? { ...prev, hasTurrets: false, hasShield: false, hasReflectShield: false, width: SCALED_PADDLE_WIDTH }
-              : null,
-          );
-          setBossStunnerEndTime(null);
-          setReflectShieldEndTime(null);
-          setHomingBallEndTime(null);
-          setFireballEndTime(null);
-          setReflectShieldActive(false);
-          setHomingBallActive(false);
-          if (reflectShieldTimeoutRef.current) {
-            clearTimeout(reflectShieldTimeoutRef.current);
-            reflectShieldTimeoutRef.current = null;
-          }
-          if (homingBallTimeoutRef.current) {
-            clearTimeout(homingBallTimeoutRef.current);
-            homingBallTimeoutRef.current = null;
-          }
-          setBullets([]);
-          if (world.speedMultiplier < 1) setSpeedMultiplier(1);
-          setBrickHitSpeedAccumulated(0);
-          setTimer(0);
-          clearAllEnemies();
-          setBossAttacks([]);
-          setLaserWarnings([]);
-          clearAllBombs();
-          setExplosions([]);
-          bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
-          bombIntervalsRef.current.clear();
-          setGameState("ready");
-          toast(`Life lost! ${newLives} lives remaining. Here's some help!`);
+          handleSurviveDeath(`Life lost! ${newLives} lives remaining. Here's some help!`, { spawnMercy: true });
         }
         return newLives;
       });
@@ -4505,82 +4441,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setLives((prev) => {
             const newLives = prev - 1;
             if (newLives <= 0) {
-              setGameState("gameOver");
-              soundManager.stopBossMusic();
-              soundManager.stopBackgroundMusic();
-              setBossAttacks([]);
-              setLaserWarnings([]);
-              // Check for high score - separate Boss Rush from Campaign
-              if (isBossRush) {
-                const currentBossLevel = BOSS_RUSH_CONFIG.bossOrder[bossRushIndex] || 5;
-                setBossRushGameOverLevel(currentBossLevel);
-                const completionTime = bossRushStartTime ? Date.now() - bossRushStartTime : 0;
-                setBossRushCompletionTime(completionTime);
-                setShowBossRushScoreEntry(true);
-                soundManager.playHighScoreMusic();
-                toast.error("Boss Rush Over!");
-              } else {
-                getQualifiedLeaderboards(score).then((qualification) => {
-                  if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
-                    setQualifiedLeaderboards(qualification);
-                    setShowHighScoreEntry(true);
-                    soundManager.playHighScoreMusic();
-                    toast.error("Game Over - New High Score!");
-                  } else {
-                    setShowEndScreen(true);
-                    toast.error("Game Over!");
-                  }
-                });
-              }
+              handleGameOver();
             } else {
-              // Reset ball and clear power-ups, but wait for click to continue
-              const baseSpeed = 4.5; // Match fresh game start speed
-              const resetBall: Ball = {
-                x: SCALED_CANVAS_WIDTH / 2,
-                y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
-                dx: baseSpeed,
-                dy: -baseSpeed,
-                radius: SCALED_BALL_RADIUS,
-                speed: baseSpeed,
-                id: nextBallId.current++,
-                isFireball: false,
-                waitingToLaunch: true,
-              };
-              setBalls([resetBall]);
-              setLaunchAngle(-20);
-              launchAngleDirectionRef.current = 1;
-              setShowInstructions(true); // Show instructions when resetting ball
-              setPowerUps([]);
-              setBonusLetters([]);
-              setPaddle((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      hasTurrets: false,
-                      hasShield: false,
-                      width: SCALED_PADDLE_WIDTH,
-                    }
-                  : null,
-              );
-              setBullets([]); // Clear all bullets
-              // Only reset speed if it's slower than base speed
-              if (speedMultiplier < 1) {
-                setSpeedMultiplier(1);
-              }
-              // Reset accumulated brick hit speed on death
-              setBrickHitSpeedAccumulated(0);
-              setTimer(0);
-              setLastEnemySpawnTime(0);
-              clearAllEnemies(); // Clear all enemies
-              setBossAttacks([]);
-              setLaserWarnings([]);
-              clearAllBombs(); // Clear all bombs
-              setExplosions([]);
-              // Clear all bomb intervals
-              bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
-              bombIntervalsRef.current.clear();
-              setGameState("ready");
-              toast.error(`Bomb hit! ${newLives} lives remaining. Click to continue.`);
+              handleSurviveDeath(`Bomb hit! ${newLives} lives remaining. Click to continue.`);
             }
             return newLives;
           });
@@ -4674,82 +4537,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setLives((prev) => {
             const newLives = prev - 1;
             if (newLives <= 0) {
-              setGameState("gameOver");
-              soundManager.stopBossMusic();
-              soundManager.stopBackgroundMusic();
-              setBossAttacks([]);
-              setLaserWarnings([]);
-              // Check for high score - separate Boss Rush from Campaign
-              if (isBossRush) {
-                const currentBossLevel = BOSS_RUSH_CONFIG.bossOrder[bossRushIndex] || 5;
-                setBossRushGameOverLevel(currentBossLevel);
-                const completionTime = bossRushStartTime ? Date.now() - bossRushStartTime : 0;
-                setBossRushCompletionTime(completionTime);
-                setShowBossRushScoreEntry(true);
-                soundManager.playHighScoreMusic();
-                toast.error("Boss Rush Over!");
-              } else {
-                getQualifiedLeaderboards(score).then((qualification) => {
-                  if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
-                    setQualifiedLeaderboards(qualification);
-                    setShowHighScoreEntry(true);
-                    soundManager.playHighScoreMusic();
-                    toast.error("Game Over - New High Score!");
-                  } else {
-                    setShowEndScreen(true);
-                    toast.error("Game Over!");
-                  }
-                });
-              }
+              handleGameOver();
             } else {
-              // Reset ball and clear power-ups, but wait for click to continue
-              const baseSpeed = 5.175; // 50% faster base speed
-              const resetBall: Ball = {
-                x: SCALED_CANVAS_WIDTH / 2,
-                y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
-                dx: baseSpeed,
-                dy: -baseSpeed,
-                radius: SCALED_BALL_RADIUS,
-                speed: baseSpeed,
-                id: nextBallId.current++,
-                isFireball: false,
-                waitingToLaunch: true,
-              };
-              setBalls([resetBall]);
-              setLaunchAngle(-20);
-              launchAngleDirectionRef.current = 1;
-              setShowInstructions(true); // Show instructions when resetting ball
-              setPowerUps([]);
-              setBonusLetters([]);
-              setPaddle((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      hasTurrets: false,
-                      hasShield: false,
-                      width: SCALED_PADDLE_WIDTH,
-                    }
-                  : null,
-              );
-              setBullets([]); // Clear all bullets
-              // Only reset speed if it's slower than base speed
-              if (speedMultiplier < 1) {
-                setSpeedMultiplier(1);
-              }
-              // Reset accumulated brick hit speed on death
-              setBrickHitSpeedAccumulated(0);
-              setTimer(0);
-              setLastEnemySpawnTime(0);
-              clearAllEnemies(); // Clear all enemies
-              setBossAttacks([]);
-              setLaserWarnings([]);
-              clearAllBombs(); // Clear all bombs
-              setExplosions([]);
-              // Clear all bomb intervals
-              bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
-              bombIntervalsRef.current.clear();
-              setGameState("ready");
-              toast.error(`Bullet hit! ${newLives} lives remaining. Click to continue.`);
+              handleSurviveDeath(`Bullet hit! ${newLives} lives remaining. Click to continue.`);
             }
             return newLives;
           });
@@ -5796,75 +5586,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setLives((prev) => {
             const newLives = prev - 1;
             if (newLives <= 0) {
-              setGameState("gameOver");
-              soundManager.stopBossMusic();
-              soundManager.stopBackgroundMusic();
-              setBossAttacks([]);
-              setLaserWarnings([]);
-              // Check for high score - separate Boss Rush from Campaign
-              if (isBossRush) {
-                const currentBossLevel = BOSS_RUSH_CONFIG.bossOrder[bossRushIndex] || 5;
-                setBossRushGameOverLevel(currentBossLevel);
-                const completionTime = bossRushStartTime ? Date.now() - bossRushStartTime : 0;
-                setBossRushCompletionTime(completionTime);
-                setShowBossRushScoreEntry(true);
-                soundManager.playHighScoreMusic();
-                toast.error("Boss Rush Over!");
-              } else {
-                getQualifiedLeaderboards(score).then((qualification) => {
-                  if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
-                    setQualifiedLeaderboards(qualification);
-                    setShowHighScoreEntry(true);
-                    soundManager.playHighScoreMusic();
-                    toast.error("Game Over - New High Score!");
-                  } else {
-                    setShowEndScreen(true);
-                    toast.error("Game Over!");
-                  }
-                });
-              }
+              handleGameOver();
             } else {
-              // Reset ball and clear power-ups, wait for click to continue
-              const baseSpeed = 5.175;
-              setBalls([
-                {
-                  id: nextBallId.current++,
-                  x: SCALED_CANVAS_WIDTH / 2,
-                  y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
-                  dx: baseSpeed,
-                  dy: -baseSpeed,
-                  radius: SCALED_BALL_RADIUS,
-                  speed: baseSpeed,
-                  waitingToLaunch: true,
-                  isFireball: false,
-                },
-              ]);
-              setLaunchAngle(-20);
-              launchAngleDirectionRef.current = 1;
-              setShowInstructions(true);
-              setPowerUps([]);
-              setBonusLetters([]);
-              setBullets([]);
-              clearAllEnemies();
-              setBossAttacks([]);
-              setLaserWarnings([]);
-              clearAllBombs();
-              setExplosions([]);
-              setPaddle((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      hasTurrets: false,
-                      hasShield: false,
-                      width: SCALED_PADDLE_WIDTH,
-                    }
-                  : null,
-              );
-              // Clear all bomb intervals
-              bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
-              bombIntervalsRef.current.clear();
-              setGameState("ready");
-              toast.error(`Boss attack hit! ${newLives} lives remaining. Click to continue.`);
+              handleSurviveDeath(`Boss attack hit! ${newLives} lives remaining. Click to continue.`);
             }
             return newLives;
           });
@@ -6491,74 +6215,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setLives((prev) => {
             const newLives = prev - 1;
             if (newLives <= 0) {
-              setGameState("gameOver");
-              soundManager.stopBossMusic();
-              soundManager.stopBackgroundMusic();
-              setBossAttacks([]);
-              setLaserWarnings([]);
-              // Check for high score - separate Boss Rush from Campaign
-              if (isBossRush) {
-                const currentBossLevel = BOSS_RUSH_CONFIG.bossOrder[bossRushIndex] || 5;
-                setBossRushGameOverLevel(currentBossLevel);
-                const completionTime = bossRushStartTime ? Date.now() - bossRushStartTime : 0;
-                setBossRushCompletionTime(completionTime);
-                setShowBossRushScoreEntry(true);
-                soundManager.playHighScoreMusic();
-                toast.error("Boss Rush Over!");
-              } else {
-                getQualifiedLeaderboards(score).then((qualification) => {
-                  if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
-                    setQualifiedLeaderboards(qualification);
-                    setShowHighScoreEntry(true);
-                    soundManager.playHighScoreMusic();
-                    toast.error("Game Over - New High Score!");
-                  } else {
-                    setShowEndScreen(true);
-                    toast.error("Game Over!");
-                  }
-                });
-              }
+              handleGameOver();
             } else {
-              // Reset game to ready state
-              const baseSpeed = 5.175;
-              setBalls([
-                {
-                  id: nextBallId.current++,
-                  x: SCALED_CANVAS_WIDTH / 2,
-                  y: SCALED_CANVAS_HEIGHT - SCALED_PADDLE_START_Y,
-                  dx: baseSpeed,
-                  dy: -baseSpeed,
-                  radius: SCALED_BALL_RADIUS,
-                  speed: baseSpeed,
-                  waitingToLaunch: true,
-                  isFireball: false,
-                },
-              ]);
-              setLaunchAngle(-20);
-              launchAngleDirectionRef.current = 1;
-              setShowInstructions(true);
-              setPowerUps([]);
-              setBonusLetters([]);
-              setBullets([]);
-              clearAllEnemies();
-              setBossAttacks([]);
-              setLaserWarnings([]);
-              clearAllBombs();
-              setExplosions([]);
-              setPaddle((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      hasTurrets: false,
-                      hasShield: false,
-                      width: SCALED_PADDLE_WIDTH,
-                    }
-                  : null,
-              );
-              bombIntervalsRef.current.forEach((interval) => clearInterval(interval));
-              bombIntervalsRef.current.clear();
-              setGameState("ready");
-              toast.error(`LASER HIT! ${newLives} lives remaining. Click to continue.`);
+              handleSurviveDeath(`LASER HIT! ${newLives} lives remaining. Click to continue.`);
             }
             return newLives;
           });
