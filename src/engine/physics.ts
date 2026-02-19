@@ -450,9 +450,8 @@ export function runPhysicsFrame(config: PhysicsConfig): PhysicsFrameResult {
 
   const { dtSeconds, frameTick, level, debugSettings, maxTotalSpeed, isBossRush } = config;
 
-  // ═══ Phase 0: Clear per-ball flags, store previousY ═══
+  // ═══ Phase 0: Store previousY ═══
   for (const ball of balls) {
-    delete (ball as any)._hitBossThisFrame;
     ball.previousY = ball.y;
   }
 
@@ -1131,14 +1130,6 @@ export function runPhysicsFrame(config: PhysicsConfig): PhysicsFrameResult {
   result.bricksDestroyedCount = bricksDestroyedCount;
   result.powerUpBricks = powerUpBricks;
   result.enemiesKilledIncrease = enemiesKilledIncrease;
-
-  // ═══ Clear per-ball collision flags ═══
-  for (const r of ballResults) {
-    if (r.ball) {
-      delete (r.ball as any)._hitBossThisFrame;
-      delete (r.ball as any)._hitPaddleThisFrame;
-    }
-  }
 
   // ═══ Phase 3: Homing ball physics ═══
   for (const r of ballResults) {
