@@ -2407,7 +2407,7 @@ function drawMegaBoss(
   ctx.save();
   ctx.rotate(hexRotation);
 
-  if (qualitySettings.shadowsEnabled) {
+  if (qualitySettings.shadowsEnabled && megaBoss.corePhase === 1) {
     drawHexShadow(ctx, radius, 5, 5);
   }
 
