@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export type LeaderboardType = 'all-time' | 'weekly' | 'daily';
+export type DifficultyFilter = 'all' | 'normal' | 'godlike';
 
 export interface HighScore {
   id?: string;
@@ -18,7 +19,7 @@ export interface HighScore {
 
 const MAX_HIGH_SCORES = 20;
 
-export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => {
+export const useHighScores = (leaderboardType: LeaderboardType = 'all-time', difficultyFilter: DifficultyFilter = 'all') => {
   const [highScores, setHighScores] = useState<HighScore[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +34,13 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => 
         .select('*')
         .order('score', { ascending: false })
         .limit(MAX_HIGH_SCORES);
+
+      // Apply difficulty filter
+      if (difficultyFilter === 'godlike') {
+        query = query.eq('difficulty', 'godlike');
+      } else if (difficultyFilter === 'normal') {
+        query = query.or('difficulty.is.null,difficulty.neq.godlike');
+      }
 
       // Apply time filters based on leaderboard type
       if (leaderboardType === 'weekly') {
@@ -73,7 +81,7 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => 
 
   useEffect(() => {
     fetchHighScores();
-  }, [leaderboardType]);
+  }, [leaderboardType, difficultyFilter]);
 
   // Type for leaderboard qualification status
   type LeaderboardQualification = {
