@@ -16,7 +16,7 @@ A loving tribute to the legendary **Arkanoid** (Taito, 1986) — rebuilt from sc
 - **13 power-ups**: Fireball, Multi-Ball, Extend, Shield, Barrier, Slow Down, Turrets, Stunner, Reflect, Homing, Shrink, Extra Life, Second Chance
 - **Q-U-M-R-A-N bonus letters** — collect all 6 for 5 extra lives
 - **Two difficulty modes**: Normal (3 lives) and Godlike (1 life, faster speed)
-- **Online leaderboards** for high scores and Boss Rush times
+- **Online leaderboards** with difficulty filters (All / Normal / God-Mode) and Boss Rush times
 - **CRT overlay** and authentic retro pixel styling
 - **Adaptive quality** — automatically adjusts visual effects for smooth performance
 - **Mobile support** with touch controls and swipe gestures
