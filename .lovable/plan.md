@@ -1,83 +1,88 @@
 
 
-# Replace Enemy/Boss Glow with Drop Shadows
+# Extend Drop Shadow Optimization to Balls, Bullets, and Effects
 
-## Problem
+## Overview
 
-The game uses `ctx.shadowBlur` (Gaussian blur) extensively for glow effects on enemies, bosses, bombs, and boss attacks. This is the **most expensive Canvas 2D operation** -- it scales with DPR squared, which explains why large-screen HP laptops running Edge at high resolution see sluggish gameplay. Telemetry confirms FPS drops to 36-48 even on early levels.
+After the enemy/boss/bomb pass, there are still ~30+ `shadowBlur` assignments on balls, bullets, power-ups, shields, and visual effects. This pass removes them from the hot paths while preserving visual fidelity through the existing `drawDropShadow` helper and simpler alternatives.
 
-There are **471 shadowBlur assignments** in `canvasRenderer.ts`.
+## Changes -- all in `src/engine/canvasRenderer.ts`
 
-## Solution
+### 1. Ball rendering (lines 397-620)
 
-Replace all `glowEnabled`-gated `ctx.shadowBlur` calls on enemies and bosses with a cheap **painted drop shadow** -- a dark semi-transparent ellipse/shape drawn beneath the entity. This has nearly zero GPU cost compared to the Gaussian blur.
+| Location | Current | Replacement |
+|----------|---------|-------------|
+| **Main ball shadow** (line 524-537) | `ctx.shadowBlur = 14 + chaosLevel * 20` on every ball every frame | Call `drawDropShadow(ctx, ball.x, ball.y, visualRadius*2, visualRadius*2)` once before drawing the ball circle. Remove `shadowBlur`/`shadowColor` assignments. |
+| **Fireball outer glow** (line 572-578) | `ctx.shadowBlur = 10` for the fireball aura circle | Remove `shadowBlur`. The radial gradient fill at 25% opacity already conveys the aura. |
+| **Homing trail glow** (line 592-593) | `ctx.shadowBlur = 15` on the homing indicator circle | Remove `shadowBlur`. The red semi-transparent circle is sufficient. |
+| **Launch indicator** (line 608-609) | `ctx.shadowBlur = 10` on the dashed aim line | Remove `shadowBlur`. The bright colored dashed line is already clearly visible. |
+| **Get Ready glow** (line 420-421) | `ctx.shadowBlur = 15 * opacity` | Remove -- the radial gradient fill already provides the glow effect. |
+| **Ball release highlight** (line 453-454) | `ctx.shadowBlur = 25 * glowOpacity` | Remove -- again the gradient fill handles the visual. |
+| **Danger ball glow** (line 301-308) | `ctx.shadowBlur = 35` gated by `glowEnabled` | Replace with `drawDropShadow` before the ball draw. |
+| **"CATCH!" text glow** (line 370-374) | `ctx.shadowBlur = 10` on text | Remove -- yellow/orange text on dark background is already readable. |
+| **Paddle highlight glow** (line 386-388) | `ctx.shadowBlur = 20` on the paddle-highlight rect | Remove `shadowBlur`. The pulsing stroke is sufficient. |
+| **Chaos-aware glow** (line 484-500) | Radial gradient fill (no `shadowBlur`) | No change needed -- already efficient. |
 
-## What Changes
+### 2. Bullet rendering (lines 730-790)
 
-### File: `src/engine/canvasRenderer.ts`
+| Location | Current | Replacement |
+|----------|---------|-------------|
+| **Super bounced bullet** (line 735) | `ctx.shadowBlur = 20` | Remove. Bright colored rect is clear enough. |
+| **Super bullet** (line 754) | `ctx.shadowBlur = 15` | Remove. |
+| **Bounced bullet** (line 762) | `ctx.shadowBlur = 10` | Remove. |
+| **Normal bullet** (line 766) | `ctx.shadowBlur = 8` | Remove. |
+| **Clear at end** (line 770) | `ctx.shadowBlur = 0` | Remove (no longer needed). |
+| **DANGER text** (line 786-787) | `ctx.shadowBlur = 15 * finalScale` | Remove. Red text is readable without blur. |
 
-**1. Add a reusable shadow helper function** (top of file, near other helpers):
+### 3. Bullet impacts (lines 793-841)
 
-```typescript
-function drawDropShadow(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number,
-  width: number, height: number,
-  offsetY: number = 4
-) {
-  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
-  ctx.beginPath();
-  ctx.ellipse(x, y + offsetY, width * 0.45, height * 0.2, 0, 0, Math.PI * 2);
-  ctx.fill();
-}
-```
+| Location | Current | Replacement |
+|----------|---------|-------------|
+| **Impact rings** (line 806-807) | `ctx.shadowBlur = 15/8` per ring | Remove. The colored stroke rings + radial gradient flash already look good without blur. |
+| **Clear at end** (line 841) | `ctx.shadowBlur = 0` | Remove. |
 
-**2. Enemy drawing -- replace glow with shadow** in `drawEnemies()`:
+### 4. Power-up rendering (lines 623-728)
 
-For each enemy type (crossBall, sphere, pyramid, cube), replace:
-```typescript
-if (qualitySettings.glowEnabled) { ctx.shadowBlur = 25; ctx.shadowColor = baseColor; }
-// ... draw ...
-ctx.shadowBlur = 0;
-```
-With:
-```typescript
-if (qualitySettings.shadowsEnabled) {
-  drawDropShadow(ctx, centerX, centerY, singleEnemy.width, singleEnemy.height);
-}
-// ... draw (no shadowBlur at all) ...
-```
+| Location | Current | Replacement |
+|----------|---------|-------------|
+| **Tutorial highlight glow** (line 640-641) | `ctx.shadowBlur = glowIntensity` (pulsing 10-30) | Remove. Use a simple bright stroke instead of blur to indicate highlighting. |
+| **Outline shadow** (line 701-717) | `ctx.shadowBlur = 4` for a subtle depth effect | Remove. The dark stroke color already provides depth. |
 
-Affected locations (line numbers approximate):
-- Line 1572: crossBall enemy glow
-- Line 1671: sphere enemy glow
-- Line 1752: pyramid enemy glow (inside face loop -- remove entirely, draw one shadow before faces)
-- Line 1829: cube enemy glow (same -- inside face loop)
+### 5. Paddle rendering (lines 258-274)
 
-**3. Boss drawing -- replace glow with shadow** in `drawBoss()`:
+| Location | Current | Replacement |
+|----------|---------|-------------|
+| **Paddle glow** (line 260-264, 267-272) | `ctx.shadowBlur = 12` gated by `shadowsEnabled` | Replace with `drawDropShadow(ctx, paddle.x + paddle.width/2, paddle.y + paddle.height/2, paddle.width, paddle.height)` called once before drawing. |
 
-Same pattern: find `shadowBlur` calls gated by `glowEnabled` in the boss rendering path and replace with `drawDropShadow` called once before the boss shape is drawn.
+### 6. Shield effects (lines 844-945)
 
-**4. Bomb drawing -- replace glow with shadow** in `drawBombs()`:
+| Location | Current | Replacement |
+|----------|---------|-------------|
+| **Low quality shield** (line 853-870) | `ctx.shadowBlur = 8` | Remove. Yellow stroke is visible without blur. |
+| **Medium/high shield layers** (line 878-879) | `ctx.shadowBlur = 20-15-10` per layer (3 blur passes) | Remove. The layered strokes with varying alpha already convey depth. |
+| **Electrical arcs** (line 909-910) | `ctx.shadowBlur = 8` per arc (6 arcs = 6 blur passes) | Remove. Bright yellow strokes are visible without blur. |
+| **End clear** (line 945) | `ctx.shadowBlur = 0` | Remove. |
 
-Replace `shadowBlur` on bomb types (pyramidBullet, rocket, default bomb) with the shadow helper.
+### 7. Brick rendering (line 247)
 
-### Total shadowBlur removals in this pass
+Already just `ctx.shadowBlur = 0` (a reset). Will remove as unnecessary once all upstream shadowBlur calls are gone.
 
-Targeting only the enemy/boss/bomb glow paths (roughly 15-20 `shadowBlur` assignments). The ball, paddle, and UI glows remain unchanged for now.
+## What stays unchanged
 
-## Performance Impact
+- The `drawDropShadow` helper added in the previous pass (reused here)
+- Chaos-aware radial gradient glow on balls (already blur-free)
+- CRT overlay (separate concern)
 
-- **Before**: Each enemy draws 1-6 faces, each triggering a Gaussian blur (cost scales with blur radius^2 x DPR^2). With 3 enemies on screen, that's 18+ blur passes per frame.
-- **After**: One cheap `ctx.ellipse` fill per entity, zero blur passes. Estimated **5-15ms saved per frame** on high-DPI displays.
+## Estimated impact
 
-## Visual Result
+- Removes ~30 additional `shadowBlur` assignments from the per-frame hot path
+- Bullets alone could fire 6+ per frame with turrets active -- each was triggering a Gaussian blur
+- Shield with electrical arcs was doing 9+ blur passes per frame
+- Combined with the enemy/boss pass, this eliminates virtually all `shadowBlur` from gameplay rendering
 
-Enemies and bosses will have a subtle dark shadow beneath them instead of a colored glow aura. This looks clean and retro-appropriate, and actually improves visual clarity of the entities against busy backgrounds.
-
-## Files Changed
+## Files changed
 
 | File | Change |
 |------|--------|
-| `src/engine/canvasRenderer.ts` | Add `drawDropShadow` helper; replace ~20 `shadowBlur` glow calls in `drawEnemies`, `drawBoss`, `drawBombs` with shadow ellipses |
+| `src/engine/canvasRenderer.ts` | Remove ~30 `shadowBlur` calls from ball, bullet, power-up, paddle, shield, and impact rendering; replace with `drawDropShadow` where a shadow is visually needed |
 
