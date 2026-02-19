@@ -31,7 +31,6 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time') => 
       let query = supabase
         .from('high_scores')
         .select('*')
-        .order('starting_lives', { ascending: true })
         .order('score', { ascending: false })
         .limit(MAX_HIGH_SCORES);
 
