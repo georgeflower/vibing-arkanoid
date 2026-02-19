@@ -90,7 +90,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   const handleStart = () => {
     const settings: GameSettings = {
-      startingLives: gameMode === "bossRush" ? BOSS_RUSH_CONFIG.startingLives : 3,
+      startingLives: gameMode === "bossRush" ? BOSS_RUSH_CONFIG.startingLives : (difficulty === "godlike" ? 1 : 3),
       difficulty,
       startingLevel: gameMode === "bossRush" ? BOSS_RUSH_CONFIG.bossOrder[0] : startingLevel,
       gameMode,
