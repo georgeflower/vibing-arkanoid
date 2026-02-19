@@ -387,7 +387,7 @@ function performBossFirstSweep(
       }
 
       // Mark ball to suppress paddle resolver
-      (ball as any)._hitBossThisFrame = true;
+      
 
       // Cooldown check (millisecond-based)
       const lastHitMs = bossTarget.lastHitAt || 0;
@@ -420,6 +420,9 @@ function performBossFirstSweep(
           nowMs,
           ballId: ball.id,
         });
+
+        // Write cooldown immediately so other balls in this frame can't double-hit
+        bossTarget.lastHitAt = nowMs;
 
         // Sound and screen shake
         result.soundsToPlay.push({ type: "bossHit" });
