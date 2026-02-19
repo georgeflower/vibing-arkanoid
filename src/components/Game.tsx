@@ -2176,7 +2176,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     initPowerUpAssignments(initialBricks, startLevel, {});
     bricksDestroyedThisLevelRef.current = 0; // Reset level 1 multiball tracking
     setScore(0);
-    setLives(3);
+    setLives(settings.startingLives);
     setLevel(startLevel);
     setLivesLostOnCurrentLevel(0); // Reset mercy power-up counter
     setBossFirstHitShieldDropped(false); // Reset shield drop for new game
