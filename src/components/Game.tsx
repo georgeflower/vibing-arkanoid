@@ -1581,7 +1581,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     renderState.level = level;
     renderState.collectedLetters = collectedLetters;
     renderState.powerUps = powerUps;
-    renderState.bullets = bullets;
     renderState.qualitySettings = qualitySettings;
     renderState.showHighScoreEntry = showHighScoreEntry;
     renderState.bossIntroActive = bossIntroActive;
@@ -1593,7 +1592,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     renderState.secondChanceImpact = secondChanceImpact;
     renderState.ballReleaseHighlight = ballReleaseHighlight;
   }, [
-    gameState, level, collectedLetters, powerUps, bullets,
+    gameState, level, collectedLetters, powerUps,
     qualitySettings, showHighScoreEntry, bossIntroActive,
     bossSpawnAnimation, tutorialStep, isMobileDevice,
     getReadyGlow, secondChanceImpact, ballReleaseHighlight,

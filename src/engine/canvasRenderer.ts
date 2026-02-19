@@ -190,9 +190,9 @@ export function renderFrame(
     launchAngle,
   } = world;
 
-  // PowerUps and bullets come from renderState (still in React hooks)
+  // PowerUps come from renderState; bullets now live in world (no renderState race condition)
   const powerUps = rs.powerUps;
-  const bullets = rs.bullets;
+  const bullets = world.bullets;
   const collectedLetters = rs.collectedLetters;
   const bossIntroActive = rs.bossIntroActive;
   const tutorialHighlight = rs.tutorialHighlight;

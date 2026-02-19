@@ -6,6 +6,7 @@ import { getHitColor } from "@/constants/game";
 import { toast } from "sonner";
 import { isMegaBoss, handleMegaBossOuterDamage, exposeMegaBossCore, MegaBoss } from "@/utils/megaBossUtils";
 import { bulletPool, getNextBulletId } from "@/utils/entityPool";
+import { world } from "@/engine/state";
 
 export const useBullets = (
   setScore: React.Dispatch<React.SetStateAction<number>>,
@@ -61,6 +62,7 @@ export const useBullets = (
     setBullets(prev => {
       if (leftBullet) prev.push(leftBullet);
       if (rightBullet) prev.push(rightBullet);
+      world.bullets = prev; // Authoritative source for renderer
       return [...prev];
     });
     
@@ -389,6 +391,7 @@ export const useBullets = (
       // Return bullets: bounce the ones that hit enemies, remove ones that hit bricks/bosses
       // Only create new array if there are changes
       if (bulletIndicesHit.size === 0 && bulletIndicesToBounce.size === 0) {
+        world.bullets = movedBullets; // Sync even when unchanged
         return movedBullets;
       }
       
@@ -406,6 +409,7 @@ export const useBullets = (
         }
         result.push(bullet);
       }
+      world.bullets = result; // Authoritative source for renderer
       return result;
     });
   }, [setBricks, setScore, enemies, boss, resurrectedBosses, setBoss, setResurrectedBosses, onLevelComplete]);
