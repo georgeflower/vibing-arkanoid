@@ -82,9 +82,6 @@ export const getBrickColors = (level: number): string[] => {
   return colorPalettes[paletteIndex];
 };
 
-// Legacy export for backward compatibility
-export const brickColors = colorPalettes[0];
-
 // Colors for multi-hit bricks (darker shades as hits decrease)
 export const getHitColor = (baseColor: string, hitsRemaining: number, maxHits: number): string => {
   if (hitsRemaining === maxHits) return baseColor;

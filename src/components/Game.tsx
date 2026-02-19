@@ -45,7 +45,7 @@ import { PoolStatsOverlay } from "./PoolStatsOverlay";
 import { CCDPerformanceTracker } from "@/utils/rollingStats";
 import { debugLogger } from "@/utils/debugLogger";
 import { particlePool } from "@/utils/particlePool";
-import { startBallTracking } from "@/utils/ballTracker";
+
 import { telemetryCollector, ENABLE_TELEMETRY } from "@/utils/telemetry";
 // ═══════════════════════════════════════════════════════════════
 import { Maximize2, Minimize2, Home, X } from "lucide-react";
@@ -83,7 +83,7 @@ import {
   BRICK_PADDING,
   BRICK_OFFSET_TOP,
   BRICK_OFFSET_LEFT,
-  brickColors,
+  
   POWERUP_DROP_CHANCE,
   getHitColor,
   getBrickColors,

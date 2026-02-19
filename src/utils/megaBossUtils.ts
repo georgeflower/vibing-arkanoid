@@ -334,56 +334,8 @@ export function releaseBallAndNextPhase(boss: MegaBoss): { boss: MegaBoss; relea
   };
 }
 
-// Legacy compatibility functions
-export function handleMegaBossDamage(boss: MegaBoss, damage: number): {
-  newHealth: number;
-  shouldResurrect: boolean;
-  isDefeated: boolean;
-} {
-  // Use the new outer damage system
-  const result = handleMegaBossOuterDamage(boss, damage);
-  return { 
-    newHealth: result.newOuterHP, 
-    shouldResurrect: false, 
-    isDefeated: false 
-  };
-}
-
-export function triggerMegaBossResurrection(boss: MegaBoss): MegaBoss {
-  // Not used in new system, but kept for compatibility
-  return boss;
-}
-
-export function openMegaBossHatch(boss: MegaBoss): MegaBoss {
-  return exposeMegaBossCore(boss);
-}
-
-export function closeMegaBossHatch(boss: MegaBoss): MegaBoss {
-  return {
-    ...boss,
-    hatchOpen: false,
-    hatchOpenStartTime: null,
-    coreExposed: false
-  };
-}
-
-export function trapBallInMegaBoss(boss: MegaBoss, ball: Ball): MegaBoss {
-  return handleMegaBossCoreHit(boss, ball);
-}
-
-export function releaseBallFromMegaBoss(boss: MegaBoss): { boss: MegaBoss; releasedBall: Ball | null } {
-  const result = releaseBallAndNextPhase(boss);
-  return { boss: result.boss, releasedBall: result.releasedBall };
-}
-
 export function getMegaBossPhase(boss: MegaBoss): 1 | 2 | 3 {
   return boss.corePhase;
-}
-
-export function shouldOpenHatch(boss: MegaBoss): boolean {
-  // In new system, core exposes automatically when outer shield HP reaches 0
-  // This function is kept for compatibility but returns false
-  return false;
 }
 
 // Check if ball enters hatch/core area
