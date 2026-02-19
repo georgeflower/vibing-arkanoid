@@ -90,7 +90,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
 
   const handleStart = () => {
     const settings: GameSettings = {
-      startingLives: gameMode === "bossRush" ? BOSS_RUSH_CONFIG.startingLives : (difficulty === "godlike" ? 1 : 3),
+      startingLives: gameMode === "bossRush" ? BOSS_RUSH_CONFIG.startingLives : difficulty === "godlike" ? 1 : 3,
       difficulty,
       startingLevel: gameMode === "bossRush" ? BOSS_RUSH_CONFIG.bossOrder[0] : startingLevel,
       gameMode,
@@ -211,7 +211,10 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                 </li>
                 <li>All game objects (ball, paddle, bricks, bosses) now run in a dedicated high-speed engine</li>
                 <li>
-                  Result: <span className="text-[hsl(120,60%,50%)] font-bold">less lag, fewer frame drops, and more responsive controls</span>
+                  Result:{" "}
+                  <span className="text-[hsl(120,60%,50%)] font-bold">
+                    less lag, fewer frame drops, and more responsive controls
+                  </span>
                 </li>
                 <li>Heavy glow and shadow effects trimmed for consistently smooth gameplay</li>
               </ul>
@@ -588,8 +591,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   seconds with red trail (boss levels only)
                 </li>
                 <li>
-                  <span className="text-[hsl(180,70%,50%)] font-bold">Second Chance</span> - Creates a barrier at the
-                  bottom that saves your ball once
+                  <span className="text-[hsl(180,70%,50%)] font-bold">Barrier</span> - Creates a barrier at the bottom
+                  that saves your ball once
                 </li>
               </ul>
             </div>
