@@ -244,7 +244,7 @@ export function renderFrame(
   } else {
     bricks.forEach((brick) => {
       if (brick.visible) {
-        ctx.shadowBlur = 0;
+        // No shadowBlur needed
         ctx.fillStyle = brick.color;
         ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
       }
@@ -257,19 +257,15 @@ export function renderFrame(
     ctx.save();
     if (isImageValid(img)) {
       if (qualitySettings.shadowsEnabled) {
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = "hsl(200, 70%, 50%)";
+        drawDropShadow(ctx, paddle.x + paddle.width / 2, paddle.y + paddle.height / 2, paddle.width, paddle.height);
       }
       ctx.drawImage(img, paddle.x, paddle.y, paddle.width, paddle.height);
-      ctx.shadowBlur = 0;
     } else {
       if (qualitySettings.shadowsEnabled) {
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = "hsl(200, 70%, 50%)";
+        drawDropShadow(ctx, paddle.x + paddle.width / 2, paddle.y + paddle.height / 2, paddle.width, paddle.height);
       }
       ctx.fillStyle = "hsl(200, 70%, 50%)";
       ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
-      ctx.shadowBlur = 0;
       ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
       ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height / 2);
     }
@@ -298,13 +294,8 @@ export function renderFrame(
         ctx.restore();
       }
 
-      if (qualitySettings.glowEnabled) {
-        ctx.shadowBlur = 35;
-        if (isHoming) {
-          ctx.shadowColor = isWhitePhase ? "rgba(100, 255, 100, 0.9)" : "rgba(50, 200, 50, 0.9)";
-        } else {
-          ctx.shadowColor = isWhitePhase ? "rgba(255, 255, 255, 0.9)" : "rgba(255, 50, 50, 0.9)";
-        }
+      if (qualitySettings.shadowsEnabled) {
+        drawDropShadow(ctx, dangerBall.x, dangerBall.y, dangerBall.radius * 2, dangerBall.radius * 2);
       }
 
       ctx.beginPath();
@@ -344,7 +335,7 @@ export function renderFrame(
       ctx.fillStyle = grad;
       ctx.fill();
 
-      ctx.shadowBlur = 0;
+      // shadowBlur removed
       ctx.fillStyle = isWhitePhase ? (isHoming ? "#006600" : "#ff0000") : "#ffffff";
       ctx.font = `bold ${dangerBall.radius * 1.2}px monospace`;
       ctx.textAlign = "center";
@@ -366,12 +357,7 @@ export function renderFrame(
         ctx.font = "bold 16px monospace";
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
-        if (qualitySettings.glowEnabled) {
-          ctx.shadowColor = "#FF0000";
-          ctx.shadowBlur = 10;
-        }
         ctx.fillText("CATCH!", dangerBall.x, dangerBall.y - dangerBall.radius - 8);
-        ctx.shadowBlur = 0;
       }
 
       ctx.restore();
@@ -383,10 +369,7 @@ export function renderFrame(
       const highlightPulse = Math.sin(now / 100) * 0.4 + 0.6;
       ctx.strokeStyle = `rgba(0, 200, 255, ${highlightPulse})`;
       ctx.lineWidth = 4;
-      if (qualitySettings.glowEnabled) {
-        ctx.shadowColor = "rgba(0, 200, 255, 0.8)";
-        ctx.shadowBlur = 20;
-      }
+      // Glow removed for performance — pulsing stroke is sufficient
       ctx.beginPath();
       ctx.roundRect(paddle.x - 4, paddle.y - 4, paddle.width + 8, paddle.height + 8, 6);
       ctx.stroke();
@@ -417,8 +400,7 @@ export function renderFrame(
       ctx.fill();
       ctx.strokeStyle = `rgba(100, 200, 255, ${getReadyGlow.opacity * 0.8})`;
       ctx.lineWidth = 2;
-      ctx.shadowColor = "rgba(100, 200, 255, 1)";
-      ctx.shadowBlur = 15 * getReadyGlow.opacity;
+      // shadowBlur removed — radial gradient already provides glow
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, ball.radius * 2, 0, Math.PI * 2);
       ctx.stroke();
@@ -450,8 +432,7 @@ export function renderFrame(
 
       ctx.strokeStyle = `rgba(255, 255, 100, ${glowOpacity * 0.9})`;
       ctx.lineWidth = 3;
-      ctx.shadowColor = "rgba(255, 220, 100, 1)";
-      ctx.shadowBlur = 25 * glowOpacity;
+      // shadowBlur removed — gradient fill handles the visual
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, ball.radius * 2.5 * pulseIntensity, 0, Math.PI * 2);
       ctx.stroke();
@@ -522,24 +503,17 @@ export function renderFrame(
           [[0, "rgba(255,255,255,1)"], [0.3, "hsl(0,0%,95%)"], [0.7, "hsl(0,0%,92%)"], [1, "hsl(0,0%,60%)"]]);
 
     if (qualitySettings.shadowsEnabled) {
-      const dynamicShadowBlur = 14 + chaosLevel * 20;
-      ctx.shadowBlur = dynamicShadowBlur;
-      if (chaosLevel > 0.2 && !ball.isFireball) {
-        ctx.shadowColor = `hsl(190, ${chaosLevel * 50}%, ${70 + chaosLevel * 20}%)`;
-      } else {
-        ctx.shadowColor = ballColor;
-      }
+      drawDropShadow(ctx, 0, 0, visualRadius * 2, visualRadius * 2);
     }
     ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(0, 0, visualRadius, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
 
     // Retro spinning pattern
     const ballRotation = ball.rotation || 0;
     if (!ball.isFireball) {
-      ctx.shadowBlur = 0;
+      // shadowBlur removed
       ctx.rotate((ballRotation * Math.PI) / 180);
       ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
       for (let i = -visualRadius; i < visualRadius; i += 4) {
@@ -569,13 +543,10 @@ export function renderFrame(
           ctx.restore();
         }
       }
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = "hsl(30, 85%, 55%)";
       ctx.fillStyle = "hsla(30, 85%, 55%, 0.25)";
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, ball.radius * 1.5, 0, Math.PI * 2);
       ctx.fill();
-      ctx.shadowBlur = 0;
     }
 
     // Homing ball trail
@@ -589,8 +560,7 @@ export function renderFrame(
       ctx.lineTo(boss.x + boss.width / 2, boss.y + boss.height / 2);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.shadowColor = "red";
-      ctx.shadowBlur = 15;
+      // shadowBlur removed — red circle is sufficient
       ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, ball.radius * 1.5, 0, Math.PI * 2);
@@ -605,8 +575,7 @@ export function renderFrame(
       const endX = ball.x + Math.sin(angle) * lineLength;
       const endY = ball.y - Math.cos(angle) * lineLength;
       dashOffset = (dashOffset + 1) % 20;
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = "hsl(0, 85%, 55%)";
+      // shadowBlur removed — dashed line is clearly visible
       ctx.strokeStyle = "hsl(0, 85%, 55%)";
       ctx.lineWidth = 4;
       ctx.setLineDash([8, 8]);
@@ -635,10 +604,9 @@ export function renderFrame(
     ctx.translate(-size / 2, -size / 2);
 
     if (isHighlighted) {
-      const glowPulse = (now % 800) / 800;
-      const glowIntensity = 20 + Math.sin(glowPulse * Math.PI * 2) * 10;
-      ctx.shadowColor = "rgba(0, 255, 255, 0.9)";
-      ctx.shadowBlur = glowIntensity;
+      // Use bright stroke instead of shadowBlur for tutorial highlight
+      ctx.strokeStyle = "rgba(0, 255, 255, 0.9)";
+      ctx.lineWidth = 3;
     }
 
     // Metallic background
@@ -698,8 +666,6 @@ export function renderFrame(
     });
 
     // Outline
-    ctx.shadowBlur = 4;
-    ctx.shadowColor = "hsla(220, 10%, 10%, 0.5)";
     ctx.strokeStyle = "hsl(220, 10%, 25%)";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -714,7 +680,6 @@ export function renderFrame(
     ctx.quadraticCurveTo(rectX, rectY, rectX + radius, rectY);
     ctx.closePath();
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
     if (isImageValid(img)) {
       ctx.globalAlpha = 0.95;
@@ -732,7 +697,6 @@ export function renderFrame(
     const enableGlow = qualitySettings.glowEnabled;
 
     if (bullet.isSuper && bullet.isBounced) {
-      if (enableGlow) { ctx.shadowBlur = 20; ctx.shadowColor = "hsl(0, 100%, 50%)"; }
       ctx.fillStyle = "hsl(0, 90%, 55%)";
       ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
       if (enableGlow) {
@@ -751,7 +715,6 @@ export function renderFrame(
         }
       }
     } else if (bullet.isSuper) {
-      if (enableGlow) { ctx.shadowBlur = 15; ctx.shadowColor = "hsl(45, 100%, 50%)"; }
       ctx.fillStyle = "hsl(45, 90%, 55%)";
       ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
       if (enableGlow) {
@@ -759,15 +722,12 @@ export function renderFrame(
         ctx.fillRect(bullet.x - 2, bullet.y, bullet.width + 4, bullet.height + 8);
       }
     } else if (bullet.isBounced) {
-      if (enableGlow) { ctx.shadowBlur = 10; ctx.shadowColor = "hsl(0, 85%, 55%)"; }
       ctx.fillStyle = "hsl(0, 85%, 55%)";
       ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
     } else {
-      if (enableGlow) { ctx.shadowBlur = 8; ctx.shadowColor = "hsl(200, 70%, 50%)"; }
       ctx.fillStyle = "hsl(200, 70%, 50%)";
       ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
     }
-    ctx.shadowBlur = 0;
   });
 
   // DANGER text for bounced bullets
@@ -783,8 +743,7 @@ export function renderFrame(
     ctx.font = `bold ${Math.floor(14 * finalScale)}px monospace`;
     ctx.textAlign = "center";
     ctx.fillStyle = `rgba(255, 50, 0, ${textOpacity})`;
-    ctx.shadowBlur = 15 * finalScale;
-    ctx.shadowColor = "rgba(255, 0, 0, 0.8)";
+    // shadowBlur removed — red text is readable without blur
     ctx.fillText("⚠ DANGER!", bullet.x + bullet.width / 2, bullet.y - 10 * finalScale);
     ctx.restore();
   });
@@ -803,8 +762,7 @@ export function renderFrame(
       const color = impact.isSuper ? `hsla(45, 100%, 60%, ${ringAlpha})` : `hsla(200, 100%, 60%, ${ringAlpha})`;
       ctx.strokeStyle = color;
       ctx.lineWidth = 3 - i * 0.5;
-      ctx.shadowBlur = impact.isSuper ? 15 : 8;
-      ctx.shadowColor = impact.isSuper ? "hsl(45, 100%, 50%)" : "hsl(200, 100%, 50%)";
+      // shadowBlur removed — colored stroke rings + gradient flash are sufficient
       ctx.beginPath();
       ctx.arc(impact.x, impact.y, ringRadius, 0, Math.PI * 2);
       ctx.stroke();
@@ -838,7 +796,7 @@ export function renderFrame(
         ctx.fill();
       }
     }
-    ctx.shadowBlur = 0;
+    // shadowBlur removed
   });
 
   // ═══ Shield effects ═══
@@ -850,8 +808,7 @@ export function renderFrame(
     const shieldHeight = paddle.height + shieldPadding * 2 + 5;
 
     if (qualitySettings.level === "low") {
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = "rgba(255, 220, 0, 0.6)";
+      // shadowBlur removed — yellow stroke is visible without blur
       ctx.strokeStyle = "rgba(255, 220, 0, 0.8)";
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -867,7 +824,7 @@ export function renderFrame(
       ctx.arcTo(shieldX, shieldY, shieldX + r, shieldY, r);
       ctx.closePath();
       ctx.stroke();
-      ctx.shadowBlur = 0;
+      // shadowBlur removed
     } else {
       const time = now / 1000;
       const pulseIntensity = 0.5 + Math.sin(time * 4) * 0.3;
@@ -875,8 +832,7 @@ export function renderFrame(
       for (let layer = 0; layer < 3; layer++) {
         const layerOffset = layer * 2;
         const layerAlpha = (1 - layer * 0.3) * pulseIntensity;
-        ctx.shadowBlur = 20 - layer * 5;
-        ctx.shadowColor = `rgba(255, 220, 0, ${layerAlpha})`;
+        // shadowBlur removed — layered strokes convey depth without blur
         ctx.strokeStyle = `rgba(255, 220, 0, ${layerAlpha * 0.8})`;
         ctx.lineWidth = 3 - layer;
         ctx.beginPath();
@@ -906,8 +862,7 @@ export function renderFrame(
 
         ctx.strokeStyle = `rgba(255, 255, 100, ${branchIntensity * 0.7})`;
         ctx.lineWidth = 2;
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = "rgba(255, 220, 0, 0.8)";
+        // shadowBlur removed — bright yellow strokes are visible without blur
         ctx.beginPath();
         ctx.moveTo(arcX, arcY);
         const segments = 4;
@@ -942,7 +897,7 @@ export function renderFrame(
       ctx.arcTo(shieldX, shieldY, shieldX + 8, shieldY, 8);
       ctx.closePath();
       ctx.fill();
-      ctx.shadowBlur = 0;
+      // shadowBlur removed
     }
 
     // Shield impact effects
@@ -959,8 +914,7 @@ export function renderFrame(
         const alpha = fadeOut * (1 - i * 0.3);
         ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
         ctx.lineWidth = 3 - i;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = `rgba(255, 255, 100, ${alpha})`;
+        // shadowBlur removed
         ctx.beginPath();
         ctx.arc(impact.x, impact.y, rippleRadius + offset, 0, Math.PI * 2);
         ctx.stroke();
@@ -984,12 +938,11 @@ export function renderFrame(
           const sy = impact.y + Math.sin(angle) * dist;
           const sparkSize = 3 * fadeOut;
           ctx.fillStyle = `rgba(255, 255, 200, ${fadeOut * 0.8})`;
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = `rgba(255, 220, 0, ${fadeOut})`;
+          // shadowBlur removed
           ctx.fillRect(sx - sparkSize / 2, sy - sparkSize / 2, sparkSize, sparkSize);
         }
       }
-      ctx.shadowBlur = 0;
+      // shadowBlur removed
     });
   }
 
@@ -1002,8 +955,7 @@ export function renderFrame(
 
     ctx.save();
     if (qualitySettings.level === "low") {
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = "rgba(0, 200, 255, 0.8)";
+      // shadowBlur removed
       ctx.strokeStyle = "rgba(0, 200, 255, 0.9)";
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -1012,8 +964,7 @@ export function renderFrame(
       ctx.stroke();
     } else {
       const pulseIntensity = 0.6 + Math.sin(time * 6) * 0.4;
-      ctx.shadowBlur = 20;
-      ctx.shadowColor = `rgba(0, 200, 255, ${pulseIntensity})`;
+      // shadowBlur removed
       ctx.strokeStyle = `rgba(0, 200, 255, ${pulseIntensity * 0.9})`;
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -1032,8 +983,7 @@ export function renderFrame(
         if (Math.abs(arcHeight) > 3) {
           ctx.strokeStyle = `rgba(100, 220, 255, ${branchIntensity * 0.8})`;
           ctx.lineWidth = 1.5;
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "rgba(0, 200, 255, 0.9)";
+          // shadowBlur removed
           ctx.beginPath();
           ctx.moveTo(arcX, safetyNetY);
           const segments = 3;
@@ -1054,8 +1004,7 @@ export function renderFrame(
         const sparkX = lineStartX + (lineEndX - lineStartX) * sparkPhase;
         const sparkGlow = Math.sin(sparkPhase * Math.PI);
         ctx.fillStyle = `rgba(255, 255, 255, ${sparkGlow * 0.9})`;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = "rgba(100, 220, 255, 1)";
+        // shadowBlur removed
         ctx.beginPath();
         ctx.arc(sparkX, safetyNetY, 3 + sparkGlow * 2, 0, Math.PI * 2);
         ctx.fill();
@@ -1085,8 +1034,7 @@ export function renderFrame(
       ctx.fill();
 
       ctx.fillStyle = `rgba(255, 255, 255, ${fadeOut * 0.9})`;
-      ctx.shadowBlur = 20;
-      ctx.shadowColor = "rgba(0, 200, 255, 1)";
+      // shadowBlur removed
       ctx.beginPath();
       ctx.arc(secondChanceImpact.x, secondChanceImpact.y, 8 * fadeOut, 0, Math.PI * 2);
       ctx.fill();
@@ -1149,11 +1097,12 @@ export function renderFrame(
     const darkColor = paddle.hasSuperTurrets ? `hsl(${turretHue}, ${turretSat}%, ${turretLight - 20}%)` : "hsl(0, 0%, 40%)";
 
     // Left turret
-    ctx.shadowBlur = paddle.hasSuperTurrets ? 10 : 6;
-    ctx.shadowColor = glowColor;
+    // shadowBlur removed — use drawDropShadow
+    if (qualitySettings.shadowsEnabled) {
+      drawDropShadow(ctx, paddle.x + 5 + turretWidth / 2, paddle.y - turretHeight / 2, turretWidth, turretHeight);
+    }
     ctx.fillStyle = mainColor;
     ctx.fillRect(paddle.x + 5, paddle.y - turretHeight, turretWidth, turretHeight);
-    ctx.shadowBlur = 0;
     ctx.fillStyle = darkColor;
     for (let i = 0; i < turretHeight; i += 3) {
       ctx.fillRect(paddle.x + 5, paddle.y - turretHeight + i, turretWidth, 1);
@@ -1162,11 +1111,11 @@ export function renderFrame(
     ctx.fillRect(paddle.x + 5, paddle.y - turretHeight, turretWidth, 2);
 
     // Right turret
-    ctx.shadowBlur = paddle.hasSuperTurrets ? 10 : 6;
-    ctx.shadowColor = glowColor;
+    if (qualitySettings.shadowsEnabled) {
+      drawDropShadow(ctx, paddle.x + paddle.width - 15 + turretWidth / 2, paddle.y - turretHeight / 2, turretWidth, turretHeight);
+    }
     ctx.fillStyle = mainColor;
     ctx.fillRect(paddle.x + paddle.width - 15, paddle.y - turretHeight, turretWidth, turretHeight);
-    ctx.shadowBlur = 0;
     ctx.fillStyle = darkColor;
     for (let i = 0; i < turretHeight; i += 3) {
       ctx.fillRect(paddle.x + paddle.width - 15, paddle.y - turretHeight + i, turretWidth, 1);
@@ -1179,8 +1128,7 @@ export function renderFrame(
       ctx.save();
       ctx.font = '10px "Press Start 2P", monospace';
       ctx.fillStyle = paddle.hasSuperTurrets ? "hsl(45, 90%, 60%)" : "hsl(0, 0%, 80%)";
-      ctx.shadowBlur = 4;
-      ctx.shadowColor = paddle.hasSuperTurrets ? "hsl(45, 100%, 50%)" : "hsl(0, 0%, 60%)";
+      // shadowBlur removed
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(paddle.turretShots.toString(), paddle.x + paddle.width / 2, paddle.y - turretHeight - 8);
@@ -1206,15 +1154,14 @@ export function renderFrame(
     ctx.save();
     ctx.globalAlpha = alpha;
     if (qualitySettings.glowEnabled) {
-      ctx.shadowBlur = 20;
-      ctx.shadowColor = `hsla(${primaryHue}, 100%, 50%, ${alpha})`;
+      // shadowBlur removed
     }
     ctx.strokeStyle = `hsla(${primaryHue}, 100%, 50%, ${alpha})`;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(explosion.x, explosion.y, expRadius, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.shadowBlur = 0;
+    // shadowBlur removed
     ctx.fillStyle = `hsla(${secondaryHue}, 100%, 60%, ${alpha * 0.6})`;
     ctx.beginPath();
     ctx.arc(explosion.x, explosion.y, expRadius * 0.6, 0, Math.PI * 2);
@@ -1232,10 +1179,10 @@ export function renderFrame(
       const particle = pooledParticles[index];
       const particleAlpha = particle.life / particle.maxLife;
       ctx.globalAlpha = particleAlpha;
-      if (enableGlow) { ctx.shadowBlur = 8; ctx.shadowColor = particle.color; }
+      // shadowBlur removed
       ctx.fillStyle = particle.color;
       ctx.fillRect(particle.x - particle.size / 2, particle.y - particle.size / 2, particle.size, particle.size);
-      ctx.shadowBlur = 0;
+      // shadowBlur removed
       ctx.fillStyle = `rgba(255, 255, 255, ${particleAlpha * 0.8})`;
       ctx.fillRect(particle.x - particle.size / 4, particle.y - particle.size / 4, particle.size / 2, particle.size / 2);
     }
