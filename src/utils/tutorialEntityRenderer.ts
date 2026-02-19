@@ -124,18 +124,21 @@ function renderSphereBoss(
   const baseHue = 330;
   const intensity = isAngry ? 70 : 60;
   
+  // Shape-matched circle shadow (light from top-left)
+  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+  ctx.beginPath();
+  ctx.arc(5, 5, radius, 0, Math.PI * 2);
+  ctx.fill();
+
   const gradient = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, 0, 0, 0, radius);
   gradient.addColorStop(0, `hsl(${baseHue}, 100%, ${intensity + 20}%)`);
   gradient.addColorStop(0.7, `hsl(${baseHue}, 90%, ${intensity}%)`);
   gradient.addColorStop(1, `hsl(${baseHue}, 70%, ${intensity - 20}%)`);
   
-  ctx.shadowBlur = 25;
-  ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
   ctx.fillStyle = gradient;
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.fill();
-  ctx.shadowBlur = 0;
 }
 
 function renderPyramidBoss(
@@ -148,8 +151,15 @@ function renderPyramidBoss(
   const intensity = isAngry ? 65 : 60;
   
   ctx.rotate(rotationY);
-  ctx.shadowBlur = 25;
-  ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`;
+
+  // Shape-matched triangle shadow (light from top-left)
+  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+  ctx.beginPath();
+  ctx.moveTo(5, -halfSize + 5);
+  ctx.lineTo(halfSize + 5, halfSize + 5);
+  ctx.lineTo(-halfSize + 5, halfSize + 5);
+  ctx.closePath();
+  ctx.fill();
   
   ctx.fillStyle = `hsl(${baseHue}, 80%, ${intensity}%)`;
   ctx.beginPath();
@@ -175,7 +185,6 @@ function renderPyramidBoss(
   ctx.lineTo(-halfSize, halfSize);
   ctx.closePath();
   ctx.stroke();
-  ctx.shadowBlur = 0;
 }
 
 function renderEnemy(
@@ -220,9 +229,19 @@ function renderEnemy(
     avgZ: face.indices.reduce((sum, i) => sum + projected[i][2], 0) / 4
   })).sort((a, b) => a.avgZ - b.avgZ);
   
+  // Shape-matched projected faces shadow (light from top-left)
+  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
   sortedFaces.forEach(face => {
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = `hsl(${baseHue}, ${colorIntensity}%, 55%)`;
+    ctx.beginPath();
+    ctx.moveTo(projected[face.indices[0]][0] + 4, projected[face.indices[0]][1] + 4);
+    face.indices.forEach(i => {
+      ctx.lineTo(projected[i][0] + 4, projected[i][1] + 4);
+    });
+    ctx.closePath();
+    ctx.fill();
+  });
+
+  sortedFaces.forEach(face => {
     ctx.fillStyle = `hsl(${baseHue}, ${colorIntensity}%, ${face.lightness}%)`;
     ctx.beginPath();
     ctx.moveTo(projected[face.indices[0]][0], projected[face.indices[0]][1]);
@@ -232,7 +251,6 @@ function renderEnemy(
     ctx.closePath();
     ctx.fill();
     
-    ctx.shadowBlur = 0;
     ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
     ctx.lineWidth = 1.5;
     ctx.stroke();

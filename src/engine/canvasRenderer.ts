@@ -85,20 +85,85 @@ function getBackgroundPattern(
   return assets.patterns[key];
 }
 
-// ─── Drop Shadow Helper ─────────────────────────────────────
-// Cheap alternative to ctx.shadowBlur (Gaussian blur). Draws a dark
-// ellipse beneath an entity — nearly zero GPU cost vs blur which
-// scales with radius² × DPR².
+// ─── Shape-Matched Shadow Helpers ────────────────────────────
+// Light source: top-left corner. Shadows offset toward bottom-right.
+// No ctx.shadowBlur — just shape fills for near-zero GPU cost.
 
-function drawDropShadow(
+function drawCircleShadow(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  radius: number,
+  alpha: number = 0.35,
+) {
+  ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawRectShadow(
   ctx: CanvasRenderingContext2D,
   x: number, y: number,
   width: number, height: number,
-  offsetY: number = 4,
+  alpha: number = 0.35,
 ) {
-  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+  ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+  ctx.fillRect(x, y, width, height);
+}
+
+function drawPolygonShadow(
+  ctx: CanvasRenderingContext2D,
+  points: number[][],
+  offsetX: number, offsetY: number,
+  alpha: number = 0.35,
+) {
+  ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
   ctx.beginPath();
-  ctx.ellipse(x, y + offsetY, width * 0.45, height * 0.2, 0, 0, Math.PI * 2);
+  ctx.moveTo(points[0][0] + offsetX, points[0][1] + offsetY);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i][0] + offsetX, points[i][1] + offsetY);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawProjectedFacesShadow(
+  ctx: CanvasRenderingContext2D,
+  projected: number[][],
+  faces: { indices: number[] }[],
+  offsetX: number, offsetY: number,
+  alpha: number = 0.35,
+) {
+  ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+  faces.forEach(face => {
+    ctx.beginPath();
+    ctx.moveTo(projected[face.indices[0]][0] + offsetX,
+               projected[face.indices[0]][1] + offsetY);
+    for (let j = 1; j < face.indices.length; j++) {
+      ctx.lineTo(projected[face.indices[j]][0] + offsetX,
+                 projected[face.indices[j]][1] + offsetY);
+    }
+    ctx.closePath();
+    ctx.fill();
+  });
+}
+
+function drawHexShadow(
+  ctx: CanvasRenderingContext2D,
+  radius: number,
+  offsetX: number, offsetY: number,
+  alpha: number = 0.35,
+) {
+  ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 2;
+    const x = Math.cos(angle) * radius + offsetX;
+    const y = Math.sin(angle) * radius + offsetY;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
   ctx.fill();
 }
 
@@ -257,12 +322,12 @@ export function renderFrame(
     ctx.save();
     if (isImageValid(img)) {
       if (qualitySettings.shadowsEnabled) {
-        drawDropShadow(ctx, paddle.x + paddle.width / 2, paddle.y + paddle.height / 2, paddle.width, paddle.height);
+        drawRectShadow(ctx, paddle.x + 4, paddle.y + 4, paddle.width, paddle.height);
       }
       ctx.drawImage(img, paddle.x, paddle.y, paddle.width, paddle.height);
     } else {
       if (qualitySettings.shadowsEnabled) {
-        drawDropShadow(ctx, paddle.x + paddle.width / 2, paddle.y + paddle.height / 2, paddle.width, paddle.height);
+        drawRectShadow(ctx, paddle.x + 4, paddle.y + 4, paddle.width, paddle.height);
       }
       ctx.fillStyle = "hsl(200, 70%, 50%)";
       ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
@@ -295,7 +360,7 @@ export function renderFrame(
       }
 
       if (qualitySettings.shadowsEnabled) {
-        drawDropShadow(ctx, dangerBall.x, dangerBall.y, dangerBall.radius * 2, dangerBall.radius * 2);
+        drawCircleShadow(ctx, dangerBall.x + 4, dangerBall.y + 4, dangerBall.radius);
       }
 
       ctx.beginPath();
@@ -503,7 +568,7 @@ export function renderFrame(
           [[0, "rgba(255,255,255,1)"], [0.3, "hsl(0,0%,95%)"], [0.7, "hsl(0,0%,92%)"], [1, "hsl(0,0%,60%)"]]);
 
     if (qualitySettings.shadowsEnabled) {
-      drawDropShadow(ctx, 0, 0, visualRadius * 2, visualRadius * 2);
+      drawCircleShadow(ctx, 4, 4, visualRadius);
     }
     ctx.fillStyle = gradient;
     ctx.beginPath();
@@ -1097,9 +1162,8 @@ export function renderFrame(
     const darkColor = paddle.hasSuperTurrets ? `hsl(${turretHue}, ${turretSat}%, ${turretLight - 20}%)` : "hsl(0, 0%, 40%)";
 
     // Left turret
-    // shadowBlur removed — use drawDropShadow
     if (qualitySettings.shadowsEnabled) {
-      drawDropShadow(ctx, paddle.x + 5 + turretWidth / 2, paddle.y - turretHeight / 2, turretWidth, turretHeight);
+      drawRectShadow(ctx, paddle.x + 5 + 4, paddle.y - turretHeight + 4, turretWidth, turretHeight);
     }
     ctx.fillStyle = mainColor;
     ctx.fillRect(paddle.x + 5, paddle.y - turretHeight, turretWidth, turretHeight);
@@ -1112,7 +1176,7 @@ export function renderFrame(
 
     // Right turret
     if (qualitySettings.shadowsEnabled) {
-      drawDropShadow(ctx, paddle.x + paddle.width - 15 + turretWidth / 2, paddle.y - turretHeight / 2, turretWidth, turretHeight);
+      drawRectShadow(ctx, paddle.x + paddle.width - 15 + 4, paddle.y - turretHeight + 4, turretWidth, turretHeight);
     }
     ctx.fillStyle = mainColor;
     ctx.fillRect(paddle.x + paddle.width - 15, paddle.y - turretHeight, turretWidth, turretHeight);
@@ -1534,7 +1598,7 @@ function drawEnemies(
       gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
 
       if (qualitySettings.shadowsEnabled) {
-        drawDropShadow(ctx, centerX, centerY, singleEnemy.width, singleEnemy.height);
+        drawCircleShadow(ctx, centerX + 4, centerY + 4, radius);
       }
       ctx.fillStyle = gradient;
       ctx.beginPath();
@@ -1634,7 +1698,7 @@ function drawEnemies(
       gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
 
       if (qualitySettings.shadowsEnabled) {
-        drawDropShadow(ctx, centerX, centerY, singleEnemy.width, singleEnemy.height);
+        drawCircleShadow(ctx, centerX + 4, centerY + 4, radius);
       }
       ctx.fillStyle = gradient;
       ctx.beginPath();
@@ -1715,7 +1779,7 @@ function drawEnemies(
       })).sort((a, b) => a.avgZ - b.avgZ);
 
       if (qualitySettings.shadowsEnabled) {
-        drawDropShadow(ctx, centerX, centerY, singleEnemy.width, singleEnemy.height);
+        drawProjectedFacesShadow(ctx, projected, sortedFaces, 4, 4);
       }
       sortedFaces.forEach((face) => {
         ctx.fillStyle = face.color;
@@ -1793,7 +1857,7 @@ function drawEnemies(
       })).sort((a, b) => a.avgZ - b.avgZ);
 
       if (qualitySettings.shadowsEnabled) {
-        drawDropShadow(ctx, centerX, centerY, singleEnemy.width, singleEnemy.height);
+        drawProjectedFacesShadow(ctx, projected, sortedFaces, 4, 4);
       }
       sortedFaces.forEach((face) => {
         ctx.fillStyle = face.color;
@@ -1831,7 +1895,7 @@ function drawBombs(
     ctx.rotate((bombRotation * Math.PI) / 180);
 
     if (bomb.type === "pyramidBullet") {
-      if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, 0, 0, bomb.width, bomb.height); }
+      if (qualitySettings.shadowsEnabled) { drawPolygonShadow(ctx, [[0, -bomb.height / 2], [bomb.width / 2, 0], [0, bomb.height / 2], [-bomb.width / 2, 0]], 3, 3); }
       ctx.fillStyle = "hsl(280, 70%, 55%)";
       ctx.beginPath();
       ctx.moveTo(0, -bomb.height / 2);
@@ -1865,7 +1929,7 @@ function drawBombs(
       ctx.quadraticCurveTo(0, rocketLength * 1.2, rocketWidth * 0.5, rocketLength * 0.3);
       ctx.fill();
 
-      if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, 0, 0, bomb.width * 1.8, bomb.width * 0.6); }
+      if (qualitySettings.shadowsEnabled) { drawRectShadow(ctx, -bomb.width * 0.9 + 3, -bomb.width * 0.3 + 3, bomb.width * 1.8, bomb.width * 0.6); }
       const bodyGrad = ctx.createLinearGradient(-rocketWidth, 0, rocketWidth, 0);
       bodyGrad.addColorStop(0, "#cccccc");
       bodyGrad.addColorStop(0.3, "#ffffff");
@@ -1903,7 +1967,7 @@ function drawBombs(
       ctx.closePath();
       ctx.fill();
     } else {
-      if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, 0, 0, bomb.width, bomb.height); }
+      if (qualitySettings.shadowsEnabled) { drawCircleShadow(ctx, 3, 3, bomb.width / 2); }
       ctx.fillStyle = "hsl(0, 85%, 55%)";
       ctx.beginPath();
       ctx.arc(0, 0, bomb.width / 2, 0, Math.PI * 2);
@@ -1933,7 +1997,7 @@ function drawBossAttacks(
 
   bossAttacks.forEach((attack) => {
     if (attack.type === "laser") {
-      if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, attack.x + attack.width / 2, attack.y + attack.height / 2, attack.width, attack.height); }
+      if (qualitySettings.shadowsEnabled) { drawRectShadow(ctx, attack.x + 3, attack.y + 3, attack.width, attack.height); }
       ctx.fillStyle = "rgba(255, 50, 50, 0.9)";
       ctx.fillRect(attack.x, attack.y, attack.width, attack.height);
       ctx.fillStyle = "rgba(255, 200, 200, 0.6)";
@@ -2027,7 +2091,7 @@ function drawBossAttacks(
       const rotationSpeed = attack.isStopped ? 100 : 30;
       ctx.rotate(((now / rotationSpeed) * Math.PI) / 180);
       const fillColor = `hsl(${hue}, 100%, 50%)`;
-      if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, 0, 0, attack.width, attack.height); }
+      if (qualitySettings.shadowsEnabled) { drawCircleShadow(ctx, 3, 3, attack.width / 2); }
       ctx.fillStyle = fillColor;
       ctx.beginPath();
       ctx.arc(0, 0, attack.width / 2, 0, Math.PI * 2);
@@ -2068,7 +2132,7 @@ function drawBossAttacks(
       ctx.translate(attack.x + attack.width / 2, attack.y + attack.height / 2);
       ctx.rotate(((now / 30) * Math.PI) / 180);
       if (qualitySettings.shadowsEnabled) {
-        drawDropShadow(ctx, 0, 0, attack.width, attack.height);
+        drawCircleShadow(ctx, 3, 3, attack.width / 2);
       }
       ctx.fillStyle = attack.type === "super" ? "hsl(280, 80%, 60%)" : "hsl(25, 85%, 50%)";
       ctx.beginPath();
@@ -2139,7 +2203,7 @@ function drawBoss(
     const baseHue = boss.isAngry ? 0 : 280;
     const intensity = boss.isSuperAngry ? 75 : boss.isAngry ? 65 : 60;
     ctx.rotate(boss.rotationY);
-    if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, 0, 0, boss.width, boss.height); }
+    if (qualitySettings.shadowsEnabled) { drawPolygonShadow(ctx, [[0, -size], [size, size], [-size, size]], 5, 5); }
     ctx.fillStyle = `hsl(${baseHue}, 80%, ${intensity}%)`;
     ctx.beginPath();
     ctx.moveTo(0, -size);
@@ -2222,7 +2286,7 @@ function drawCubeBoss(
     avgZ: face.indices.reduce((sum, i) => sum + projected[i][2], 0) / 4,
   })).sort((a, b) => a.avgZ - b.avgZ);
 
-  if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, 0, 0, boss.width, boss.height); }
+  if (qualitySettings.shadowsEnabled) { drawProjectedFacesShadow(ctx, projected, sortedFaces, 5, 5); }
   sortedFaces.forEach((face) => {
     ctx.fillStyle = `hsl(${baseHue}, 80%, ${face.lightness}%)`;
     ctx.beginPath();
@@ -2254,7 +2318,7 @@ function drawSphereBoss(
   mainGrad.addColorStop(0.7, `hsl(${baseHue}, 60%, 35%)`);
   mainGrad.addColorStop(1, `hsl(${baseHue}, 50%, 15%)`);
 
-  if (qualitySettings.shadowsEnabled) { drawDropShadow(ctx, 0, 0, boss.width, boss.height); }
+  if (qualitySettings.shadowsEnabled) { drawCircleShadow(ctx, 5, 5, radius); }
   ctx.fillStyle = mainGrad;
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
@@ -2344,7 +2408,7 @@ function drawMegaBoss(
   ctx.rotate(hexRotation);
 
   if (qualitySettings.shadowsEnabled) {
-    drawDropShadow(ctx, 0, 0, boss.width, boss.height);
+    drawHexShadow(ctx, radius, 5, 5);
   }
 
   // Outer shield hexagon
