@@ -1,6 +1,16 @@
-export const GAME_VERSION = "0.9.92";
+export const GAME_VERSION = "0.9.93";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.93",
+    changes: [
+      "Architecture refactor: extracted 2,200-line collision system into engine/physics.ts — pure function that mutates world directly, no React or useCallback",
+      "Boss AI extracted into dedicated module — movement, attack scheduling, mega boss phases, and danger ball logic (~800 lines) decoupled from React",
+      "Deduplicated 'lose life' and 'boss defeat' handlers into centralized handleLifeLoss() and handleBossDefeat() helpers, eliminating ~600 lines of copy-paste",
+      "Game loop moved into the engine — runs as a pure requestAnimationFrame loop (like renderLoop.ts), writing to world directly without React involvement",
+      "Godlike difficulty now correctly starts with 1 life (fixed hardcoded lives override in initGame)",
+    ],
+  },
   {
     version: "0.9.92",
     changes: [
