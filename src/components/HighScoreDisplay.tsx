@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
-import { useHighScores, type LeaderboardType } from "@/hooks/useHighScores";
+import { useHighScores, type LeaderboardType, type DifficultyFilter } from "@/hooks/useHighScores";
 import { useBossRushScores } from "@/hooks/useBossRushScores";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { X } from "lucide-react";
@@ -16,7 +16,8 @@ interface HighScoreDisplayProps {
 export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time', initialTab = 'normal' }: HighScoreDisplayProps) => {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [selectedType, setSelectedType] = useState<LeaderboardType>(leaderboardType);
-  const { highScores: currentScores, isLoading: currentLoading } = useHighScores(selectedType);
+  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>('all');
+  const { highScores: currentScores, isLoading: currentLoading } = useHighScores(selectedType, difficultyFilter);
   const { scores: bossRushScores, isLoading: bossRushLoading, formatTime } = useBossRushScores();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -95,6 +96,31 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time', initia
                   className="px-4 py-2 text-sm font-bold"
                 >
                   DAILY
+                </Button>
+              </div>
+
+              {/* Difficulty filter */}
+              <div className="flex justify-center gap-2 mb-6">
+                <Button
+                  onClick={() => setDifficultyFilter('all')}
+                  variant={difficultyFilter === 'all' ? 'default' : 'outline'}
+                  className="px-3 py-1 text-xs font-bold"
+                >
+                  ALL
+                </Button>
+                <Button
+                  onClick={() => setDifficultyFilter('normal')}
+                  variant={difficultyFilter === 'normal' ? 'default' : 'outline'}
+                  className="px-3 py-1 text-xs font-bold"
+                >
+                  NORMAL
+                </Button>
+                <Button
+                  onClick={() => setDifficultyFilter('godlike')}
+                  variant={difficultyFilter === 'godlike' ? 'default' : 'outline'}
+                  className={`px-3 py-1 text-xs font-bold ${difficultyFilter === 'godlike' ? 'bg-red-600 hover:bg-red-500 border-0' : 'border-red-500/50 text-red-400 hover:bg-red-500/20'}`}
+                >
+                  🔥 GOD-MODE
                 </Button>
               </div>
 
