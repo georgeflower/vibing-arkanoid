@@ -1,6 +1,15 @@
-export const GAME_VERSION = "0.9.95";
+export const GAME_VERSION = "0.9.96";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.96",
+    changes: [
+      "Fixed: turret bullets intermittently travelling at double speed on shots after the first — root cause was React state array desync; world.bullets and React state diverged on every reset, reflect-shield, and shield-absorb call",
+      "Fix: removed useState entirely from bullet management — bullets now live exclusively in world.bullets (same pattern as balls, bricks, paddle); fireBullets pushes directly, updateBullets mutates in-place, all resets write world.bullets directly",
+      "Refactor: replaced all remaining setState(prev => { mutate; return prev }) in-place patterns with direct world loops for balls (rotation/attach), enemies, bombs, and bonus letters — eliminates stale-closure risk across all moving entities",
+      "Cleanup: removed ~100 stale '// removed' noise comments left over from previous refactoring sessions in canvasRenderer.ts and Game.tsx",
+    ],
+  },
   {
     version: "0.9.95",
     changes: [
