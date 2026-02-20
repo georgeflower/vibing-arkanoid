@@ -1,64 +1,76 @@
 
-# Fix: Bullets Still Appearing at Double Speed Intermittently
+# Fix: Intermittent Bullet Double-Speed — Real Root Cause
 
-## Root Cause Found
+## What the Previous Fix Missed
 
-The previous fix correctly removed bullets from `renderState` and pointed the renderer at `world.bullets`. However, a subtler race condition was introduced inside `fireBullets` itself.
+The `world.bullets = next` fix inside `fireBullets` was correct but incomplete. It solved one desync point. There are **multiple other `setBullets` calls** scattered throughout `Game.tsx` that create new arrays WITHOUT updating `world.bullets`:
 
-The exact problem is in `useBullets.ts` lines 62-67:
+- **Line 4479**: `setBullets(prev => prev.map(...))` — reflect shield case (creates new array, skips `world.bullets`)
+- **Line 4511**: `setBullets(prev => prev.filter(...))` — shield absorbs bullet (creates new array, skips `world.bullets`)
+- **Line 4534**: `setBullets(prev => prev.filter(...))` — bounced bullet hits paddle (creates new array, skips `world.bullets`)
+- **Lines 1490, 1746, 1806, 2331, 2422, etc.**: `setBullets([])` — level resets (creates new empty array, skips `world.bullets`)
 
-```typescript
-setBullets(prev => {
-  if (leftBullet) prev.push(leftBullet);   // mutates prev in-place
-  if (rightBullet) prev.push(rightBullet); // mutates prev in-place
-  world.bullets = prev;                    // WRONG: points world at the OLD array
-  return [...prev];                        // returns a NEW spread copy to React state
-});
-```
+Each of these breaks the `world.bullets`/React-state identity guarantee that the previous fix established. After any one of them fires, React holds array `B` while `world.bullets` still points at the stale array `A`. On the very next `updateBullets` call, `prev = B` (correct), bullets get moved and `world.bullets = result` (correct). But for the rAF frames between those two calls, the render loop reads the stale `A` and then suddenly jumps to `result` — a position that skipped one full physics step. That looks like double speed.
 
-After this runs:
-- `world.bullets` points at the **old React state array** (with new bullets pushed in)
-- React state is now a **brand new spread array** (`[...prev]`) — a completely different object
+## The Real Fix: Remove `useState` for Bullets Entirely
 
-On the very next game tick, `updateBullets` runs `setBullets(prev => {...})` where `prev` is now the **new spread array** (the React state). It mutates positions in-place on that new array. But `world.bullets` still points at the **old array** from `fireBullets`. The render loop reads `world.bullets` (the old array) and sees bullets at their un-advanced spawn position, while simultaneously the new array has bullets already moved.
+Bullets are already a pure engine entity. Like `balls`, `bricks`, `enemies`, and `powerUps`, they should live exclusively in `world.bullets` — a plain mutable array — with no React `useState` involvement at all.
 
-Then, when `updateBullets` finishes and sets `world.bullets = result`, the renderer gets the newly-advanced positions. But because the render loop (running at 120Hz) fired between the mutation and the assignment, it saw the old un-moved positions. On the next render loop frame, it sees the fully-moved positions. The bullet appears to jump two frames worth of movement in one render frame — effectively double speed for that render cycle.
+The pattern already exists in this codebase (balls, enemies, bombs are managed this way). Applying it to bullets:
 
-This only happens on the tick immediately after `fireBullets` is called, which is why it is intermittent (one bad frame per shot, more noticeable at 120Hz than 60Hz).
+- `fireBullets`: push directly to `world.bullets` — no `setBullets`
+- `updateBullets`: mutate `world.bullets` in-place — no `setBullets`
+- All `setBullets([])` reset calls: replace with `world.bullets = []` + `bulletPool.releaseAll()`
+- All `setBullets(prev => prev.filter(...))` calls: replace with direct array mutation on `world.bullets`
+- All `setBullets(prev => prev.map(...))` calls: replace with direct property mutation on the bullet object in `world.bullets`
 
-## The Fix
-
-The solution is a one-line change in `fireBullets`. Assign `world.bullets` to the **spread result** (the new array), not to `prev` before the spread:
-
-```typescript
-// BEFORE (broken):
-setBullets(prev => {
-  if (leftBullet) prev.push(leftBullet);
-  if (rightBullet) prev.push(rightBullet);
-  world.bullets = prev;      // wrong — old array
-  return [...prev];
-});
-
-// AFTER (fixed):
-setBullets(prev => {
-  if (leftBullet) prev.push(leftBullet);
-  if (rightBullet) prev.push(rightBullet);
-  const next = [...prev];
-  world.bullets = next;      // correct — same array React state will hold
-  return next;
-});
-```
-
-Now `world.bullets` and the React state array are always the **same object**. When `updateBullets` mutates positions in-place on `prev` (the React state array), those mutations are immediately visible through `world.bullets` because they are the same reference. The renderer never reads a stale array again.
-
-## Why This Was Missed
-
-The previous fix focused on removing the `renderState` bridge (the async `useEffect` sync) and was correct — that was the primary race condition. But `fireBullets` introduced a secondary desynchronisation: `world.bullets = prev` was written before the spread, and the spread created a new React state array that `world.bullets` no longer pointed at. Every shot fired created a one-tick window where the two were out of sync.
+The `bullets` state value returned from `useBullets` is only used in `Game.tsx` for the debug profiler counter (`bullets.length` at line 4003) and the bounce-check loop (line 4454). Both of these can read from `world.bullets` directly.
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/useBullets.ts` | In `fireBullets`: compute the spread first, assign `world.bullets` to the spread result, and return the same reference |
+| `src/hooks/useBullets.ts` | Remove `useState<Bullet[]>`. `fireBullets` pushes directly to `world.bullets`. `updateBullets` mutates `world.bullets` in-place and returns `void`. No `setBullets` anywhere. |
+| `src/components/Game.tsx` | Remove the `setBullets` destructure from `useBullets`. Replace all `setBullets([])` calls with `world.bullets = []; bulletPool.releaseAll()`. Replace `setBullets(prev => prev.filter(...))` with direct `world.bullets` splice. Replace `setBullets(prev => prev.map(...))` with in-place property mutation. Replace `bullets.length` debug read with `world.bullets.length`. Replace `bullets.forEach(...)` loop with `world.bullets.forEach(...)`. |
 
-This is a surgical one-function fix with zero risk to any other system.
+## Technical Detail: How `updateBullets` Changes
+
+Before (React state):
+```typescript
+const updateBullets = useCallback((currentBricks: Brick[]) => {
+  setBullets(prev => {           // <-- React state updater
+    for (const b of prev) {
+      b.y -= b.speed;            // in-place mutation on prev
+    }
+    world.bullets = result;      // sync world at end
+    return result;               // return to React state
+  });
+}, [...]);
+```
+
+After (direct world mutation):
+```typescript
+const updateBullets = useCallback((currentBricks: Brick[]) => {
+  const prev = world.bullets;   // <-- read directly from world
+  for (const b of prev) {
+    b.y -= b.speed;              // in-place mutation (same as before)
+  }
+  // ... collision logic ...
+  world.bullets = result;       // single authoritative write
+  // No setBullets, no React state involved
+}, [...]);
+```
+
+This is the same mutation pattern already used for `balls` (line 4065-4075 in Game.tsx: `setBalls(prev => { mutate; return prev; })` will also need to be reviewed, but bullets are the immediate fix).
+
+## Why This Permanently Fixes the Bug
+
+Once `world.bullets` is the only source of truth with no React state involved:
+- There is no React queue of pending `setBullets` updaters that can run in an unexpected order
+- The render loop always reads the live, current state of `world.bullets`
+- `fireBullets`, `updateBullets`, and all reset calls all operate on the same object
+- No two-tick windows where `world.bullets !== React state` are possible
+
+## Scope
+
+Surgical change to `useBullets.ts` and the bullet-related sections of `Game.tsx`. The `useBullets` hook continues to export `fireBullets` and `updateBullets` with the same signatures — only the internal implementation changes from React state to world direct access. No other hooks or components are affected.
