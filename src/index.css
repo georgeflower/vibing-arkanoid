@@ -693,9 +693,9 @@ All colors MUST be HSL.
   );
 }
 
-/* High quality: Full animation */
+/* High quality: Full animation — slowed from 0.1s to 4s to reduce compositor repaints 20x */
 .crt-scanlines.crt-high {
-  animation: scanline-flicker 0.1s infinite alternate;
+  animation: scanline-flicker 4s infinite alternate;
 }
 
 /* Medium quality: Static scanlines, reduced opacity */

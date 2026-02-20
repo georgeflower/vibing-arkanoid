@@ -39,6 +39,7 @@ class ParticlePool {
       color: "",
       life: 0,
       maxLife: 0,
+      useCircle: false,
     };
   }
 
@@ -63,6 +64,7 @@ class ParticlePool {
     particle.color = props.color ?? "white";
     particle.life = props.life ?? 1;
     particle.maxLife = props.maxLife ?? 1;
+    particle.useCircle = props.useCircle ?? false; // Reset on reuse — prevents stale pool values
 
     this.activeParticles.push(particle);
     return particle;
@@ -97,12 +99,13 @@ class ParticlePool {
       particle.color = colors[i % colorCount];
       particle.life = 30;
       particle.maxLife = 30;
+      particle.useCircle = false; // Debris: rendered as fillRect squares
       
       this.activeParticles.push(particle);
     }
   }
 
-  // Acquire particles for game over effect
+  // Acquire particles for game over effect — useCircle=true for celebration rendering pass
   acquireForGameOver(centerX: number, centerY: number, count: number): void {
     for (let i = 0; i < count; i++) {
       let particle: Particle;
@@ -127,12 +130,13 @@ class ParticlePool {
       particle.color = `hsl(${hue}, 70%, 60%)`;
       particle.life = 60;
       particle.maxLife = 60;
+      particle.useCircle = true;
       
       this.activeParticles.push(particle);
     }
   }
 
-  // Acquire particles for high score celebration
+  // Acquire particles for high score celebration — useCircle=true for celebration rendering pass
   acquireForHighScore(centerX: number, centerY: number, count: number): void {
     const colors = ["#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F", "#BB8FCE"];
     const colorCount = colors.length;
@@ -159,6 +163,7 @@ class ParticlePool {
       particle.color = colors[i % colorCount];
       particle.life = 120;
       particle.maxLife = 120;
+      particle.useCircle = true;
       
       this.activeParticles.push(particle);
     }

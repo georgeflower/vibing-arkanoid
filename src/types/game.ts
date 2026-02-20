@@ -135,6 +135,7 @@ export interface Particle {
   color: string;
   life: number;
   maxLife: number;
+  useCircle?: boolean; // true = arc (celebration/highscore), false/undefined = fillRect (debris)
 }
 
 export interface ShieldImpact {

@@ -1580,7 +1580,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     renderState.gameState = gameState;
     renderState.level = level;
     renderState.collectedLetters = collectedLetters;
-    renderState.powerUps = powerUps;
+    // powerUps now live in world.powerUps — no renderState bridge needed (race condition fix)
     renderState.qualitySettings = qualitySettings;
     renderState.showHighScoreEntry = showHighScoreEntry;
     renderState.bossIntroActive = bossIntroActive;
@@ -1592,7 +1592,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     renderState.secondChanceImpact = secondChanceImpact;
     renderState.ballReleaseHighlight = ballReleaseHighlight;
   }, [
-    gameState, level, collectedLetters, powerUps,
+    gameState, level, collectedLetters,
     qualitySettings, showHighScoreEntry, bossIntroActive,
     bossSpawnAnimation, tutorialStep, isMobileDevice,
     getReadyGlow, secondChanceImpact, ballReleaseHighlight,
@@ -4056,8 +4056,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // ═══ PHASE 1: Time Rendering ═══
     if (profilerEnabled) frameProfiler.startTiming("rendering");
 
-    // Update background animation
-    setBackgroundPhase((prev) => (prev + 1) % 360);
+    // Background animation is driven by `now` in canvasRenderer — no state update needed
 
     if (profilerEnabled) frameProfiler.endTiming("rendering");
 
