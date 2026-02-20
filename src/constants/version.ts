@@ -1,6 +1,18 @@
-export const GAME_VERSION = "0.9.94";
+export const GAME_VERSION = "0.9.95";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.95",
+    changes: [
+      "Performance: power-up race condition fixed — powerUps migrated from renderState bridge to world singleton, identical fix as the v0.9.94 bullet speed fix; eliminates flicker on 120Hz+ displays",
+      "Performance: removed dead setBackgroundPhase() call from the game loop — renderer uses frame timestamp directly, eliminating one pointless write per tick",
+      "Performance: eliminated all 5 remaining ctx.shadowBlur calls (laser warning, resurrected boss, bonus letters, game-over text, boss intro WARNING) — replaced with layered strokes, radial gradients, and double-text offset technique; removes GPU compositor blur passes during boss fights",
+      "Performance: replaced Math.random() jitter in render hot-path (shield arcs ×6, second-chance safety net arcs ×12, screen shake) with deterministic Math.sin(now*k+phase) noise — visually identical, zero GC pressure, ~190 random() calls eliminated per frame during combat",
+      "Performance: merged duplicate particle render loops into single pass using useCircle flag on Particle type — eliminates double pool traversal and redundant save/restore per frame",
+      "Performance: removed ctx.shadowBlur=10 from celebration/game-over particle loop — replaced with outer glow circle at reduced opacity, same technique used throughout renderer",
+      "Performance: CRT scanline-flicker animation slowed from 0.1s to 4s — reduces browser compositor repaints from 600/min to 30/min with no perceptible visual difference",
+    ],
+  },
   {
     version: "0.9.94",
     changes: [

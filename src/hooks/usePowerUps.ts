@@ -4,6 +4,7 @@ import { POWERUP_SIZE, POWERUP_FALL_SPEED, POWERUP_DROP_CHANCE, CANVAS_HEIGHT, F
 import { debugToast as toast } from "@/utils/debugToast";
 import { soundManager } from "@/utils/sounds";
 import { powerUpPool, getNextPowerUpId } from "@/utils/entityPool";
+import { world } from "@/engine/state";
 
 const regularPowerUpTypes: PowerUpType[] = ["multiball", "turrets", "fireball", "life", "slowdown", "paddleExtend", "paddleShrink", "shield", "secondChance"];
 const bossPowerUpTypes: PowerUpType[] = ["bossStunner", "reflectShield", "homingBall"];
@@ -23,8 +24,17 @@ export const usePowerUps = (
   onFireballEnd?: () => void,
   onSecondChance?: () => void,
 ) => {
-  const [powerUps, setPowerUps] = useState<PowerUp[]>([]);
+  const [powerUps, _setPowerUps] = useState<PowerUp[]>([]);
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
+
+  // Wrap setPowerUps to always keep world.powerUps in sync (race condition fix)
+  const setPowerUps = useCallback((updater: PowerUp[] | ((prev: PowerUp[]) => PowerUp[])) => {
+    _setPowerUps(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      world.powerUps = next;
+      return next;
+    });
+  }, []);
   const fireballTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const createPowerUp = useCallback((brick: Brick, isBossMinion: boolean = false, forceBossPowerUp: boolean = false): PowerUp | null => {
@@ -137,7 +147,9 @@ export const usePowerUps = (
           prev.pop();
         }
       }
-      return [...prev]; // New reference for React
+      // Sync to world singleton so the renderer reads consistent data (race condition fix)
+      world.powerUps = prev;
+      return prev; // Return same reference — renderer reads world.powerUps directly
     });
   }, []);
 

@@ -183,15 +183,14 @@ export function renderFrame(
 
   // Shorthand world reads
   const {
-    balls, paddle, bricks, enemies, bombs, explosions, powerUps: _worldPU,
+    balls, paddle, bricks, enemies, bombs, explosions, powerUps,
     bonusLetters, boss, resurrectedBosses, bossAttacks,
     laserWarnings, superWarnings, shieldImpacts, bulletImpacts,
     dangerBalls, screenShake, backgroundFlash, highlightFlash,
     launchAngle,
   } = world;
 
-  // PowerUps come from renderState; bullets now live in world (no renderState race condition)
-  const powerUps = rs.powerUps;
+  // Bullets come from world (no renderState race condition); powerUps now also from world
   const bullets = world.bullets;
   const collectedLetters = rs.collectedLetters;
   const bossIntroActive = rs.bossIntroActive;
@@ -206,8 +205,9 @@ export function renderFrame(
   // ═══ Apply screen shake ═══
   ctx.save();
   if (screenShake > 0) {
-    const shakeX = (Math.random() - 0.5) * screenShake;
-    const shakeY = (Math.random() - 0.5) * screenShake;
+    // Deterministic noise via sin/cos — no Math.random() in render hot-path
+    const shakeX = Math.sin(now * 0.073) * screenShake;
+    const shakeY = Math.cos(now * 0.097) * screenShake;
     ctx.translate(shakeX, shakeY);
   }
 
@@ -935,8 +935,9 @@ export function renderFrame(
           const t = s / segments;
           const baseX = arcX + (arcEndX - arcX) * t;
           const baseY = arcY + (arcEndY - arcY) * t;
-          const jitterX = (Math.random() - 0.5) * 8;
-          const jitterY = (Math.random() - 0.5) * 8;
+          // Deterministic jitter: replaces Math.random() in render hot-path
+          const jitterX = Math.sin(now * 0.037 + i * 1.3 + s * 2.7) * 4;
+          const jitterY = Math.cos(now * 0.041 + i * 1.7 + s * 3.1) * 4;
           ctx.lineTo(baseX + jitterX, baseY + jitterY);
         }
         ctx.stroke();
@@ -1056,7 +1057,8 @@ export function renderFrame(
           for (let s = 1; s <= segments; s++) {
             const t = s / segments;
             const segY = safetyNetY + (targetY - safetyNetY) * t;
-            const jitterX = (Math.random() - 0.5) * 6;
+            // Deterministic jitter: replaces Math.random() in render hot-path
+            const jitterX = Math.sin(now * 0.043 + i * 2.1 + s * 1.9) * 3;
             ctx.lineTo(arcX + jitterX, segY);
           }
           ctx.stroke();
@@ -1265,10 +1267,17 @@ export function renderFrame(
     const startY = bossSource ? bossSource.y + bossSource.height : 0;
 
     ctx.save();
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = `rgba(255, 0, 0, ${warnAlpha})`;
+    // Glow effect: wide semi-transparent stroke behind the dashed line (replaces shadowBlur=15)
+    ctx.strokeStyle = `rgba(255, 0, 0, ${warnAlpha * 0.35})`;
+    ctx.lineWidth = 22;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(warning.x, startY);
+    ctx.lineTo(warning.x, height);
+    ctx.stroke();
+    // Crisp dashed line on top
     ctx.strokeStyle = `rgba(255, 50, 50, ${warnAlpha})`;
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 3;
     ctx.setLineDash([12, 8]);
     ctx.lineDashOffset = -now / 30;
     ctx.beginPath();
@@ -1276,7 +1285,6 @@ export function renderFrame(
     ctx.lineTo(warning.x, height);
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.shadowBlur = 0;
 
     if (elapsed > 300) {
       ctx.fillStyle = `rgba(255, 50, 50, ${warnAlpha * 0.8})`;
@@ -1356,7 +1364,22 @@ export function renderFrame(
     const baseHue = resBoss.isSuperAngry ? 0 : 280;
     const intensity = resBoss.isSuperAngry ? 75 : 65;
 
-    if (qualitySettings.glowEnabled) { ctx.shadowBlur = 20; ctx.shadowColor = `hsl(${baseHue}, 100%, 60%)`; }
+    // Outer glow: radial gradient circle drawn before the triangle (replaces shadowBlur=20)
+    if (qualitySettings.glowEnabled) {
+      ctx.save();
+      const glowGrad = getCachedRadialGradient(
+        ctx,
+        `resBossGlow_${baseHue}`,
+        0, 0, 0,
+        0, 0, size * 1.6,
+        [[0, `hsla(${baseHue}, 100%, 65%, 0.45)`], [1, `hsla(${baseHue}, 100%, 60%, 0)`]],
+      );
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
     ctx.fillStyle = `hsl(${baseHue}, 80%, ${intensity}%)`;
     ctx.beginPath();
     ctx.moveTo(0, -size);
@@ -1390,8 +1413,20 @@ export function renderFrame(
     const size = letter.width;
     ctx.save();
     ctx.translate(letter.x + size / 2, letter.y + size / 2);
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = "hsl(280, 90%, 60%)";
+    // Glow effect: radial gradient circle behind the image (replaces shadowBlur=15)
+    if (qualitySettings.glowEnabled) {
+      const glowGrad = getCachedRadialGradient(
+        ctx,
+        "bonusLetterGlow",
+        0, 0, 0,
+        0, 0, size * 0.85,
+        [[0, "hsla(280, 90%, 65%, 0.55)"], [1, "hsla(280, 90%, 60%, 0)"]],
+      );
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.85, 0, Math.PI * 2);
+      ctx.fill();
+    }
     if (isImageValid(img)) {
       ctx.drawImage(img, -size / 2, -size / 2, size, size);
     } else {
@@ -1427,20 +1462,23 @@ export function renderFrame(
     ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     ctx.fillRect(0, 0, width, height);
     if (gameState !== "paused") {
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = "hsl(280, 60%, 55%)";
-      ctx.fillStyle = "hsl(280, 60%, 55%)";
       ctx.font = "bold 32px monospace";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
+      // Double-text technique: offset dark shadow + bright fill (replaces shadowBlur=12)
       if (gameState === "ready") {
+        ctx.fillStyle = "rgba(80, 0, 100, 0.8)";
+        ctx.fillText("READY TO PLAY", width / 2 + 2, height / 2 + 2);
+        ctx.fillStyle = "hsl(280, 60%, 55%)";
         ctx.fillText("READY TO PLAY", width / 2, height / 2);
       } else if (gameState === "gameOver") {
-        ctx.shadowColor = "hsl(0, 75%, 55%)";
+        ctx.fillStyle = "rgba(80, 0, 0, 0.8)";
+        ctx.fillText("GAME OVER", width / 2 + 2, height / 2 + 2);
         ctx.fillStyle = "hsl(0, 75%, 55%)";
         ctx.fillText("GAME OVER", width / 2, height / 2);
       } else if (gameState === "won") {
-        ctx.shadowColor = "hsl(120, 60%, 45%)";
+        ctx.fillStyle = "rgba(0, 50, 0, 0.8)";
+        ctx.fillText("YOU WON!", width / 2 + 2, height / 2 + 2);
         ctx.fillStyle = "hsl(120, 60%, 45%)";
         ctx.fillText("YOU WON!", width / 2, height / 2);
       }
@@ -1450,7 +1488,6 @@ export function renderFrame(
   // Instructions overlay
   const waitingBall = balls.find((ball) => ball.waitingToLaunch);
   if (waitingBall && gameState === "playing") {
-    ctx.shadowBlur = 0;
     ctx.font = "bold 16px 'Courier New', monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -1475,21 +1512,31 @@ export function renderFrame(
     ctx.fillText(text3, width / 2, instructionY3);
   }
 
-  // Final pooled particles (gameOver/highScore)
+  // Final pooled particles (gameOver/highScore celebration) — circle-shaped (useCircle=true)
+  // Debris particles (useCircle=false/undefined) already rendered above via the debris pass.
+  // Both share the same pool; we skip debris ones here to avoid double-drawing.
   const activeParticles = particlePool.getActive();
   if (activeParticles.length > 0) {
     ctx.save();
     for (let i = 0; i < activeParticles.length; i++) {
       const particle = activeParticles[i];
+      if (!particle.useCircle) continue; // Skip debris particles (already rendered above)
       const pAlpha = particle.life / particle.maxLife;
       ctx.globalAlpha = pAlpha;
-      if (qualitySettings.glowEnabled) { ctx.shadowBlur = 10; ctx.shadowColor = particle.color; }
+      // Outer glow: slightly larger circle at low opacity (replaces shadowBlur=10)
+      if (qualitySettings.glowEnabled && particle.size > 2) {
+        ctx.fillStyle = particle.color;
+        ctx.globalAlpha = pAlpha * 0.3;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size * 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = pAlpha;
+      }
       ctx.fillStyle = particle.color;
       ctx.beginPath();
       ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
       ctx.fill();
       if (particle.size > 3) {
-        ctx.shadowBlur = 0;
         ctx.fillStyle = `rgba(255, 255, 255, ${pAlpha * 0.9})`;
         ctx.beginPath();
         ctx.arc(particle.x, particle.y, particle.size / 2, 0, Math.PI * 2);
@@ -1533,13 +1580,15 @@ export function renderFrame(
     ctx.textBaseline = "middle";
     const warningY = height * 0.2;
     const textFlash = Math.sin(now / 150) > 0 ? 1 : 0.5;
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = `rgba(255, 0, 0, ${textFlash})`;
+    // Double-text technique for WARNING (replaces shadowBlur=20)
+    ctx.fillStyle = `rgba(100, 0, 0, ${textFlash * 0.8})`;
+    ctx.fillText("⚠ WARNING ⚠", width / 2 + 3, warningY + 3);
     ctx.fillStyle = `rgba(255, 50, 50, ${textFlash})`;
     ctx.fillText("⚠ WARNING ⚠", width / 2, warningY);
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = "rgba(255, 255, 0, 0.5)";
+    // Double-text technique for BOSS APPROACHING (replaces shadowBlur=10)
     ctx.font = "bold 24px monospace";
+    ctx.fillStyle = "rgba(80, 80, 0, 0.8)";
+    ctx.fillText("BOSS APPROACHING", width / 2 + 2, warningY + 52);
     ctx.fillStyle = "rgba(255, 255, 100, 0.9)";
     ctx.fillText("BOSS APPROACHING", width / 2, warningY + 50);
     ctx.restore();
