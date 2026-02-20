@@ -4076,17 +4076,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Update bonus letters - OPTIMIZED: In-place mutation with sine wave motion
     const currentTime = Date.now();
-    setBonusLetters((prev) => {
-      for (const letter of prev) {
-        // Fall down
-        letter.y += letter.speed;
-        // Sine wave horizontal motion: amplitude 30, period 4 seconds
-        const elapsed = currentTime - letter.spawnTime;
-        const sinePhase = (elapsed / 4000) * 2 * Math.PI;
-        letter.x = letter.originX + 30 * Math.sin(sinePhase);
-      }
-      return prev; // In-place mutation — world.bonusLetters is authoritative
-    });
+    // Direct world mutation — no React state updater, no stale-closure risk
+    for (const letter of world.bonusLetters) {
+      // Fall down
+      letter.y += letter.speed;
+      // Sine wave horizontal motion: amplitude 30, period 4 seconds
+      const elapsed = currentTime - letter.spawnTime;
+      const sinePhase = (elapsed / 4000) * 2 * Math.PI;
+      letter.x = letter.originX + 30 * Math.sin(sinePhase);
+    }
 
     // Check bonus letter collisions
     checkBonusLetterCollision();
@@ -4101,51 +4099,47 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Check if stun is active (applies to all enemies)
     const isStunActive = bossStunnerEndTime !== null && Date.now() < bossStunnerEndTime;
 
-    // Update enemies - OPTIMIZED: In-place mutation (skip if stunned)
+    // Update enemies - OPTIMIZED: Direct world mutation (skip if stunned)
     if (!isStunActive) {
-      setEnemies((prev) => {
-        for (const enemy of prev) {
-          let newX = enemy.x + enemy.dx;
-          let newY = enemy.y + enemy.dy;
+      for (const enemy of world.enemies) {
+        let newX = enemy.x + enemy.dx;
+        let newY = enemy.y + enemy.dy;
 
-          // Sphere, Pyramid, and CrossBall enemies have more random movement
-          if (enemy.type === "sphere" || enemy.type === "pyramid" || enemy.type === "crossBall") {
-            // Add some randomness to movement
-            const randomChance = enemy.type === "pyramid" ? 0.08 : enemy.type === "crossBall" ? 0.06 : 0.05;
-            if (Math.random() < randomChance) {
-              const randomAngle = ((Math.random() - 0.5) * Math.PI) / 4;
-              const currentAngle = Math.atan2(enemy.dy, enemy.dx);
-              const newAngle = currentAngle + randomAngle;
-              enemy.dx = Math.cos(newAngle) * enemy.speed;
-              enemy.dy = Math.sin(newAngle) * enemy.speed;
-            }
+        // Sphere, Pyramid, and CrossBall enemies have more random movement
+        if (enemy.type === "sphere" || enemy.type === "pyramid" || enemy.type === "crossBall") {
+          const randomChance = enemy.type === "pyramid" ? 0.08 : enemy.type === "crossBall" ? 0.06 : 0.05;
+          if (Math.random() < randomChance) {
+            const randomAngle = ((Math.random() - 0.5) * Math.PI) / 4;
+            const currentAngle = Math.atan2(enemy.dy, enemy.dx);
+            const newAngle = currentAngle + randomAngle;
+            enemy.dx = Math.cos(newAngle) * enemy.speed;
+            enemy.dy = Math.sin(newAngle) * enemy.speed;
           }
-
-          // Bounce off walls
-          if (newX <= 0 || newX >= SCALED_CANVAS_WIDTH - enemy.width) {
-            enemy.dx = -enemy.dx;
-            newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - enemy.width, newX));
-          }
-
-          // Bounce off top and 60% boundary
-          const maxY = SCALED_CANVAS_HEIGHT * 0.6;
-          if (newY <= 0 || newY >= maxY - enemy.height) {
-            enemy.dy = -enemy.dy;
-            newY = Math.max(0, Math.min(maxY - enemy.height, newY));
-          }
-
-          // Update in place
-          enemy.x = newX;
-          enemy.y = newY;
-          enemy.rotationX +=
-            enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.08 : 0.05;
-          enemy.rotationY +=
-            enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.12 : 0.08;
-          enemy.rotationZ +=
-            enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.06 : 0.03;
         }
-        return prev; // In-place mutation — world.enemies is authoritative
-      });
+
+        // Bounce off walls
+        if (newX <= 0 || newX >= SCALED_CANVAS_WIDTH - enemy.width) {
+          enemy.dx = -enemy.dx;
+          newX = Math.max(0, Math.min(SCALED_CANVAS_WIDTH - enemy.width, newX));
+        }
+
+        // Bounce off top and 60% boundary
+        const maxY = SCALED_CANVAS_HEIGHT * 0.6;
+        if (newY <= 0 || newY >= maxY - enemy.height) {
+          enemy.dy = -enemy.dy;
+          newY = Math.max(0, Math.min(maxY - enemy.height, newY));
+        }
+
+        // Update in place
+        enemy.x = newX;
+        enemy.y = newY;
+        enemy.rotationX +=
+          enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.08 : 0.05;
+        enemy.rotationY +=
+          enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.12 : 0.08;
+        enemy.rotationZ +=
+          enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.06 : 0.03;
+      }
     }
     if (profilerEnabled) frameProfiler.endTiming("enemies");
 
@@ -4241,9 +4235,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Define paddle danger zone for stun freezing
     const bombPaddleDangerZoneY = paddle ? paddle.y - 100 : SCALED_CANVAS_HEIGHT - 100;
 
-    setBombs((prev) => {
-      for (let i = prev.length - 1; i >= 0; i--) {
-        const bomb = prev[i];
+    // Update bombs and rockets - OPTIMIZED: Direct world mutation, backwards iteration for splice safety
+    for (let i = world.bombs.length - 1; i >= 0; i--) {
+      const bomb = world.bombs[i];
 
         // Check if bomb should be frozen during stun (except near paddle)
         const bombInDangerZone = bomb.y >= bombPaddleDangerZoneY;
@@ -4269,7 +4263,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         if (shouldRemove) {
           bombPool.release(bomb);
-          prev.splice(i, 1);
+          world.bombs.splice(i, 1);
           continue;
         }
 
@@ -4349,9 +4343,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         } else {
           bomb.y += bomb.speed;
         }
-      }
-      return prev; // In-place mutation — world.bombs is authoritative
-    });
+    }
 
     // Check bomb-paddle collision
     if (paddle) {
