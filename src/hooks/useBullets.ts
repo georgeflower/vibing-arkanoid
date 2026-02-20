@@ -62,8 +62,9 @@ export const useBullets = (
     setBullets(prev => {
       if (leftBullet) prev.push(leftBullet);
       if (rightBullet) prev.push(rightBullet);
-      world.bullets = prev; // Authoritative source for renderer
-      return [...prev];
+      const next = [...prev];
+      world.bullets = next; // Correct — same array React state will hold
+      return next;
     });
     
     // Decrement turret shots and remove turrets if depleted
