@@ -4061,18 +4061,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (profilerEnabled) frameProfiler.endTiming("rendering");
 
     // Update balls rotation only (position is updated in checkCollision with substeps)
-    // OPTIMIZED: In-place mutation instead of creating new objects
-    setBalls((prev) => {
-      for (const ball of prev) {
-        if (ball.waitingToLaunch && paddle) {
-          // Keep ball attached to paddle
-          ball.x = paddle.x + paddle.width / 2;
-          ball.y = paddle.y - ball.radius - 5;
-        }
-        ball.rotation = ((ball.rotation || 0) + 3) % 360; // Spinning rotation
+    // OPTIMIZED: Direct world mutation — no React state updater, no stale-closure risk
+    for (const ball of world.balls) {
+      if (ball.waitingToLaunch && paddle) {
+        // Keep ball attached to paddle
+        ball.x = paddle.x + paddle.width / 2;
+        ball.y = paddle.y - ball.radius - 5;
       }
-      return prev; // In-place mutation — world.balls is authoritative
-    });
+      ball.rotation = ((ball.rotation || 0) + 3) % 360; // Spinning rotation
+    }
 
     // Update power-ups
     updatePowerUps();
