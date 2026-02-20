@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import type { Bullet, Paddle, Brick, Enemy, Boss } from "@/types/game";
 import { BULLET_WIDTH, BULLET_HEIGHT, BULLET_SPEED, CANVAS_HEIGHT, BRICK_PADDING } from "@/constants/game";
 import { soundManager } from "@/utils/sounds";
@@ -27,8 +27,6 @@ export const useBullets = (
   onPyramidSplit?: (boss: Boss) => void,
   onBossHit?: (x: number, y: number, isSuper: boolean) => void
 ) => {
-  const [bullets, setBullets] = useState<Bullet[]>([]);
-
   const fireBullets = useCallback((paddle: Paddle) => {
     if (!paddle.hasTurrets || !paddle.turretShots || paddle.turretShots <= 0) return;
 
@@ -36,7 +34,6 @@ export const useBullets = (
 
     const isSuper = paddle.hasSuperTurrets || false;
 
-    // Use pool to acquire bullets with unique IDs
     const leftBullet = bulletPool.acquire({
       id: getNextBulletId(),
       x: paddle.x + 10,
@@ -59,20 +56,15 @@ export const useBullets = (
       isBounced: false,
     });
 
-    setBullets(prev => {
-      if (leftBullet) prev.push(leftBullet);
-      if (rightBullet) prev.push(rightBullet);
-      const next = [...prev];
-      world.bullets = next; // Correct — same array React state will hold
-      return next;
-    });
-    
+    // Push directly to world.bullets — no React state involved
+    if (leftBullet) world.bullets.push(leftBullet);
+    if (rightBullet) world.bullets.push(rightBullet);
+
     // Decrement turret shots and remove turrets if depleted
     setPaddle(prev => {
       if (!prev) return null;
       const newShots = (prev.turretShots || 0) - 1;
       if (newShots <= 0) {
-        // Turrets depleted - trigger callback
         onTurretDepleted?.();
         return { ...prev, hasTurrets: false, turretShots: 0 };
       }
@@ -81,343 +73,309 @@ export const useBullets = (
   }, [setPaddle, onTurretDepleted]);
 
   const updateBullets = useCallback((currentBricks: Brick[]) => {
-    // Move bullets and collect collision information
-    setBullets(prev => {
-      // In-place mutation: update positions without creating new objects
+    // Read directly from world — no React state updater
+    const prev = world.bullets;
+
+    // In-place mutation: update positions
+    for (let i = 0; i < prev.length; i++) {
+      const b = prev[i];
+      b.y = b.isBounced ? b.y + b.speed : b.y - b.speed;
+    }
+
+    // Filter out-of-bounds bullets and release to pool
+    let movedBullets = prev;
+    let hasOutOfBounds = false;
+    for (let i = 0; i < prev.length; i++) {
+      if (prev[i].y <= 0 || prev[i].y >= CANVAS_HEIGHT) {
+        hasOutOfBounds = true;
+        break;
+      }
+    }
+
+    if (hasOutOfBounds) {
+      movedBullets = [];
       for (let i = 0; i < prev.length; i++) {
         const b = prev[i];
-        b.y = b.isBounced ? b.y + b.speed : b.y - b.speed;
-      }
-      
-      // Filter out-of-bounds bullets and release to pool
-      let movedBullets = prev;
-      let hasOutOfBounds = false;
-      for (let i = 0; i < prev.length; i++) {
-        if (prev[i].y <= 0 || prev[i].y >= CANVAS_HEIGHT) {
-          hasOutOfBounds = true;
-          break;
+        if (b.y > 0 && b.y < CANVAS_HEIGHT) {
+          movedBullets.push(b);
+        } else {
+          bulletPool.release(b as Bullet & { id: number });
         }
       }
-      
-      if (hasOutOfBounds) {
-        movedBullets = [];
-        for (let i = 0; i < prev.length; i++) {
-          const b = prev[i];
-          if (b.y > 0 && b.y < CANVAS_HEIGHT) {
-            movedBullets.push(b);
-          } else {
-            // Release pooled bullets (they have id from pool acquisition)
-            bulletPool.release(b as Bullet & { id: number });
-          }
+    }
+
+    const bulletIndicesHit = new Set<number>();
+    const bulletIndicesToBounce = new Set<number>();
+    const brickIndicesToDestroy = new Set<number>();
+
+    // Check enemy collisions first (only for bullets going up)
+    for (let bulletIdx = 0; bulletIdx < movedBullets.length; bulletIdx++) {
+      const bullet = movedBullets[bulletIdx];
+      if (bulletIndicesHit.has(bulletIdx) || bullet.isBounced) continue;
+
+      for (let i = 0; i < enemies.length; i++) {
+        const enemy = enemies[i];
+        if (
+          bulletIndicesHit.has(bulletIdx) ||
+          bullet.x + bullet.width <= enemy.x ||
+          bullet.x >= enemy.x + enemy.width ||
+          bullet.y >= enemy.y + enemy.height ||
+          bullet.y + bullet.height <= enemy.y
+        ) {
+          continue;
         }
+
+        bulletIndicesToBounce.add(bulletIdx);
+        soundManager.playBounce();
       }
-      
-      const bulletIndicesHit = new Set<number>();
-      const bulletIndicesToBounce = new Set<number>();
-      const brickIndicesToDestroy = new Set<number>();
-      
-      // Check enemy collisions first (only for bullets going up)
+    }
+
+    // Check boss collisions (only for bullets going up, not bounced)
+    const bossDamageMap = new Map<number, number>();
+    const bossHitEffects: Array<{ x: number; y: number; isSuper: boolean }> = [];
+
+    if (boss || (resurrectedBosses && resurrectedBosses.length > 0)) {
       for (let bulletIdx = 0; bulletIdx < movedBullets.length; bulletIdx++) {
         const bullet = movedBullets[bulletIdx];
-        if (bulletIndicesHit.has(bulletIdx) || bullet.isBounced) continue;
-        
-        for (let i = 0; i < enemies.length; i++) {
-          const enemy = enemies[i];
+        if (bulletIndicesHit.has(bulletIdx) || bulletIndicesToBounce.has(bulletIdx) || bullet.isBounced) continue;
+
+        if (boss) {
           if (
-            bulletIndicesHit.has(bulletIdx) ||
-            bullet.x + bullet.width <= enemy.x ||
-            bullet.x >= enemy.x + enemy.width ||
-            bullet.y >= enemy.y + enemy.height ||
-            bullet.y + bullet.height <= enemy.y
+            bullet.x + bullet.width > boss.x &&
+            bullet.x < boss.x + boss.width &&
+            bullet.y < boss.y + boss.height &&
+            bullet.y + bullet.height > boss.y
           ) {
-            continue;
+            bulletIndicesHit.add(bulletIdx);
+            bossDamageMap.set(boss.id, (bossDamageMap.get(boss.id) || 0) + (bullet.isSuper ? 1 : 0.5));
+            bossHitEffects.push({ x: bullet.x + bullet.width / 2, y: bullet.y, isSuper: bullet.isSuper || false });
+            soundManager.playBounce();
           }
-          
-          // Collision with enemy - bounce bullet back
-          bulletIndicesToBounce.add(bulletIdx);
-          soundManager.playBounce();
         }
-      }
-      
-      // Check boss collisions (only for bullets going up, not bounced)
-      const bossDamageMap = new Map<number, number>();
-      const bossHitEffects: Array<{ x: number; y: number; isSuper: boolean }> = [];
-      
-      if (boss || (resurrectedBosses && resurrectedBosses.length > 0)) {
-        for (let bulletIdx = 0; bulletIdx < movedBullets.length; bulletIdx++) {
-          const bullet = movedBullets[bulletIdx];
-          if (bulletIndicesHit.has(bulletIdx) || bulletIndicesToBounce.has(bulletIdx) || bullet.isBounced) continue;
-          
-          // Check main boss
-          if (boss) {
+
+        if (resurrectedBosses) {
+          for (let i = 0; i < resurrectedBosses.length; i++) {
+            const resBoss = resurrectedBosses[i];
+            if (bulletIndicesHit.has(bulletIdx)) break;
+
             if (
-              bullet.x + bullet.width > boss.x &&
-              bullet.x < boss.x + boss.width &&
-              bullet.y < boss.y + boss.height &&
-              bullet.y + bullet.height > boss.y
+              bullet.x + bullet.width > resBoss.x &&
+              bullet.x < resBoss.x + resBoss.width &&
+              bullet.y < resBoss.y + resBoss.height &&
+              bullet.y + bullet.height > resBoss.y
             ) {
               bulletIndicesHit.add(bulletIdx);
-              bossDamageMap.set(boss.id, (bossDamageMap.get(boss.id) || 0) + (bullet.isSuper ? 1 : 0.5));
+              bossDamageMap.set(resBoss.id, (bossDamageMap.get(resBoss.id) || 0) + (bullet.isSuper ? 1 : 0.5));
               bossHitEffects.push({ x: bullet.x + bullet.width / 2, y: bullet.y, isSuper: bullet.isSuper || false });
               soundManager.playBounce();
             }
           }
-          
-          // Check resurrected bosses
-          if (resurrectedBosses) {
-            for (let i = 0; i < resurrectedBosses.length; i++) {
-              const resBoss = resurrectedBosses[i];
-              if (bulletIndicesHit.has(bulletIdx)) break;
-              
-              if (
-                bullet.x + bullet.width > resBoss.x &&
-                bullet.x < resBoss.x + resBoss.width &&
-                bullet.y < resBoss.y + resBoss.height &&
-                bullet.y + bullet.height > resBoss.y
-              ) {
-                bulletIndicesHit.add(bulletIdx);
-                bossDamageMap.set(resBoss.id, (bossDamageMap.get(resBoss.id) || 0) + (bullet.isSuper ? 1 : 0.5));
-                bossHitEffects.push({ x: bullet.x + bullet.width / 2, y: bullet.y, isSuper: bullet.isSuper || false });
-                soundManager.playBounce();
+        }
+      }
+
+      for (let i = 0; i < bossHitEffects.length; i++) {
+        const effect = bossHitEffects[i];
+        onBossHit?.(effect.x, effect.y, effect.isSuper);
+      }
+
+      if (bossDamageMap.size > 0 && setBoss && setResurrectedBosses) {
+        if (boss && bossDamageMap.has(boss.id)) {
+          const damage = bossDamageMap.get(boss.id)!;
+
+          if (isMegaBoss(boss)) {
+            setBoss(prev => {
+              if (!prev || !isMegaBoss(prev)) return prev;
+              const megaBoss = prev as MegaBoss;
+
+              if (megaBoss.coreExposed) {
+                return prev;
               }
-            }
-          }
-        }
-        
-        // Trigger boss hit visual effects
-        for (let i = 0; i < bossHitEffects.length; i++) {
-          const effect = bossHitEffects[i];
-          onBossHit?.(effect.x, effect.y, effect.isSuper);
-        }
-        
-        // Apply boss damage
-        if (bossDamageMap.size > 0 && setBoss && setResurrectedBosses) {
-          // Damage main boss
-          if (boss && bossDamageMap.has(boss.id)) {
-            const damage = bossDamageMap.get(boss.id)!;
-            
-            // Check if this is a Mega Boss - route damage to outer shield HP
-            if (isMegaBoss(boss)) {
-              setBoss(prev => {
-                if (!prev || !isMegaBoss(prev)) return prev;
-                const megaBoss = prev as MegaBoss;
-                
-                // Don't damage if core is already exposed (should hit core with ball)
-                if (megaBoss.coreExposed) {
-                  return prev;
-                }
-                
-                const result = handleMegaBossOuterDamage(megaBoss, damage);
-                soundManager.playBossHitSound();
-                
-                if (result.shouldExposeCore) {
-                  // Expose the core!
-                  const exposedBoss = exposeMegaBossCore({
-                    ...megaBoss,
-                    outerShieldHP: result.newOuterHP,
-                    innerShieldHP: result.newInnerHP,
-                    currentHealth: 0
-                  } as MegaBoss);
-                  toast.success("💥 CORE EXPOSED! Hit the core with the ball!", { duration: 3000 });
-                  return exposedBoss as unknown as Boss;
-                }
-                
-                // Update shield HP
-                return {
+
+              const result = handleMegaBossOuterDamage(megaBoss, damage);
+              soundManager.playBossHitSound();
+
+              if (result.shouldExposeCore) {
+                const exposedBoss = exposeMegaBossCore({
                   ...megaBoss,
                   outerShieldHP: result.newOuterHP,
                   innerShieldHP: result.newInnerHP,
-                  currentHealth: megaBoss.outerShieldRemoved ? result.newInnerHP : result.newOuterHP
-                } as unknown as Boss;
-              });
-            } else {
-              // Regular boss damage
-              setBoss(prev => {
-                if (!prev) return null;
-                const newHealth = Math.max(0, prev.currentHealth - damage);
-                
-                soundManager.playBossHitSound();
-                
-                // Check for defeat/phase change
-                if (newHealth <= 0) {
-                  // Mega Boss is never defeated by bullets directly - has its own defeat system
-                  if (prev.type === "mega") {
-                    return prev;
-                  }
-                  if (prev.type === "cube") {
-                    onBossDefeated?.("cube", prev);
-                    return null;
-                  } else if (prev.type === "sphere") {
-                    if (prev.currentStage === 1) {
-                      // Phase 2 transition
-                      const phase2Boss = onSpherePhaseChange?.(prev);
-                      return phase2Boss || null;
-                    } else {
-                      // Sphere defeated
-                      onBossDefeated?.("sphere", prev);
-                      return null;
-                    }
-                  } else if (prev.type === "pyramid") {
-                    if (prev.currentStage === 1) {
-                      // Pyramid split
-                      onPyramidSplit?.(prev);
-                      return null;
-                    }
-                  }
-                }
-                
-                // Health updated but boss still alive
-                return { ...prev, currentHealth: newHealth };
-              });
-            }
-          }
-          
-          // Damage resurrected bosses
-          setResurrectedBosses(prev => {
-            let hasChanges = false;
-            for (let i = 0; i < prev.length; i++) {
-              const resBoss = prev[i];
-              if (bossDamageMap.has(resBoss.id)) {
-                hasChanges = true;
-                break;
+                  currentHealth: 0
+                } as MegaBoss);
+                toast.success("💥 CORE EXPOSED! Hit the core with the ball!", { duration: 3000 });
+                return exposedBoss as unknown as Boss;
               }
-            }
-            if (!hasChanges) return prev;
-            
-            return prev.map((resBoss, idx) => {
-              if (bossDamageMap.has(resBoss.id)) {
-                const damage = bossDamageMap.get(resBoss.id)!;
-                const newHealth = Math.max(0, resBoss.currentHealth - damage);
-                
-                soundManager.playBossHitSound();
-                
-                if (newHealth <= 0) {
-                  onResurrectedBossDefeated?.(resBoss, idx);
-                  return { ...resBoss, currentHealth: 0 }; // Mark for removal
-                }
-                
-                return { ...resBoss, currentHealth: newHealth };
-              }
-              return resBoss;
-            }).filter(b => b.currentHealth > 0);
-          });
-        }
-      }
-      
-      // Check brick collisions (only for bullets going up)
-      for (let bulletIdx = 0; bulletIdx < movedBullets.length; bulletIdx++) {
-        const bullet = movedBullets[bulletIdx];
-        if (bulletIndicesHit.has(bulletIdx) || bulletIndicesToBounce.has(bulletIdx) || bullet.isBounced) continue;
-        
-        for (let brickIdx = 0; brickIdx < currentBricks.length; brickIdx++) {
-          const brick = currentBricks[brickIdx];
-          // Expand collision box to cover padding gaps
-          const collisionX = brick.x - BRICK_PADDING / 2;
-          const collisionY = brick.y - BRICK_PADDING / 2;
-          const collisionWidth = brick.width + BRICK_PADDING;
-          const collisionHeight = brick.height + BRICK_PADDING;
-          
-          if (
-            bulletIndicesHit.has(bulletIdx) ||
-            brickIndicesToDestroy.has(brickIdx) ||
-            !brick.visible ||
-            bullet.x + bullet.width <= collisionX ||
-            bullet.x >= collisionX + collisionWidth ||
-            bullet.y >= collisionY + collisionHeight ||
-            bullet.y + bullet.height <= collisionY
-          ) {
-            continue;
-          }
-          
-          // Collision detected
-          if (brick.isIndestructible) {
-            // Metal brick: super bullets destroy it, normal bullets bounce
-            if (bullet.isSuper) {
-              bulletIndicesHit.add(bulletIdx);
-              brickIndicesToDestroy.add(brickIdx);
-            } else {
-              bulletIndicesHit.add(bulletIdx);
-              soundManager.playBounce(); // Metallic ricochet sound
-            }
+
+              return {
+                ...megaBoss,
+                outerShieldHP: result.newOuterHP,
+                innerShieldHP: result.newInnerHP,
+                currentHealth: megaBoss.outerShieldRemoved ? result.newInnerHP : result.newOuterHP
+              } as unknown as Boss;
+            });
           } else {
-            // Normal brick: remove bullet and damage brick
-            bulletIndicesHit.add(bulletIdx);
-            brickIndicesToDestroy.add(brickIdx);
-          }
-        }
-      }
-      
-      // Update bricks if any collisions occurred
-      if (brickIndicesToDestroy.size > 0) {
-        setBricks(prevBricks => {
-          const updatedBricks = prevBricks.map((brick, idx) => {
-            if (brickIndicesToDestroy.has(idx)) {
-              soundManager.playBrickHit(brick.type, brick.hitsRemaining);
-              const updatedBrick = { ...brick, hitsRemaining: brick.hitsRemaining - 1 };
-              
-              // Update brick color or make invisible
-              if (updatedBrick.hitsRemaining > 0) {
-                updatedBrick.color = getHitColor(brick.color, updatedBrick.hitsRemaining, brick.maxHits);
-              } else {
-                updatedBrick.visible = false;
-                setScore(prev => prev + brick.points);
-                onBrickDestroyedByTurret?.();
+            setBoss(prev => {
+              if (!prev) return null;
+              const newHealth = Math.max(0, prev.currentHealth - damage);
+
+              soundManager.playBossHitSound();
+
+              if (newHealth <= 0) {
+                if (prev.type === "mega") {
+                  return prev;
+                }
+                if (prev.type === "cube") {
+                  onBossDefeated?.("cube", prev);
+                  return null;
+                } else if (prev.type === "sphere") {
+                  if (prev.currentStage === 1) {
+                    const phase2Boss = onSpherePhaseChange?.(prev);
+                    return phase2Boss || null;
+                  } else {
+                    onBossDefeated?.("sphere", prev);
+                    return null;
+                  }
+                } else if (prev.type === "pyramid") {
+                  if (prev.currentStage === 1) {
+                    onPyramidSplit?.(prev);
+                    return null;
+                  }
+                }
               }
-              
-              return updatedBrick;
-            }
-            return brick;
-          });
-          
-          return updatedBricks;
-        });
-        
-        // Check if level complete AFTER setBricks has finished
-        // (onLevelComplete calls nextLevel which also sets bricks — 
-        //  calling it inside the updater would overwrite the new level's bricks)
-        const remainingBricks = currentBricks.filter((b, idx) => {
-          const wasDestroyed = brickIndicesToDestroy.has(idx);
-          if (wasDestroyed) {
-            // Check if this brick would become invisible
-            const newHits = b.hitsRemaining - 1;
-            return newHits > 0 && !b.isIndestructible;
+
+              return { ...prev, currentHealth: newHealth };
+            });
           }
-          return b.visible && !b.isIndestructible;
-        });
-        if (remainingBricks.length === 0) {
-          onLevelComplete?.();
         }
+
+        setResurrectedBosses(prev => {
+          let hasChanges = false;
+          for (let i = 0; i < prev.length; i++) {
+            const resBoss = prev[i];
+            if (bossDamageMap.has(resBoss.id)) {
+              hasChanges = true;
+              break;
+            }
+          }
+          if (!hasChanges) return prev;
+
+          return prev.map((resBoss, idx) => {
+            if (bossDamageMap.has(resBoss.id)) {
+              const damage = bossDamageMap.get(resBoss.id)!;
+              const newHealth = Math.max(0, resBoss.currentHealth - damage);
+
+              soundManager.playBossHitSound();
+
+              if (newHealth <= 0) {
+                onResurrectedBossDefeated?.(resBoss, idx);
+                return { ...resBoss, currentHealth: 0 };
+              }
+
+              return { ...resBoss, currentHealth: newHealth };
+            }
+            return resBoss;
+          }).filter(b => b.currentHealth > 0);
+        });
       }
-      
-      // Return bullets: bounce the ones that hit enemies, remove ones that hit bricks/bosses
-      // Only create new array if there are changes
-      if (bulletIndicesHit.size === 0 && bulletIndicesToBounce.size === 0) {
-        world.bullets = movedBullets; // Sync even when unchanged
-        return movedBullets;
-      }
-      
-      // Filter hit bullets and mutate bounced ones in-place, release hit bullets to pool
-      const result: Bullet[] = [];
-      for (let i = 0; i < movedBullets.length; i++) {
-        if (bulletIndicesHit.has(i)) {
-          // Release pooled bullets (they have id from pool acquisition)
-          bulletPool.release(movedBullets[i] as Bullet & { id: number });
+    }
+
+    // Check brick collisions (only for bullets going up)
+    for (let bulletIdx = 0; bulletIdx < movedBullets.length; bulletIdx++) {
+      const bullet = movedBullets[bulletIdx];
+      if (bulletIndicesHit.has(bulletIdx) || bulletIndicesToBounce.has(bulletIdx) || bullet.isBounced) continue;
+
+      for (let brickIdx = 0; brickIdx < currentBricks.length; brickIdx++) {
+        const brick = currentBricks[brickIdx];
+        const collisionX = brick.x - BRICK_PADDING / 2;
+        const collisionY = brick.y - BRICK_PADDING / 2;
+        const collisionWidth = brick.width + BRICK_PADDING;
+        const collisionHeight = brick.height + BRICK_PADDING;
+
+        if (
+          bulletIndicesHit.has(bulletIdx) ||
+          brickIndicesToDestroy.has(brickIdx) ||
+          !brick.visible ||
+          bullet.x + bullet.width <= collisionX ||
+          bullet.x >= collisionX + collisionWidth ||
+          bullet.y >= collisionY + collisionHeight ||
+          bullet.y + bullet.height <= collisionY
+        ) {
           continue;
         }
-        const bullet = movedBullets[i];
-        if (bulletIndicesToBounce.has(i)) {
-          bullet.isBounced = true; // Mutate in-place
+
+        if (brick.isIndestructible) {
+          if (bullet.isSuper) {
+            bulletIndicesHit.add(bulletIdx);
+            brickIndicesToDestroy.add(brickIdx);
+          } else {
+            bulletIndicesHit.add(bulletIdx);
+            soundManager.playBounce();
+          }
+        } else {
+          bulletIndicesHit.add(bulletIdx);
+          brickIndicesToDestroy.add(brickIdx);
         }
-        result.push(bullet);
       }
-      world.bullets = result; // Authoritative source for renderer
-      return result;
-    });
+    }
+
+    // Update bricks if any collisions occurred
+    if (brickIndicesToDestroy.size > 0) {
+      setBricks(prevBricks => {
+        const updatedBricks = prevBricks.map((brick, idx) => {
+          if (brickIndicesToDestroy.has(idx)) {
+            soundManager.playBrickHit(brick.type, brick.hitsRemaining);
+            const updatedBrick = { ...brick, hitsRemaining: brick.hitsRemaining - 1 };
+
+            if (updatedBrick.hitsRemaining > 0) {
+              updatedBrick.color = getHitColor(brick.color, updatedBrick.hitsRemaining, brick.maxHits);
+            } else {
+              updatedBrick.visible = false;
+              setScore(prev => prev + brick.points);
+              onBrickDestroyedByTurret?.();
+            }
+
+            return updatedBrick;
+          }
+          return brick;
+        });
+
+        return updatedBricks;
+      });
+
+      const remainingBricks = currentBricks.filter((b, idx) => {
+        const wasDestroyed = brickIndicesToDestroy.has(idx);
+        if (wasDestroyed) {
+          const newHits = b.hitsRemaining - 1;
+          return newHits > 0 && !b.isIndestructible;
+        }
+        return b.visible && !b.isIndestructible;
+      });
+      if (remainingBricks.length === 0) {
+        onLevelComplete?.();
+      }
+    }
+
+    // Build final array: bounce enemies, remove hits, write to world
+    if (bulletIndicesHit.size === 0 && bulletIndicesToBounce.size === 0) {
+      world.bullets = movedBullets;
+      return;
+    }
+
+    const result: Bullet[] = [];
+    for (let i = 0; i < movedBullets.length; i++) {
+      if (bulletIndicesHit.has(i)) {
+        bulletPool.release(movedBullets[i] as Bullet & { id: number });
+        continue;
+      }
+      const bullet = movedBullets[i];
+      if (bulletIndicesToBounce.has(i)) {
+        bullet.isBounced = true;
+      }
+      result.push(bullet);
+    }
+    world.bullets = result;
   }, [setBricks, setScore, enemies, boss, resurrectedBosses, setBoss, setResurrectedBosses, onLevelComplete]);
 
   return {
-    bullets,
-    setBullets,
     fireBullets,
     updateBullets,
   };

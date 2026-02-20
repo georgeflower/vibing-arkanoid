@@ -110,7 +110,7 @@ import { BOSS_LEVELS, BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfi
 import { processBallWithCCD } from "@/utils/gameCCD";
 import { runPhysicsFrame, BALL_GRAVITY, GRAVITY_DELAY_MS } from "@/engine/physics";
 import { brickSpatialHash } from "@/utils/spatialHash";
-import { resetAllPools, enemyPool, bombPool, explosionPool, getNextExplosionId } from "@/utils/entityPool";
+import { resetAllPools, enemyPool, bombPool, explosionPool, getNextExplosionId, bulletPool } from "@/utils/entityPool";
 import { brickRenderer } from "@/utils/brickLayerCache";
 import { assignPowerUpsToBricks, reassignPowerUpsToBricks } from "@/utils/powerUpAssignment";
 import { MEGA_BOSS_LEVEL, MEGA_BOSS_CONFIG } from "@/constants/megaBossConfig";
@@ -1405,7 +1405,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       handleFireballEnd,
       handleSecondChance,
     );
-  const { bullets, setBullets, fireBullets, updateBullets } = useBullets(
+  const { fireBullets, updateBullets } = useBullets(
     setScore,
     setBricks,
     bricks,
@@ -1487,7 +1487,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           clearAllEnemies();
           setBossAttacks([]);
           clearAllBombs();
-          setBullets([]);
+          world.bullets = []; bulletPool.releaseAll();
 
           if (isBossRush) {
             gameLoopRef.current?.pause();
@@ -1743,7 +1743,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       homingBallTimeoutRef.current = null;
     }
 
-    setBullets([]);
+    world.bullets = []; bulletPool.releaseAll();
     if (world.speedMultiplier < 1) setSpeedMultiplier(1);
     setBrickHitSpeedAccumulated(0);
     setTimer(0);
@@ -1803,7 +1803,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     clearAllEnemies();
     setBossAttacks([]);
     clearAllBombs();
-    setBullets([]);
+    world.bullets = []; bulletPool.releaseAll();
 
     if (isBossRush) {
       gameLoopRef.current?.pause();
@@ -2328,7 +2328,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       initPowerUpAssignments(newLevelBricks, nextBossLevel, {});
       bricksDestroyedThisLevelRef.current = 0;
       setPowerUps([]);
-      setBullets([]);
+      world.bullets = []; bulletPool.releaseAll();
       setTimer(0);
       clearAllEnemies();
       clearAllBombs();
@@ -2419,7 +2419,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     initPowerUpAssignments(newLevelBricks, newLevel, {});
     bricksDestroyedThisLevelRef.current = 0; // Reset brick counter for new level
     setPowerUps([]);
-    setBullets([]);
+    world.bullets = []; bulletPool.releaseAll();
     setTimer(0);
     clearAllEnemies();
     clearAllBombs();
@@ -3558,7 +3558,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               clearAllEnemies();
               setBossAttacks([]);
               clearAllBombs();
-              setBullets([]);
+              world.bullets = []; bulletPool.releaseAll();
 
               if (isBossRush) {
                 gameLoopRef.current?.pause();
@@ -4000,7 +4000,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           totalBrickCount: bricks.length,
           enemyCount: enemies.length,
           powerUpCount: powerUps.length,
-          bulletCount: bullets.length,
+          bulletCount: world.bullets.length,
           explosionCount: explosions.length,
           totalParticleCount: totalParticles,
           bossAttackCount: bossAttacks.length,
@@ -4451,7 +4451,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Check bounced bullet-paddle collision
     if (paddle) {
-      bullets.forEach((bullet) => {
+      world.bullets.forEach((bullet) => {
         if (!bullet.isBounced) return;
 
         // Expand collision zone to account for fast paddle movement
@@ -4476,17 +4476,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             );
           }
 
-          setBullets((prev) =>
-            prev.map((b) =>
-              b === bullet
-                ? {
-                    ...b,
-                    isBounced: false,
-                    dy: -Math.abs(b.speed),
-                  }
-                : b,
-            ),
-          );
+          // Direct in-place mutation on world.bullets — no React state
+          bullet.isBounced = false;
           soundManager.playReflectedAttackSound();
           toast.success("Reflect shield reflected the bullet!");
           return;
@@ -4508,7 +4499,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             },
           ]);
 
-          setBullets((prev) => prev.filter((b) => b !== bullet));
+          // Remove from world.bullets directly
+          const idx = world.bullets.indexOf(bullet);
+          if (idx !== -1) {
+            world.bullets.splice(idx, 1);
+            bulletPool.release(bullet as typeof bullet & { id: number });
+          }
           setPaddle((prev) =>
             prev
               ? {
@@ -4531,7 +4527,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (bulletHitsPaddleNoShield) {
           // Bounced bullet hit paddle - lose a life
           soundManager.playLoseLife();
-          setBullets((prev) => prev.filter((b) => b !== bullet));
+          // Remove from world.bullets directly
+          const idx = world.bullets.indexOf(bullet);
+          if (idx !== -1) {
+            world.bullets.splice(idx, 1);
+            bulletPool.release(bullet as typeof bullet & { id: number });
+          }
           setLives((prev) => {
             const newLives = prev - 1;
             if (newLives <= 0) {
@@ -4827,7 +4828,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setBossAttacks([]);
           clearAllEnemies();
           clearAllBombs();
-          setBullets([]);
+          world.bullets = []; bulletPool.releaseAll();
 
           // Do NOT release the ball after phase 3 victory - keep it trapped
           // Ball stays "consumed" for clean transition to victory screen
@@ -5366,7 +5367,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 clearAllEnemies();
                 setBossAttacks([]);
                 clearAllBombs();
-                setBullets([]);
+                world.bullets = []; bulletPool.releaseAll();
                 setLaserWarnings([]);
 
                 // Stop boss music and resume background music
@@ -5475,7 +5476,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   clearAllEnemies();
                   setBossAttacks([]);
                   clearAllBombs();
-                  setBullets([]);
+                  world.bullets = []; bulletPool.releaseAll();
                   setLaserWarnings([]);
                   soundManager.stopBossMusic();
                   soundManager.resumeBackgroundMusic();
@@ -5939,7 +5940,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 clearAllEnemies();
                 setBossAttacks([]);
                 clearAllBombs();
-                setBullets([]);
+                world.bullets = []; bulletPool.releaseAll();
                 soundManager.stopBossMusic();
                 soundManager.resumeBackgroundMusic();
                 setTimeout(() => nextLevel(), 3000);
@@ -6005,7 +6006,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 clearAllEnemies();
                 setBossAttacks([]);
                 clearAllBombs();
-                setBullets([]);
+                world.bullets = []; bulletPool.releaseAll();
                 soundManager.stopBossMusic();
                 soundManager.resumeBackgroundMusic();
                 setTimeout(() => nextLevel(), 3000);
@@ -6107,7 +6108,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               clearAllEnemies();
               setBossAttacks([]);
               clearAllBombs();
-              setBullets([]);
+              world.bullets = []; bulletPool.releaseAll();
               soundManager.stopBossMusic();
               soundManager.resumeBackgroundMusic();
               setTimeout(() => nextLevel(), 3000);
@@ -7009,7 +7010,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Clear all entities
     setPowerUps([]);
-    setBullets([]);
+    world.bullets = []; bulletPool.releaseAll();
     setTimer(0);
     setTotalPlayTime(0);
     totalPlayTimeStartedRef.current = false;
