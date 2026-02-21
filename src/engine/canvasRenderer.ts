@@ -337,89 +337,83 @@ export function renderFrame(
     ctx.restore();
   }
 
-  // ═══ DANGER BALLS ═══
+  // ═══ DANGER BALLS (retro flat-shaded) ═══
   if (dangerBalls && dangerBalls.length > 0) {
     dangerBalls.forEach((dangerBall) => {
       ctx.save();
       const isHoming = dangerBall.isReflected;
-      const flashPhase = Math.sin(now / 80);
-      const isWhitePhase = flashPhase > 0;
+      // Hard alternation like angry enemy blink
+      const isAltPhase = Math.floor(now / 150) % 2 === 0;
 
+      // Flashing arrow indicator instead of dashed guide line
       if (!isHoming && paddle) {
-        ctx.save();
-        ctx.strokeStyle = "rgba(255, 200, 0, 0.6)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([8, 8]);
-        ctx.lineDashOffset = -now / 50;
-        ctx.beginPath();
-        ctx.moveTo(dangerBall.x, dangerBall.y);
-        ctx.lineTo(paddle.x + paddle.width / 2, paddle.y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
+        const arrowVisible = Math.floor(now / 200) % 2 === 0;
+        if (arrowVisible) {
+          ctx.save();
+          const arrowX = dangerBall.x;
+          const arrowY = dangerBall.y + dangerBall.radius + 12;
+          ctx.fillStyle = "hsl(45, 100%, 55%)";
+          ctx.beginPath();
+          ctx.moveTo(arrowX, arrowY + 10);
+          ctx.lineTo(arrowX - 6, arrowY);
+          ctx.lineTo(arrowX + 6, arrowY);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = "hsl(45, 100%, 75%)";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.restore();
+        }
       }
 
       if (qualitySettings.shadowsEnabled) {
         drawCircleShadow(ctx, dangerBall.x + 4, dangerBall.y + 4, dangerBall.radius);
       }
 
+      // Flat solid fill (two-tone like bombs)
       ctx.beginPath();
       ctx.arc(dangerBall.x, dangerBall.y, dangerBall.radius, 0, Math.PI * 2);
 
-      const grad = ctx.createRadialGradient(
-        dangerBall.x - dangerBall.radius * 0.3,
-        dangerBall.y - dangerBall.radius * 0.3,
-        0,
-        dangerBall.x,
-        dangerBall.y,
-        dangerBall.radius,
-      );
-
       if (isHoming) {
-        if (isWhitePhase) {
-          grad.addColorStop(0, "#ffffff");
-          grad.addColorStop(0.5, "#aaffaa");
-          grad.addColorStop(1, "#44cc44");
-        } else {
-          grad.addColorStop(0, "#88ff88");
-          grad.addColorStop(0.5, "#22cc22");
-          grad.addColorStop(1, "#006600");
-        }
+        ctx.fillStyle = isAltPhase ? "hsl(120, 80%, 45%)" : "hsl(120, 70%, 35%)";
       } else {
-        if (isWhitePhase) {
-          grad.addColorStop(0, "#ffffff");
-          grad.addColorStop(0.5, "#ffcccc");
-          grad.addColorStop(1, "#ff6666");
-        } else {
-          grad.addColorStop(0, "#ff8888");
-          grad.addColorStop(0.5, "#ff2222");
-          grad.addColorStop(1, "#aa0000");
-        }
+        ctx.fillStyle = isAltPhase ? "hsl(0, 85%, 55%)" : "hsl(0, 75%, 40%)";
       }
-
-      ctx.fillStyle = grad;
       ctx.fill();
 
-      // shadowBlur removed
-      ctx.fillStyle = isWhitePhase ? (isHoming ? "#006600" : "#ff0000") : "#ffffff";
-      ctx.font = `bold ${dangerBall.radius * 1.2}px monospace`;
+      // Hard border stroke
+      ctx.strokeStyle = isHoming ? "hsl(120, 90%, 70%)" : "hsl(0, 90%, 70%)";
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Small offset highlight circle (same as bomb pattern)
+      ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.beginPath();
+      ctx.arc(dangerBall.x - 3, dangerBall.y - 3, dangerBall.radius * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Symbol in monospace pixel font
+      ctx.fillStyle = isAltPhase ? "#ffffff" : (isHoming ? "hsl(120, 100%, 85%)" : "hsl(0, 100%, 85%)");
+      ctx.font = `bold ${dangerBall.radius * 1.1}px monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(isHoming ? "↑" : "★", dangerBall.x, dangerBall.y);
 
-      const pulseScale = 1 + Math.sin(now / 150) * 0.2;
-      ctx.strokeStyle = isHoming
-        ? isWhitePhase ? "rgba(100, 255, 100, 0.6)" : "rgba(255, 255, 255, 0.6)"
-        : isWhitePhase ? "rgba(255, 100, 100, 0.6)" : "rgba(255, 255, 255, 0.6)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(dangerBall.x, dangerBall.y, dangerBall.radius * pulseScale * 1.3, 0, Math.PI * 2);
-      ctx.stroke();
+      // Pulsing outer ring (flat stroke, no glow)
+      const ringVisible = Math.floor(now / 200) % 2 === 0;
+      if (ringVisible) {
+        ctx.strokeStyle = isHoming ? "hsl(120, 80%, 60%)" : "hsl(0, 80%, 60%)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(dangerBall.x, dangerBall.y, dangerBall.radius * 1.4, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
+      // "CATCH!" text in monospace
       if (!isHoming) {
-        const textFlash = Math.sin(now / 120) > 0;
-        ctx.fillStyle = textFlash ? "#FFFF00" : "#FF8800";
-        ctx.font = "bold 16px monospace";
+        const textFlash = Math.floor(now / 180) % 2 === 0;
+        ctx.fillStyle = textFlash ? "hsl(50, 100%, 55%)" : "hsl(30, 100%, 50%)";
+        ctx.font = "bold 14px monospace";
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
         ctx.fillText("CATCH!", dangerBall.x, dangerBall.y - dangerBall.radius - 8);
@@ -428,13 +422,13 @@ export function renderFrame(
       ctx.restore();
     });
 
+    // Paddle highlight for incoming danger balls
     const incomingDangerBalls = dangerBalls.filter((b) => !b.isReflected);
     if (incomingDangerBalls.length > 0 && paddle) {
       ctx.save();
-      const highlightPulse = Math.sin(now / 100) * 0.4 + 0.6;
-      ctx.strokeStyle = `rgba(0, 200, 255, ${highlightPulse})`;
-      ctx.lineWidth = 4;
-      // Glow removed for performance — pulsing stroke is sufficient
+      const highlightOn = Math.floor(now / 150) % 2 === 0;
+      ctx.strokeStyle = highlightOn ? "hsl(190, 100%, 55%)" : "hsl(190, 80%, 35%)";
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.roundRect(paddle.x - 4, paddle.y - 4, paddle.width + 8, paddle.height + 8, 6);
       ctx.stroke();
@@ -2063,51 +2057,69 @@ function drawBossAttacks(
       const rocketLength = attack.height * 1.5;
       const rocketWidth = attack.width * 1.2;
 
-      // Smoke trail
-      const smokeCount = 8;
-      for (let i = 0; i < smokeCount; i++) {
-        const smokeOffset = rocketLength * 0.5 + i * 12;
-        const smokeAge = (now + i * 50) % 400;
-        const smokeProgress = smokeAge / 400;
-        const smokeAlpha = Math.max(0, 0.4 - smokeProgress * 0.5);
-        const smokeSize = 4 + smokeProgress * 8 + i * 2;
-        const wobbleX = Math.sin(now * 0.01 + i * 1.5) * (3 + i * 0.5);
-        ctx.fillStyle = `rgba(180, 180, 190, ${smokeAlpha})`;
+      // Retro smoke trail: 4 simple shrinking circles, alternating grey tones
+      for (let i = 0; i < 4; i++) {
+        const smokeOffset = rocketLength * 0.5 + i * 14;
+        const smokeSize = 6 - i * 1.2;
+        const isLight = i % 2 === 0;
+        ctx.fillStyle = isLight ? "hsl(0, 0%, 65%)" : "hsl(0, 0%, 45%)";
         ctx.beginPath();
-        ctx.arc(wobbleX, smokeOffset + smokeProgress * 15, smokeSize, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = `rgba(220, 220, 230, ${smokeAlpha * 0.6})`;
-        ctx.beginPath();
-        ctx.arc(wobbleX, smokeOffset + smokeProgress * 15, smokeSize * 0.5, 0, Math.PI * 2);
+        ctx.arc(0, smokeOffset, smokeSize, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // Flame
-      const flameFlicker = 0.7 + Math.random() * 0.3;
-      const flameGrad = ctx.createLinearGradient(0, rocketLength * 0.4, 0, rocketLength * 1.2);
-      flameGrad.addColorStop(0, `rgba(255, 200, 50, ${flameFlicker})`);
-      flameGrad.addColorStop(0.4, `rgba(255, 100, 0, ${flameFlicker * 0.8})`);
-      flameGrad.addColorStop(1, "rgba(255, 50, 0, 0)");
-      ctx.fillStyle = flameGrad;
+      // Flat flame triangle behind rocket
+      ctx.fillStyle = "hsl(30, 100%, 55%)";
       ctx.beginPath();
-      ctx.moveTo(-rocketWidth * 0.4, rocketLength * 0.4);
-      ctx.quadraticCurveTo(0, rocketLength * 1.5, rocketWidth * 0.4, rocketLength * 0.4);
+      ctx.moveTo(-rocketWidth * 0.3, rocketLength * 0.35);
+      ctx.lineTo(0, rocketLength * 0.9);
+      ctx.lineTo(rocketWidth * 0.3, rocketLength * 0.35);
+      ctx.closePath();
+      ctx.fill();
+      // Inner flame highlight
+      ctx.fillStyle = "hsl(50, 100%, 65%)";
+      ctx.beginPath();
+      ctx.moveTo(-rocketWidth * 0.15, rocketLength * 0.4);
+      ctx.lineTo(0, rocketLength * 0.75);
+      ctx.lineTo(rocketWidth * 0.15, rocketLength * 0.4);
+      ctx.closePath();
       ctx.fill();
 
-      // Missile image
-      if (isImageValid(assets.missileImage)) {
-        const imgWidth = attack.width * 4.5;
-        const imgHeight = attack.height * 4;
-        ctx.drawImage(assets.missileImage, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
-      } else {
-        ctx.fillStyle = "#ff3333";
-        ctx.beginPath();
-        ctx.moveTo(0, -rocketLength * 0.4);
-        ctx.lineTo(rocketWidth * 0.4, rocketLength * 0.3);
-        ctx.lineTo(-rocketWidth * 0.4, rocketLength * 0.3);
-        ctx.closePath();
-        ctx.fill();
-      }
+      // Geometric rocket body (flat polygons, no image)
+      // Nose cone
+      ctx.fillStyle = "hsl(0, 75%, 50%)";
+      ctx.beginPath();
+      ctx.moveTo(0, -rocketLength * 0.45);
+      ctx.lineTo(rocketWidth * 0.35, -rocketLength * 0.1);
+      ctx.lineTo(-rocketWidth * 0.35, -rocketLength * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "hsl(0, 90%, 70%)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Body rectangle
+      ctx.fillStyle = "hsl(0, 60%, 40%)";
+      ctx.fillRect(-rocketWidth * 0.3, -rocketLength * 0.1, rocketWidth * 0.6, rocketLength * 0.45);
+      ctx.strokeStyle = "hsl(0, 80%, 60%)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-rocketWidth * 0.3, -rocketLength * 0.1, rocketWidth * 0.6, rocketLength * 0.45);
+
+      // Fins
+      ctx.fillStyle = "hsl(0, 70%, 45%)";
+      ctx.beginPath();
+      ctx.moveTo(-rocketWidth * 0.3, rocketLength * 0.25);
+      ctx.lineTo(-rocketWidth * 0.55, rocketLength * 0.4);
+      ctx.lineTo(-rocketWidth * 0.3, rocketLength * 0.35);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(rocketWidth * 0.3, rocketLength * 0.25);
+      ctx.lineTo(rocketWidth * 0.55, rocketLength * 0.4);
+      ctx.lineTo(rocketWidth * 0.3, rocketLength * 0.35);
+      ctx.closePath();
+      ctx.fill();
+
       ctx.restore();
     } else if (attack.type === "cross") {
       const cycleSpeed = 200;
@@ -2460,8 +2472,34 @@ function drawMegaBoss(
     drawHexShadow(ctx, radius, 5, 5);
   }
 
-  // Outer shield hexagon
+  // Outer shield hexagon (flat per-face shading like cube boss)
   if (!megaBoss.outerShieldRemoved) {
+    // Draw 6 triangular face segments with varying lightness
+    const faceLightness = [38, 32, 28, 30, 34, 40];
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i - Math.PI / 2;
+      const nextAngle = (Math.PI / 3) * ((i + 1) % 6) - Math.PI / 2;
+      const x1 = Math.cos(angle) * radius;
+      const y1 = Math.sin(angle) * radius;
+      const x2 = Math.cos(nextAngle) * radius;
+      const y2 = Math.sin(nextAngle) * radius;
+      // Curved outer edge
+      const midAngle = (angle + nextAngle) / 2;
+      const cpX = Math.cos(midAngle) * (radius * 1.06);
+      const cpY = Math.sin(midAngle) * (radius * 1.06);
+
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(x1, y1);
+      ctx.quadraticCurveTo(cpX, cpY, x2, y2);
+      ctx.closePath();
+      ctx.fillStyle = `hsl(${baseHue}, 60%, ${faceLightness[i]}%)`;
+      ctx.fill();
+      ctx.strokeStyle = `hsl(${baseHue}, 80%, 60%)`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    // Outer hex border
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 3) * i - Math.PI / 2;
@@ -2477,19 +2515,11 @@ function drawMegaBoss(
       ctx.quadraticCurveTo(cpX, cpY, x2, y2);
     }
     ctx.closePath();
-
-    const hexGrad = ctx.createRadialGradient(0, 0, radius * 0.3, 0, 0, radius);
-    hexGrad.addColorStop(0, `hsl(${baseHue}, 60%, 45%)`);
-    hexGrad.addColorStop(0.5, `hsl(${baseHue}, 50%, 35%)`);
-    hexGrad.addColorStop(1, `hsl(${baseHue}, 40%, 25%)`);
-    ctx.fillStyle = hexGrad;
-    ctx.fill();
-    ctx.strokeStyle = `hsl(${baseHue}, 80%, 60%)`;
+    ctx.strokeStyle = `hsl(${baseHue}, 90%, 65%)`;
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Vertex details
-    ctx.shadowBlur = 0;
+    // Vertex detail circles (flat fills)
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 3) * i - Math.PI / 2;
       const vx = Math.cos(angle) * (radius * 0.85);
@@ -2504,7 +2534,7 @@ function drawMegaBoss(
     }
   }
 
-  // Inner octagon shield (phase 2)
+  // Inner octagon shield (flat fill + pulsing stroke, no gradient)
   if (megaBoss.outerShieldRemoved && !megaBoss.coreExposed) {
     const innerOctRadius = radius * 0.65;
     const innerShieldHue = megaBoss.corePhase === 2 ? 30 : baseHue;
@@ -2517,54 +2547,54 @@ function drawMegaBoss(
       else ctx.lineTo(ox, oy);
     }
     ctx.closePath();
-    const innerGrad = ctx.createRadialGradient(0, 0, innerOctRadius * 0.3, 0, 0, innerOctRadius);
-    innerGrad.addColorStop(0, `hsla(${innerShieldHue}, 70%, 50%, 0.6)`);
-    innerGrad.addColorStop(1, `hsla(${innerShieldHue}, 50%, 30%, 0.4)`);
-    ctx.fillStyle = innerGrad;
+    ctx.fillStyle = `hsla(${innerShieldHue}, 60%, 38%, 0.7)`;
     ctx.fill();
-    const innerPulse = Math.sin(now / 120) * 0.3 + 0.7;
-    ctx.strokeStyle = `hsla(${innerShieldHue}, 100%, 70%, ${innerPulse})`;
+    const innerPulseOn = Math.floor(now / 200) % 2 === 0;
+    ctx.strokeStyle = innerPulseOn ? `hsl(${innerShieldHue}, 100%, 70%)` : `hsl(${innerShieldHue}, 80%, 50%)`;
     ctx.lineWidth = 4;
     ctx.stroke();
   }
 
   ctx.restore(); // End rotation
 
-  // Core
+  // Core (flat fill with hard alternation, no gradient)
   const coreRadius = megaBoss.coreExposed ? radius * 0.4 : radius * 0.3;
   ctx.beginPath();
   ctx.arc(0, 0, coreRadius, 0, Math.PI * 2);
-  const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, coreRadius);
+  const coreAlt = Math.floor(now / 180) % 2 === 0;
   if (megaBoss.coreExposed) {
-    const pulse = Math.sin(now / 100) * 0.3 + 0.7;
-    coreGrad.addColorStop(0, `rgba(255, 255, 200, ${pulse})`);
-    coreGrad.addColorStop(0.5, `rgba(255, 200, 50, ${pulse})`);
-    coreGrad.addColorStop(1, `rgba(200, 100, 0, ${pulse * 0.8})`);
+    ctx.fillStyle = coreAlt ? "hsl(45, 100%, 65%)" : "hsl(30, 90%, 50%)";
   } else {
-    const c1 = megaBoss.corePhase === 3 ? "#ff8888" : megaBoss.corePhase === 2 ? "#ffaa88" : "#88ddff";
-    const c2 = megaBoss.corePhase === 3 ? "#ff2222" : megaBoss.corePhase === 2 ? "#ff6622" : "#0099ff";
-    const c3 = megaBoss.corePhase === 3 ? "#990000" : megaBoss.corePhase === 2 ? "#993300" : "#005588";
-    coreGrad.addColorStop(0, c1);
-    coreGrad.addColorStop(0.5, c2);
-    coreGrad.addColorStop(1, c3);
+    const coreFills: Record<number, [string, string]> = {
+      3: ["hsl(0, 80%, 55%)", "hsl(0, 70%, 38%)"],
+      2: ["hsl(25, 80%, 55%)", "hsl(25, 70%, 38%)"],
+      1: ["hsl(200, 80%, 55%)", "hsl(200, 70%, 38%)"],
+    };
+    const [fillA, fillB] = coreFills[megaBoss.corePhase] || coreFills[1];
+    ctx.fillStyle = coreAlt ? fillA : fillB;
   }
-  ctx.fillStyle = coreGrad;
   ctx.fill();
-  const coreBorderColor = megaBoss.coreExposed ? "#ffff00" : megaBoss.corePhase === 3 ? "#ffcccc" : megaBoss.corePhase === 2 ? "#ffddaa" : "#bbddff";
+  const coreBorderColor = megaBoss.coreExposed ? "hsl(55, 100%, 60%)" : megaBoss.corePhase === 3 ? "hsl(0, 70%, 75%)" : megaBoss.corePhase === 2 ? "hsl(30, 70%, 70%)" : "hsl(200, 70%, 75%)";
   ctx.strokeStyle = coreBorderColor;
   ctx.lineWidth = megaBoss.coreExposed ? 4 : 3;
   ctx.stroke();
 
+  // Highlight circle on core
+  ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+  ctx.beginPath();
+  ctx.arc(-coreRadius * 0.25, -coreRadius * 0.25, coreRadius * 0.3, 0, Math.PI * 2);
+  ctx.fill();
+
   if (megaBoss.coreExposed) {
-    const hatchPulse = Math.sin(now / 80) * 0.4 + 0.6;
+    const hatchOn = Math.floor(now / 160) % 2 === 0;
     ctx.beginPath();
     ctx.arc(0, 0, radius * 0.55, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(255, 255, 0, ${hatchPulse})`;
+    ctx.strokeStyle = hatchOn ? "hsl(55, 100%, 60%)" : "hsl(55, 80%, 35%)";
     ctx.lineWidth = 5;
     ctx.stroke();
   }
 
-  // Cannon (when extended)
+  // Cannon (flat barrel + blinking muzzle, no gradients)
   if (megaBoss.cannonExtended && megaBoss.trappedBall && paddle) {
     ctx.save();
     const paddleCenterX = paddle.x + paddle.width / 2 - (boss.x + boss.width / 2);
@@ -2576,21 +2606,22 @@ function drawMegaBoss(
     const cannonLength = 55;
     const cannonBaseY = radius * 0.5;
 
-    const barrelGrad = ctx.createLinearGradient(-cannonWidth / 2, 0, cannonWidth / 2, 0);
-    barrelGrad.addColorStop(0, `hsl(${baseHue}, 30%, 20%)`);
-    barrelGrad.addColorStop(0.5, `hsl(${baseHue}, 50%, 40%)`);
-    barrelGrad.addColorStop(1, `hsl(${baseHue}, 30%, 20%)`);
-    ctx.fillStyle = barrelGrad;
+    // Flat barrel with lighter border
+    ctx.fillStyle = `hsl(${baseHue}, 40%, 25%)`;
     ctx.fillRect(-cannonWidth / 2, cannonBaseY, cannonWidth, cannonLength);
     ctx.strokeStyle = `hsl(${baseHue}, 70%, 55%)`;
     ctx.lineWidth = 2;
     ctx.strokeRect(-cannonWidth / 2, cannonBaseY, cannonWidth, cannonLength);
 
+    // Blinking muzzle circle
+    const muzzleBlink = Math.floor(now / 200) % 2 === 0;
     ctx.beginPath();
     ctx.arc(0, cannonBaseY + cannonLength, 10, 0, Math.PI * 2);
-    const muzzlePulse = Math.sin(now / 150) * 0.5 + 0.5;
-    ctx.fillStyle = `rgba(255, 200, 100, ${muzzlePulse})`;
+    ctx.fillStyle = muzzleBlink ? "hsl(40, 100%, 60%)" : "hsl(40, 80%, 35%)";
     ctx.fill();
+    ctx.strokeStyle = "hsl(40, 90%, 70%)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
     ctx.restore();
   }
 
