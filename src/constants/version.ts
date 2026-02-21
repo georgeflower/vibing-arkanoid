@@ -1,6 +1,13 @@
-export const GAME_VERSION = "0.9.96";
+export const GAME_VERSION = "0.9.97";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.97",
+    changes: [
+      "Fixed: ball tunneling through Cube boss at high speed — root cause was degenerate (0,0) collision normal when ball center penetrates inside the rotated rectangle hitbox; added fallback normal using boss-center-to-ball direction for reliable reflection",
+      "Fixed: insufficient CCD sampling for small bosses — raised minimum samples from 3 to 5 (max 16) and scaled density against actual boss dimensions instead of generic brick size, preventing the ball from stepping over the cube's 80px hitbox entirely",
+    ],
+  },
   {
     version: "0.9.96",
     changes: [
