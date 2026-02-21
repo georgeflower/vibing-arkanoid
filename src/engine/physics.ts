@@ -154,8 +154,9 @@ function performBossFirstSweep(
   const { minBrickDimension, level, debugSettings, isBossRush, dtSeconds } = config;
 
   const SPEED = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-  const samplesRaw = Math.ceil(SPEED / (minBrickDimension * 0.1));
-  const samples = Math.max(3, Math.min(12, samplesRaw));
+  const bossMinDim = Math.min(bossTarget.width, bossTarget.height);
+  const samplesRaw = Math.ceil(SPEED / (bossMinDim * 0.08));
+  const samples = Math.max(5, Math.min(16, samplesRaw));
 
   for (let s = 1; s <= samples; s++) {
     const alpha = s / samples;
@@ -231,26 +232,39 @@ function performBossFirstSweep(
         const distY = uy - closestY;
         const distSq = distX * distX + distY * distY;
         if (distSq <= sampleBall.radius * sampleBall.radius) {
-          const dist = Math.sqrt(distSq) || 1e-6;
-          const penetration = sampleBall.radius - dist;
-          const correctionDist = penetration + 2;
-          const pushX = ux + (distX / dist) * correctionDist;
-          const pushY = uy + (distY / dist) * correctionDist;
-          const rotCos = Math.cos(bossTarget.rotationY);
-          const rotSin = Math.sin(bossTarget.rotationY);
-          const worldPushX = pushX * rotCos - pushY * rotSin;
-          const worldPushY = pushX * rotSin + pushY * rotCos;
-          const worldNormalX =
-            Math.abs(dist) < 1e-6 ? 0 : (distX / dist) * cos + (distY / dist) * sin;
-          const worldNormalY =
-            Math.abs(dist) < 1e-6 ? -1 : -(distX / dist) * sin + (distY / dist) * cos;
-          const dot = sampleBall.dx * worldNormalX + sampleBall.dy * worldNormalY;
-          collision = {
-            newX: centerX + worldPushX,
-            newY: centerY + worldPushY,
-            newVelocityX: sampleBall.dx - 2 * dot * worldNormalX,
-            newVelocityY: sampleBall.dy - 2 * dot * worldNormalY,
-          };
+          if (distSq < 0.01) {
+            // Ball center is inside the cube — fallback to boss-center-to-ball normal
+            const fallbackDist = Math.sqrt(dx * dx + dy * dy) || 1;
+            const normalX = dx / fallbackDist;
+            const normalY = dy / fallbackDist;
+            const correctionDist = Math.max(halfW, halfH) + sampleBall.radius + 5;
+            const dot = sampleBall.dx * normalX + sampleBall.dy * normalY;
+            collision = {
+              newX: centerX + normalX * correctionDist,
+              newY: centerY + normalY * correctionDist,
+              newVelocityX: sampleBall.dx - 2 * dot * normalX,
+              newVelocityY: sampleBall.dy - 2 * dot * normalY,
+            };
+          } else {
+            const dist = Math.sqrt(distSq) || 1e-6;
+            const penetration = sampleBall.radius - dist;
+            const correctionDist = penetration + 2;
+            const pushX = ux + (distX / dist) * correctionDist;
+            const pushY = uy + (distY / dist) * correctionDist;
+            const rotCos = Math.cos(bossTarget.rotationY);
+            const rotSin = Math.sin(bossTarget.rotationY);
+            const worldPushX = pushX * rotCos - pushY * rotSin;
+            const worldPushY = pushX * rotSin + pushY * rotCos;
+            const worldNormalX = (distX / dist) * cos + (distY / dist) * sin;
+            const worldNormalY = -(distX / dist) * sin + (distY / dist) * cos;
+            const dot = sampleBall.dx * worldNormalX + sampleBall.dy * worldNormalY;
+            collision = {
+              newX: centerX + worldPushX,
+              newY: centerY + worldPushY,
+              newVelocityX: sampleBall.dx - 2 * dot * worldNormalX,
+              newVelocityY: sampleBall.dy - 2 * dot * worldNormalY,
+            };
+          }
         }
       }
     } else if (bossTarget.type === "sphere") {
