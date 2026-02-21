@@ -43,7 +43,6 @@ function generateUUID(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  // Fallback
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
@@ -59,7 +58,7 @@ class TelemetryCollector {
   private active: boolean = false;
   private flushing: boolean = false;
 
-  // Collision counters (incremented in-place, reset on snapshot)
+  // Per-snapshot collision counters (reset after each snapshot)
   private wallCollisions = 0;
   private brickCollisions = 0;
   private paddleCollisions = 0;
@@ -72,16 +71,34 @@ class TelemetryCollector {
   // Track min FPS across session
   private sessionMinFps = 999;
 
+  // Session-level running aggregates
+  private snapshotCount = 0;
+  private sumAvgFps = 0;
+  private sumBallCount = 0;
+  private sumBrickCount = 0;
+  private sumEnemyCount = 0;
+  private sumParticleCount = 0;
+  private sumExplosionCount = 0;
+  private sumCcdTotalMs = 0;
+  private sumCcdSubsteps = 0;
+  private sumCcdCollisions = 0;
+  private sumToiIterations = 0;
+  private totalWallCollisions = 0;
+  private totalBrickCollisions = 0;
+  private totalPaddleCollisions = 0;
+  private totalBossCollisions = 0;
+  private maxBallCount = 0;
+  private maxParticleCount = 0;
+  private dominantQuality: Record<string, number> = {};
+
   private endpoint: string = "";
 
   constructor() {
-    // Build endpoint URL from env
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     if (projectId) {
       this.endpoint = `https://${projectId}.supabase.co/functions/v1/${EDGE_FUNCTION_PATH}`;
     }
 
-    // Flush on page unload
     if (typeof window !== "undefined") {
       window.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "hidden" && this.active) {
@@ -106,6 +123,26 @@ class TelemetryCollector {
     this.qualityChanges = 0;
     this.lastQuality = "";
     this.sessionMinFps = 999;
+
+    // Reset session aggregates
+    this.snapshotCount = 0;
+    this.sumAvgFps = 0;
+    this.sumBallCount = 0;
+    this.sumBrickCount = 0;
+    this.sumEnemyCount = 0;
+    this.sumParticleCount = 0;
+    this.sumExplosionCount = 0;
+    this.sumCcdTotalMs = 0;
+    this.sumCcdSubsteps = 0;
+    this.sumCcdCollisions = 0;
+    this.sumToiIterations = 0;
+    this.totalWallCollisions = 0;
+    this.totalBrickCollisions = 0;
+    this.totalPaddleCollisions = 0;
+    this.totalBossCollisions = 0;
+    this.maxBallCount = 0;
+    this.maxParticleCount = 0;
+    this.dominantQuality = {};
   }
 
   recordSnapshot(metrics: {
@@ -138,6 +175,28 @@ class TelemetryCollector {
       this.sessionMinFps = metrics.minFps;
     }
 
+    // Accumulate session-level collision totals before per-snapshot reset
+    this.totalWallCollisions += this.wallCollisions;
+    this.totalBrickCollisions += this.brickCollisions;
+    this.totalPaddleCollisions += this.paddleCollisions;
+    this.totalBossCollisions += this.bossCollisions;
+
+    // Update running aggregates
+    this.snapshotCount++;
+    this.sumAvgFps += metrics.avgFps;
+    this.sumBallCount += metrics.ballCount;
+    this.sumBrickCount += metrics.brickCount;
+    this.sumEnemyCount += metrics.enemyCount;
+    this.sumParticleCount += metrics.particleCount;
+    this.sumExplosionCount += metrics.explosionCount;
+    this.sumCcdTotalMs += metrics.ccdTotalMs;
+    this.sumCcdSubsteps += metrics.ccdSubsteps;
+    this.sumCcdCollisions += metrics.ccdCollisions;
+    this.sumToiIterations += metrics.toiIterations;
+    if (metrics.ballCount > this.maxBallCount) this.maxBallCount = metrics.ballCount;
+    if (metrics.particleCount > this.maxParticleCount) this.maxParticleCount = metrics.particleCount;
+    this.dominantQuality[metrics.qualityLevel] = (this.dominantQuality[metrics.qualityLevel] || 0) + 1;
+
     this.buffer.push({
       session_id: this.sessionId,
       snapshot_type: "periodic",
@@ -162,9 +221,10 @@ class TelemetryCollector {
       boss_collisions: this.bossCollisions,
       boss_active: metrics.bossActive,
       boss_type: metrics.bossType || undefined,
+      user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
     });
 
-    // Reset collision counters after snapshot
+    // Reset per-snapshot collision counters
     this.wallCollisions = 0;
     this.brickCollisions = 0;
     this.paddleCollisions = 0;
@@ -191,13 +251,39 @@ class TelemetryCollector {
 
     const duration = (performance.now() - this.sessionStart) / 1000;
 
+    // Include any remaining per-snapshot collisions not yet accumulated
+    this.totalWallCollisions += this.wallCollisions;
+    this.totalBrickCollisions += this.brickCollisions;
+    this.totalPaddleCollisions += this.paddleCollisions;
+    this.totalBossCollisions += this.bossCollisions;
+
     this.buffer.push({
       session_id: this.sessionId,
       snapshot_type: "summary",
       level: finalLevel,
       difficulty: this.difficulty,
       game_mode: this.gameMode,
+      // Session averages
+      avg_fps: this.snapshotCount > 0 ? this.sumAvgFps / this.snapshotCount : undefined,
       min_fps: this.sessionMinFps < 999 ? this.sessionMinFps : undefined,
+      quality_level: this.getDominantQuality(),
+      // Average object counts
+      ball_count: this.snapshotCount > 0 ? Math.round(this.sumBallCount / this.snapshotCount) : undefined,
+      brick_count: this.snapshotCount > 0 ? Math.round(this.sumBrickCount / this.snapshotCount) : undefined,
+      enemy_count: this.snapshotCount > 0 ? Math.round(this.sumEnemyCount / this.snapshotCount) : undefined,
+      particle_count: this.maxParticleCount > 0 ? this.maxParticleCount : undefined,
+      explosion_count: this.snapshotCount > 0 ? Math.round(this.sumExplosionCount / this.snapshotCount) : undefined,
+      // CCD averages
+      ccd_total_ms: this.snapshotCount > 0 ? this.sumCcdTotalMs / this.snapshotCount : undefined,
+      ccd_substeps: this.snapshotCount > 0 ? Math.round(this.sumCcdSubsteps / this.snapshotCount) : undefined,
+      ccd_collisions: this.snapshotCount > 0 ? Math.round(this.sumCcdCollisions / this.snapshotCount) : undefined,
+      toi_iterations: this.snapshotCount > 0 ? Math.round(this.sumToiIterations / this.snapshotCount) : undefined,
+      // Total collisions across session
+      wall_collisions: this.totalWallCollisions,
+      brick_collisions: this.totalBrickCollisions,
+      paddle_collisions: this.totalPaddleCollisions,
+      boss_collisions: this.totalBossCollisions,
+      // Existing fields
       duration_seconds: duration,
       final_score: finalScore,
       total_quality_changes: this.qualityChanges,
@@ -206,6 +292,18 @@ class TelemetryCollector {
 
     this.active = false;
     this.flush();
+  }
+
+  private getDominantQuality(): string | undefined {
+    let best: string | undefined;
+    let bestCount = 0;
+    for (const [quality, count] of Object.entries(this.dominantQuality)) {
+      if (count > bestCount) {
+        bestCount = count;
+        best = quality;
+      }
+    }
+    return best;
   }
 
   private async flush(useBeacon = false) {
