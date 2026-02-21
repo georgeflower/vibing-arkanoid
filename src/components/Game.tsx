@@ -1477,8 +1477,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         if (remaining.length === 0) {
           // Use a simplified version since handleBossDefeat expects a single boss object
           // and pyramid all-defeated doesn't award per-boss points (already awarded per-pyramid)
-          setLives((prev) => prev + 1);
-          toast.success("ALL PYRAMIDS DEFEATED! + BONUS LIFE!");
+          if (settings.difficulty !== "godlike") {
+            setLives((prev) => prev + 1);
+          }
+          toast.success(settings.difficulty === "godlike" ? "ALL PYRAMIDS DEFEATED!" : "ALL PYRAMIDS DEFEATED! + BONUS LIFE!");
           setBossActive(false);
           setBossesKilled((k) => k + 1);
           setBossDefeatedTransitioning(true);
@@ -1776,7 +1778,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     soundManager.playExplosion();
     soundManager.playBossDefeatSound();
     setScore((s) => s + points);
-    setLives((prev) => prev + 1);
+    if (settings.difficulty !== "godlike") {
+      setLives((prev) => prev + 1);
+    }
     toast.success(toastMessage);
 
     setExplosions((e) => [
@@ -4780,8 +4784,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // MEGA BOSS DEFEATED! Victory with confetti!
           soundManager.playMegaBossVictorySound();
           setScore((s) => s + MEGA_BOSS_CONFIG.points);
-          setLives((prev) => prev + 1); // Bonus life for defeating Mega Boss
-          toast.success(`🎉 MEGA BOSS DEFEATED! +${MEGA_BOSS_CONFIG.points} points + BONUS LIFE!`, { duration: 5000 });
+          if (settings.difficulty !== "godlike") {
+            setLives((prev) => prev + 1); // Bonus life for defeating Mega Boss
+          }
+          toast.success(settings.difficulty === "godlike" 
+            ? `🎉 MEGA BOSS DEFEATED! +${MEGA_BOSS_CONFIG.points} points!` 
+            : `🎉 MEGA BOSS DEFEATED! +${MEGA_BOSS_CONFIG.points} points + BONUS LIFE!`, { duration: 5000 });
 
           // Multiple explosion waves for dramatic effect
           const bossCenter = { x: megaBoss.x + megaBoss.width / 2, y: megaBoss.y + megaBoss.height / 2 };
@@ -7741,6 +7749,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   <BossVictoryOverlay
                     active={bossVictoryOverlayActive && !isBossRush}
                     onComplete={() => setBossVictoryOverlayActive(false)}
+                    showExtraLife={settings.difficulty !== "godlike" ? true : false}
                   />
 
                   {/* Boss Rush Stats Overlay */}

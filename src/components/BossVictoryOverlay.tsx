@@ -3,9 +3,10 @@ import { useEffect, useState } from "react";
 interface BossVictoryOverlayProps {
   active: boolean;
   onComplete: () => void;
+  showExtraLife?: boolean;
 }
 
-export const BossVictoryOverlay = ({ active, onComplete }: BossVictoryOverlayProps) => {
+export const BossVictoryOverlay = ({ active, onComplete, showExtraLife = true }: BossVictoryOverlayProps) => {
   const [textVisible, setTextVisible] = useState(false);
 
   useEffect(() => {
@@ -17,10 +18,10 @@ export const BossVictoryOverlay = ({ active, onComplete }: BossVictoryOverlayPro
     // Show text after short delay
     const textTimer = setTimeout(() => setTextVisible(true), 200);
 
-    // Auto-close after 4 seconds
+    // Auto-close after 2 seconds
     const autoCloseTimer = setTimeout(() => {
       onComplete();
-    }, 4000);
+    }, 2000);
 
     return () => {
       clearTimeout(textTimer);
@@ -64,16 +65,18 @@ export const BossVictoryOverlay = ({ active, onComplete }: BossVictoryOverlayPro
           >
             Boss defeated!
           </div>
-          <div
-            className="text-xl md:text-2xl font-bold text-green-400"
-            style={{
-              fontFamily: "'Press Start 2P', 'Courier New', monospace",
-              textShadow: "0 0 15px #22C55E, 2px 2px 0 #000",
-              letterSpacing: "1px",
-            }}
-          >
-            Extra Life granted!
-          </div>
+          {showExtraLife && (
+            <div
+              className="text-xl md:text-2xl font-bold text-green-400"
+              style={{
+                fontFamily: "'Press Start 2P', 'Courier New', monospace",
+                textShadow: "0 0 15px #22C55E, 2px 2px 0 #000",
+                letterSpacing: "1px",
+              }}
+            >
+              Extra Life granted!
+            </div>
+          )}
         </div>
 
         {/* Sparkle effects around text */}

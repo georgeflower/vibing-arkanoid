@@ -1,5 +1,5 @@
 export const BOSS_RUSH_CONFIG = {
-  startingLives: 5,
+  startingLives: 3,
   bossOrder: [5, 10, 15, 20] as const,
   bossNames: {
     5: "CUBE GUARDIAN",
