@@ -319,7 +319,7 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
               Featuring an authentic retro aesthetic with{" "}
               <span className="text-[hsl(200,70%,50%)] font-bold">CRT scanline effects</span>, advanced{" "}
               <span className="text-[hsl(330,100%,65%)] font-bold">CCD physics engine</span> for precise collisions,
-              special brick types (metal, cracked, explosive), 8 powerful power-ups, enemies that fight back, and a
+              special brick types (metal, cracked, explosive), 12 unique power-ups, enemies that fight back, and a
               soundtrack that'll make your speakers weep with joy. Collect the legendary{" "}
               <span className="text-[hsl(330,100%,65%)] font-bold">Q-U-M-R-A-N</span> bonus letters for 5 extra lives!
             </p>
@@ -606,8 +606,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   <span className="text-[hsl(120,60%,45%)]">Normal</span> - Standard gameplay, speed cap 150%
                 </li>
                 <li>
-                  <span className="text-[hsl(0,85%,55%)]">Godlike</span> - No extra life power-ups, speed cap 175%,
-                  faster enemies, more enemy fire
+                  <span className="text-[hsl(0,85%,55%)]">Godlike</span> - No extra lives (power-ups or boss defeat),
+                  1 life, speed cap 175%, faster enemies, more enemy fire
                 </li>
               </ul>
             </div>

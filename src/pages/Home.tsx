@@ -17,7 +17,7 @@ import powerupStunner from "@/assets/powerup-stunner.png";
 import powerupReflect from "@/assets/powerup-reflect.png";
 import powerupHoming from "@/assets/powerup-homing.png";
 import powerupShrink from "@/assets/powerup-shrink.png";
-import powerupSecondchance from "@/assets/powerup-secondchance.png";
+
 
 // Bonus letter images
 import bonusQ from "@/assets/bonus-q.png";
@@ -193,7 +193,7 @@ const Home = () => {
             className="retro-pixel-text text-center mt-8 mb-4"
             style={{ fontSize: "clamp(10px, 2vw, 16px)", color: "hsl(330,100%,65%)" }}
           >
-            13 Power-Ups
+            12 Power-Ups
           </h3>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
             {powerUps.map((pu) => (
@@ -304,7 +304,7 @@ const Home = () => {
                   <span style={{ color: "hsl(120,50%,50%)" }}>Normal</span> — 3 lives, balanced speed
                 </li>
                 <li className="retro-pixel-text">
-                  <span style={{ color: "hsl(0,85%,55%)" }}>Godlike</span> — 1 life, faster speed, higher caps
+                  <span style={{ color: "hsl(0,85%,55%)" }}>Godlike</span> — 1 life, no extra lives, faster speed, higher caps
                 </li>
               </ul>
             </div>
