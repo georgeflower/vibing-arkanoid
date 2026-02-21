@@ -1,43 +1,32 @@
 
 
-# Boss Rush Lives, Godlike No Extra Lives, and Faster Victory Overlay
+# Fix Boss Victory Overlay Not Auto-Closing
 
-## Changes
+## Root Cause
 
-### 1. Boss Rush starting lives: 5 -> 3
-**File: `src/constants/bossRushConfig.ts`**
-- Change `startingLives: 5` to `startingLives: 3`
+The `onComplete` prop passed to `BossVictoryOverlay` is an inline arrow function:
+```
+onComplete={() => setBossVictoryOverlayActive(false)}
+```
+This creates a **new function reference on every render**. Since `onComplete` is in the `useEffect` dependency array (line 30), the effect re-runs and **resets the 2-second timer** on every frame — so it never fires.
 
-### 2. Godlike mode: no extra life on boss defeat
-**File: `src/components/Game.tsx`**
-Three locations grant +1 life on boss defeat. Each needs a godlike guard:
+## Fix
 
-| Location | Boss type | Current code | New code |
-|---|---|---|---|
-| Line 1480 | All pyramids defeated | `setLives((prev) => prev + 1)` | Wrap in `if (settings.difficulty !== "godlike")` |
-| Line 1779 | Generic `handleBossDefeat` (cube, sphere) | `setLives((prev) => prev + 1)` | Wrap in `if (settings.difficulty !== "godlike")` |
-| Line 4783 | Mega Boss defeated | `setLives((prev) => prev + 1)` | Wrap in `if (settings.difficulty !== "godlike")` |
-
-The toast messages and BossVictoryOverlay "Extra Life granted!" text will also be conditionally adjusted so godlike players don't see misleading extra-life messaging.
-
-### 3. BossVictoryOverlay: auto-close after 2 seconds instead of 4
 **File: `src/components/BossVictoryOverlay.tsx`**
-- Change `setTimeout(() => { onComplete(); }, 4000)` to `2000`
-- Optionally hide the "Extra Life granted!" line when difficulty is godlike (requires passing a prop)
 
-### 4. BossVictoryOverlay: conditionally hide "Extra Life granted!"
-**File: `src/components/BossVictoryOverlay.tsx`**
-- Add an optional `showExtraLife?: boolean` prop (default `true`)
-- Only render the "Extra Life granted!" div when `showExtraLife` is true
+Remove `onComplete` from the `useEffect` dependency array. The callback identity doesn't need to trigger a re-run — only `active` changing matters.
 
-**File: `src/components/Game.tsx`**
-- Pass `showExtraLife={settings.difficulty !== "godlike"}` to `<BossVictoryOverlay>`
+Change line 30 from:
+```typescript
+}, [active, onComplete]);
+```
+to:
+```typescript
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [active]);
+```
 
-## Files Changed
+This is the minimal, correct fix. The timer starts once when `active` becomes `true`, fires `onComplete()` after 2 seconds, and won't be reset by re-renders.
 
-| File | What changes |
-|---|---|
-| `src/constants/bossRushConfig.ts` | `startingLives: 3` |
-| `src/components/BossVictoryOverlay.tsx` | Auto-close 4s -> 2s; add `showExtraLife` prop to conditionally hide "Extra Life granted!" |
-| `src/components/Game.tsx` | Guard all 3 boss-defeat `setLives(+1)` calls with `settings.difficulty !== "godlike"`; pass `showExtraLife` prop; update toast messages for godlike |
+No other files need to change.
 
