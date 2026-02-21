@@ -4356,7 +4356,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           bomb.x + bomb.width > paddle.x &&
           bomb.x < paddle.x + paddle.width &&
           bomb.y + bomb.height > paddle.y - 10 &&
-          bomb.y < paddle.y;
+          bomb.y < paddle.y + paddle.height;
 
         // Check for reflect shield FIRST (on boss levels) - preserves regular shield
         if (paddle.hasReflectShield && BOSS_LEVELS.includes(level) && bombHitsShieldZone) {
