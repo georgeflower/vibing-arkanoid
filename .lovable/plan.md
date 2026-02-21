@@ -1,88 +1,114 @@
 
 
-# Fix: Ball Tunneling Through Cube Boss at High Speed
+# Add Session-Level Aggregation to Telemetry Summary Snapshots
 
-## Root Cause Analysis
+## Problem
 
-There are **two separate issues** that make the cube boss uniquely vulnerable to ball pass-through compared to sphere and pyramid.
+Summary snapshots (sent at `endSession`) only include `min_fps`, `duration_seconds`, `final_score`, `total_quality_changes`, and `user_agent`. All other performance fields (`avg_fps`, `quality_level`, `ball_count`, `particle_count`, CCD metrics, etc.) are left as `undefined`/null. This means:
 
-### Issue 1: Degenerate Normal When Ball Is Inside the Cube
+- Mobile sessions that end abruptly (tab suspend, browser kill) may only have the summary row, which has no performance data
+- You cannot correlate `user_agent` with performance metrics without joining across snapshot types
 
-The cube collision (lines 220-254 of `physics.ts`) uses a closest-point-on-rotated-rectangle approach. When the ball center is **inside** the rectangle:
+## Solution
 
-- `closestX == ux` and `closestY == uy` (the closest point on the rect IS the ball position)
-- `distX = 0`, `distY = 0`, `distSq = 0`
-- This still triggers collision (`0 <= radius^2`), BUT the normal becomes `(0/epsilon, 0/epsilon)` = effectively `(0, 0)`
-- The push-out direction is zero, so the ball stays inside and the velocity reflection does nothing
+Track running accumulators across the session inside `TelemetryCollector`, updated on every `recordSnapshot` call. Then include these aggregates in the summary snapshot so every summary row has complete performance data.
 
-**Sphere doesn't have this problem** because it uses distance-from-center, which always produces a valid non-zero normal even when the ball is inside.
+Additionally, include `user_agent` in periodic snapshots so every row can be identified by device.
 
-**Pyramid doesn't have this problem** because it uses closest-point-on-edge, which also always yields a valid direction.
+## Changes
 
-### Issue 2: Insufficient Sampling for the Cube's Small Size
+### File: `src/utils/telemetry.ts`
 
-The cube boss is the smallest boss (80px vs sphere 90px vs pyramid 100px). The sampling formula:
-
-```
-samples = clamp(3, 12, ceil(SPEED / (minBrickDimension * 0.1)))
-```
-
-At high ball speed, the step between samples can exceed the cube's width, allowing the ball to jump from one side to the other without any sample landing inside or near the hitbox.
-
-## Proposed Fix (two changes, same file)
-
-### Fix A: Fallback Normal for Deep Penetration
-
-When the ball center is inside the cube rectangle (distSq is near zero), fall back to using the **boss-center-to-ball** direction as the push-out normal. This guarantees a valid reflection direction.
-
-In `src/engine/physics.ts`, around lines 230-254, after computing `distSq`:
+**1. Add session-level accumulator fields to the class:**
 
 ```typescript
-// When ball center is inside the rectangle, distX/distY are ~0
-// Fall back to boss-center-to-ball direction
-if (distSq < 0.01) {
-  const fallbackDist = Math.sqrt(dx * dx + dy * dy) || 1;
-  const normalX = dx / fallbackDist;
-  const normalY = dy / fallbackDist;
-  const correctionDist = Math.max(halfW, halfH) + sampleBall.radius + 5;
-  const dot = sampleBall.dx * normalX + sampleBall.dy * normalY;
-  collision = {
-    newX: centerX + normalX * correctionDist,
-    newY: centerY + normalY * correctionDist,
-    newVelocityX: sampleBall.dx - 2 * dot * normalX,
-    newVelocityY: sampleBall.dy - 2 * dot * normalY,
-  };
-} else {
-  // ... existing closest-point logic ...
-}
+// Session-level running aggregates
+private snapshotCount = 0;
+private sumAvgFps = 0;
+private sumBallCount = 0;
+private sumBrickCount = 0;
+private sumEnemyCount = 0;
+private sumParticleCount = 0;
+private sumExplosionCount = 0;
+private sumCcdTotalMs = 0;
+private sumCcdSubsteps = 0;
+private sumCcdCollisions = 0;
+private sumToiIterations = 0;
+private totalWallCollisions = 0;
+private totalBrickCollisions = 0;
+private totalPaddleCollisions = 0;
+private totalBossCollisions = 0;
+private maxBallCount = 0;
+private maxParticleCount = 0;
+private dominantQuality: Record<string, number> = {};
 ```
 
-### Fix B: Increase Sample Count for Small Bosses
+**2. Reset accumulators in `startSession`.**
 
-Raise the minimum samples from 3 to 5 and scale more aggressively relative to boss size. Change lines 157-158:
+**3. Update accumulators in `recordSnapshot`:**
+
+- Increment `snapshotCount`
+- Add metrics to running sums
+- Track max values for ball/particle counts
+- Tally quality level occurrences for dominant quality
+- Accumulate collision totals (before resetting per-snapshot counters)
+- Add `user_agent` to periodic snapshots
+
+**4. Enrich `endSession` summary with aggregated data:**
 
 ```typescript
-const bossMinDim = Math.min(bossTarget.width, bossTarget.height);
-const samplesRaw = Math.ceil(SPEED / (bossMinDim * 0.08));
-const samples = Math.max(5, Math.min(16, samplesRaw));
+this.buffer.push({
+  session_id: this.sessionId,
+  snapshot_type: "summary",
+  level: finalLevel,
+  difficulty: this.difficulty,
+  game_mode: this.gameMode,
+  // Session averages
+  avg_fps: this.snapshotCount > 0 ? this.sumAvgFps / this.snapshotCount : undefined,
+  min_fps: this.sessionMinFps < 999 ? this.sessionMinFps : undefined,
+  quality_level: this.getDominantQuality(),
+  // Average object counts
+  ball_count: this.snapshotCount > 0 ? Math.round(this.sumBallCount / this.snapshotCount) : undefined,
+  brick_count: this.snapshotCount > 0 ? Math.round(this.sumBrickCount / this.snapshotCount) : undefined,
+  enemy_count: this.snapshotCount > 0 ? Math.round(this.sumEnemyCount / this.snapshotCount) : undefined,
+  particle_count: this.maxParticleCount > 0 ? this.maxParticleCount : undefined,
+  explosion_count: this.snapshotCount > 0 ? Math.round(this.sumExplosionCount / this.snapshotCount) : undefined,
+  // CCD averages
+  ccd_total_ms: this.snapshotCount > 0 ? this.sumCcdTotalMs / this.snapshotCount : undefined,
+  ccd_substeps: this.snapshotCount > 0 ? Math.round(this.sumCcdSubsteps / this.snapshotCount) : undefined,
+  ccd_collisions: this.snapshotCount > 0 ? Math.round(this.sumCcdCollisions / this.snapshotCount) : undefined,
+  toi_iterations: this.snapshotCount > 0 ? Math.round(this.sumToiIterations / this.snapshotCount) : undefined,
+  // Total collisions across session
+  wall_collisions: this.totalWallCollisions,
+  brick_collisions: this.totalBrickCollisions,
+  paddle_collisions: this.totalPaddleCollisions,
+  boss_collisions: this.totalBossCollisions,
+  // Existing fields
+  duration_seconds: duration,
+  final_score: finalScore,
+  total_quality_changes: this.qualityChanges,
+  user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+});
 ```
 
-This uses the actual boss size (not `minBrickDimension`) for sampling density, ensuring smaller bosses get proportionally more samples.
+**5. Add helper method `getDominantQuality`** that returns the quality level string with the highest tally count.
 
-## Files Changed
+**6. Add `user_agent` to periodic snapshots** in `recordSnapshot` so every row is device-identifiable.
 
-| File | Change |
-|---|---|
-| `src/engine/physics.ts` | Fix A: Add fallback normal when ball is inside cube rectangle |
-| `src/engine/physics.ts` | Fix B: Increase sampling density based on boss size |
+## Summary of Data in Each Snapshot Type After Fix
 
-## Why This Only Affects the Cube
+| Field | Periodic | Summary |
+|---|---|---|
+| avg_fps | Per-interval | Session average |
+| min_fps | Per-interval | Session minimum |
+| quality_level | Current | Most frequent |
+| ball/brick/enemy_count | Current | Session average |
+| particle_count | Current | Session max |
+| CCD metrics | Per-interval | Session average |
+| Collision counts | Per-interval | Session totals |
+| user_agent | Yes (new) | Yes (existing) |
+| duration_seconds | -- | Yes |
+| final_score | -- | Yes |
 
-| Boss | Collision Shape | Deep Penetration Normal | Size |
-|---|---|---|---|
-| Cube | Rotated rectangle | Degenerates to (0,0) -- **broken** | 80px (smallest) |
-| Sphere | Circle | Always valid (center-to-ball) | 90px |
-| Pyramid | Triangle edges | Always valid (edge normal) | 100px (largest) |
-
-The cube has both the worst collision math for edge cases AND the smallest hitbox, creating a double vulnerability at high speeds.
+No database or edge function changes needed -- all fields already exist in the schema.
 
