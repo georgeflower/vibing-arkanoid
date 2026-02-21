@@ -27,7 +27,8 @@ export const BossVictoryOverlay = ({ active, onComplete, showExtraLife = true }:
       clearTimeout(textTimer);
       clearTimeout(autoCloseTimer);
     };
-  }, [active, onComplete]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
 
   if (!active) return null;
 
