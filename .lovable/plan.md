@@ -1,37 +1,47 @@
 
 
-# Fix Documentation Inconsistencies
+# Fix: Shield Not Blocking Bombs at High Speed (Godlike Mode)
 
-## Findings
+## Root Cause
 
-| Location | What it says | What's actually implemented | Fix |
-|---|---|---|---|
-| **About** (MainMenu.tsx line 323) | "8 powerful power-ups" | 12 power-up types exist | Change to "12 power-ups" |
-| **Homepage** (Home.tsx) | "13 Power-Ups" heading | Grid only shows 12 items; there are 12 types in code | Change heading to "12 Power-Ups" |
-| **Homepage** (Home.tsx) | Imports `powerupSecondchance` | Never used in the displayed grid | Remove unused import |
-| **Homepage** Godlike description | "1 life, faster speed, higher caps" | Also: no extra life power-ups, no bonus life on boss defeat | Add "no extra lives" to description |
-| **Instructions** Godlike description (MainMenu.tsx line 609) | "No extra life power-ups" | Now also no extra life on boss defeat | Update to "No extra lives (power-ups or boss defeat)" |
+The bomb-shield collision uses a **separate, narrower hitbox** than the bomb-damage collision:
 
-## Files to Change
+- **Shield zone**: A thin 10px strip just *above* the paddle (`paddle.y - 10` to `paddle.y`)
+- **Damage zone**: The full paddle body (`paddle.y` to `paddle.y + paddle.height`)
 
-### 1. `src/components/MainMenu.tsx`
+At high speeds in Godlike mode, a bomb can travel more than 10 pixels per frame and skip past the shield zone entirely, landing directly in the damage zone. The shield never gets a chance to block it.
 
-**Line 323** — About section:
-- Change "8 powerful power-ups" to "12 power-ups"
+## Fix
 
-**Line 609** — Instructions, Godlike description:
-- Change "No extra life power-ups, speed cap 175%, faster enemies, more enemy fire"
-- To: "No extra lives (power-ups or boss defeat), 1 life, speed cap 175%, faster enemies, more enemy fire"
+**File: `src/components/Game.tsx`** (around line 4355)
 
-### 2. `src/pages/Home.tsx`
+Expand the bomb-shield collision zone to cover the **same area as the damage zone**, so the shield check always runs before the damage check. Change:
 
-**Line 5 area** — Remove unused `import powerupSecondchance`
+```
+const bombHitsShieldZone =
+  bomb.x + bomb.width > paddle.x &&
+  bomb.x < paddle.x + paddle.width &&
+  bomb.y + bomb.height > paddle.y - 10 &&
+  bomb.y < paddle.y;
+```
 
-**Power-ups heading** — Change "13 Power-Ups" to "12 Power-Ups"
+To:
 
-**Godlike description** — Change from "1 life, faster speed, higher caps" to "1 life, no extra lives, faster speed, higher caps"
+```
+const bombHitsShieldZone =
+  bomb.x + bomb.width > paddle.x &&
+  bomb.x < paddle.x + paddle.width &&
+  bomb.y + bomb.height > paddle.y - 10 &&
+  bomb.y < paddle.y + paddle.height;
+```
 
----
+This makes the shield zone encompass the entire paddle, so a bomb that overlaps the paddle in any way will be caught by the shield first. The damage check below is already guarded by `return` statements in the shield/reflect branches, so it won't double-trigger.
 
-No logic or gameplay changes -- documentation text only.
+## Files Changed
+
+| File | Change |
+|---|---|
+| `src/components/Game.tsx` | Expand `bombHitsShieldZone` bottom boundary from `paddle.y` to `paddle.y + paddle.height` |
+
+This is a one-line fix that prevents the tunneling issue at any speed.
 
