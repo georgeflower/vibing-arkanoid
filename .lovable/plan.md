@@ -1,36 +1,43 @@
 
-# Update Changelog to v0.9.96 and README
 
-## Summary
-
-Two files need updating:
-
-1. `src/constants/version.ts` — bump `GAME_VERSION` to `"0.9.96"` and prepend a new changelog entry
-2. `README.md` — update the version badge in line 5 from `v0.9.95` to `v0.9.96`
-
----
+# Boss Rush Lives, Godlike No Extra Lives, and Faster Victory Overlay
 
 ## Changes
 
-### `src/constants/version.ts`
+### 1. Boss Rush starting lives: 5 -> 3
+**File: `src/constants/bossRushConfig.ts`**
+- Change `startingLives: 5` to `startingLives: 3`
 
-- Change line 1: `export const GAME_VERSION = "0.9.96";`
-- Insert a new entry at the top of the `CHANGELOG` array (before the existing `0.9.95` entry):
+### 2. Godlike mode: no extra life on boss defeat
+**File: `src/components/Game.tsx`**
+Three locations grant +1 life on boss defeat. Each needs a godlike guard:
 
-```typescript
-{
-  version: "0.9.96",
-  changes: [
-    "Fixed: turret bullets intermittently travelling at double speed on shots after the first — root cause was React state array desync; world.bullets and React state diverged on every reset, reflect-shield, and shield-absorb call",
-    "Fix: removed useState entirely from bullet management — bullets now live exclusively in world.bullets (same pattern as balls, bricks, paddle); fireBullets pushes directly, updateBullets mutates in-place, all resets write world.bullets directly",
-    "Refactor: replaced all remaining setState(prev => { mutate; return prev }) in-place patterns with direct world loops for balls (rotation/attach), enemies, bombs, and bonus letters — eliminates stale-closure risk across all moving entities",
-    "Cleanup: removed ~100 stale '// removed' noise comments left over from previous refactoring sessions in canvasRenderer.ts and Game.tsx",
-  ],
-},
-```
+| Location | Boss type | Current code | New code |
+|---|---|---|---|
+| Line 1480 | All pyramids defeated | `setLives((prev) => prev + 1)` | Wrap in `if (settings.difficulty !== "godlike")` |
+| Line 1779 | Generic `handleBossDefeat` (cube, sphere) | `setLives((prev) => prev + 1)` | Wrap in `if (settings.difficulty !== "godlike")` |
+| Line 4783 | Mega Boss defeated | `setLives((prev) => prev + 1)` | Wrap in `if (settings.difficulty !== "godlike")` |
 
-### `README.md`
+The toast messages and BossVictoryOverlay "Extra Life granted!" text will also be conditionally adjusted so godlike players don't see misleading extra-life messaging.
 
-- Change line 5: `**[▶ Play Now](https://vibing-arkanoid.lovable.app)** · **v0.9.96**`
+### 3. BossVictoryOverlay: auto-close after 2 seconds instead of 4
+**File: `src/components/BossVictoryOverlay.tsx`**
+- Change `setTimeout(() => { onComplete(); }, 4000)` to `2000`
+- Optionally hide the "Extra Life granted!" line when difficulty is godlike (requires passing a prop)
 
-No other lines in either file change.
+### 4. BossVictoryOverlay: conditionally hide "Extra Life granted!"
+**File: `src/components/BossVictoryOverlay.tsx`**
+- Add an optional `showExtraLife?: boolean` prop (default `true`)
+- Only render the "Extra Life granted!" div when `showExtraLife` is true
+
+**File: `src/components/Game.tsx`**
+- Pass `showExtraLife={settings.difficulty !== "godlike"}` to `<BossVictoryOverlay>`
+
+## Files Changed
+
+| File | What changes |
+|---|---|
+| `src/constants/bossRushConfig.ts` | `startingLives: 3` |
+| `src/components/BossVictoryOverlay.tsx` | Auto-close 4s -> 2s; add `showExtraLife` prop to conditionally hide "Extra Life granted!" |
+| `src/components/Game.tsx` | Guard all 3 boss-defeat `setLives(+1)` calls with `settings.difficulty !== "godlike"`; pass `showExtraLife` prop; update toast messages for godlike |
+
