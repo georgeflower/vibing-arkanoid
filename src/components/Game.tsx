@@ -4859,6 +4859,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             duration: 3000,
           });
 
+          // CRT scanline flash effect for phase transition
+          triggerScreenShake(8, 500);
+          setBackgroundFlash(2);
+          setTimeout(() => setBackgroundFlash(0), 400);
+
           setBoss(updatedBoss as unknown as Boss);
           if (releasedBall) {
             // Release ball at normal speed (no slow motion)
@@ -5282,6 +5287,27 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         // Skip position update if cross attack is stopped
         if (attack.type === "cross" && attack.isStopped) {
           return true;
+        }
+
+        // Apply gentle homing toward player paddle for mega boss shots
+        if (attack.isHomingToPlayer && !attack.isReflected && paddle) {
+          const attackCX = attack.x + attack.width / 2;
+          const paddleCX = paddle.x + paddle.width / 2;
+          const dirX = paddleCX - attackCX;
+          const currentSpeed = Math.sqrt((attack.dx || 0) ** 2 + (attack.dy || 0) ** 2);
+          if (currentSpeed > 0 && Math.abs(dirX) > 5) {
+            const normX = dirX / Math.abs(dirX);
+            const str = attack.homingStrength || 0.03;
+            const currentDx = attack.dx || 0;
+            const currentDy = attack.dy || 0;
+            const newDx = currentDx + normX * str * currentSpeed;
+            // Re-normalize to keep speed constant
+            const newMag = Math.sqrt(newDx * newDx + currentDy * currentDy);
+            if (newMag > 0) {
+              attack.dx = (newDx / newMag) * currentSpeed;
+              attack.dy = (currentDy / newMag) * currentSpeed;
+            }
+          }
         }
 
         const newX = attack.x + (attack.dx || 0);
