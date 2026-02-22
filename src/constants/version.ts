@@ -1,6 +1,17 @@
-export const GAME_VERSION = "0.9.97";
+export const GAME_VERSION = "0.9.971";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.971",
+    changes: [
+      "Mega Boss Phase 2: cross projectiles added — same stop-and-redirect mechanic as pyramid boss, merging into larger spheres on collision",
+      "Mega Boss Phase 3: 5 cross projectiles fired in a wider cone (up from 3) for increased difficulty",
+      "Mega Boss Phase 3: movement speed increased to 5.5 (up from 4.0) for more aggressive behavior",
+      "Mega Boss Phase 3: music-reactive background — background flashes different hue colors synced to bass beats via Web Audio API AnalyserNode",
+      "Added dedicated danger ball missed sound effect (ball_missed.mp3) — plays when a danger ball passes the paddle or a reflected ball misses the core",
+      "Fixed: boss shot projectiles no longer incorrectly home toward the player — only reflected danger balls home toward the core",
+    ],
+  },
   {
     version: "0.9.97",
     changes: [
