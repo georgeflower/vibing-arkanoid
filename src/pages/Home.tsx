@@ -18,7 +18,6 @@ import powerupReflect from "@/assets/powerup-reflect.png";
 import powerupHoming from "@/assets/powerup-homing.png";
 import powerupShrink from "@/assets/powerup-shrink.png";
 
-
 // Bonus letter images
 import bonusQ from "@/assets/bonus-q.png";
 import bonusU from "@/assets/bonus-u.png";
@@ -268,10 +267,9 @@ const Home = () => {
               </h4>
               <ul className="space-y-2" style={{ fontSize: "8px", color: "hsl(0,0%,70%)" }}>
                 <li className="retro-pixel-text">🖱️ Mouse — move paddle</li>
-                <li className="retro-pixel-text">⌨️ Arrow keys — move paddle</li>
                 <li className="retro-pixel-text">📱 Touch — drag to move</li>
-                <li className="retro-pixel-text">SPACE — launch ball / shoot</li>
-                <li className="retro-pixel-text">ESC — pause menu</li>
+                <li className="retro-pixel-text">Click/Touch — launch ball / shoot</li>
+                <li className="retro-pixel-text">ESC / P — pause menu</li>
                 <li className="retro-pixel-text">F — toggle fullscreen</li>
               </ul>
             </div>
@@ -305,7 +303,7 @@ const Home = () => {
                   <span style={{ color: "hsl(120,50%,50%)" }}>Normal</span> — 3 lives, balanced speed
                 </li>
                 <li className="retro-pixel-text">
-                  <span style={{ color: "hsl(0,85%,55%)" }}>Godlike</span> — 1 life, no extra lives, faster speed, higher caps
+                  <span style={{ color: "hsl(0,85%,55%)" }}>Godlike</span> — 1 life, faster speed
                 </li>
               </ul>
             </div>
