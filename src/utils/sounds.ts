@@ -556,7 +556,8 @@ class SoundManager {
     '/cannon_mode.mp3',
     '/stun.mp3',
     '/reflecting.mp3',
-    '/magnet.mp3'
+    '/magnet.mp3',
+    '/ball_missed.mp3'
   ];
 
   async preloadSounds(): Promise<void> {
@@ -1365,6 +1366,15 @@ class SoundManager {
     punchGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
     punch.start(ctx.currentTime);
     punch.stop(ctx.currentTime + 0.35);
+  }
+
+  // Danger ball missed - plays preloaded MP3
+  playDangerBallMissedSound() {
+    if (!this.sfxEnabled) return;
+    const buffer = this.audioBuffers['/ball_missed.mp3'];
+    if (buffer) {
+      this.playAudioBuffer(buffer, 0.7);
+    }
   }
 
   // Mega Boss victory - dramatic explosion + triumphant fanfare
