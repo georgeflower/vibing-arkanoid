@@ -268,9 +268,7 @@ function performShotAttack(
       angle: finalAngle,
       dx: Math.cos(finalAngle) * 4,
       dy: Math.sin(finalAngle) * 4,
-      damage: 1,
-      isHomingToPlayer: true, // Mega boss shots gently home toward player
-      homingStrength: 0.03   // Very subtle homing
+      damage: 1
     });
   }
   
