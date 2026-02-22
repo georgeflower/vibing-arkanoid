@@ -212,31 +212,31 @@ class SoundManager {
     if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
     
-    // Deep square-wave burst at ~60Hz -- ominous warning
-    const bass = ctx.createOscillator();
-    const bassGain = ctx.createGain();
-    bass.connect(bassGain);
-    bassGain.connect(ctx.destination);
-    bass.type = 'square';
-    bass.frequency.setValueAtTime(60, ctx.currentTime);
-    bass.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.3);
-    bassGain.gain.setValueAtTime(0.3, ctx.currentTime);
-    bassGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-    bass.start(ctx.currentTime);
-    bass.stop(ctx.currentTime + 0.3);
+    // Short sine ping at ~800Hz -- subtle, higher-pitched blip
+    const ping = ctx.createOscillator();
+    const pingGain = ctx.createGain();
+    ping.connect(pingGain);
+    pingGain.connect(ctx.destination);
+    ping.type = 'sine';
+    ping.frequency.setValueAtTime(800, ctx.currentTime);
+    ping.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.08);
+    pingGain.gain.setValueAtTime(0.08, ctx.currentTime);
+    pingGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+    ping.start(ctx.currentTime);
+    ping.stop(ctx.currentTime + 0.1);
     
-    // Short sawtooth screech at ~150Hz
-    const screech = ctx.createOscillator();
-    const screechGain = ctx.createGain();
-    screech.connect(screechGain);
-    screechGain.connect(ctx.destination);
-    screech.type = 'sawtooth';
-    screech.frequency.setValueAtTime(150, ctx.currentTime);
-    screech.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.12);
-    screechGain.gain.setValueAtTime(0.2, ctx.currentTime);
-    screechGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-    screech.start(ctx.currentTime);
-    screech.stop(ctx.currentTime + 0.15);
+    // Tiny triangle chirp at ~1200Hz -- quick accent
+    const chirp = ctx.createOscillator();
+    const chirpGain = ctx.createGain();
+    chirp.connect(chirpGain);
+    chirpGain.connect(ctx.destination);
+    chirp.type = 'triangle';
+    chirp.frequency.setValueAtTime(1200, ctx.currentTime + 0.02);
+    chirp.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.07);
+    chirpGain.gain.setValueAtTime(0.1, ctx.currentTime + 0.02);
+    chirpGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.07);
+    chirp.start(ctx.currentTime + 0.02);
+    chirp.stop(ctx.currentTime + 0.08);
   }
 
   playBrickHit(brickType?: string, hitsRemaining?: number) {

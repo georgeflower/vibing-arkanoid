@@ -4562,7 +4562,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       } else {
         // Use MEGA_BOSS_CONFIG for mega boss, otherwise use BOSS_CONFIG
         const isMegaType = boss.type === "mega";
-        const moveSpeed = isMegaType
+        const baseMoveSpeed = isMegaType
           ? boss.isSuperAngry
             ? MEGA_BOSS_CONFIG.veryAngryMoveSpeed
             : boss.isAngry
@@ -4575,7 +4575,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 : boss.isAngry && "angryMoveSpeed" in config
                   ? config.angryMoveSpeed
                   : boss.speed;
-            })();
+             })();
+        // Dynamic speed variation for mega boss
+        const moveSpeed = isMegaType
+          ? baseMoveSpeed * (1.0 + Math.sin(Date.now() / 800) * 0.35 + Math.sin(Date.now() / 1300) * 0.2)
+          : baseMoveSpeed;
         setBoss((prev) =>
           prev
             ? {

@@ -21,6 +21,11 @@ export const MEGA_BOSS_CONFIG = {
   veryAngryAttackInterval: 2000,
   points: 100000, // Final boss victory points
   
+  // Dynamic speed variation
+  speedVariationMin: 0.6,
+  speedVariationMax: 1.6,
+  speedChangeInterval: 800,
+  
   // Hatch mechanics
   hatchOpenDuration: 8000, // How long hatch stays open for ball to enter
   
