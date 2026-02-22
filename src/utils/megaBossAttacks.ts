@@ -187,7 +187,7 @@ export function hasReflectedBallMissed(ball: DangerBall, canvasWidth: number, ca
 }
 
 // Mega Boss attack types
-export type MegaBossAttackType = 'hatchSalvo' | 'sweepTurret' | 'phaseBurst' | 'shot' | 'super';
+export type MegaBossAttackType = 'hatchSalvo' | 'sweepTurret' | 'phaseBurst' | 'shot' | 'super' | 'laser';
 
 // Perform a Mega Boss attack
 export function performMegaBossAttack(
@@ -229,6 +229,9 @@ export function performMegaBossAttack(
     case 'super':
       performSuperAttack(boss, setBossAttacks, setSuperWarnings);
       break;
+    case 'laser':
+      performLaserAttack(boss, setBossAttacks, setLaserWarnings);
+      break;
     case 'shot':
     default:
       performShotAttack(boss, paddleX, paddleY, setBossAttacks);
@@ -265,11 +268,52 @@ function performShotAttack(
       angle: finalAngle,
       dx: Math.cos(finalAngle) * 4,
       dy: Math.sin(finalAngle) * 4,
-      damage: 1
+      damage: 1,
+      isHomingToPlayer: true, // Mega boss shots gently home toward player
+      homingStrength: 0.03   // Very subtle homing
     });
   }
   
   setBossAttacks(prev => [...prev, ...attacks]);
+}
+
+function performLaserAttack(
+  boss: MegaBoss,
+  setBossAttacks: React.Dispatch<React.SetStateAction<BossAttack[]>>,
+  setLaserWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; startTime: number }>>>
+) {
+  const laserX = boss.x + boss.width / 2 - 4; // 8px wide laser centered
+  
+  setLaserWarnings(prev => [...prev, { x: laserX, startTime: Date.now() }]);
+  toast.warning("MEGA BOSS CHARGING LASER!", { duration: 1000 });
+  soundManager.playLaserChargingSound();
+  
+  setTimeout(() => {
+    const laserStartY = boss.y + boss.height;
+    const laserHeight = 650 - laserStartY;
+    
+    const attack: BossAttack = {
+      bossId: boss.id,
+      type: 'laser',
+      x: laserX,
+      y: laserStartY,
+      width: 8,
+      height: laserHeight,
+      speed: 0,
+      dx: 0,
+      dy: 0,
+      damage: 1
+    };
+    
+    setBossAttacks(prev => [...prev, attack]);
+    soundManager.playExplosion();
+    
+    // Remove laser after duration
+    setTimeout(() => {
+      setBossAttacks(prev => prev.filter(a => !(a.type === 'laser' && a.bossId === boss.id && a.x === laserX)));
+    }, 500);
+    
+  }, 800); // Warning duration before laser fires
 }
 
 function performHatchSalvo(

@@ -223,6 +223,8 @@ export interface BossAttack {
   nextCourseChangeTime?: number; // When the next course change will occur
   pendingDirection?: { dx: number; dy: number }; // Pre-calculated next direction for visual indicator
   spawnTime?: number; // When the attack was spawned (for merge cooldown)
+  isHomingToPlayer?: boolean; // Gently homes toward player paddle
+  homingStrength?: number; // Homing intensity (0-1, subtle values like 0.03)
 }
 
 export type GameState = "ready" | "playing" | "paused" | "gameOver" | "won";

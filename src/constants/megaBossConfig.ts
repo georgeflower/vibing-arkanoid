@@ -47,9 +47,9 @@ export const MEGA_BOSS_CONFIG = {
   
   // Attack weights by phase
   attackWeights: {
-    phase1: { shot: 0.45, sweepTurret: 0.30, hatchSalvo: 0.15, super: 0.10 },
-    phase2: { shot: 0.35, sweepTurret: 0.30, hatchSalvo: 0.20, super: 0.15 },
-    phase3: { sweepTurret: 0.30, shot: 0.25, phaseBurst: 0.25, super: 0.10, hatchSalvo: 0.10 }
+    phase1: { shot: 0.35, sweepTurret: 0.25, hatchSalvo: 0.15, laser: 0.15, super: 0.10 },
+    phase2: { shot: 0.30, sweepTurret: 0.25, hatchSalvo: 0.15, laser: 0.15, super: 0.15 },
+    phase3: { sweepTurret: 0.25, shot: 0.20, phaseBurst: 0.20, laser: 0.15, super: 0.10, hatchSalvo: 0.10 }
   }
 } as const;
 
