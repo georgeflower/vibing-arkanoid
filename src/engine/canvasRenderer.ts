@@ -2750,12 +2750,28 @@ function drawMegaBoss(
     const cannonLength = 55;
     const cannonBaseY = radius * 0.5;
 
-    // Flat barrel
+    // Rounded barrel
+    const cornerR = 8;
+    const bx = -cannonWidth / 2;
+    const by = cannonBaseY;
+    const bw = cannonWidth;
+    const bh = cannonLength;
     ctx.fillStyle = `hsl(${phaseHue}, ${phaseSat}%, 22%)`;
-    ctx.fillRect(-cannonWidth / 2, cannonBaseY, cannonWidth, cannonLength);
+    ctx.beginPath();
+    ctx.moveTo(bx + cornerR, by);
+    ctx.lineTo(bx + bw - cornerR, by);
+    ctx.arcTo(bx + bw, by, bx + bw, by + cornerR, cornerR);
+    ctx.lineTo(bx + bw, by + bh - cornerR);
+    ctx.arcTo(bx + bw, by + bh, bx + bw - cornerR, by + bh, cornerR);
+    ctx.lineTo(bx + cornerR, by + bh);
+    ctx.arcTo(bx, by + bh, bx, by + bh - cornerR, cornerR);
+    ctx.lineTo(bx, by + cornerR);
+    ctx.arcTo(bx, by, bx + cornerR, by, cornerR);
+    ctx.closePath();
+    ctx.fill();
     ctx.strokeStyle = `hsl(${phaseHue}, ${phaseSat + 20}%, 48%)`;
     ctx.lineWidth = 2;
-    ctx.strokeRect(-cannonWidth / 2, cannonBaseY, cannonWidth, cannonLength);
+    ctx.stroke();
 
     // 2 horizontal panel lines across barrel
     const seg = cannonLength / 3;
@@ -2771,10 +2787,11 @@ function drawMegaBoss(
     ctx.fillRect(-cannonWidth / 2 - 3, cannonBaseY + cannonLength * 0.4, 3, 8);
     ctx.fillRect(cannonWidth / 2, cannonBaseY + cannonLength * 0.4, 3, 8);
 
-    // Blinking muzzle circle
+    // Blinking muzzle half-circle (only outward-facing half)
     const muzzleBlink = Math.floor(now / 200) % 2 === 0;
+    const muzzleY = cannonBaseY + cannonLength;
     ctx.beginPath();
-    ctx.arc(0, cannonBaseY + cannonLength, 10, 0, Math.PI * 2);
+    ctx.arc(0, muzzleY, 10, 0, Math.PI);
     ctx.fillStyle = muzzleBlink ? "hsl(40, 100%, 60%)" : "hsl(40, 80%, 35%)";
     ctx.fill();
     ctx.strokeStyle = "hsl(40, 90%, 70%)";
