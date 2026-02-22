@@ -2468,8 +2468,35 @@ function drawMegaBoss(
 ): void {
   const boss = megaBoss;
   const radius = boss.width / 2;
-  const baseHue = megaBoss.corePhase === 3 ? 0 : megaBoss.corePhase === 2 ? 30 : 220;
   const hexRotation = boss.rotationY || 0;
+
+  // Phase-based color palette (tech-style)
+  const phaseHue = megaBoss.corePhase === 3 ? 355 : megaBoss.corePhase === 2 ? 35 : 210;
+  const phaseSat = megaBoss.corePhase === 3 ? 35 : megaBoss.corePhase === 2 ? 40 : 25;
+
+  // Helper: draw a small hexagonal bolt
+  const drawHexBolt = (bx: number, by: number, boltR: number, hue: number, sat: number) => {
+    ctx.beginPath();
+    for (let j = 0; j < 6; j++) {
+      const ba = (Math.PI / 3) * j - Math.PI / 2;
+      const px = bx + Math.cos(ba) * boltR;
+      const py = by + Math.sin(ba) * boltR;
+      if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = `hsl(${hue}, ${sat}%, 45%)`;
+    ctx.fill();
+    ctx.beginPath();
+    for (let j = 0; j < 6; j++) {
+      const ba = (Math.PI / 3) * j - Math.PI / 2;
+      const px = bx + Math.cos(ba) * (boltR * 0.5);
+      const py = by + Math.sin(ba) * (boltR * 0.5);
+      if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = `hsl(${hue}, ${sat}%, 25%)`;
+    ctx.fill();
+  };
 
   // Rotating hexagon body
   ctx.save();
@@ -2479,9 +2506,65 @@ function drawMegaBoss(
     drawHexShadow(ctx, radius, 5, 5);
   }
 
-  // Outer shield hexagon (flat per-face shading like cube boss)
+  // === SPIKES for Phase 2/3 (drawn before inner shield, behind everything) ===
+  if (megaBoss.outerShieldRemoved) {
+    const spikeHue = phaseHue;
+    const spikeSat = phaseSat;
+    const isPhase3 = megaBoss.corePhase >= 3;
+    const spikeLen = isPhase3 ? radius * 0.45 : radius * 0.35;
+    const spikeBase = 12;
+
+    // 6 vertex spikes
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i - Math.PI / 2;
+      const vx = Math.cos(angle) * radius;
+      const vy = Math.sin(angle) * radius;
+      const tipX = Math.cos(angle) * (radius + spikeLen);
+      const tipY = Math.sin(angle) * (radius + spikeLen);
+      const perpX = Math.cos(angle + Math.PI / 2) * (spikeBase / 2);
+      const perpY = Math.sin(angle + Math.PI / 2) * (spikeBase / 2);
+
+      ctx.beginPath();
+      ctx.moveTo(vx + perpX, vy + perpY);
+      ctx.lineTo(tipX, tipY);
+      ctx.lineTo(vx - perpX, vy - perpY);
+      ctx.closePath();
+      ctx.fillStyle = `hsl(${spikeHue}, ${spikeSat}%, 22%)`;
+      ctx.fill();
+      ctx.strokeStyle = `hsl(${spikeHue}, ${spikeSat + 15}%, 50%)`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Phase 3: 6 midpoint spikes that pulse
+    if (isPhase3) {
+      const pulseFactor = Math.sin(now / 300) * 0.15 + 0.85;
+      const midSpikeLen = spikeLen * pulseFactor;
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i - Math.PI / 2 + Math.PI / 6; // midpoints
+        const vx = Math.cos(angle) * radius;
+        const vy = Math.sin(angle) * radius;
+        const tipX = Math.cos(angle) * (radius + midSpikeLen);
+        const tipY = Math.sin(angle) * (radius + midSpikeLen);
+        const perpX = Math.cos(angle + Math.PI / 2) * (spikeBase / 2);
+        const perpY = Math.sin(angle + Math.PI / 2) * (spikeBase / 2);
+
+        ctx.beginPath();
+        ctx.moveTo(vx + perpX, vy + perpY);
+        ctx.lineTo(tipX, tipY);
+        ctx.lineTo(vx - perpX, vy - perpY);
+        ctx.closePath();
+        ctx.fillStyle = `hsl(${spikeHue}, ${spikeSat + 10}%, 28%)`;
+        ctx.fill();
+        ctx.strokeStyle = `hsl(${spikeHue}, ${spikeSat + 20}%, 55%)`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Outer shield hexagon (tech-style panel lines + rivets)
   if (!megaBoss.outerShieldRemoved) {
-    // Draw 6 triangular face segments with varying lightness
     const faceLightness = [38, 32, 28, 30, 34, 40];
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 3) * i - Math.PI / 2;
@@ -2490,22 +2573,43 @@ function drawMegaBoss(
       const y1 = Math.sin(angle) * radius;
       const x2 = Math.cos(nextAngle) * radius;
       const y2 = Math.sin(nextAngle) * radius;
-      // Curved outer edge
       const midAngle = (angle + nextAngle) / 2;
       const cpX = Math.cos(midAngle) * (radius * 1.06);
       const cpY = Math.sin(midAngle) * (radius * 1.06);
 
+      // Main face fill
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(x1, y1);
       ctx.quadraticCurveTo(cpX, cpY, x2, y2);
       ctx.closePath();
-      ctx.fillStyle = `hsl(${baseHue}, 60%, ${faceLightness[i]}%)`;
+      ctx.fillStyle = `hsl(${phaseHue}, ${phaseSat}%, ${faceLightness[i]}%)`;
       ctx.fill();
-      ctx.strokeStyle = `hsl(${baseHue}, 80%, 60%)`;
+      ctx.strokeStyle = `hsl(${phaseHue}, ${phaseSat + 15}%, 55%)`;
       ctx.lineWidth = 2;
       ctx.stroke();
+
+      // Panel line (inner stroke at 80% scale)
+      const scale = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(x1 * scale, y1 * scale);
+      ctx.lineTo(x2 * scale, y2 * scale);
+      ctx.closePath();
+      ctx.strokeStyle = `hsl(${phaseHue}, ${phaseSat}%, ${faceLightness[i] - 8}%)`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // 2 rivet dots per face
+      const r1x = x1 * 0.55 + x2 * 0.15;
+      const r1y = y1 * 0.55 + y2 * 0.15;
+      const r2x = x1 * 0.15 + x2 * 0.55;
+      const r2y = y1 * 0.15 + y2 * 0.55;
+      ctx.fillStyle = `hsl(${phaseHue}, ${phaseSat}%, 55%)`;
+      ctx.beginPath(); ctx.arc(r1x, r1y, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(r2x, r2y, 2, 0, Math.PI * 2); ctx.fill();
     }
+
     // Outer hex border
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
@@ -2522,49 +2626,59 @@ function drawMegaBoss(
       ctx.quadraticCurveTo(cpX, cpY, x2, y2);
     }
     ctx.closePath();
-    ctx.strokeStyle = `hsl(${baseHue}, 90%, 65%)`;
+    ctx.strokeStyle = `hsl(${phaseHue}, ${phaseSat + 20}%, 60%)`;
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Vertex detail circles (flat fills)
+    // Vertex hexagonal bolts (instead of circles)
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 3) * i - Math.PI / 2;
       const vx = Math.cos(angle) * (radius * 0.85);
       const vy = Math.sin(angle) * (radius * 0.85);
-      ctx.beginPath();
-      ctx.arc(vx, vy, 8, 0, Math.PI * 2);
-      ctx.fillStyle = `hsl(${baseHue}, 60%, 40%)`;
-      ctx.fill();
-      ctx.strokeStyle = `hsl(${baseHue}, 80%, 65%)`;
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      drawHexBolt(vx, vy, 6, phaseHue, phaseSat);
     }
   }
 
-  // Inner octagon shield (flat fill + pulsing stroke, no gradient)
+  // Inner octagon shield (with segmented panel lines + crosshair)
   if (megaBoss.outerShieldRemoved && !megaBoss.coreExposed) {
     const innerOctRadius = radius * 0.65;
-    const innerShieldHue = megaBoss.corePhase === 2 ? 30 : baseHue;
     ctx.beginPath();
     for (let i = 0; i < 8; i++) {
       const angle = (Math.PI / 4) * i - Math.PI / 8;
       const ox = Math.cos(angle) * innerOctRadius;
       const oy = Math.sin(angle) * innerOctRadius;
-      if (i === 0) ctx.moveTo(ox, oy);
-      else ctx.lineTo(ox, oy);
+      if (i === 0) ctx.moveTo(ox, oy); else ctx.lineTo(ox, oy);
     }
     ctx.closePath();
-    ctx.fillStyle = `hsla(${innerShieldHue}, 60%, 38%, 0.7)`;
+    ctx.fillStyle = `hsla(${phaseHue}, ${phaseSat + 10}%, 35%, 0.7)`;
     ctx.fill();
     const innerPulseOn = Math.floor(now / 200) % 2 === 0;
-    ctx.strokeStyle = innerPulseOn ? `hsl(${innerShieldHue}, 100%, 70%)` : `hsl(${innerShieldHue}, 80%, 50%)`;
+    ctx.strokeStyle = innerPulseOn ? `hsl(${phaseHue}, 80%, 65%)` : `hsl(${phaseHue}, 60%, 42%)`;
     ctx.lineWidth = 4;
     ctx.stroke();
+
+    // Segmented panel lines radiating from center
+    ctx.strokeStyle = `hsl(${phaseHue}, ${phaseSat}%, 28%)`;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 8; i++) {
+      const angle = (Math.PI / 4) * i - Math.PI / 8;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(angle) * innerOctRadius * 0.9, Math.sin(angle) * innerOctRadius * 0.9);
+      ctx.stroke();
+    }
+
+    // Crosshair glyph at center
+    const chLen = 8;
+    ctx.strokeStyle = `hsl(${phaseHue}, ${phaseSat + 20}%, 55%)`;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-chLen, 0); ctx.lineTo(chLen, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -chLen); ctx.lineTo(0, chLen); ctx.stroke();
   }
 
   ctx.restore(); // End rotation
 
-  // Core (flat fill with hard alternation, no gradient)
+  // Core (with concentric ring + targeting reticle)
   const coreRadius = megaBoss.coreExposed ? radius * 0.4 : radius * 0.3;
   ctx.beginPath();
   ctx.arc(0, 0, coreRadius, 0, Math.PI * 2);
@@ -2573,23 +2687,46 @@ function drawMegaBoss(
     ctx.fillStyle = coreAlt ? "hsl(45, 100%, 65%)" : "hsl(30, 90%, 50%)";
   } else {
     const coreFills: Record<number, [string, string]> = {
-      3: ["hsl(0, 80%, 55%)", "hsl(0, 70%, 38%)"],
-      2: ["hsl(25, 80%, 55%)", "hsl(25, 70%, 38%)"],
-      1: ["hsl(200, 80%, 55%)", "hsl(200, 70%, 38%)"],
+      3: [`hsl(${phaseHue}, 60%, 50%)`, `hsl(${phaseHue}, 50%, 32%)`],
+      2: [`hsl(${phaseHue}, 60%, 50%)`, `hsl(${phaseHue}, 50%, 32%)`],
+      1: [`hsl(${phaseHue}, 50%, 50%)`, `hsl(${phaseHue}, 40%, 32%)`],
     };
     const [fillA, fillB] = coreFills[megaBoss.corePhase] || coreFills[1];
     ctx.fillStyle = coreAlt ? fillA : fillB;
   }
   ctx.fill();
-  const coreBorderColor = megaBoss.coreExposed ? "hsl(55, 100%, 60%)" : megaBoss.corePhase === 3 ? "hsl(0, 70%, 75%)" : megaBoss.corePhase === 2 ? "hsl(30, 70%, 70%)" : "hsl(200, 70%, 75%)";
+  const coreBorderColor = megaBoss.coreExposed ? "hsl(55, 100%, 60%)" : `hsl(${phaseHue}, 50%, 65%)`;
   ctx.strokeStyle = coreBorderColor;
   ctx.lineWidth = megaBoss.coreExposed ? 4 : 3;
   ctx.stroke();
 
-  // Highlight circle on core
-  ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+  // Concentric inner ring at 60% radius
+  const innerCoreR = coreRadius * 0.6;
   ctx.beginPath();
-  ctx.arc(-coreRadius * 0.25, -coreRadius * 0.25, coreRadius * 0.3, 0, Math.PI * 2);
+  ctx.arc(0, 0, innerCoreR, 0, Math.PI * 2);
+  ctx.fillStyle = megaBoss.coreExposed
+    ? (coreAlt ? "hsl(30, 90%, 45%)" : "hsl(45, 100%, 60%)")
+    : `hsl(${phaseHue}, ${phaseSat + 10}%, ${coreAlt ? 40 : 28}%)`;
+  ctx.fill();
+  ctx.strokeStyle = coreBorderColor;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // 4 targeting reticle tick marks
+  ctx.strokeStyle = coreBorderColor;
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 4; i++) {
+    const ta = (Math.PI / 2) * i;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(ta) * (coreRadius * 0.85), Math.sin(ta) * (coreRadius * 0.85));
+    ctx.lineTo(Math.cos(ta) * (coreRadius * 1.1), Math.sin(ta) * (coreRadius * 1.1));
+    ctx.stroke();
+  }
+
+  // Highlight circle on core
+  ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+  ctx.beginPath();
+  ctx.arc(-coreRadius * 0.25, -coreRadius * 0.25, coreRadius * 0.25, 0, Math.PI * 2);
   ctx.fill();
 
   if (megaBoss.coreExposed) {
@@ -2601,7 +2738,7 @@ function drawMegaBoss(
     ctx.stroke();
   }
 
-  // Cannon (flat barrel + blinking muzzle, no gradients)
+  // Cannon (tech-style with panel lines + exhaust ports)
   if (megaBoss.cannonExtended && megaBoss.trappedBall && paddle) {
     ctx.save();
     const paddleCenterX = paddle.x + paddle.width / 2 - (boss.x + boss.width / 2);
@@ -2613,12 +2750,26 @@ function drawMegaBoss(
     const cannonLength = 55;
     const cannonBaseY = radius * 0.5;
 
-    // Flat barrel with lighter border
-    ctx.fillStyle = `hsl(${baseHue}, 40%, 25%)`;
+    // Flat barrel
+    ctx.fillStyle = `hsl(${phaseHue}, ${phaseSat}%, 22%)`;
     ctx.fillRect(-cannonWidth / 2, cannonBaseY, cannonWidth, cannonLength);
-    ctx.strokeStyle = `hsl(${baseHue}, 70%, 55%)`;
+    ctx.strokeStyle = `hsl(${phaseHue}, ${phaseSat + 20}%, 48%)`;
     ctx.lineWidth = 2;
     ctx.strokeRect(-cannonWidth / 2, cannonBaseY, cannonWidth, cannonLength);
+
+    // 2 horizontal panel lines across barrel
+    const seg = cannonLength / 3;
+    ctx.strokeStyle = `hsl(${phaseHue}, ${phaseSat}%, 32%)`;
+    ctx.lineWidth = 1;
+    for (let s = 1; s <= 2; s++) {
+      const ly = cannonBaseY + seg * s;
+      ctx.beginPath(); ctx.moveTo(-cannonWidth / 2, ly); ctx.lineTo(cannonWidth / 2, ly); ctx.stroke();
+    }
+
+    // Exhaust port details (small darker rectangles on each side)
+    ctx.fillStyle = `hsl(${phaseHue}, ${phaseSat}%, 15%)`;
+    ctx.fillRect(-cannonWidth / 2 - 3, cannonBaseY + cannonLength * 0.4, 3, 8);
+    ctx.fillRect(cannonWidth / 2, cannonBaseY + cannonLength * 0.4, 3, 8);
 
     // Blinking muzzle circle
     const muzzleBlink = Math.floor(now / 200) % 2 === 0;
@@ -2632,25 +2783,81 @@ function drawMegaBoss(
     ctx.restore();
   }
 
-  // Phase 1 health bar
-  if (megaBoss.corePhase === 1 && !megaBoss.outerShieldRemoved) {
-    const hbWidth = boss.width + 60;
-    const hbHeight = 14;
-    // These coords are relative to the boss center (we're still translated)
-    const hbX = -hbWidth / 2;
-    const hbY = -boss.height / 2 - 35;
-    ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
-    ctx.fillRect(hbX, hbY, hbWidth, hbHeight);
-    const hpPercent = megaBoss.outerShieldHP / megaBoss.outerShieldMaxHP;
-    ctx.fillStyle = megaBoss.coreExposed ? "hsl(60, 100%, 50%)" : "hsl(280, 80%, 50%)";
-    ctx.fillRect(hbX + 2, hbY + 2, (hbWidth - 4) * hpPercent, hbHeight - 4);
-    ctx.strokeStyle = "rgba(200, 150, 255, 0.8)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(hbX, hbY, hbWidth, hbHeight);
-    ctx.fillStyle = megaBoss.coreExposed ? "#ffff00" : "#aa77ff";
-    ctx.font = "bold 12px monospace";
-    ctx.textAlign = "center";
-    ctx.fillText(megaBoss.coreExposed ? "CORE EXPOSED!" : "MEGA BOSS", 0, hbY - 5);
-    ctx.textAlign = "left";
+  // === HP BARS (all phases) ===
+  const hbWidth = boss.width + 60;
+  const hbHeight = 14;
+  const hbX = -hbWidth / 2;
+  const hbY = -boss.height / 2 - 35;
+
+  // Phase-specific HP values and colors
+  let hpPercent: number;
+  let barColor: string;
+  let phaseLabel: string;
+  let borderColor: string;
+
+  if (!megaBoss.outerShieldRemoved) {
+    // Phase 1: outer shield
+    hpPercent = megaBoss.outerShieldHP / megaBoss.outerShieldMaxHP;
+    barColor = megaBoss.coreExposed ? "hsl(60, 100%, 50%)" : "hsl(280, 80%, 50%)";
+    borderColor = "rgba(200, 150, 255, 0.8)";
+    phaseLabel = megaBoss.coreExposed ? "CORE EXPOSED!" : "MEGA BOSS";
+  } else if (megaBoss.corePhase === 2) {
+    hpPercent = megaBoss.innerShieldHP / megaBoss.innerShieldMaxHP;
+    barColor = megaBoss.coreExposed ? "hsl(60, 100%, 50%)" : "hsl(35, 90%, 50%)";
+    borderColor = "rgba(255, 180, 80, 0.8)";
+    phaseLabel = megaBoss.coreExposed ? "CORE EXPOSED!" : "PHASE 2";
+  } else {
+    hpPercent = megaBoss.innerShieldHP / megaBoss.innerShieldMaxHP;
+    barColor = megaBoss.coreExposed ? "hsl(60, 100%, 50%)" : "hsl(0, 80%, 50%)";
+    borderColor = "rgba(255, 100, 100, 0.8)";
+    phaseLabel = megaBoss.coreExposed ? "CORE EXPOSED!" : "PHASE 3";
   }
+
+  // Main HP bar
+  ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
+  ctx.fillRect(hbX, hbY, hbWidth, hbHeight);
+  ctx.fillStyle = barColor;
+  ctx.fillRect(hbX + 2, hbY + 2, (hbWidth - 4) * Math.max(0, hpPercent), hbHeight - 4);
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(hbX, hbY, hbWidth, hbHeight);
+
+  // Label
+  ctx.fillStyle = barColor;
+  ctx.font = "bold 12px monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(phaseLabel, 0, hbY - 5);
+
+  // Phase indicator pips (3 small squares)
+  const pipSize = 6;
+  const pipGap = 4;
+  const pipStartX = -(pipSize * 3 + pipGap * 2) / 2;
+  const pipY = hbY + hbHeight + 4;
+  for (let p = 0; p < 3; p++) {
+    const px = pipStartX + p * (pipSize + pipGap);
+    ctx.fillStyle = p < megaBoss.corePhase ? "hsl(45, 100%, 60%)" : "rgba(255,255,255,0.2)";
+    ctx.fillRect(px, pipY, pipSize, pipSize);
+    ctx.strokeStyle = "rgba(255,255,255,0.5)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px, pipY, pipSize, pipSize);
+  }
+
+  // Core hits bar (during danger ball phase)
+  if (megaBoss.trappedBall) {
+    const chbY = pipY + pipSize + 4;
+    const chbHeight = 8;
+    const coreHitsPercent = megaBoss.coreHitsFromDangerBalls / 5; // dangerBallsToComplete
+    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    ctx.fillRect(hbX, chbY, hbWidth, chbHeight);
+    ctx.fillStyle = "hsl(50, 100%, 55%)";
+    ctx.fillRect(hbX + 2, chbY + 2, (hbWidth - 4) * Math.min(1, coreHitsPercent), chbHeight - 4);
+    ctx.strokeStyle = "rgba(255, 255, 150, 0.6)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(hbX, chbY, hbWidth, chbHeight);
+    ctx.fillStyle = "hsl(50, 100%, 65%)";
+    ctx.font = "bold 9px monospace";
+    ctx.fillText("CORE HITS", 0, chbY - 2);
+  }
+
+  ctx.textAlign = "left";
 }
