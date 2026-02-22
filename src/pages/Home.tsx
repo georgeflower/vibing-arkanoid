@@ -179,7 +179,8 @@ const Home = () => {
             <p className="retro-pixel-text">
               Battle through <span style={{ color: "hsl(200,70%,50%)" }}>20 levels</span> of increasing difficulty. Face
               epic <span style={{ color: "hsl(0,85%,55%)" }}>boss battles</span> on levels 5, 10, 15, and the ultimate
-              Mega Boss on level 20.
+              Mega Boss on level 20 — featuring 3 phases, cross projectiles that merge into larger spheres,
+              music-reactive background visuals, and a danger ball reflect mechanic.
             </p>
             <p className="retro-pixel-text">
               Encounter special brick types: <span style={{ color: "hsl(0,0%,60%)" }}>Metal</span> (indestructible),{" "}
