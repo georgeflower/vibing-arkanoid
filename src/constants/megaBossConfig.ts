@@ -15,7 +15,7 @@ export const MEGA_BOSS_CONFIG = {
   positions: 9,
   moveSpeed: 2.0,
   angryMoveSpeed: 3.0,
-  veryAngryMoveSpeed: 4.0,
+  veryAngryMoveSpeed: 5.5,
   attackInterval: 3000,
   angryAttackInterval: 2500,
   veryAngryAttackInterval: 2000,
@@ -48,8 +48,8 @@ export const MEGA_BOSS_CONFIG = {
   // Attack weights by phase
   attackWeights: {
     phase1: { shot: 0.35, sweepTurret: 0.25, hatchSalvo: 0.15, laser: 0.15, super: 0.10 },
-    phase2: { shot: 0.30, sweepTurret: 0.25, hatchSalvo: 0.15, laser: 0.15, super: 0.15 },
-    phase3: { sweepTurret: 0.25, shot: 0.20, phaseBurst: 0.20, laser: 0.15, super: 0.10, hatchSalvo: 0.10 }
+    phase2: { shot: 0.20, sweepTurret: 0.20, hatchSalvo: 0.15, laser: 0.15, cross: 0.15, super: 0.15 },
+    phase3: { sweepTurret: 0.20, shot: 0.15, phaseBurst: 0.15, laser: 0.15, cross: 0.15, super: 0.10, hatchSalvo: 0.10 }
   }
 } as const;
 

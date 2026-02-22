@@ -9,6 +9,10 @@ class SoundManager {
   private savedBackgroundMusicIndex: number = 0;
   private musicEnabled = true;
   private sfxEnabled = true;
+  private analyser: AnalyserNode | null = null;
+  private frequencyData: Uint8Array | null = null;
+  private bossMusicSource: MediaElementAudioSourceNode | null = null;
+  private frequencyDataArray: Float64Array | null = null;
   private trackUrls = [
     '/Pixel_Frenzy-2.mp3',
     '/sound_2.mp3',
@@ -1184,6 +1188,23 @@ class SoundManager {
     this.bossMusic = new Audio(bossTrackUrl);
     this.bossMusic.loop = true;
     this.bossMusic.volume = 0.3;
+    
+    // Set up AnalyserNode for frequency analysis
+    try {
+      const ctx = this.getAudioContext();
+      this.bossMusicSource = ctx.createMediaElementSource(this.bossMusic);
+      this.analyser = ctx.createAnalyser();
+      this.analyser.fftSize = 256;
+      this.frequencyData = new Uint8Array(this.analyser.frequencyBinCount);
+      this.bossMusicSource.connect(this.analyser);
+      this.analyser.connect(ctx.destination);
+    } catch (e) {
+      // Fallback: play without analyser
+      this.analyser = null;
+      this.frequencyData = null;
+      this.bossMusicSource = null;
+    }
+    
     this.bossMusic.play().catch(() => {});
   }
 
@@ -1193,6 +1214,21 @@ class SoundManager {
       this.bossMusic.currentTime = 0;
       this.bossMusic = null;
     }
+    this.analyser = null;
+    this.frequencyData = null;
+    this.bossMusicSource = null;
+  }
+
+  getBassEnergy(): number {
+    if (!this.analyser || !this.frequencyData) return 0;
+    (this.analyser as any).getByteFrequencyData(this.frequencyData);
+    // Average of first 8 bins (bass frequencies)
+    let sum = 0;
+    const bins = Math.min(8, this.frequencyData.length);
+    for (let i = 0; i < bins; i++) {
+      sum += this.frequencyData[i];
+    }
+    return sum / (bins * 255); // Normalize to 0-1
   }
 
   resumeBackgroundMusic() {
