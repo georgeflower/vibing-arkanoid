@@ -465,7 +465,13 @@ function performCrossAttack(
   
   const baseAngle = Math.atan2(paddleY - centerY, paddleX - centerX);
   const coneSpread = (ATTACK_PATTERNS.cross.coneAngle * Math.PI) / 180;
-  const offsets = [-coneSpread / 2, 0, coneSpread / 2];
+  
+  // Phase 3: 5 projectiles in wider cone, Phase 2: 3 projectiles
+  const count = boss.corePhase >= 3 ? 5 : 3;
+  const offsets: number[] = [];
+  for (let i = 0; i < count; i++) {
+    offsets.push(-coneSpread / 2 + (coneSpread * i) / (count - 1));
+  }
   const now = Date.now();
   
   offsets.forEach(offset => {
