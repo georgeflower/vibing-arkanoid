@@ -5001,7 +5001,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           // Check if NON-REFLECTED ball reached bottom (missed without reflecting)
           if (!updatedBall.isReflected && isDangerBallAtBottom(updatedBall, SCALED_CANVAS_HEIGHT)) {
             ballsMissed++;
-
+            soundManager.playDangerBallMissedSound();
             toast.warning("⚠️ Danger ball missed!", { duration: 1000 });
             return; // Remove ball
           }
@@ -5012,7 +5012,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             hasReflectedBallMissed(updatedBall, SCALED_CANVAS_WIDTH, SCALED_CANVAS_HEIGHT)
           ) {
             ballsMissed++;
-
+            soundManager.playDangerBallMissedSound();
             toast.warning("⚠️ Reflected ball missed the core!", { duration: 1000 });
             return; // Remove ball
           }
