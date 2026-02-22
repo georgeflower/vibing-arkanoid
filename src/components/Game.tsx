@@ -7039,6 +7039,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBricksHit(0);
     setLevelSkipped(false);
     setLivesLostOnCurrentLevel(0); // Reset mercy power-up counter
+    setBossFirstHitShieldDropped(false); // Reset shield drop for retried boss level
     setPowerUpsCollectedTypes(new Set());
     setBricksDestroyedByTurrets(0);
     setBossesKilled(0);
