@@ -85,6 +85,7 @@ export interface GameWorld {
   lastBossSpawnTime: number;
   bossHitCooldown: number;
   bossActive: boolean;
+  backgroundHue: number;
 
   // Score & lives live here so the game loop can mutate them
   // without setState. React reads them via hudSnapshot polling.
@@ -126,6 +127,7 @@ const WORLD_DEFAULTS: Readonly<GameWorld> = Object.freeze({
   lastBossSpawnTime: 0,
   bossHitCooldown: 0,
   bossActive: false,
+  backgroundHue: 0,
 
   score: 0,
   lives: 3,
@@ -177,6 +179,7 @@ export function resetWorld(overrides?: Partial<GameWorld>): void {
   world.lastBossSpawnTime = WORLD_DEFAULTS.lastBossSpawnTime;
   world.bossHitCooldown = WORLD_DEFAULTS.bossHitCooldown;
   world.bossActive = WORLD_DEFAULTS.bossActive;
+  world.backgroundHue = WORLD_DEFAULTS.backgroundHue;
   world.score = WORLD_DEFAULTS.score;
   world.lives = WORLD_DEFAULTS.lives;
 

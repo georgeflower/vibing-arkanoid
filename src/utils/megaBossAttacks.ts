@@ -1,6 +1,7 @@
 // Mega Boss attack patterns and danger ball system
 import type { Boss, BossAttack, Ball } from "@/types/game";
 import { MEGA_BOSS_CONFIG, CORNER_TARGETS } from "@/constants/megaBossConfig";
+import { ATTACK_PATTERNS } from "@/constants/bossConfig";
 import { MegaBoss, getMegaBossPhase, isMegaBoss } from "./megaBossUtils";
 import { soundManager } from "./sounds";
 import { debugToast as toast } from "@/utils/debugToast";
@@ -187,7 +188,7 @@ export function hasReflectedBallMissed(ball: DangerBall, canvasWidth: number, ca
 }
 
 // Mega Boss attack types
-export type MegaBossAttackType = 'hatchSalvo' | 'sweepTurret' | 'phaseBurst' | 'shot' | 'super' | 'laser';
+export type MegaBossAttackType = 'hatchSalvo' | 'sweepTurret' | 'phaseBurst' | 'shot' | 'super' | 'laser' | 'cross';
 
 // Perform a Mega Boss attack
 export function performMegaBossAttack(
@@ -231,6 +232,9 @@ export function performMegaBossAttack(
       break;
     case 'laser':
       performLaserAttack(boss, setBossAttacks, setLaserWarnings);
+      break;
+    case 'cross':
+      performCrossAttack(boss, paddleX, paddleY, setBossAttacks);
       break;
     case 'shot':
     default:
@@ -414,15 +418,14 @@ function performSuperAttack(
   setBossAttacks: React.Dispatch<React.SetStateAction<BossAttack[]>>,
   setSuperWarnings: React.Dispatch<React.SetStateAction<Array<{ x: number; y: number; startTime: number }>>>
 ) {
+  // ... keep existing code
   const centerX = boss.x + boss.width / 2;
   const centerY = boss.y + boss.height / 2;
   
-  // Add super warning
   setSuperWarnings(prev => [...prev, { x: centerX, y: centerY, startTime: Date.now() }]);
   toast.error("MEGA BOSS SUPER ATTACK!");
   soundManager.playShoot();
   
-  // Delay the actual attack
   setTimeout(() => {
     const attacks: BossAttack[] = [];
     const count = 8;
@@ -448,4 +451,46 @@ function performSuperAttack(
     setBossAttacks(prev => [...prev, ...attacks]);
     soundManager.playExplosion();
   }, 600);
+}
+
+function performCrossAttack(
+  boss: MegaBoss,
+  paddleX: number,
+  paddleY: number,
+  setBossAttacks: React.Dispatch<React.SetStateAction<BossAttack[]>>
+) {
+  const centerX = boss.x + boss.width / 2;
+  const centerY = boss.y + boss.height / 2;
+  const attacks: BossAttack[] = [];
+  
+  const baseAngle = Math.atan2(paddleY - centerY, paddleX - centerX);
+  const coneSpread = (ATTACK_PATTERNS.cross.coneAngle * Math.PI) / 180;
+  const offsets = [-coneSpread / 2, 0, coneSpread / 2];
+  const now = Date.now();
+  
+  offsets.forEach(offset => {
+    const angle = baseAngle + offset;
+    
+    attacks.push({
+      bossId: boss.id,
+      type: 'cross',
+      x: centerX,
+      y: centerY,
+      width: ATTACK_PATTERNS.cross.size,
+      height: ATTACK_PATTERNS.cross.size,
+      speed: ATTACK_PATTERNS.cross.speed,
+      angle,
+      dx: Math.cos(angle) * ATTACK_PATTERNS.cross.speed,
+      dy: Math.sin(angle) * ATTACK_PATTERNS.cross.speed,
+      damage: 1,
+      isStopped: false,
+      nextCourseChangeTime: now + ATTACK_PATTERNS.cross.courseChangeMinInterval +
+        Math.random() * (ATTACK_PATTERNS.cross.courseChangeMaxInterval - ATTACK_PATTERNS.cross.courseChangeMinInterval),
+      spawnTime: now
+    });
+  });
+  
+  setBossAttacks(prev => [...prev, ...attacks]);
+  toast.warning("MEGA BOSS CROSS ATTACK!");
+  soundManager.playBombDropSound();
 }

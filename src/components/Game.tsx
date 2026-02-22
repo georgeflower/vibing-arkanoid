@@ -132,6 +132,7 @@ import {
   markSwarmSpawned,
   incrementCoreHit,
   hasSufficientCoreHits,
+  getMegaBossPhase,
   MegaBoss,
 } from "@/utils/megaBossUtils";
 import {
@@ -4948,6 +4949,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             if (!prev || !isMegaBoss(prev)) return prev;
             return markSwarmSpawned(prev as MegaBoss) as unknown as Boss;
           });
+        }
+      }
+      // Phase 3: Music-reactive background hue
+      if (getMegaBossPhase(megaBoss) === 3) {
+        const bassEnergy = soundManager.getBassEnergy();
+        if (bassEnergy > 0.4) {
+          world.backgroundHue = Math.floor(Math.random() * 360);
+        } else if (bassEnergy < 0.15) {
+          world.backgroundHue = 0;
         }
       }
     }
