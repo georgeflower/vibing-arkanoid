@@ -1,39 +1,47 @@
 
 
-# Fix Remaining Rocket Gradient + Verify Retro Changes
-
-## Status of Previous Changes
-
-The previous edit successfully retro-ified:
-- Danger balls -- now use flat HSL fills with hard borders and alternating blink colors
-- Mega boss hexagon -- now drawn as 6 flat-shaded triangular face segments
-- Mega boss core, inner octagon, cannon -- all flat fills, no gradients
-
-These only appear at level 20, so they may not have been visible during testing.
-
-## What Still Needs Fixing
-
-The **rocket/missile** projectile (lines 1958-2011) still uses two `createLinearGradient` calls:
-1. **Flame gradient** (line 1965): smooth orange-to-transparent gradient behind the rocket
-2. **Body gradient** (line 1976): metallic grey gradient across the rocket body
+# Retro-ify Danger Ball Sounds, Add Core-Hit Screen Shake, and Pixelate Rendering
 
 ## Changes
 
-### File: `src/engine/canvasRenderer.ts` (lines 1958-2011)
+### 1. Darker, More Menacing Danger Ball Sounds (`src/utils/sounds.ts`)
 
-Replace the rocket rendering block:
+**Spawn sound** (currently `playBounce` at line 4740 of Game.tsx):
+- Replace with a new `playDangerBallSpawn()` method: deep square-wave burst at ~60Hz with a short sawtooth screech at ~150Hz -- dark, ominous Amiga-style warning tone
 
-**Flame** -- Replace the linear gradient flame with a flat orange/yellow triangle using hard alternation:
-- Flat `hsl(30, 100%, 55%)` fill triangle behind the rocket
-- Alternating frame color between orange and yellow (same `Math.floor(now / interval) % 2` pattern)
+**Catch/reflect sound** (`playDangerBallCatch`, lines 180-216):
+- Replace the bright metallic ping (1200Hz triangle) with a darker, heavier sound: low square-wave thud at ~100Hz with a short distorted sawtooth sweep from 300Hz down to 80Hz -- feels like catching something heavy and dangerous
 
-**Body** -- Replace the metallic gradient with a flat two-tone polygon:
-- Flat `hsl(0, 0%, 80%)` fill for the body
-- `hsl(0, 0%, 60%)` stroke border (2px)
+**Core hit sound** (`playDangerBallCoreHitSound`, lines 1300-1345):
+- Replace the "electric crackle + high sparkle" with a deeper, more impactful sound: heavy bass square-wave at 50Hz dropping to 25Hz (longer 0.4s decay), layered with a distorted sawtooth crunch at 180Hz, and a delayed low rumble instead of the sparkly sine at 2000Hz
+- Remove the `setTimeout` sparkle layer -- replace with a second bass hit at 40Hz for a double-punch feel
 
-**Nose cone and fins** -- Keep the existing flat red fills (these are already retro-correct)
+### 2. Screen Shake on Core Hit (`src/components/Game.tsx`)
 
-**Smoke trail** -- The current code has no explicit smoke trail in this section (it was already minimal), so no changes needed there.
+At line 4987 (where `playDangerBallCoreHitSound` is called after a danger ball hits the core):
+- Add `triggerScreenShake(6, 300)` -- a moderate 300ms shake to emphasize the core impact
+- This uses the existing `triggerScreenShake` helper already available in Game.tsx
 
-This removes the last two gradient calls from the mega boss attack system, completing the retro-ification.
+### 3. Pixelated Amiga-Style Danger Ball Rendering (`src/engine/canvasRenderer.ts`)
+
+Replace the smooth arc-based circle rendering (lines 340-435) with a chunky pixel-art style:
+
+- **Octagonal shape instead of circle**: Draw an 8-sided polygon (octagon) approximating a circle, giving the classic Amiga "low-polygon circle" look. Hard edges, no anti-aliasing feel
+- **Stepped color bands**: Instead of a single flat fill, draw 2 concentric octagons with different lightness values (outer darker, inner lighter) to simulate Amiga-era dithered shading
+- **Chunky cross symbol**: Replace the Unicode star/arrow with a simple pixel-cross drawn using 5 small filled rectangles (like a plus sign made of 3x3 pixel blocks) -- more Amiga-authentic than font-rendered symbols
+- **Blocky border**: Use `ctx.lineWidth = 3` with `ctx.lineJoin = "miter"` for sharp polygon corners instead of the smooth arc stroke
+- Keep the flashing color alternation (red/green, alt-phase) and the "CATCH!" text
+- Keep the arrow indicator and paddle highlight as-is
+
+### 4. Update Spawn Sound Call (`src/components/Game.tsx`)
+
+At line 4740, replace `soundManager.playBounce()` with `soundManager.playDangerBallSpawn()`.
+
+## Files Changed
+
+| File | What Changes |
+|---|---|
+| `src/utils/sounds.ts` | Rewrite `playDangerBallCatch`, `playDangerBallCoreHitSound`; add new `playDangerBallSpawn` -- all darker/heavier |
+| `src/components/Game.tsx` | Add `triggerScreenShake(6, 300)` on core hit; change spawn sound call |
+| `src/engine/canvasRenderer.ts` | Replace arc-based danger ball with octagonal pixel-art rendering |
 
