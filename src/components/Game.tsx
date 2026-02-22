@@ -4737,7 +4737,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           });
 
           toast.warning(`⚡ DANGER BALL ${megaBoss.dangerBallsFired + 1}/5!`, { duration: 1500 });
-          soundManager.playBounce();
+          soundManager.playDangerBallSpawn();
         }
       }
 
@@ -4985,6 +4985,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
             toast.success(`💥 CORE HIT! (${megaBoss.coreHitsFromDangerBalls + coreHits}/5)`, { duration: 1000 });
             soundManager.playDangerBallCoreHitSound();
+            triggerScreenShake(6, 300);
             return; // Remove ball after hitting core
           }
 

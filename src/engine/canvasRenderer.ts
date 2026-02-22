@@ -366,46 +366,55 @@ export function renderFrame(
         }
       }
 
+      // Helper: draw octagon at (cx, cy) with radius r
+      const drawOctagon = (cx: number, cy: number, r: number) => {
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2 - Math.PI / 8;
+          const px = cx + Math.cos(angle) * r;
+          const py = cy + Math.sin(angle) * r;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+      };
+
       if (qualitySettings.shadowsEnabled) {
         drawCircleShadow(ctx, dangerBall.x + 4, dangerBall.y + 4, dangerBall.radius);
       }
 
-      // Flat solid fill (two-tone like bombs)
-      ctx.beginPath();
-      ctx.arc(dangerBall.x, dangerBall.y, dangerBall.radius, 0, Math.PI * 2);
-
-      if (isHoming) {
-        ctx.fillStyle = isAltPhase ? "hsl(120, 80%, 45%)" : "hsl(120, 70%, 35%)";
-      } else {
-        ctx.fillStyle = isAltPhase ? "hsl(0, 85%, 55%)" : "hsl(0, 75%, 40%)";
-      }
+      // Outer octagon (darker)
+      const outerHue = isHoming ? 120 : 0;
+      const outerLight = isAltPhase ? 35 : 28;
+      drawOctagon(dangerBall.x, dangerBall.y, dangerBall.radius);
+      ctx.fillStyle = `hsl(${outerHue}, 80%, ${outerLight}%)`;
       ctx.fill();
-
-      // Hard border stroke
       ctx.strokeStyle = isHoming ? "hsl(120, 90%, 70%)" : "hsl(0, 90%, 70%)";
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 3;
+      ctx.lineJoin = "miter";
       ctx.stroke();
 
-      // Small offset highlight circle (same as bomb pattern)
-      ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
-      ctx.beginPath();
-      ctx.arc(dangerBall.x - 3, dangerBall.y - 3, dangerBall.radius * 0.35, 0, Math.PI * 2);
+      // Inner octagon (lighter) -- stepped color band
+      const innerLight = isAltPhase ? 55 : 45;
+      drawOctagon(dangerBall.x, dangerBall.y, dangerBall.radius * 0.6);
+      ctx.fillStyle = `hsl(${outerHue}, 85%, ${innerLight}%)`;
       ctx.fill();
 
-      // Symbol in monospace pixel font
+      // Chunky pixel-cross (5 small rectangles forming a plus sign)
+      const blockSize = Math.max(3, Math.floor(dangerBall.radius * 0.22));
       ctx.fillStyle = isAltPhase ? "#ffffff" : (isHoming ? "hsl(120, 100%, 85%)" : "hsl(0, 100%, 85%)");
-      ctx.font = `bold ${dangerBall.radius * 1.1}px monospace`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(isHoming ? "↑" : "★", dangerBall.x, dangerBall.y);
+      const cx = dangerBall.x;
+      const cy = dangerBall.y;
+      ctx.fillRect(cx - blockSize / 2, cy - blockSize * 1.5, blockSize, blockSize * 3); // vertical bar
+      ctx.fillRect(cx - blockSize * 1.5, cy - blockSize / 2, blockSize * 3, blockSize); // horizontal bar
 
-      // Pulsing outer ring (flat stroke, no glow)
+      // Pulsing outer octagon ring
       const ringVisible = Math.floor(now / 200) % 2 === 0;
       if (ringVisible) {
         ctx.strokeStyle = isHoming ? "hsl(120, 80%, 60%)" : "hsl(0, 80%, 60%)";
         ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(dangerBall.x, dangerBall.y, dangerBall.radius * 1.4, 0, Math.PI * 2);
+        ctx.lineJoin = "miter";
+        drawOctagon(dangerBall.x, dangerBall.y, dangerBall.radius * 1.4);
         ctx.stroke();
       }
 

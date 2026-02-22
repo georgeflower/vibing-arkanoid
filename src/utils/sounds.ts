@@ -181,38 +181,62 @@ class SoundManager {
     if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
     
-    // Metallic ping with impact
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
+    // Heavy low thud -- square wave at 100Hz
+    const thud = ctx.createOscillator();
+    const thudGain = ctx.createGain();
+    thud.connect(thudGain);
+    thudGain.connect(ctx.destination);
+    thud.type = 'square';
+    thud.frequency.setValueAtTime(100, ctx.currentTime);
+    thud.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.2);
+    thudGain.gain.setValueAtTime(0.35, ctx.currentTime);
+    thudGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+    thud.start(ctx.currentTime);
+    thud.stop(ctx.currentTime + 0.25);
     
-    osc1.connect(filter);
-    osc2.connect(filter);
-    filter.connect(gainNode);
-    gainNode.connect(ctx.destination);
+    // Distorted sawtooth sweep 300Hz -> 80Hz
+    const sweep = ctx.createOscillator();
+    const sweepGain = ctx.createGain();
+    sweep.connect(sweepGain);
+    sweepGain.connect(ctx.destination);
+    sweep.type = 'sawtooth';
+    sweep.frequency.setValueAtTime(300, ctx.currentTime);
+    sweep.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.18);
+    sweepGain.gain.setValueAtTime(0.2, ctx.currentTime);
+    sweepGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.18);
+    sweep.start(ctx.currentTime);
+    sweep.stop(ctx.currentTime + 0.2);
+  }
+
+  playDangerBallSpawn() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getAudioContext();
     
-    osc1.type = 'triangle';
-    osc2.type = 'sine';
+    // Deep square-wave burst at ~60Hz -- ominous warning
+    const bass = ctx.createOscillator();
+    const bassGain = ctx.createGain();
+    bass.connect(bassGain);
+    bassGain.connect(ctx.destination);
+    bass.type = 'square';
+    bass.frequency.setValueAtTime(60, ctx.currentTime);
+    bass.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.3);
+    bassGain.gain.setValueAtTime(0.3, ctx.currentTime);
+    bassGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    bass.start(ctx.currentTime);
+    bass.stop(ctx.currentTime + 0.3);
     
-    // High metallic ping
-    osc1.frequency.setValueAtTime(1200, ctx.currentTime);
-    osc1.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.15);
-    
-    // Lower harmonic
-    osc2.frequency.setValueAtTime(600, ctx.currentTime);
-    osc2.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.1);
-    
-    filter.type = 'highpass';
-    filter.frequency.value = 300;
-    
-    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-    
-    osc1.start(ctx.currentTime);
-    osc2.start(ctx.currentTime);
-    osc1.stop(ctx.currentTime + 0.2);
-    osc2.stop(ctx.currentTime + 0.15);
+    // Short sawtooth screech at ~150Hz
+    const screech = ctx.createOscillator();
+    const screechGain = ctx.createGain();
+    screech.connect(screechGain);
+    screechGain.connect(ctx.destination);
+    screech.type = 'sawtooth';
+    screech.frequency.setValueAtTime(150, ctx.currentTime);
+    screech.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.12);
+    screechGain.gain.setValueAtTime(0.2, ctx.currentTime);
+    screechGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    screech.start(ctx.currentTime);
+    screech.stop(ctx.currentTime + 0.15);
   }
 
   playBrickHit(brickType?: string, hitsRemaining?: number) {
@@ -1297,51 +1321,50 @@ class SoundManager {
     relief.stop(ctx.currentTime + 0.3);
   }
 
-  // Danger ball hitting boss core - powerful impact sound
+  // Danger ball hitting boss core - heavy retro impact
   playDangerBallCoreHitSound() {
     if (!this.sfxEnabled) return;
     const ctx = this.getAudioContext();
     
-    // Deep bass impact
+    // Heavy bass square-wave 50Hz -> 25Hz (long decay)
     const bass = ctx.createOscillator();
     const bassGain = ctx.createGain();
     bass.connect(bassGain);
     bassGain.connect(ctx.destination);
-    bass.type = 'sine';
-    bass.frequency.setValueAtTime(80, ctx.currentTime);
-    bass.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.3);
-    bassGain.gain.setValueAtTime(0.4, ctx.currentTime);
-    bassGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    bass.type = 'square';
+    bass.frequency.setValueAtTime(50, ctx.currentTime);
+    bass.frequency.exponentialRampToValueAtTime(25, ctx.currentTime + 0.4);
+    bassGain.gain.setValueAtTime(0.45, ctx.currentTime);
+    bassGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
     bass.start(ctx.currentTime);
-    bass.stop(ctx.currentTime + 0.3);
+    bass.stop(ctx.currentTime + 0.4);
     
-    // Electric crackle
-    const crackle = ctx.createOscillator();
-    const crackleGain = ctx.createGain();
-    crackle.connect(crackleGain);
-    crackleGain.connect(ctx.destination);
-    crackle.type = 'sawtooth';
-    crackle.frequency.setValueAtTime(1200, ctx.currentTime);
-    crackle.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.15);
-    crackleGain.gain.setValueAtTime(0.25, ctx.currentTime);
-    crackleGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-    crackle.start(ctx.currentTime);
-    crackle.stop(ctx.currentTime + 0.15);
+    // Distorted sawtooth crunch at 180Hz
+    const crunch = ctx.createOscillator();
+    const crunchGain = ctx.createGain();
+    crunch.connect(crunchGain);
+    crunchGain.connect(ctx.destination);
+    crunch.type = 'sawtooth';
+    crunch.frequency.setValueAtTime(180, ctx.currentTime);
+    crunch.frequency.exponentialRampToValueAtTime(90, ctx.currentTime + 0.2);
+    crunchGain.gain.setValueAtTime(0.3, ctx.currentTime);
+    crunchGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+    crunch.start(ctx.currentTime);
+    crunch.stop(ctx.currentTime + 0.2);
     
-    // High sparkle
-    setTimeout(() => {
-      const sparkle = ctx.createOscillator();
-      const sparkleGain = ctx.createGain();
-      sparkle.connect(sparkleGain);
-      sparkleGain.connect(ctx.destination);
-      sparkle.type = 'sine';
-      sparkle.frequency.setValueAtTime(2000, ctx.currentTime);
-      sparkle.frequency.exponentialRampToValueAtTime(3000, ctx.currentTime + 0.1);
-      sparkleGain.gain.setValueAtTime(0.15, ctx.currentTime);
-      sparkleGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-      sparkle.start(ctx.currentTime);
-      sparkle.stop(ctx.currentTime + 0.1);
-    }, 50);
+    // Second bass hit at 40Hz -- double-punch feel
+    const punch = ctx.createOscillator();
+    const punchGain = ctx.createGain();
+    punch.connect(punchGain);
+    punchGain.connect(ctx.destination);
+    punch.type = 'square';
+    punch.frequency.setValueAtTime(40, ctx.currentTime + 0.08);
+    punch.frequency.exponentialRampToValueAtTime(20, ctx.currentTime + 0.35);
+    punchGain.gain.setValueAtTime(0.01, ctx.currentTime);
+    punchGain.gain.setValueAtTime(0.35, ctx.currentTime + 0.08);
+    punchGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+    punch.start(ctx.currentTime);
+    punch.stop(ctx.currentTime + 0.35);
   }
 
   // Mega Boss victory - dramatic explosion + triumphant fanfare
