@@ -4951,12 +4951,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           });
         }
       }
-      // Phase 3: Music-reactive background hue
+      // Phase 3: Music-reactive background hue (only on strong beats)
       if (getMegaBossPhase(megaBoss) === 3) {
         const bassEnergy = soundManager.getBassEnergy();
-        if (bassEnergy > 0.4) {
+        if (bassEnergy > 0.72) {
           world.backgroundHue = Math.floor(Math.random() * 360);
-        } else if (bassEnergy < 0.15) {
+        } else if (bassEnergy < 0.3) {
           world.backgroundHue = 0;
         }
       }
