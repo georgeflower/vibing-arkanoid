@@ -221,10 +221,21 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
             </div>
 
             <div className="bg-gradient-to-r from-[hsl(200,70%,50%)]/20 to-[hsl(120,60%,50%)]/20 p-2 sm:p-3 rounded-lg border-2 border-[hsl(120,60%,50%)]/50">
-              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(120,60%,50%)]">🎯 Boss Rush Improvements</h3>
+              <h3 className="font-bold text-xs sm:text-sm mb-1 text-[hsl(120,60%,50%)]">
+                🔥 New Boss Hit Streak System
+              </h3>
               <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-xs">
-                <li>Stats screen now always appears after defeating a boss (including turret kills)</li>
-                <li>Ball no longer auto-launches when dismissing the results screen</li>
+                <li>
+                  A brand‑new, fast‑paced streak mechanic lets you compete with yourself to push for even higher scores!
+                </li>
+                <li>
+                  Consecutive hits on bosses and spawned enemies now award 100 pts + a streak bonus percentage (e.g., x5
+                  streak = +5% bonus).
+                </li>
+                <li>
+                  Reach a x10+ streak to activate music‑reactive background hue blinking on all boss levels for an
+                  amped‑up visual experience.
+                </li>
               </ul>
             </div>
           </div>
@@ -606,8 +617,8 @@ export const MainMenu = ({ onStartGame }: MainMenuProps) => {
                   <span className="text-[hsl(120,60%,45%)]">Normal</span> - Standard gameplay, speed cap 150%
                 </li>
                 <li>
-                  <span className="text-[hsl(0,85%,55%)]">Godlike</span> - No extra lives (power-ups or boss defeat),
-                  1 life, speed cap 175%, faster enemies, more enemy fire
+                  <span className="text-[hsl(0,85%,55%)]">Godlike</span> - No extra lives (power-ups or boss defeat), 1
+                  life, speed cap 175%, faster enemies, more enemy fire
                 </li>
               </ul>
             </div>
