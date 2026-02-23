@@ -487,6 +487,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bossDefeatedTransitioning, setBossDefeatedTransitioning] = useState(false);
    const bossDefeatedTransitioningRef = useRef(false);
    const hasAutoFullscreenedRef = useRef(false);
+  const [mobileGapHeight, setMobileGapHeight] = useState(0);
   useEffect(() => {
     bossDefeatedTransitioningRef.current = bossDefeatedTransitioning;
   }, [bossDefeatedTransitioning]);
@@ -730,6 +731,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [getReadyGlow, setGetReadyGlow] = useState<{ opacity: number } | null>(null);
   const getReadyGlowStartTimeRef = useRef<number | null>(null);
 
+  // Measure grey gap height above game canvas for mobile overlays
+  useEffect(() => {
+    if (!isMobileDevice || !gameAreaRef.current) return;
+    const update = () => {
+      const rect = gameAreaRef.current?.getBoundingClientRect();
+      if (rect) setMobileGapHeight(rect.top);
+    };
+    update();
+    window.addEventListener('resize', update);
+    const ro = new ResizeObserver(update);
+    ro.observe(gameAreaRef.current);
+    return () => {
+      window.removeEventListener('resize', update);
+      ro.disconnect();
+    };
+  }, [isMobileDevice]);
 
   
 
@@ -7993,14 +8010,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 />
 
                 {/* Mobile Power-Up Timers + Bonus Letter - Fixed overlay in grey gap area */}
-                {isMobileDevice && (
+                {isMobileDevice && mobileGapHeight > 0 && (
                   <div
                     style={{
                       position: 'fixed',
                       top: 0,
                       left: 0,
                       right: 0,
-                      height: gameAreaRef.current ? `${gameAreaRef.current.getBoundingClientRect().top}px` : '120px',
+                      height: `${mobileGapHeight}px`,
                       zIndex: 40,
                       display: 'flex',
                       flexDirection: 'column',
