@@ -2,7 +2,7 @@
 
 A loving tribute to the legendary **Arkanoid** (Taito, 1986) — rebuilt from scratch as a modern browser game with retro Amiga aesthetics, epic boss battles, and a high-performance canvas engine.
 
-**[▶ Play Now](https://vibing-arkanoid.lovable.app)** · **v0.9.971**
+**[▶ Play Now](https://vibing-arkanoid.lovable.app)** · **v0.9.972**
 
 ![Vibing Arkanoid](src/assets/start-screen-new.webp)
 
@@ -15,6 +15,7 @@ A loving tribute to the legendary **Arkanoid** (Taito, 1986) — rebuilt from sc
 - **Boss Rush mode** — fight all bosses back-to-back
 - **13 power-ups**: Fireball, Multi-Ball, Extend, Shield, Barrier, Slow Down, Turrets, Stunner, Reflect, Homing, Shrink, Extra Life, Second Chance
 - **Q-U-M-R-A-N bonus letters** — collect all 6 for 5 extra lives
+- **Boss hit streak system** — chain consecutive boss hits for escalating score bonuses that carry across levels
 - **Two difficulty modes**: Normal (3 lives) and Godlike (1 life, faster speed)
 - **Online leaderboards** with difficulty filters (All / Normal / God-Mode) and Boss Rush times
 - **CRT overlay** and authentic retro pixel styling
