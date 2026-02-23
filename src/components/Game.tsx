@@ -731,24 +731,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [getReadyGlow, setGetReadyGlow] = useState<{ opacity: number } | null>(null);
   const getReadyGlowStartTimeRef = useRef<number | null>(null);
 
-  // Measure grey gap height above game canvas for mobile overlays
-  useEffect(() => {
-    if (!isMobileDevice || !gameAreaRef.current) return;
-    const update = () => {
-      const rect = gameAreaRef.current?.getBoundingClientRect();
-      if (rect) setMobileGapHeight(rect.top);
-    };
-    update();
-    window.addEventListener('resize', update);
-    const ro = new ResizeObserver(update);
-    ro.observe(gameAreaRef.current);
-    return () => {
-      window.removeEventListener('resize', update);
-      ro.disconnect();
-    };
-  }, [isMobileDevice]);
 
-  
+
+
 
   // ═══════════════════════════════════════════════════════════════
   // ████████╗ DEBUG STATE - REMOVE BEFORE PRODUCTION ████████╗
@@ -1104,7 +1089,24 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const timerStartedRef = useRef(false);
   const nextLevelRef = useRef<(() => void) | null>(null);
 
-  // Fixed-step game loop
+  // Measure grey gap height above game canvas for mobile overlays
+  useEffect(() => {
+    if (!isMobileDevice || !gameAreaRef.current) return;
+    const update = () => {
+      const rect = gameAreaRef.current?.getBoundingClientRect();
+      if (rect) setMobileGapHeight(rect.top);
+    };
+    update();
+    window.addEventListener('resize', update);
+    const ro = new ResizeObserver(update);
+    ro.observe(gameAreaRef.current);
+    return () => {
+      window.removeEventListener('resize', update);
+      ro.disconnect();
+    };
+  }, [isMobileDevice]);
+
+
   const gameLoopRef = useRef<FixedStepGameLoop | null>(null);
   const isTogglingFullscreenRef = useRef(false);
 
