@@ -1,85 +1,109 @@
 
 
-# Mega Boss Phase 2 Cross Attacks, Phase 3 Speed + Music-Reactive Background
+# Boss Hit Points + Hit Streak System
 
 ## Overview
 
-Two major additions to the Mega Boss fight:
-1. **Phase 2**: Add the pyramid's "cross" attack balls that stop, change direction, and merge into crossBall enemies (and further into large spheres) -- reusing the existing cross attack system
-2. **Phase 3**: Increase movement speed and make the background pulse/blink in different hue colors synced to the boss music via a Web Audio API AnalyserNode
+Three new features for boss levels:
+1. **Boss hit points**: Every boss/enemy hit awards 100 points
+2. **Hit streak system**: Track consecutive boss/enemy hits between paddle bounces; reset if the ball returns to paddle without hitting anything
+3. **Streak celebrations**: Every x5 milestone triggers a celebration (sound + background flash); x10+ activates music-reactive background hue (reusing the Phase 3 code)
 
----
+## How the Streak Works
 
-## 1. Cross Attack in Phase 2
+```text
+Launch ball -> hit boss (x1) -> hit enemy (x2) -> paddle bounce
+-> hit enemy (x3) -> paddle bounce -> paddle bounce (NO HITS = RESET to x0)
+-> hit boss (x1) -> ...
+```
 
-### Config Changes
-**File: `src/constants/megaBossConfig.ts`**
-- Add `cross` to Phase 2 and Phase 3 attack weights
-- Phase 2: `{ shot: 0.20, sweepTurret: 0.20, hatchSalvo: 0.15, laser: 0.15, cross: 0.15, super: 0.15 }`
-- Phase 3: `{ sweepTurret: 0.20, shot: 0.15, phaseBurst: 0.15, laser: 0.15, cross: 0.15, super: 0.10, hatchSalvo: 0.10 }`
+- Each ball tracks whether it has hit a boss/enemy since last paddle contact (`hitSinceLastPaddle` flag)
+- On paddle bounce: if the ball had no hits since last paddle contact, streak resets to 0
+- On paddle bounce: if the ball had hits, the flag is cleared (waiting for next cycle)
+- On death (all balls lost / life lost): streak resets to 0
+- Streak multiplier: x2 = +2% score bonus, x3 = +3%, etc. Applied to the 100-point boss/enemy hit award
+- Only active on boss levels (5, 10, 15, 20)
 
-### Attack Implementation
-**File: `src/utils/megaBossAttacks.ts`**
-- Add `'cross'` to the `MegaBossAttackType` union
-- Add a new `performCrossAttack` function that fires 3 cross projectiles in a cone toward the paddle (same pattern as pyramid boss in `bossAttacks.ts`)
-- Import `ATTACK_PATTERNS` from `bossConfig.ts` to use the same cross config (speed, size, cone angle, course change intervals)
-- Add the `cross` case to the switch in `performMegaBossAttack`
+## HUD Display
 
-### Existing Cross Logic Already Works
-The cross projectile course-change logic (stopping, direction changes, danger zone checks) and the cross-to-crossBall merge system in `Game.tsx` (lines 5628-5830) already work for any boss -- they filter by `attack.type === "cross"` regardless of boss type. No changes needed there.
+Add two new boxes to the right panel stat area (desktop) and compact HUD (mobile/fullscreen-off):
+- **STREAK**: Shows "x3" (or "---" when 0)  
+- **BONUS**: Shows "+3%" (or "---" when 0)
 
----
+Color: gold/yellow hue, with pulsing animation when streak >= 5
 
-## 2. Phase 3: Faster Movement
+## Celebrations
 
-### Config Changes
-**File: `src/constants/megaBossConfig.ts`**
-- Increase `veryAngryMoveSpeed` from `4.0` to `5.5`
-
-This value is already used in `Game.tsx` for Phase 3 movement, so no other code changes needed for speed.
-
----
-
-## 3. Phase 3: Music-Reactive Background Hue Blinking
-
-### Sound Manager -- Add AnalyserNode
-**File: `src/utils/sounds.ts`**
-- Add a private `analyser: AnalyserNode | null` field and a `frequencyData: Uint8Array` buffer
-- In `playBossMusic()`, route the boss music HTMLAudioElement through a `MediaElementAudioSource` -> `AnalyserNode` -> `destination` using the existing AudioContext
-- Add a public `getFrequencyData(): Uint8Array | null` method that calls `analyser.getByteFrequencyData()` and returns the data array
-- Add a public `getBassEnergy(): number` method that returns a 0-1 value based on the average of the first ~8 frequency bins (bass/beat detection)
-- Clean up analyser in `stopBossMusic()`
-
-### World State -- Add backgroundHue
-**File: `src/engine/state.ts`**
-- Add `backgroundHue: number` field to `GameWorld` (default `0`)
-- Add to `WORLD_DEFAULTS` and `resetWorld`
-
-### Game Loop -- Update Background Hue
-**File: `src/components/Game.tsx`**
-- In the mega boss Phase 3 section (near swarm spawning logic around line 4893), read `soundManager.getBassEnergy()`
-- When bass energy exceeds a threshold (e.g., 0.4), cycle `world.backgroundHue` by jumping to a new random hue (0-360)
-- Use a simple cooldown (e.g., 100ms) to avoid changing every frame
-
-### Renderer -- Draw Hue-Tinted Background
-**File: `src/engine/canvasRenderer.ts`**
-- After drawing the level 20 boss background image (line 231), check if the boss is in Phase 3 (via `world.boss` mega boss state)
-- Add a new field `backgroundHue` to `GameWorld` reads
-- If `backgroundHue > 0` and level is 20, overlay a translucent `hsl(backgroundHue, 80%, 50%)` fill with `globalCompositeOperation: "overlay"` at ~0.25 opacity
-- This creates a pulsing colored tint that shifts hue with the music beats
+- **Every x5** (5, 10, 15, 20...): Background flash + phase complete jingle sound
+- **x10+**: Activate music-reactive background hue blinking (same code as mega boss Phase 3) on ALL boss levels, not just level 20. Reset when streak resets.
 
 ---
 
 ## Technical Details
 
+### 1. State in Game.tsx
+
+Add new React state:
+- `hitStreak: number` (default 0)
+- `hitStreakActive: boolean` (tracks if streak hue effect is on)
+
+Add a ref:
+- `ballHitSinceLastPaddleRef: React.MutableRefObject<Set<number>>` -- set of ball IDs that have hit a boss/enemy since last paddle contact
+
+### 2. Physics Changes (src/engine/physics.ts)
+
+- Remove the `if (isBossRush)` guard on `paddleHitBallIds` -- always track paddle hits for all modes
+- Always push to `bossHitBallIds` on boss hits (remove `isBossRush` guard)
+- Add `enemyHitBallIds: number[]` to `PhysicsFrameResult` -- push ball ID when an enemy is destroyed by ball collision
+
+### 3. Game Loop Logic (src/components/Game.tsx)
+
+In the physics result processing section (~line 3362):
+
+```text
+For each paddleHitBallId:
+  if ball NOT in ballHitSinceLastPaddleRef -> streak resets to 0, deactivate hue
+  remove ball from ballHitSinceLastPaddleRef
+
+For each bossHit (canDamage):
+  add ball to ballHitSinceLastPaddleRef
+  increment streak by 1
+  award 100 * (1 + streak/100) points  (streak% bonus)
+  if streak % 5 === 0: celebration (sound + flash)
+  if streak >= 10 && !hitStreakActive: activate hue effect
+
+For each enemyHitBallId:
+  add ball to ballHitSinceLastPaddleRef
+  increment streak by 1
+  (same celebration/hue logic)
+
+On life lost (allBallsLost):
+  reset streak to 0, deactivate hue, clear ballHitSinceLastPaddleRef
+```
+
+### 4. Background Hue for Streak (src/components/Game.tsx + src/engine/canvasRenderer.ts)
+
+- In the game loop, when `hitStreakActive` and on a boss level: read `soundManager.getBassEnergy()` and set `world.backgroundHue` (same code as mega boss Phase 3)
+- In canvasRenderer: change the hue overlay condition from `level === 20` to `world.backgroundHue > 0` so it works on any boss level
+
+### 5. HUD Display (src/components/Game.tsx)
+
+Add two new `right-stat-box` entries after the Boss CD box (~line 8161):
+- STREAK box showing `x{hitStreak}` or "---"
+- BONUS box showing `+{hitStreak}%` or "---"
+- Only visible on boss levels
+
+Also add to the compact HUD overlay (~line 8263) and mobile HUD section.
+
+### 6. Reset on Level Start / Retry
+
+In `handleRetryLevel` and level initialization: reset `hitStreak` to 0, clear `ballHitSinceLastPaddleRef`, set `hitStreakActive` to false, reset `world.backgroundHue` to 0.
+
 ### Files Changed
 
 | File | Changes |
 |---|---|
-| `src/constants/megaBossConfig.ts` | Add `cross` to phase 2/3 weights; increase `veryAngryMoveSpeed` to 5.5 |
-| `src/utils/megaBossAttacks.ts` | Add `cross` to attack type; add `performCrossAttack` function; add case to switch |
-| `src/utils/sounds.ts` | Add AnalyserNode, `getFrequencyData()`, `getBassEnergy()` methods |
-| `src/engine/state.ts` | Add `backgroundHue` field |
-| `src/engine/canvasRenderer.ts` | Render hue-tinted overlay on level 20 Phase 3 |
-| `src/components/Game.tsx` | Update `backgroundHue` from bass energy in Phase 3 game loop |
+| `src/engine/physics.ts` | Remove `isBossRush` guards on paddle/boss hit ball ID tracking; add `enemyHitBallIds` to result |
+| `src/components/Game.tsx` | Add streak state, streak logic in physics result processing, celebrations, hue activation, HUD boxes, reset on death/retry |
+| `src/engine/canvasRenderer.ts` | Change hue overlay condition from `level === 20` to `world.backgroundHue > 0` |
 
