@@ -487,7 +487,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bossDefeatedTransitioning, setBossDefeatedTransitioning] = useState(false);
    const bossDefeatedTransitioningRef = useRef(false);
    const hasAutoFullscreenedRef = useRef(false);
-  const [mobileGapHeight, setMobileGapHeight] = useState(0);
+  
   useEffect(() => {
     bossDefeatedTransitioningRef.current = bossDefeatedTransitioning;
   }, [bossDefeatedTransitioning]);
@@ -1089,22 +1089,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const timerStartedRef = useRef(false);
   const nextLevelRef = useRef<(() => void) | null>(null);
 
-  // Measure grey gap height above game canvas for mobile overlays
-  useEffect(() => {
-    if (!isMobileDevice || !gameAreaRef.current) return;
-    const update = () => {
-      const rect = gameAreaRef.current?.getBoundingClientRect();
-      if (rect) setMobileGapHeight(rect.top);
-    };
-    update();
-    window.addEventListener('resize', update);
-    const ro = new ResizeObserver(update);
-    ro.observe(gameAreaRef.current);
-    return () => {
-      window.removeEventListener('resize', update);
-      ro.disconnect();
-    };
-  }, [isMobileDevice]);
 
 
   const gameLoopRef = useRef<FixedStepGameLoop | null>(null);
@@ -8011,16 +7995,15 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                   setShowDebugDashboard={setShowDebugDashboard}
                 />
 
-                {/* Mobile Power-Up Timers + Bonus Letter - Fixed overlay in grey gap area */}
-                {isMobileDevice && mobileGapHeight > 0 && (
+                {/* Mobile Power-Up Timers + Bonus Letter - Absolute positioned above canvas */}
+                {isMobileDevice && (
                   <div
                     style={{
-                      position: 'fixed',
-                      top: 0,
+                      position: 'absolute',
+                      top: '-80px',
                       left: 0,
                       right: 0,
-                      height: `${mobileGapHeight}px`,
-                      zIndex: 40,
+                      zIndex: 50,
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
