@@ -836,6 +836,7 @@ export function runPhysicsFrame(config: PhysicsConfig): PhysicsFrameResult {
                     key: "sphere_hit",
                   });
                   result.screenShakes.push({ intensity: 5, duration: 500 });
+                  result.enemyHitBallIds.push(ccdResult.ball.id); // Count first hit for streak
                 } else {
                   enemiesToDestroy.add(enemyIndex);
                   result.enemyHitBallIds.push(ccdResult.ball.id);
@@ -882,6 +883,7 @@ export function runPhysicsFrame(config: PhysicsConfig): PhysicsFrameResult {
                     key: "crossball_hit",
                   });
                   result.screenShakes.push({ intensity: 5, duration: 500 });
+                  result.enemyHitBallIds.push(ccdResult.ball.id); // Count first hit for streak
                 } else {
                   enemiesToDestroy.add(enemyIndex);
                   result.enemyHitBallIds.push(ccdResult.ball.id);
