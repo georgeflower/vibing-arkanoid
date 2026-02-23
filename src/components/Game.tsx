@@ -7489,95 +7489,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 </h1>
               </div>
 
-              {/* Mobile Power-Up Timers - Above game area */}
-              {isMobileDevice &&
-                paddle &&
-                (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
-                  <div className="flex justify-center items-center gap-3 py-2 retro-pixel-text text-xs font-bold pointer-events-none">
-                    {bossStunnerEndTime && Date.now() < bossStunnerEndTime && (
-                      <span
-                        style={{
-                          color: `hsl(${Math.max(0, 50 - (1 - (bossStunnerEndTime - Date.now()) / 5000) * 50)}, 100%, 50%)`,
-                          textShadow: "0 0 8px currentColor",
-                          transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
-                          display: "inline-block",
-                        }}
-                      >
-                        STUN: {((bossStunnerEndTime - Date.now()) / 1000).toFixed(1)}s
-                      </span>
-                    )}
-                    {reflectShieldEndTime && Date.now() < reflectShieldEndTime && (
-                      <span
-                        style={{
-                          color: `hsl(${Math.max(0, 50 - (1 - (reflectShieldEndTime - Date.now()) / 15000) * 50)}, 100%, 50%)`,
-                          textShadow: "0 0 8px currentColor",
-                          transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
-                          display: "inline-block",
-                        }}
-                      >
-                        REFLECT: {((reflectShieldEndTime - Date.now()) / 1000).toFixed(1)}s
-                      </span>
-                    )}
-                    {homingBallEndTime && Date.now() < homingBallEndTime && (
-                      <span
-                        style={{
-                          color: `hsl(${Math.max(0, 50 - (1 - (homingBallEndTime - Date.now()) / 8000) * 50)}, 100%, 50%)`,
-                          textShadow: "0 0 8px currentColor",
-                          transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
-                          display: "inline-block",
-                        }}
-                      >
-                        MAGNET: {((homingBallEndTime - Date.now()) / 1000).toFixed(1)}s
-                      </span>
-                    )}
-                    {fireballEndTime && Date.now() < fireballEndTime && (
-                      <span
-                        style={{
-                          color: `hsl(${Math.max(0, 30 - (1 - (fireballEndTime - Date.now()) / FIREBALL_DURATION) * 30)}, 100%, 50%)`,
-                          textShadow: "0 0 8px currentColor",
-                          transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
-                          display: "inline-block",
-                        }}
-                      >
-                        FIREBALL: {((fireballEndTime - Date.now()) / 1000).toFixed(1)}s
-                      </span>
-                    )}
-                  </div>
-                )}
-
-              {/* Mobile Bonus Letter Tutorial - Above game area */}
-              {isMobileDevice &&
-                bonusLetterFloatingText?.active &&
-                bonusLetters.length > 0 &&
-                (() => {
-                  const elapsed = Date.now() - bonusLetterFloatingText.startTime;
-                  const duration = 4000;
-
-                  if (elapsed >= duration) {
-                    setTimeout(() => setBonusLetterFloatingText(null), 0);
-                    return null;
-                  }
-
-                  const zoomPhase = (elapsed / 500) * Math.PI;
-                  const zoomScale = 1 + Math.sin(zoomPhase) * 0.3;
-                  const opacity =
-                    elapsed < 500 ? elapsed / 500 : elapsed > duration - 500 ? (duration - elapsed) / 500 : 1;
-
-                  return (
-                    <div
-                      className="flex justify-center py-1 retro-pixel-text text-xs font-bold pointer-events-none"
-                      style={{
-                        color: "hsl(48, 100%, 60%)",
-                        textShadow: "0 0 10px hsl(48, 100%, 60%), 0 0 20px hsl(48, 100%, 50%)",
-                        transform: `scale(${zoomScale})`,
-                        opacity,
-                      }}
-                    >
-                      Catch all letters for megabonus!
-                    </div>
-                  );
-                })()}
-
               {/* Main Content with Side Panels */}
               <div className="metal-main-content">
                 {/* Left Panel */}
@@ -7725,6 +7636,119 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                             </div>
                           );
                         })()}
+                      </div>
+                    )}
+
+                    {/* Mobile Power-Up Timers + Bonus Letter - Absolute overlay inside game-glow */}
+                    {isMobileDevice && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '8px',
+                          left: 0,
+                          right: 0,
+                          zIndex: 50,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '2px',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        {paddle &&
+                          (bossStunnerEndTime || reflectShieldEndTime || homingBallEndTime || fireballEndTime) && (
+                            <>
+                              {bossStunnerEndTime && Date.now() < bossStunnerEndTime && (
+                                <span
+                                  className="retro-pixel-text"
+                                  style={{
+                                    color: `hsl(${Math.max(0, 50 - (1 - (bossStunnerEndTime - Date.now()) / 5000) * 50)}, 100%, 50%)`,
+                                    textShadow: "0 0 8px currentColor",
+                                    transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
+                                    display: "inline-block",
+                                    fontSize: "10px",
+                                    fontWeight: "bold",
+                                  }}
+                                >
+                                  STUN: {((bossStunnerEndTime - Date.now()) / 1000).toFixed(1)}s
+                                </span>
+                              )}
+                              {reflectShieldEndTime && Date.now() < reflectShieldEndTime && (
+                                <span
+                                  className="retro-pixel-text"
+                                  style={{
+                                    color: `hsl(${Math.max(0, 50 - (1 - (reflectShieldEndTime - Date.now()) / 15000) * 50)}, 100%, 50%)`,
+                                    textShadow: "0 0 8px currentColor",
+                                    transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
+                                    display: "inline-block",
+                                    fontSize: "10px",
+                                    fontWeight: "bold",
+                                  }}
+                                >
+                                  REFLECT: {((reflectShieldEndTime - Date.now()) / 1000).toFixed(1)}s
+                                </span>
+                              )}
+                              {homingBallEndTime && Date.now() < homingBallEndTime && (
+                                <span
+                                  className="retro-pixel-text"
+                                  style={{
+                                    color: `hsl(${Math.max(0, 50 - (1 - (homingBallEndTime - Date.now()) / 8000) * 50)}, 100%, 50%)`,
+                                    textShadow: "0 0 8px currentColor",
+                                    transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
+                                    display: "inline-block",
+                                    fontSize: "10px",
+                                    fontWeight: "bold",
+                                  }}
+                                >
+                                  MAGNET: {((homingBallEndTime - Date.now()) / 1000).toFixed(1)}s
+                                </span>
+                              )}
+                              {fireballEndTime && Date.now() < fireballEndTime && (
+                                <span
+                                  className="retro-pixel-text"
+                                  style={{
+                                    color: `hsl(${Math.max(0, 30 - (1 - (fireballEndTime - Date.now()) / FIREBALL_DURATION) * 30)}, 100%, 50%)`,
+                                    textShadow: "0 0 8px currentColor",
+                                    transform: `scale(${1 + Math.sin(Date.now() * 0.04) * 0.1})`,
+                                    display: "inline-block",
+                                    fontSize: "10px",
+                                    fontWeight: "bold",
+                                  }}
+                                >
+                                  FIREBALL: {((fireballEndTime - Date.now()) / 1000).toFixed(1)}s
+                                </span>
+                              )}
+                            </>
+                          )}
+                        {bonusLetterFloatingText?.active &&
+                          bonusLetters.length > 0 &&
+                          (() => {
+                            const elapsed = Date.now() - bonusLetterFloatingText.startTime;
+                            const duration = 4000;
+                            if (elapsed >= duration) {
+                              setTimeout(() => setBonusLetterFloatingText(null), 0);
+                              return null;
+                            }
+                            const zoomPhase = (elapsed / 500) * Math.PI;
+                            const zoomScale = 1 + Math.sin(zoomPhase) * 0.3;
+                            const opacity =
+                              elapsed < 500 ? elapsed / 500 : elapsed > duration - 500 ? (duration - elapsed) / 500 : 1;
+                            return (
+                              <span
+                                className="retro-pixel-text"
+                                style={{
+                                  color: "hsl(48, 100%, 60%)",
+                                  textShadow: "0 0 10px hsl(48, 100%, 60%), 0 0 20px hsl(48, 100%, 50%)",
+                                  transform: `scale(${zoomScale})`,
+                                  opacity,
+                                  fontSize: "10px",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                Catch all letters for megabonus!
+                              </span>
+                            );
+                          })()}
                       </div>
                     )}
 
