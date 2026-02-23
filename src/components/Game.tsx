@@ -1054,6 +1054,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
   // ═══ Hit Streak System (boss levels) ═══
   const [hitStreak, setHitStreak] = useState(0);
+  const hitStreakRef = useRef(0);
   const [hitStreakActive, setHitStreakActive] = useState(false); // hue effect active
   const ballHitSinceLastPaddleRef = useRef<Set<number>>(new Set());
   // Dead refs removed: gameOverParticlesRef, highScoreParticlesRef, particleRenderTick
@@ -2190,6 +2191,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setLivesLostOnCurrentLevel(0); // Reset mercy power-up counter
     setBossFirstHitShieldDropped(false); // Reset shield drop for new game
     setHitStreak(0);
+    hitStreakRef.current = 0;
     setHitStreakActive(false);
     ballHitSinceLastPaddleRef.current.clear();
     // Set speed multiplier (already calculated above)
@@ -2304,6 +2306,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setLivesLostOnCurrentLevel(0);
       setBossFirstHitShieldDropped(false);
       setHitStreak(0);
+      hitStreakRef.current = 0;
       setHitStreakActive(false);
       ballHitSinceLastPaddleRef.current.clear();
       world.backgroundHue = 0;
@@ -3393,11 +3396,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       for (const ballId of result.paddleHitBallIds) {
         if (!ballHitSinceLastPaddleRef.current.has(ballId)) {
           // Ball returned to paddle without hitting boss/enemy — reset streak
-          if (hitStreak > 0) {
-            setHitStreak(0);
-            setHitStreakActive(false);
-            world.backgroundHue = 0;
-          }
+          setHitStreak(0);
+          hitStreakRef.current = 0;
+          setHitStreakActive(false);
+          world.backgroundHue = 0;
         }
         // Clear the flag for next cycle
         ballHitSinceLastPaddleRef.current.delete(ballId);
@@ -3412,6 +3414,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         ballHitSinceLastPaddleRef.current.add(hit.ballId);
         setHitStreak((prev) => {
           const newStreak = prev + 1;
+          hitStreakRef.current = newStreak;
           // Award 100 points with streak bonus
           const bonus = Math.floor(100 * (1 + newStreak / 100));
           world.score += bonus;
@@ -3428,6 +3431,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         ballHitSinceLastPaddleRef.current.add(ballId);
         setHitStreak((prev) => {
           const newStreak = prev + 1;
+          hitStreakRef.current = newStreak;
           const bonus = Math.floor(100 * (1 + newStreak / 100));
           world.score += bonus;
           setScore((s) => s + bonus);
@@ -3877,6 +3881,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       // Reset hit streak on death
       setHitStreak(0);
+      hitStreakRef.current = 0;
       setHitStreakActive(false);
       ballHitSinceLastPaddleRef.current.clear();
       world.backgroundHue = 0;
@@ -5960,6 +5965,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             for (let i = 0; i < mergeCount; i++) {
               setHitStreak((prev) => {
                 const newStreak = prev + 1;
+                hitStreakRef.current = newStreak;
                 const bonus = Math.floor(100 * (1 + newStreak / 100));
                 world.score += bonus;
                 setScore((s) => s + bonus);
@@ -7143,6 +7149,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setBossFirstHitShieldDropped(false); // Reset shield drop for retried boss level
     // Reset hit streak
     setHitStreak(0);
+    hitStreakRef.current = 0;
     setHitStreakActive(false);
     ballHitSinceLastPaddleRef.current.clear();
     world.backgroundHue = 0;
