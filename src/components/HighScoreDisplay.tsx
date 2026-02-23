@@ -142,6 +142,9 @@ export const HighScoreDisplay = ({ onClose, leaderboardType = 'all-time', initia
                         {entry.difficulty === "godlike" && (
                           <span className="text-red-500 text-[8px] sm:text-[9px] md:text-[10px] font-bold leading-tight">GOD-MODE</span>
                         )}
+                        {entry.gameMode === "boss_rush" && (
+                          <span className="text-orange-400 text-[8px] sm:text-[9px] md:text-[10px] font-bold leading-tight">BOSS RUSH</span>
+                        )}
                       </div>
                       
                       <span className="text-white font-bold text-right tabular-nums">{entry.score.toString().padStart(6, '0')}</span>

@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { type, player_name, score, level, completion_time_ms, boss_level, difficulty, beat_level_50, collected_all_letters, starting_lives } = body;
+    const { type, player_name, score, level, completion_time_ms, boss_level, difficulty, beat_level_50, collected_all_letters, starting_lives, game_mode } = body;
 
     // Validate type
     if (type !== "high_score" && type !== "boss_rush") {
@@ -85,6 +85,7 @@ Deno.serve(async (req) => {
         beat_level_50: typeof beat_level_50 === "boolean" ? beat_level_50 : false,
         collected_all_letters: typeof collected_all_letters === "boolean" ? collected_all_letters : false,
         starting_lives: typeof starting_lives === "number" ? Math.min(Math.max(starting_lives, 1), 10) : 3,
+        game_mode: typeof game_mode === "string" ? game_mode.slice(0, 20) : "campaign",
       });
       insertError = error;
     } else {
