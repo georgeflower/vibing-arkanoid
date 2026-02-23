@@ -2315,11 +2315,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setLevel(nextBossLevel);
       setLivesLostOnCurrentLevel(0);
       setBossFirstHitShieldDropped(false);
-      setHitStreak(0);
-      hitStreakRef.current = 0;
-      setHitStreakActive(false);
+      // Keep hitStreak across boss rush level transitions — do NOT reset here
       ballHitSinceLastPaddleRef.current.clear();
-      world.backgroundHue = 0;
       setSpeedMultiplier(newSpeedMultiplier);
 
       setPaddle((prev) => ({
@@ -2347,6 +2344,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         waitingToLaunch: true,
       };
       setBalls([initialBall]);
+      // Seed new ball into hit tracking so first paddle contact doesn't reset streak
+      ballHitSinceLastPaddleRef.current.add(initialBall.id);
       setLaunchAngle(-20);
       launchAngleDirectionRef.current = 1;
       setShowInstructions(true);
@@ -2439,6 +2438,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       waitingToLaunch: true,
     };
     setBalls([initialBall]);
+    // Seed new ball into hit tracking so first paddle contact doesn't reset streak
+    ballHitSinceLastPaddleRef.current.add(initialBall.id);
     setLaunchAngle(-20); // Start from left side
     launchAngleDirectionRef.current = 1; // Move right initially
     setShowInstructions(true); // Show instructions for new level
