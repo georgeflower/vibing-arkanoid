@@ -1,50 +1,62 @@
 
 
-# Center Mobile Power-Up Timers and Bonus Letter Overlay Above Game Canvas
+# Fix Mobile Power-Up Timers Position -- Use Dynamic State for Gap Height
 
 ## Problem
-The mobile power-up timers (STUN, REFLECT, MAGNET, FIREBALL) and the bonus letter tutorial text are currently in the normal document flow before the game canvas. This causes them to appear at the absolute top of the screen and push the canvas down.
+The current fixed-position overlay computes `height` from `gameAreaRef.current.getBoundingClientRect().top` directly during render. This ref read happens only once and produces a stale (likely 0) value because the DOM layout hasn't settled yet when the component first renders. The timers therefore appear at the top of the screen instead of centered in the grey gap.
 
 ## Solution
-Move both blocks back inside the `game-glow` container (which has `position: relative`) and position them as absolute overlays at the top of the game canvas, centered both horizontally and vertically within a top strip. This follows the existing overlay positioning architecture where overlays live inside the game-glow div.
+Track the grey gap height in a **state variable** that updates whenever the layout changes (resize, orientation change). Use a `useEffect` + `ResizeObserver` on `gameAreaRef` to continuously measure `getBoundingClientRect().top` and store it in state. This ensures the fixed overlay's height is always correct and responsive.
 
-## Changes
+## Technical Changes
 
 **File: `src/components/Game.tsx`**
 
-1. **Remove** the mobile power-up timers block (lines 7492-7546) and mobile bonus letter tutorial block (lines 7548-7579) from their current position before `metal-main-content`.
+1. **Add a new state variable** near the other state declarations:
+   ```tsx
+   const [mobileGapHeight, setMobileGapHeight] = useState(0);
+   ```
 
-2. **Insert** both blocks inside the `game-glow` div (after the canvas ref, around line 7610+), as absolute-positioned overlays:
+2. **Add a useEffect** that measures the gap on mount, resize, and layout changes:
+   ```tsx
+   useEffect(() => {
+     if (!isMobileDevice || !gameAreaRef.current) return;
+     const update = () => {
+       const rect = gameAreaRef.current?.getBoundingClientRect();
+       if (rect) setMobileGapHeight(rect.top);
+     };
+     update();
+     window.addEventListener('resize', update);
+     const ro = new ResizeObserver(update);
+     ro.observe(gameAreaRef.current);
+     return () => {
+       window.removeEventListener('resize', update);
+       ro.disconnect();
+     };
+   }, [isMobileDevice]);
+   ```
 
-   - **Power-Up Timers**: Wrap in a `div` with `position: absolute`, `top: 8px`, `left: 0`, `right: 0`, `z-index: 50`. Use `flex flex-col items-center gap-1` so multiple active timers stack vertically (each on its own line, centered).
-
-   - **Bonus Letter Tutorial**: Same absolute positioning pattern, placed just below the timers area (`top: ~40px` or use a shared wrapper).
-
-   - Alternatively, wrap both in a single container div:
-     ```jsx
+3. **Update the overlay container** (lines 7995-8011) to use `mobileGapHeight` instead of the inline ref read, and only render when the height is positive:
+   ```tsx
+   {isMobileDevice && mobileGapHeight > 0 && (
      <div style={{
-       position: 'absolute',
-       top: '8px',
+       position: 'fixed',
+       top: 0,
        left: 0,
        right: 0,
-       zIndex: 50,
+       height: `${mobileGapHeight}px`,
+       zIndex: 40,
        display: 'flex',
        flexDirection: 'column',
        alignItems: 'center',
+       justifyContent: 'center',
        gap: '2px',
        pointerEvents: 'none',
      }}>
-       {/* Each timer as its own row */}
-       {/* Bonus letter text as last row */}
+       {/* ...existing timer spans and bonus letter text unchanged... */}
      </div>
-     ```
+   )}
+   ```
 
-3. **Change timer layout** from horizontal (`flex gap-3`) to vertical (`flex-col gap-1`) so when multiple timers are active, they stack below each other instead of side-by-side.
-
-This approach:
-- Keeps overlays inside the scaled game-glow container (matching the project's overlay architecture)
-- Centers them horizontally over the game canvas
-- Stacks multiple timers vertically
-- Does not affect document flow or push the canvas down
-- Only applies to mobile (`isMobileDevice` guard remains)
+This ensures the overlay height is always measured from the actual DOM position of the game area, keeping timers centered in the grey gap above the canvas on all mobile devices and orientations.
 
