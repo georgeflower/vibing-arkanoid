@@ -1051,6 +1051,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [livesLostOnCurrentLevel, setLivesLostOnCurrentLevel] = useState(0);
   const [bossFirstHitShieldDropped, setBossFirstHitShieldDropped] = useState(false);
   const [bossIntroActive, setBossIntroActive] = useState(false);
+
+  // ═══ Hit Streak System (boss levels) ═══
+  const [hitStreak, setHitStreak] = useState(0);
+  const [hitStreakActive, setHitStreakActive] = useState(false); // hue effect active
+  const ballHitSinceLastPaddleRef = useRef<Set<number>>(new Set());
   // Dead refs removed: gameOverParticlesRef, highScoreParticlesRef, particleRenderTick
   // (particles are fully managed by particlePool)
   const [retryLevelData, setRetryLevelData] = useState<{ level: number; layout: any } | null>(null);
@@ -2184,6 +2189,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setLevel(startLevel);
     setLivesLostOnCurrentLevel(0); // Reset mercy power-up counter
     setBossFirstHitShieldDropped(false); // Reset shield drop for new game
+    setHitStreak(0);
+    setHitStreakActive(false);
+    ballHitSinceLastPaddleRef.current.clear();
     // Set speed multiplier (already calculated above)
     setSpeedMultiplier(startingSpeedMultiplier);
     setGameState("ready");
@@ -2295,6 +2303,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       setLevel(nextBossLevel);
       setLivesLostOnCurrentLevel(0);
       setBossFirstHitShieldDropped(false);
+      setHitStreak(0);
+      setHitStreakActive(false);
+      ballHitSinceLastPaddleRef.current.clear();
+      world.backgroundHue = 0;
       setSpeedMultiplier(newSpeedMultiplier);
 
       setPaddle((prev) => ({
@@ -2382,6 +2394,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setLevel(newLevel);
     setLivesLostOnCurrentLevel(0); // Reset mercy power-up counter for new level
     setBossFirstHitShieldDropped(false); // Reset shield drop for new boss level
+    setHitStreak(0);
+    setHitStreakActive(false);
+    ballHitSinceLastPaddleRef.current.clear();
+    world.backgroundHue = 0;
     setSpeedMultiplier(newSpeedMultiplier);
 
     // Update max level reached in localStorage
@@ -3373,6 +3389,69 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     }
 
+    // ═══ Hit Streak: paddle bounce check ═══
+    const isBossLevel = BOSS_LEVELS.includes(level) || level === MEGA_BOSS_LEVEL;
+    if (isBossLevel) {
+      for (const ballId of result.paddleHitBallIds) {
+        if (!ballHitSinceLastPaddleRef.current.has(ballId)) {
+          // Ball returned to paddle without hitting boss/enemy — reset streak
+          if (hitStreak > 0) {
+            setHitStreak(0);
+            setHitStreakActive(false);
+            world.backgroundHue = 0;
+          }
+        }
+        // Clear the flag for next cycle
+        ballHitSinceLastPaddleRef.current.delete(ballId);
+      }
+    }
+
+    // ═══ Hit Streak: boss/enemy hit tracking ═══
+    if (isBossLevel) {
+      // Boss hits
+      for (const hit of result.bossHits) {
+        if (!hit.canDamage) continue;
+        ballHitSinceLastPaddleRef.current.add(hit.ballId);
+        setHitStreak((prev) => {
+          const newStreak = prev + 1;
+          // Award 100 points with streak bonus
+          const bonus = Math.floor(100 * (1 + newStreak / 100));
+          world.score += bonus;
+          setScore((s) => s + bonus);
+          // Celebration at every x5
+          if (newStreak % 5 === 0) {
+            soundManager.playPhaseCompleteJingle();
+            world.backgroundFlash = 10;
+            setTimeout(() => { world.backgroundFlash = 0; }, 100);
+          }
+          // Activate hue effect at x10+
+          if (newStreak >= 10 && !hitStreakActive) {
+            setHitStreakActive(true);
+          }
+          return newStreak;
+        });
+      }
+      // Enemy kills
+      for (const ballId of result.enemyHitBallIds) {
+        ballHitSinceLastPaddleRef.current.add(ballId);
+        setHitStreak((prev) => {
+          const newStreak = prev + 1;
+          const bonus = Math.floor(100 * (1 + newStreak / 100));
+          world.score += bonus;
+          setScore((s) => s + bonus);
+          if (newStreak % 5 === 0) {
+            soundManager.playPhaseCompleteJingle();
+            world.backgroundFlash = 10;
+            setTimeout(() => { world.backgroundFlash = 0; }, 100);
+          }
+          if (newStreak >= 10 && !hitStreakActive) {
+            setHitStreakActive(true);
+          }
+          return newStreak;
+        });
+      }
+    }
+
     // ═══ Boss hit events — apply damage via React state ═══
     for (const hit of result.bossHits) {
       if (!hit.canDamage) continue;
@@ -3809,6 +3888,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         setBossRushTotalLivesLost((prev) => prev + 1);
       }
 
+      // Reset hit streak on death
+      setHitStreak(0);
+      setHitStreakActive(false);
+      ballHitSinceLastPaddleRef.current.clear();
+      world.backgroundHue = 0;
+
       setLives((prev) => {
         const newLives = prev - 1;
         soundManager.playLoseLife();
@@ -3847,6 +3932,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     bossRushStartTime,
     bossRushIndex,
     settings.difficulty,
+    hitStreak,
+    hitStreakActive,
   ]);
 
   // FPS tracking for adaptive quality
@@ -4959,6 +5046,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         } else if (bassEnergy < 0.3) {
           world.backgroundHue = 0;
         }
+      }
+    }
+
+    // ═══ Hit Streak: music-reactive hue when streak >= 10 ═══
+    if (hitStreakActive && (BOSS_LEVELS.includes(level) || level === MEGA_BOSS_LEVEL)) {
+      const bassEnergy = soundManager.getBassEnergy();
+      if (bassEnergy > 0.72) {
+        world.backgroundHue = Math.floor(Math.random() * 360);
+      } else if (bassEnergy < 0.3) {
+        world.backgroundHue = 0;
       }
     }
 
@@ -7040,6 +7137,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setLevelSkipped(false);
     setLivesLostOnCurrentLevel(0); // Reset mercy power-up counter
     setBossFirstHitShieldDropped(false); // Reset shield drop for retried boss level
+    // Reset hit streak
+    setHitStreak(0);
+    setHitStreakActive(false);
+    ballHitSinceLastPaddleRef.current.clear();
+    world.backgroundHue = 0;
     setPowerUpsCollectedTypes(new Set());
     setBricksDestroyedByTurrets(0);
     setBossesKilled(0);
@@ -8159,6 +8261,34 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         </div>
                       </div>
                     )}
+
+                    {/* Hit Streak - Only show on boss levels */}
+                    {(BOSS_LEVELS.includes(level) || level === MEGA_BOSS_LEVEL) && (
+                      <>
+                        <div className="right-stat-box">
+                          <div className="right-stat-label" style={{ color: "hsl(48, 90%, 55%)" }}>
+                            STREAK
+                          </div>
+                          <div
+                            className={`right-stat-value ${hitStreak >= 5 ? "animate-pulse" : ""}`}
+                            style={{ color: hitStreak > 0 ? "hsl(48, 100%, 60%)" : "hsl(0, 0%, 50%)" }}
+                          >
+                            {hitStreak > 0 ? `x${hitStreak}` : "---"}
+                          </div>
+                        </div>
+                        <div className="right-stat-box">
+                          <div className="right-stat-label" style={{ color: "hsl(48, 90%, 55%)" }}>
+                            BONUS
+                          </div>
+                          <div
+                            className={`right-stat-value ${hitStreak >= 5 ? "animate-pulse" : ""}`}
+                            style={{ color: hitStreak > 0 ? "hsl(48, 100%, 60%)" : "hsl(0, 0%, 50%)" }}
+                          >
+                            {hitStreak > 0 ? `+${hitStreak}%` : "---"}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -8321,6 +8451,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                         >
                           {(bossHitCooldown / 1000).toFixed(1)}s
                         </span>
+                      </div>
+                    )}
+                    {(BOSS_LEVELS.includes(level) || level === MEGA_BOSS_LEVEL) && hitStreak > 0 && (
+                      <div
+                        className={`retro-pixel-text text-xs ${hitStreak >= 5 ? "animate-pulse" : ""}`}
+                        style={{ color: "hsl(48, 100%, 60%)" }}
+                      >
+                        STREAK: x{hitStreak} (+{hitStreak}%)
                       </div>
                     )}
                   </div>

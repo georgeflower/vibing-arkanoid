@@ -232,8 +232,8 @@ export function renderFrame(
     useFittedBackground = true;
   }
 
-  // Phase 3 music-reactive hue overlay for level 20
-  if (level === 20 && world.backgroundHue > 0) {
+  // Music-reactive hue overlay (Phase 3 mega boss + hit streak x10+)
+  if (world.backgroundHue > 0) {
     ctx.save();
     ctx.globalCompositeOperation = "overlay";
     ctx.fillStyle = `hsla(${world.backgroundHue}, 80%, 50%, 0.25)`;

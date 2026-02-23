@@ -105,7 +105,7 @@ export interface PhysicsFrameResult {
 
   paddleHitBallIds: number[];
   bossHitBallIds: number[];
-
+  enemyHitBallIds: number[];
   ccdPerformance: CCDPerformanceData | null;
 
   secondChanceSaves: Array<{ x: number; y: number }>;
@@ -136,6 +136,7 @@ function createEmptyResult(): PhysicsFrameResult {
     bossHits: [],
     paddleHitBallIds: [],
     bossHitBallIds: [],
+    enemyHitBallIds: [],
     ccdPerformance: null,
     secondChanceSaves: [],
   };
@@ -421,10 +422,8 @@ function performBossFirstSweep(
       }
 
       if (canDamage) {
-        // Boss Rush accuracy tracking
-        if (isBossRush) {
-          result.bossHitBallIds.push(ball.id);
-        }
+        // Track boss hit ball IDs (for streak + Boss Rush accuracy)
+        result.bossHitBallIds.push(ball.id);
 
         // Push boss hit event for Game.tsx to process damage
         result.bossHits.push({
@@ -680,9 +679,8 @@ export function runPhysicsFrame(config: PhysicsConfig): PhysicsFrameResult {
               });
             }
             result.soundsToPlay.push({ type: "bounce" });
-            if (isBossRush) {
-              result.paddleHitBallIds.push(ccdResult.ball.id);
-            }
+            // Track paddle hit ball IDs (for streak + Boss Rush accuracy)
+            result.paddleHitBallIds.push(ccdResult.ball.id);
           }
           break;
         }
@@ -734,9 +732,8 @@ export function runPhysicsFrame(config: PhysicsConfig): PhysicsFrameResult {
               });
             }
             result.soundsToPlay.push({ type: "bounce" });
-            if (isBossRush) {
-              result.paddleHitBallIds.push(ccdResult.ball.id);
-            }
+            // Track paddle corner hit ball IDs (for streak + Boss Rush accuracy)
+            result.paddleHitBallIds.push(ccdResult.ball.id);
           }
           break;
         }
@@ -798,6 +795,7 @@ export function runPhysicsFrame(config: PhysicsConfig): PhysicsFrameResult {
                   result.screenShakes.push({ intensity: 5, duration: 500 });
                 } else {
                   enemiesToDestroy.add(enemyIndex);
+                  result.enemyHitBallIds.push(ccdResult.ball.id);
                   result.explosionsToCreate.push({
                     x: enemy.x + enemy.width / 2,
                     y: enemy.y + enemy.height / 2,
@@ -840,6 +838,7 @@ export function runPhysicsFrame(config: PhysicsConfig): PhysicsFrameResult {
                   result.screenShakes.push({ intensity: 5, duration: 500 });
                 } else {
                   enemiesToDestroy.add(enemyIndex);
+                  result.enemyHitBallIds.push(ccdResult.ball.id);
                   result.explosionsToCreate.push({
                     x: enemy.x + enemy.width / 2,
                     y: enemy.y + enemy.height / 2,
@@ -885,6 +884,7 @@ export function runPhysicsFrame(config: PhysicsConfig): PhysicsFrameResult {
                   result.screenShakes.push({ intensity: 5, duration: 500 });
                 } else {
                   enemiesToDestroy.add(enemyIndex);
+                  result.enemyHitBallIds.push(ccdResult.ball.id);
                   result.explosionsToCreate.push({
                     x: enemy.x + enemy.width / 2,
                     y: enemy.y + enemy.height / 2,
@@ -907,6 +907,7 @@ export function runPhysicsFrame(config: PhysicsConfig): PhysicsFrameResult {
               } else {
                 // Cube enemy — one hit kill
                 enemiesToDestroy.add(enemyIndex);
+                result.enemyHitBallIds.push(ccdResult.ball.id);
                 result.explosionsToCreate.push({
                   x: enemy.x + enemy.width / 2,
                   y: enemy.y + enemy.height / 2,
