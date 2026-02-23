@@ -1,6 +1,18 @@
-export const GAME_VERSION = "0.9.971";
+export const GAME_VERSION = "0.9.972";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.972",
+    changes: [
+      "New boss hit streak system — consecutive hits on bosses and spawned enemies award 100 pts + streak bonus percentage (e.g. x5 = +5%)",
+      "Streak persists across levels — carry your combo from one boss fight to the next for massive scores",
+      "At x10+ streak: music-reactive background hue blinking activates on all boss levels",
+      "All enemy hits now counted — pyramid/triangle minion hits register even when not killing",
+      "Boss Rush scores now appear on the main leaderboard with a BOSS RUSH badge",
+      "Fixed: score no longer inflated by +50000 on Mega Boss level death",
+      "Fixed: hit streak no longer resets between levels — combo carries over seamlessly",
+    ],
+  },
   {
     version: "0.9.971",
     changes: [
