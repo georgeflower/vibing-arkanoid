@@ -3402,7 +3402,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // ═══ Hit Streak: paddle bounce check ═══
     const isBossLevel = BOSS_LEVELS.includes(level) || level === MEGA_BOSS_LEVEL;
-    if (isBossLevel) {
+    if (isBossLevel && !bossDefeatedTransitioningRef.current) {
       for (const ballId of result.paddleHitBallIds) {
         if (!ballHitSinceLastPaddleRef.current.has(ballId)) {
           // Ball returned to paddle without hitting boss/enemy — reset streak
