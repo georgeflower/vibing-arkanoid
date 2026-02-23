@@ -203,7 +203,7 @@ export const levelLayouts: (boolean | number)[][][] = [
     [false, 2, true, true, true, true, true, true, true, true, true, 2, false],
     [false, 2, true, true, true, true, 3, true, true, true, true, 2, false],
     [false, 3, true, true, true, 2, 2, 2, true, true, true, 3, false],
-    [false, 2, true, true, true, true, true, true, true, true, true, 2, false],
+    [false, true, true, true, true, true, true, true, true, true, true, true, false],
     [false, 2, true, true, false, false, false, false, false, true, true, 2, false],
     [false, 2, true, true, true, true, false, true, true, true, true, 2, false],
     [false, 2, 4, 4, 2, 4, 4, 4, 2, 4, 4, 2, false],
