@@ -2394,10 +2394,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     setLevel(newLevel);
     setLivesLostOnCurrentLevel(0); // Reset mercy power-up counter for new level
     setBossFirstHitShieldDropped(false); // Reset shield drop for new boss level
-    setHitStreak(0);
-    setHitStreakActive(false);
+    // Keep hitStreak across level transitions — do NOT reset here
     ballHitSinceLastPaddleRef.current.clear();
-    world.backgroundHue = 0;
     setSpeedMultiplier(newSpeedMultiplier);
 
     // Update max level reached in localStorage
@@ -3418,12 +3416,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const bonus = Math.floor(100 * (1 + newStreak / 100));
           world.score += bonus;
           setScore((s) => s + bonus);
-          // Celebration at every x5
-          if (newStreak % 5 === 0) {
-            soundManager.playPhaseCompleteJingle();
-            world.backgroundFlash = 10;
-            setTimeout(() => { world.backgroundFlash = 0; }, 100);
-          }
           // Activate hue effect at x10+
           if (newStreak >= 10 && !hitStreakActive) {
             setHitStreakActive(true);
@@ -3431,7 +3423,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           return newStreak;
         });
       }
-      // Enemy kills
+      // Enemy hits (includes first hits and kills)
       for (const ballId of result.enemyHitBallIds) {
         ballHitSinceLastPaddleRef.current.add(ballId);
         setHitStreak((prev) => {
@@ -3439,11 +3431,6 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const bonus = Math.floor(100 * (1 + newStreak / 100));
           world.score += bonus;
           setScore((s) => s + bonus);
-          if (newStreak % 5 === 0) {
-            soundManager.playPhaseCompleteJingle();
-            world.backgroundFlash = 10;
-            setTimeout(() => { world.backgroundFlash = 0; }, 100);
-          }
           if (newStreak >= 10 && !hitStreakActive) {
             setHitStreakActive(true);
           }
@@ -5966,6 +5953,23 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           soundManager.playMergeSound();
           toast.warning("CrossBall enemies merged into Large Sphere!");
           triggerScreenShake(8, 400);
+
+          // Count each merge as a streak hit (crossBalls merging into sphere)
+          if (BOSS_LEVELS.includes(level) || level === MEGA_BOSS_LEVEL) {
+            const mergeCount = newLargeSpheres.length;
+            for (let i = 0; i < mergeCount; i++) {
+              setHitStreak((prev) => {
+                const newStreak = prev + 1;
+                const bonus = Math.floor(100 * (1 + newStreak / 100));
+                world.score += bonus;
+                setScore((s) => s + bonus);
+                if (newStreak >= 10 && !hitStreakActive) {
+                  setHitStreakActive(true);
+                }
+                return newStreak;
+              });
+            }
+          }
         }
       }
     }
