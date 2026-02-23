@@ -15,6 +15,7 @@ export interface HighScore {
   collectedAllLetters?: boolean;
   startingLives?: number;
   createdAt?: string;
+  gameMode?: string;
 }
 
 const MAX_HIGH_SCORES = 20;
@@ -67,6 +68,7 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time', dif
         collectedAllLetters: row.collected_all_letters || undefined,
         startingLives: row.starting_lives || undefined,
         createdAt: row.created_at,
+        gameMode: (row as any).game_mode || undefined,
       }));
 
       setHighScores(scores);
@@ -257,7 +259,8 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time', dif
     difficulty?: string,
     beatLevel50?: boolean,
     collectedAllLetters?: boolean,
-    startingLives?: number
+    startingLives?: number,
+    gameMode?: string
   ) => {
     try {
       // Rate limiting: prevent submissions more than once per 30 seconds
@@ -286,6 +289,7 @@ export const useHighScores = (leaderboardType: LeaderboardType = 'all-time', dif
           beat_level_50: beatLevel50,
           collected_all_letters: collectedAllLetters,
           starting_lives: startingLives,
+          game_mode: gameMode,
         },
       });
 

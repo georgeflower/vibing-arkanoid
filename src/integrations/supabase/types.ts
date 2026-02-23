@@ -143,6 +143,7 @@ export type Database = {
           collected_all_letters: boolean | null
           created_at: string
           difficulty: string | null
+          game_mode: string | null
           id: string
           level: number
           player_name: string
@@ -154,6 +155,7 @@ export type Database = {
           collected_all_letters?: boolean | null
           created_at?: string
           difficulty?: string | null
+          game_mode?: string | null
           id?: string
           level: number
           player_name: string
@@ -165,6 +167,7 @@ export type Database = {
           collected_all_letters?: boolean | null
           created_at?: string
           difficulty?: string | null
+          game_mode?: string | null
           id?: string
           level?: number
           player_name?: string

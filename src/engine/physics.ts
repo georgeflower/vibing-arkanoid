@@ -793,6 +793,7 @@ export function runPhysicsFrame(config: PhysicsConfig): PhysicsFrameResult {
                     key: "pyramid_hit",
                   });
                   result.screenShakes.push({ intensity: 5, duration: 500 });
+                  result.enemyHitBallIds.push(ccdResult.ball.id); // Count non-killing pyramid hit for streak
                 } else {
                   enemiesToDestroy.add(enemyIndex);
                   result.enemyHitBallIds.push(ccdResult.ball.id);

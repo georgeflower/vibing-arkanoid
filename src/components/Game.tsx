@@ -175,7 +175,16 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     brickOffsetLeft: SCALED_BRICK_OFFSET_LEFT,
   } = useScaledConstants();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [score, setScore] = useState(0);
+  const [score, setScoreRaw] = useState(0);
+  const scoreRef = useRef(0);
+  // Wrap setScore to always keep scoreRef in sync
+  const setScore = useCallback((updater: number | ((prev: number) => number)) => {
+    setScoreRaw((prev) => {
+      const newVal = typeof updater === 'function' ? updater(prev) : updater;
+      scoreRef.current = newVal;
+      return newVal;
+    });
+  }, []);
   const [lives, setLives] = useState(settings.startingLives);
   const [level, setLevel] = useState(settings.startingLevel);
 
@@ -1660,7 +1669,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       soundManager.playHighScoreMusic();
       toast.error("Boss Rush Over!");
     } else {
-      getQualifiedLeaderboards(score).then((qualification) => {
+      const currentScore = scoreRef.current;
+      getQualifiedLeaderboards(currentScore).then((qualification) => {
         if (!levelSkipped && (qualification.daily || qualification.weekly || qualification.allTime)) {
           setQualifiedLeaderboards(qualification);
           setShowHighScoreEntry(true);
@@ -1672,7 +1682,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         }
       });
     }
-  }, [isBossRush, bossRushIndex, bossRushStartTime, score, levelSkipped, getQualifiedLeaderboards]);
+  }, [isBossRush, bossRushIndex, bossRushStartTime, levelSkipped, getQualifiedLeaderboards]);
 
   /**
    * Survive-death branch: resets ball (with proper angle math), clears all power-up
@@ -3417,7 +3427,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           hitStreakRef.current = newStreak;
           // Award 100 points with streak bonus
           const bonus = Math.floor(100 * (1 + newStreak / 100));
-          world.score += bonus;
+          
           setScore((s) => s + bonus);
           // Activate hue effect at x10+
           if (newStreak >= 10 && !hitStreakActive) {
@@ -3433,7 +3443,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           const newStreak = prev + 1;
           hitStreakRef.current = newStreak;
           const bonus = Math.floor(100 * (1 + newStreak / 100));
-          world.score += bonus;
+          
           setScore((s) => s + bonus);
           if (newStreak >= 10 && !hitStreakActive) {
             setHitStreakActive(true);
@@ -4921,7 +4931,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           setTimeout(() => {
             setGameState("won");
             // Check for high score qualification on victory too
-            getQualifiedLeaderboards(score + MEGA_BOSS_CONFIG.points).then((qualification) => {
+            getQualifiedLeaderboards(scoreRef.current).then((qualification) => {
               if (qualification.daily || qualification.weekly || qualification.allTime) {
                 setQualifiedLeaderboards(qualification);
                 setShowHighScoreEntry(true);
@@ -5967,7 +5977,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                 const newStreak = prev + 1;
                 hitStreakRef.current = newStreak;
                 const bonus = Math.floor(100 * (1 + newStreak / 100));
-                world.score += bonus;
+                
                 setScore((s) => s + bonus);
                 if (newStreak >= 10 && !hitStreakActive) {
                   setHitStreakActive(true);
@@ -7548,6 +7558,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           onSubmit={async (name) => {
             try {
               const { supabase } = await import("@/integrations/supabase/client");
+              // Submit to boss_rush_scores table
               const response = await supabase.functions.invoke('submit-score', {
                 body: {
                   type: 'boss_rush',
@@ -7560,6 +7571,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               if (response.error) throw response.error;
               const result = response.data as { error?: string };
               if (result?.error) throw new Error(result.error);
+              // Also submit to main high_scores table with boss_rush game_mode
+              try {
+                await addHighScore(name, score, bossRushGameOverLevel, settings.difficulty, false, false, settings.startingLives, 'boss_rush');
+              } catch (_) {
+                // Non-critical: boss rush score already saved above
+              }
               toast.success("🎉 BOSS RUSH SCORE SAVED! 🎉");
             } catch (err) {
               console.error("Failed to submit boss rush score:", err);
