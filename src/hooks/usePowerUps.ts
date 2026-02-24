@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import type { PowerUp, PowerUpType, Ball, Paddle, Brick, Difficulty } from "@/types/game";
-import { POWERUP_SIZE, POWERUP_FALL_SPEED, POWERUP_DROP_CHANCE, CANVAS_HEIGHT, FIREBALL_DURATION } from "@/constants/game";
+import { POWERUP_SIZE, POWERUP_FALL_SPEED, POWERUP_DROP_CHANCE, CANVAS_HEIGHT, CANVAS_WIDTH, PADDLE_WIDTH, FIREBALL_DURATION } from "@/constants/game";
 import { debugToast as toast } from "@/utils/debugToast";
 import { soundManager } from "@/utils/sounds";
 import { powerUpPool, getNextPowerUpId } from "@/utils/entityPool";
@@ -110,11 +110,27 @@ export const usePowerUps = (
       const id1 = getNextPowerUpId();
       const id2 = getNextPowerUpId();
       const centerX = brick.x + brick.width / 2;
-      const offset = 35; // pixels apart from center
+      const gap = PADDLE_WIDTH * 1.5; // 1.5 paddle widths between power-ups
+      const halfGap = gap / 2;
+
+      // Default positions: centered with gap
+      let x1 = centerX - halfGap - POWERUP_SIZE / 2;
+      let x2 = centerX + halfGap - POWERUP_SIZE / 2;
+
+      // Wall-clamp: if left power-up goes off-screen, shift both right
+      if (x1 < 0) {
+        x1 = 0;
+        x2 = x1 + gap;
+      }
+      // If right power-up goes off-screen, shift both left
+      if (x2 + POWERUP_SIZE > CANVAS_WIDTH) {
+        x2 = CANVAS_WIDTH - POWERUP_SIZE;
+        x1 = x2 - gap;
+      }
 
       const pu1 = powerUpPool.acquire({
         id: id1,
-        x: centerX - offset - POWERUP_SIZE / 2,
+        x: x1,
         y: brick.y,
         width: POWERUP_SIZE,
         height: POWERUP_SIZE,
@@ -126,7 +142,7 @@ export const usePowerUps = (
       });
       const pu2 = powerUpPool.acquire({
         id: id2,
-        x: centerX + offset - POWERUP_SIZE / 2,
+        x: x2,
         y: brick.y,
         width: POWERUP_SIZE,
         height: POWERUP_SIZE,
