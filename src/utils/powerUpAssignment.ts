@@ -5,16 +5,14 @@ import {
   weightedRandomSelect 
 } from "./powerUpWeights";
 
+/** Chance that a power-up brick becomes a dual-choice brick */
+const DUAL_CHOICE_CHANCE = 0.25;
+
 /**
  * Pre-assigns power-ups to 8% of destructible bricks at level initialization
  * Uses weighted random selection with diminishing returns based on drop history
  * 
- * @param bricks Array of all bricks in the level
- * @param extraLifeUsedLevels Array of level groups that already used extra life
- * @param currentLevel Current level number
- * @param difficulty Game difficulty setting
- * @param dropCounts Optional record of power-up drop counts for weighted selection
- * @returns Map of brick ID to PowerUpType
+ * Also marks ~25% of those as dual-choice bricks and assigns a second power-up type.
  */
 export const assignPowerUpsToBricks = (
   bricks: Brick[],
@@ -22,15 +20,16 @@ export const assignPowerUpsToBricks = (
   currentLevel: number,
   difficulty: Difficulty,
   dropCounts: Partial<Record<PowerUpType, number>> = {}
-): Map<number, PowerUpType> => {
+): { assignments: Map<number, PowerUpType>; dualChoiceAssignments: Map<number, PowerUpType> } => {
   const assignments = new Map<number, PowerUpType>();
+  const dualChoiceAssignments = new Map<number, PowerUpType>();
 
   // Get all destructible bricks (not metal, not indestructible)
   const destructibleBricks = bricks.filter(
     (brick) => brick.visible && !brick.isIndestructible && brick.type !== "metal"
   );
 
-  if (destructibleBricks.length === 0) return assignments;
+  if (destructibleBricks.length === 0) return { assignments, dualChoiceAssignments };
 
   // Calculate 8% of destructible bricks
   const powerUpCount = Math.max(1, Math.floor(destructibleBricks.length * 0.08));
@@ -69,22 +68,24 @@ export const assignPowerUpsToBricks = (
     if (selectedType === "life") {
       extraLifeAssigned = true;
     }
+
+    // 25% chance this brick becomes a dual-choice brick
+    if (Math.random() < DUAL_CHOICE_CHANCE) {
+      // Pick a second type that's different from the first
+      const weightsWithout = { ...mutableWeights };
+      delete weightsWithout[selectedType as keyof typeof weightsWithout];
+      if (Object.keys(weightsWithout).length > 0) {
+        const secondType = weightedRandomSelect(weightsWithout);
+        dualChoiceAssignments.set(brick.id, secondType);
+      }
+    }
   });
 
-  return assignments;
+  return { assignments, dualChoiceAssignments };
 };
 
 /**
  * Re-assigns power-ups to remaining visible bricks after a power-up is collected
- * This ensures remaining bricks have rebalanced power-ups based on updated weights
- * 
- * @param currentAssignments Current power-up assignments
- * @param bricks Array of all bricks in the level
- * @param extraLifeUsedLevels Array of level groups that already used extra life
- * @param currentLevel Current level number
- * @param difficulty Game difficulty setting
- * @param dropCounts Record of power-up drop counts for weighted selection
- * @returns Updated Map of brick ID to PowerUpType
  */
 export const reassignPowerUpsToBricks = (
   currentAssignments: Map<number, PowerUpType>,
@@ -93,7 +94,9 @@ export const reassignPowerUpsToBricks = (
   currentLevel: number,
   difficulty: Difficulty,
   dropCounts: Partial<Record<PowerUpType, number>>
-): Map<number, PowerUpType> => {
+): { assignments: Map<number, PowerUpType>; dualChoiceAssignments: Map<number, PowerUpType> } => {
+  const dualChoiceAssignments = new Map<number, PowerUpType>();
+
   // Get remaining visible destructible bricks that still have assignments
   const remainingBricksWithPowerUps = bricks.filter(
     (brick) => 
@@ -104,7 +107,7 @@ export const reassignPowerUpsToBricks = (
   );
 
   if (remainingBricksWithPowerUps.length === 0) {
-    return new Map();
+    return { assignments: new Map(), dualChoiceAssignments };
   }
 
   // Calculate current weights based on updated drop history
@@ -132,7 +135,17 @@ export const reassignPowerUpsToBricks = (
     if (selectedType === "life") {
       extraLifeAssigned = true;
     }
+
+    // 25% chance for dual choice
+    if (Math.random() < DUAL_CHOICE_CHANCE) {
+      const weightsWithout = { ...mutableWeights };
+      delete weightsWithout[selectedType as keyof typeof weightsWithout];
+      if (Object.keys(weightsWithout).length > 0) {
+        const secondType = weightedRandomSelect(weightsWithout);
+        dualChoiceAssignments.set(brick.id, secondType);
+      }
+    }
   });
 
-  return newAssignments;
+  return { assignments: newAssignments, dualChoiceAssignments };
 };
