@@ -1,69 +1,55 @@
 
+# Dual Power-Up Choice System
 
-# Fix: Shield Power-Up Not Resetting Hit Streak
+## Overview
+When a brick drops a power-up, there's a chance (roughly 25%) that instead of one power-up, two different power-ups drop side by side. The player must choose which one to catch -- catching one automatically destroys the other. This creates a strategic "risk vs. reward" moment every few bricks.
 
-## Problem
+## How It Works
+- When a power-up brick is destroyed, there's a 25% chance it spawns a "choice pair" instead of a single drop
+- Two different power-up types appear side by side, falling together at the same speed
+- They spawn offset left and right from the brick center (about 35px apart)
+- A subtle visual connector (glowing line or "VS" text) links them so the player knows they're paired
+- When the paddle catches one, the other instantly deactivates (fades out or pops)
+- If both fall off-screen, neither is collected (normal behavior)
 
-When the paddle has the shield power-up active, the hit streak does not reset even if the ball returns to the paddle without hitting any boss or enemy. The shield power-up is a purely defensive visual overlay that protects the paddle from boss projectiles -- it does NOT change the ball-paddle collision behavior. The ball should still be detected as hitting the paddle normally.
+## Technical Details
 
-## Root Cause Analysis
+### 1. Extend the PowerUp interface (`src/types/game.ts`)
+Add two optional fields:
+- `pairedWithId?: number` -- the ID of the other power-up in the pair
+- `isDualChoice?: boolean` -- flag for rendering the visual connector
 
-After tracing through the code:
+### 2. Update `createPowerUp` in `src/hooks/usePowerUps.ts`
+- Add a new function `createDualChoicePowerUps(brick)` that:
+  - Picks two different power-up types using weighted random (re-rolling if same type)
+  - Creates two power-ups offset left (-35px) and right (+35px) from brick center
+  - Sets `pairedWithId` on each to point to the other
+  - Sets `isDualChoice: true` on both
+- Modify `createPowerUp` to return `PowerUp | PowerUp[] | null`:
+  - For regular brick drops: 25% chance to call `createDualChoicePowerUps` instead
+  - Boss minion and enemy drops remain single power-ups (no dual choice during boss fights)
 
-1. **The shield power-up does NOT affect ball-paddle collisions** -- the ball still collides with the paddle normally in `processBallCCD.ts`, and `paddleHitBallIds` is populated correctly in `physics.ts`.
+### 3. Update collision handling in `checkPowerUpCollision` (`src/hooks/usePowerUps.ts`)
+- When a power-up with `pairedWithId` is caught, find and deactivate the paired power-up in the same pass
+- The paired power-up gets `active: false` so it's cleaned up next frame
 
-2. **The real bug is a stale closure issue** on line 3396 of `Game.tsx`:
-   ```
-   if (hitStreak > 0) {
-       setHitStreak(0);
-   ```
-   The `hitStreak` variable is read from React state closure. If boss/enemy hits incremented the streak via `setHitStreak(prev + 1)` earlier in the same frame, `hitStreak` in the closure still holds the OLD value from the previous render. This means:
-   - If streak was 0 at render start, and a boss hit bumps it to 1, and then the paddle check runs -- it sees `hitStreak === 0` and skips the reset entirely.
-   - The streak silently survives when it should have been cleared.
+### 4. Update the renderer (`src/engine/canvasRenderer.ts`)
+- In the power-up drawing section, detect pairs (`isDualChoice` flag)
+- Draw a subtle glowing "VS" text or a connecting line between paired power-ups
+- Add a slight highlight/glow differentiating the two choices
 
-3. This is more noticeable when the shield is active because the shield prolongs survival, leading to more frames where boss hits and paddle hits occur in the same physics frame.
+### 5. Update `assignPowerUpsToBricks` (`src/utils/powerUpAssignment.ts`)
+- Mark some assigned bricks as "dual choice" bricks (roughly 25% of power-up bricks)
+- Store a second power-up type for those bricks in a separate map (`dualChoiceAssignments`)
+- Pass this map through to `usePowerUps` so `createPowerUp` knows which bricks get dual drops
 
-## Fix
+### 6. Wire it up in `Game.tsx`
+- Pass the dual choice assignments map alongside the existing `powerUpAssignments`
+- Handle the case where `createPowerUp` returns an array (two power-ups) by adding both to the power-ups list
 
-### File: `src/components/Game.tsx`
-
-**Add a `hitStreakRef`** that mirrors `hitStreak` state, so the paddle-bounce check always reads the latest value:
-
-- Add `const hitStreakRef = useRef(0)` alongside the existing state
-- Update `hitStreakRef.current` inside every `setHitStreak` call (both increments and resets)
-- Change the paddle-bounce check from `if (hitStreak > 0)` to `if (hitStreakRef.current > 0)` so it reads the latest value regardless of React batching
-
-Additionally, the streak reset should use `setHitStreak(0)` unconditionally when a no-hit paddle return is detected (remove the `> 0` guard entirely since calling `setHitStreak(0)` when already 0 is harmless):
-
-```
-for (const ballId of result.paddleHitBallIds) {
-    if (!ballHitSinceLastPaddleRef.current.has(ballId)) {
-        // Ball returned to paddle without hitting boss/enemy -- reset streak
-        setHitStreak(0);
-        hitStreakRef.current = 0;
-        setHitStreakActive(false);
-        world.backgroundHue = 0;
-    }
-    ballHitSinceLastPaddleRef.current.delete(ballId);
-}
-```
-
-And in the boss/enemy hit tracking, keep the ref in sync:
-
-```
-setHitStreak((prev) => {
-    const newStreak = prev + 1;
-    hitStreakRef.current = newStreak;
-    // ... rest of streak logic
-    return newStreak;
-});
-```
-
-Similarly, all other reset locations (death, retry, level start) must also set `hitStreakRef.current = 0`.
-
-### Summary
-
-| File | Change |
-|---|---|
-| `src/components/Game.tsx` | Add `hitStreakRef` to eliminate stale closure reads; remove `hitStreak > 0` guard on reset; sync ref in all setHitStreak calls |
-
+### Files to modify:
+- `src/types/game.ts` -- add `pairedWithId` and `isDualChoice` to PowerUp
+- `src/utils/powerUpAssignment.ts` -- add dual choice selection logic
+- `src/hooks/usePowerUps.ts` -- create pairs, handle paired collection
+- `src/engine/canvasRenderer.ts` -- render the visual connector between pairs
+- `src/components/Game.tsx` -- pass dual assignments, handle array returns
