@@ -1073,6 +1073,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   const [bricksDestroyedByTurrets, setBricksDestroyedByTurrets] = useState(0);
   const [bossesKilled, setBossesKilled] = useState(0);
   const [powerUpAssignments, setPowerUpAssignments] = useState<Map<number, PowerUpType>>(new Map());
+  const [dualChoiceAssignments, setDualChoiceAssignments] = useState<Map<number, PowerUpType>>(new Map());
   const [powerUpDropCounts, setPowerUpDropCounts] = useState<Partial<Record<PowerUpType, number>>>({});
 
   const launchAngleDirectionRef = useRef(1);
@@ -1391,7 +1392,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
           // Reassign power-ups to remaining bricks with updated weights
           setBricks((currentBricks) => {
-            const newAssignments = reassignPowerUpsToBricks(
+            const result = reassignPowerUpsToBricks(
               powerUpAssignments,
               currentBricks,
               extraLifeUsedLevels,
@@ -1399,11 +1400,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               settings.difficulty,
               newCounts,
             );
-            setPowerUpAssignments(newAssignments);
+            setPowerUpAssignments(result.assignments);
+            setDualChoiceAssignments(result.dualChoiceAssignments);
 
             if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
               console.log(
-                `[Power-Up] Collected ${type}, reassigned ${newAssignments.size} power-ups with updated weights`,
+                `[Power-Up] Collected ${type}, reassigned ${result.assignments.size} power-ups with updated weights`,
               );
             }
 
@@ -1420,6 +1422,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       handleFireballStart,
       handleFireballEnd,
       handleSecondChance,
+      dualChoiceAssignments,
     );
   const { fireBullets, updateBullets } = useBullets(
     setScore,
@@ -2129,17 +2132,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // Initialize power-up assignments for bricks
   const initPowerUpAssignments = useCallback(
     (bricks: Brick[], targetLevel: number, dropCounts: Partial<Record<PowerUpType, number>> = {}) => {
-      const assignments = assignPowerUpsToBricks(
+      const result = assignPowerUpsToBricks(
         bricks,
         extraLifeUsedLevels,
         targetLevel,
         settings.difficulty,
         dropCounts,
       );
-      setPowerUpAssignments(assignments);
+      setPowerUpAssignments(result.assignments);
+      setDualChoiceAssignments(result.dualChoiceAssignments);
       if (ENABLE_DEBUG_FEATURES && debugSettings.enablePowerUpLogging) {
         console.log(
-          `[Power-Up] Assigned ${assignments.size} power-ups to ${bricks.length} bricks for level ${targetLevel} (${Math.round((assignments.size / bricks.length) * 100)}%)`,
+          `[Power-Up] Assigned ${result.assignments.size} power-ups (${result.dualChoiceAssignments.size} dual-choice) to ${bricks.length} bricks for level ${targetLevel} (${Math.round((result.assignments.size / bricks.length) * 100)}%)`,
         );
       }
     },
@@ -3693,8 +3697,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
             active: true,
           });
         } else {
-          const powerUp = createPowerUp(brick);
-          if (powerUp) createdPowerUps.push(powerUp);
+          const result = createPowerUp(brick);
+          if (result) {
+            if (Array.isArray(result)) {
+              createdPowerUps.push(...result);
+            } else {
+              createdPowerUps.push(result);
+            }
+          }
         }
       }
 
@@ -3852,8 +3862,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               attempts++;
             }
             if (powerUp) {
-              setPowerUps((prev) => [...prev, powerUp]);
-              const isBossPowerUpType = ["bossStunner", "reflectShield", "homingBall"].includes(powerUp.type);
+              const singlePowerUp = Array.isArray(powerUp) ? powerUp[0] : powerUp;
+              const allPowerUps = Array.isArray(powerUp) ? powerUp : [powerUp];
+              setPowerUps((prev) => [...prev, ...allPowerUps]);
+              const isBossPowerUpType = ["bossStunner", "reflectShield", "homingBall"].includes(singlePowerUp.type);
               if (tutorialEnabled && isBossPowerUpType && !bossPowerUpTutorialTriggeredRef.current) {
                 bossPowerUpTutorialTriggeredRef.current = true;
                 const { shouldPause } = triggerTutorial("boss_power_up_drop", level);

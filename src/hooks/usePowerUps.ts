@@ -23,6 +23,7 @@ export const usePowerUps = (
   onFireballStart?: () => void,
   onFireballEnd?: () => void,
   onSecondChance?: () => void,
+  dualChoiceAssignments?: Map<number, PowerUpType>, // Second power-up type for dual-choice bricks
 ) => {
   const [powerUps, _setPowerUps] = useState<PowerUp[]>([]);
   const [extraLifeUsedLevels, setExtraLifeUsedLevels] = useState<number[]>([]);
@@ -37,28 +38,22 @@ export const usePowerUps = (
   }, []);
   const fireballTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const createPowerUp = useCallback((brick: Brick, isBossMinion: boolean = false, forceBossPowerUp: boolean = false): PowerUp | null => {
+  const createPowerUp = useCallback((brick: Brick, isBossMinion: boolean = false, forceBossPowerUp: boolean = false): PowerUp | PowerUp[] | null => {
     const isEnemyDrop = brick.id < 0; // Enemies use fakeBricks with id: -1
     
     // Boss minions: 50% chance to drop power-up (or forced drop)
     if (isBossMinion && (forceBossPowerUp || Math.random() < 0.5)) {
       const isBossLevel = [5, 10, 15, 20].includes(currentLevel);
-      
-      // Force boss-exclusive power-up if requested, otherwise 50% chance on boss levels
       const useBossPowerUp = forceBossPowerUp || (isBossLevel && Math.random() < 0.5);
       
       let availableTypes: PowerUpType[];
-      
       if (useBossPowerUp) {
         availableTypes = [...bossPowerUpTypes];
       } else {
         availableTypes = [...regularPowerUpTypes];
-        
-        // In godlike mode, never drop extra lives
         if (difficulty === "godlike") {
           availableTypes = availableTypes.filter(t => t !== "life");
         } else {
-          // Extra life only once per 5 levels in normal mode
           const levelGroup = Math.floor(currentLevel / 5);
           if (extraLifeUsedLevels.includes(levelGroup)) {
             availableTypes = availableTypes.filter(t => t !== "life");
@@ -67,8 +62,6 @@ export const usePowerUps = (
       }
 
       const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
-
-      // Use pool to acquire power-up
       return powerUpPool.acquire({
         id: getNextPowerUpId(),
         x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
@@ -81,10 +74,9 @@ export const usePowerUps = (
       });
     }
     
-    // Regular enemy drops (non-boss minions) - every 3rd kill triggers this
+    // Regular enemy drops (non-boss minions)
     if (isEnemyDrop) {
       let availableTypes = [...regularPowerUpTypes];
-      
       if (difficulty === "godlike") {
         availableTypes = availableTypes.filter(t => t !== "life");
       } else {
@@ -93,10 +85,7 @@ export const usePowerUps = (
           availableTypes = availableTypes.filter(t => t !== "life");
         }
       }
-      
       const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
-      
-      // Use pool to acquire power-up
       return powerUpPool.acquire({
         id: getNextPowerUpId(),
         x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
@@ -115,7 +104,41 @@ export const usePowerUps = (
     const assignedType = powerUpAssignments.get(brick.id);
     if (!assignedType) return null;
 
-    // Use pool to acquire power-up
+    // Check if this brick has a dual-choice assignment
+    const secondType = dualChoiceAssignments?.get(brick.id);
+    if (secondType) {
+      const id1 = getNextPowerUpId();
+      const id2 = getNextPowerUpId();
+      const centerX = brick.x + brick.width / 2;
+      const offset = 35; // pixels apart from center
+
+      const pu1 = powerUpPool.acquire({
+        id: id1,
+        x: centerX - offset - POWERUP_SIZE / 2,
+        y: brick.y,
+        width: POWERUP_SIZE,
+        height: POWERUP_SIZE,
+        type: assignedType,
+        speed: POWERUP_FALL_SPEED,
+        active: true,
+        pairedWithId: id2,
+        isDualChoice: true,
+      });
+      const pu2 = powerUpPool.acquire({
+        id: id2,
+        x: centerX + offset - POWERUP_SIZE / 2,
+        y: brick.y,
+        width: POWERUP_SIZE,
+        height: POWERUP_SIZE,
+        type: secondType,
+        speed: POWERUP_FALL_SPEED,
+        active: true,
+        pairedWithId: id1,
+        isDualChoice: true,
+      });
+      return [pu1, pu2];
+    }
+
     return powerUpPool.acquire({
       id: getNextPowerUpId(),
       x: brick.x + brick.width / 2 - POWERUP_SIZE / 2,
@@ -126,7 +149,7 @@ export const usePowerUps = (
       speed: POWERUP_FALL_SPEED,
       active: true,
     });
-  }, [currentLevel, extraLifeUsedLevels, difficulty, powerUpAssignments]);
+  }, [currentLevel, extraLifeUsedLevels, difficulty, powerUpAssignments, dualChoiceAssignments]);
 
   const updatePowerUps = useCallback(() => {
     setPowerUps(prev => {
@@ -161,18 +184,34 @@ export const usePowerUps = (
     setSpeedMultiplier: React.Dispatch<React.SetStateAction<number>>
   ) => {
     setPowerUps(prev => {
-      return prev.map(powerUp => {
+      // First pass: find which power-ups are caught and collect paired IDs to deactivate
+      const caughtPairedIds = new Set<number>();
+      
+      const result = prev.map(powerUp => {
+        // Skip already deactivated or paired-deactivated power-ups
+        if (!powerUp.active || caughtPairedIds.has(powerUp.id!)) {
+          if (caughtPairedIds.has(powerUp.id!)) {
+            return { ...powerUp, active: false };
+          }
+          return powerUp;
+        }
+        
         if (
-          powerUp.active &&
           powerUp.x + powerUp.width > paddle.x &&
           powerUp.x < paddle.x + paddle.width &&
           powerUp.y + powerUp.height > paddle.y &&
           powerUp.y < paddle.y + paddle.height
         ) {
+          // If this is a dual-choice power-up, mark the paired one for deactivation
+          if (powerUp.isDualChoice && powerUp.pairedWithId !== undefined) {
+            caughtPairedIds.add(powerUp.pairedWithId);
+          }
+          
           // Apply power-up effect
           onPowerUpCollected?.(powerUp.type);
           
           switch (powerUp.type) {
+            // ... keep existing code
             case "multiball":
               soundManager.playMultiballSound();
               if (balls.length > 0) {
@@ -193,12 +232,10 @@ export const usePowerUps = (
               setPaddle(prev => {
                 if (!prev) return null;
                 if (prev.hasTurrets && (prev.turretShots || 0) > 0) {
-                  // Already have turrets - upgrade to super + add shots (capped at max)
                   const newShots = Math.min((prev.turretShots || 0) + shotsCount, maxShots);
                   toast.success(`Super Turrets! (${newShots} shots)`);
                   return { ...prev, turretShots: newShots, hasSuperTurrets: true };
                 }
-                // First turret pickup
                 toast.success(`Turrets activated! (${shotsCount} shots)`);
                 return { ...prev, hasTurrets: true, turretShots: shotsCount, hasSuperTurrets: false };
               });
@@ -207,13 +244,10 @@ export const usePowerUps = (
             case "fireball":
               soundManager.playFireballSound();
               setBalls(prev => prev.map(ball => ({ ...ball, isFireball: true })));
-              // Clear existing timeout if fireball is already active
               if (fireballTimeoutRef.current) {
                 clearTimeout(fireballTimeoutRef.current);
               }
-              // Notify start for timer display
               onFireballStart?.();
-              // Set new timeout and store reference
               fireballTimeoutRef.current = setTimeout(() => {
                 setBalls(prev => prev.map(ball => ({ ...ball, isFireball: false })));
                 fireballTimeoutRef.current = null;
@@ -223,14 +257,12 @@ export const usePowerUps = (
               break;
             
             case "life":
-              // Mercy lives bypass the per-5-levels limit
               if (powerUp.isMercyLife) {
                 soundManager.playExtraLifeSound();
                 setLives(prev => prev + 1);
                 toast.success("Mercy Extra Life!");
               } else {
                 const levelGroup = Math.floor(currentLevel / 5);
-                // Safeguard: check again (should be marked on creation, but double-check)
                 if (!extraLifeUsedLevels.includes(levelGroup)) {
                   soundManager.playExtraLifeSound();
                   setLives(prev => prev + 1);
@@ -246,7 +278,6 @@ export const usePowerUps = (
               soundManager.playSlowerSound();
               setSpeedMultiplier(prev => {
                 const newSpeed = Math.max(0.9, prev - 0.1);
-                // Apply speed change to balls immediately
                 setBalls(prevBalls => prevBalls.map(ball => {
                   const currentSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
                   const newBallSpeed = currentSpeed * (newSpeed / prev);
@@ -260,7 +291,6 @@ export const usePowerUps = (
                 }));
                 return newSpeed;
               });
-              // Reset accumulated brick hit speed on slowdown
               if (setBrickHitSpeedAccumulated) {
                 setBrickHitSpeedAccumulated(0);
               }
@@ -309,13 +339,24 @@ export const usePowerUps = (
               onSecondChance?.();
               toast.success("Second Chance! Safety net activated!");
               break;
-
           }
 
           return { ...powerUp, active: false };
         }
         return powerUp;
       });
+      
+      // Second pass: deactivate any paired power-ups that weren't already handled
+      if (caughtPairedIds.size > 0) {
+        return result.map(pu => {
+          if (pu.active && pu.id !== undefined && caughtPairedIds.has(pu.id)) {
+            return { ...pu, active: false };
+          }
+          return pu;
+        });
+      }
+      
+      return result;
     });
   }, [currentLevel, extraLifeUsedLevels, setLives, onBossStunner, onReflectShield, onHomingBall, onSecondChance]);
 

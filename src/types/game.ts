@@ -71,6 +71,9 @@ export interface PowerUp {
   speed: number;
   active: boolean;
   isMercyLife?: boolean; // Bypass per-5-levels limit for mercy power-ups
+  id?: number; // Unique ID for pairing
+  pairedWithId?: number; // ID of the other power-up in a dual choice pair
+  isDualChoice?: boolean; // Flag for rendering the visual connector
 }
 
 export type EnemyType = "cube" | "sphere" | "pyramid" | "crossBall";

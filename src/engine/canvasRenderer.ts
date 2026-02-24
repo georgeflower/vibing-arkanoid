@@ -769,6 +769,41 @@ export function renderFrame(
     ctx.restore();
   });
 
+  // ═══ Draw dual-choice connectors (VS text between paired power-ups) ═══
+  const drawnPairs = new Set<string>();
+  powerUps.forEach((pu) => {
+    if (!pu.active || !pu.isDualChoice || pu.pairedWithId === undefined) return;
+    const pairKey = Math.min(pu.id!, pu.pairedWithId) + "-" + Math.max(pu.id!, pu.pairedWithId);
+    if (drawnPairs.has(pairKey)) return;
+    drawnPairs.add(pairKey);
+
+    const partner = powerUps.find((p) => p.active && p.id === pu.pairedWithId);
+    if (!partner) return;
+
+    const cx = (pu.x + pu.width / 2 + partner.x + partner.width / 2) / 2;
+    const cy = (pu.y + pu.height / 2 + partner.y + partner.height / 2) / 2;
+
+    // Glowing connecting line
+    ctx.save();
+    ctx.globalAlpha = 0.4 + Math.sin(now / 300) * 0.15;
+    ctx.strokeStyle = "hsl(45, 100%, 70%)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(pu.x + pu.width / 2, pu.y + pu.height / 2);
+    ctx.lineTo(partner.x + partner.width / 2, partner.y + partner.height / 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // "VS" text
+    ctx.font = "bold 12px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "hsl(45, 100%, 85%)";
+    ctx.fillText("VS", cx, cy);
+    ctx.restore();
+  });
+
   // ═══ Draw bullets ═══
   bullets.forEach((bullet) => {
     const enableGlow = qualitySettings.glowEnabled;
