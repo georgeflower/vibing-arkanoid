@@ -1,41 +1,46 @@
 
-# Reduce Dual Power-Up Gap and Zero-Allocation Renderer
+
+# Dual Power-Up: Tighter Gap, "PICK ONE!" Text, and Alternating Dim Effect
+
+## Overview
+Three changes to make the dual power-up choice feel more engaging and obvious:
+1. Reduce the gap from 2.0x to 1.75x paddle width
+2. Replace "VS" text with "PICK ONE!" in a larger, more attention-grabbing style
+3. Add a low-cost alternating dim effect where one power-up dims while the other is bright, toggling every second
 
 ## Changes
 
-### 1. Reduce gap to 2.0x paddle width (`src/hooks/usePowerUps.ts`)
-Line 113: change `PADDLE_WIDTH * 2.5` to `PADDLE_WIDTH * 2.0`.
+### 1. Gap reduction (`src/hooks/usePowerUps.ts`)
+- Line 113: change `PADDLE_WIDTH * 2.0` to `PADDLE_WIDTH * 1.75`
 
-### 2. Zero per-frame allocations in renderer (`src/engine/canvasRenderer.ts`)
+### 2. Replace "VS" with "PICK ONE!" (`src/engine/canvasRenderer.ts`)
+- In the dual-choice connector block (lines 801-806), replace `"VS"` with `"PICK ONE!"`
+- Increase font size from `12px` to `bold 14px monospace`
+- Keep the existing golden color scheme
 
-The current code (lines 773-805) allocates a `new Set<string>()` and creates string keys via concatenation every frame. This violates the project's zero-allocation philosophy.
+### 3. Alternating dim effect (`src/engine/canvasRenderer.ts`)
+- In the power-up drawing loop (around line 672), add a dim check for dual-choice power-ups
+- Use `Math.floor(now / 1000) % 2` to determine which half of each pair is dimmed (toggles every 1 second, zero allocations)
+- The dimmed power-up gets `globalAlpha = 0.35`, the bright one stays at full opacity
+- To determine which one dims: compare `pu.id < pu.pairedWithId` -- one half gets dimmed on even seconds, the other on odd seconds
+- This uses only the existing `now` timestamp and a single modulo + comparison -- no new objects, no new state
 
-**Fix:**
-- Add a module-level `Set<number>` (reusable, cleared each frame instead of re-created)
-- Replace the string key `"min-max"` with a numeric key using Cantor pairing: `((a + b) * (a + b + 1)) / 2 + b` where `a = Math.min(id1, id2)` and `b = Math.max(id1, id2)`. This produces a unique integer for each unordered pair -- zero string allocations
-- Replace the `.find()` linear scan with an indexed lookup: since `pairedWithId` directly gives us the target ID, build a quick ID-to-index map once at the start of the power-up render block (only when dual-choice power-ups exist), or simply iterate and match inline
+## Technical Details
 
-Actually, `.find()` is only called once per pair (max 1-2 pairs on screen), so the cost is negligible. The main wins are eliminating the Set allocation and string keys.
-
-**Module-level additions:**
+### Dim logic (zero-allocation)
 ```typescript
-const _drawnPairs = new Set<number>();
+// Inside the power-up forEach, after the `ctx.save()` line:
+if (powerUp.isDualChoice && powerUp.pairedWithId !== undefined) {
+  const isFirst = powerUp.id! < powerUp.pairedWithId;
+  const phase = Math.floor(now / 1000) % 2; // 0 or 1, toggles each second
+  const dimmed = isFirst ? phase === 0 : phase === 1;
+  if (dimmed) ctx.globalAlpha = 0.35;
+}
 ```
 
-**Per-frame code becomes:**
-```typescript
-_drawnPairs.clear();
-powerUps.forEach((pu) => {
-  if (!pu.active || !pu.isDualChoice || pu.pairedWithId === undefined) return;
-  const a = Math.min(pu.id!, pu.pairedWithId);
-  const b = Math.max(pu.id!, pu.pairedWithId);
-  const pairKey = ((a + b) * (a + b + 1)) / 2 + b; // Cantor pairing
-  if (_drawnPairs.has(pairKey)) return;
-  _drawnPairs.add(pairKey);
-  // ... rest unchanged
-});
-```
+This adds one branch per dual-choice power-up per frame (typically 0-2 items) -- negligible cost.
 
-### Files Modified
-- `src/hooks/usePowerUps.ts` -- gap multiplier 2.5 to 2.0
-- `src/engine/canvasRenderer.ts` -- module-level Set + numeric Cantor pair key
+## Files Modified
+- `src/hooks/usePowerUps.ts` -- gap multiplier 2.0 to 1.75
+- `src/engine/canvasRenderer.ts` -- "PICK ONE!" text + alternating dim effect
+
