@@ -677,6 +677,13 @@ export function renderFrame(
     const pulseScale = 1 + Math.sin(pulsePhase * Math.PI * 2) * 0.05;
 
     ctx.save();
+    // Alternating dim for dual-choice power-ups (zero-allocation)
+    if (powerUp.isDualChoice && powerUp.pairedWithId !== undefined) {
+      const isFirst = powerUp.id! < powerUp.pairedWithId;
+      const phase = Math.floor(now / 1000) % 2;
+      const dimmed = isFirst ? phase === 0 : phase === 1;
+      if (dimmed) ctx.globalAlpha = 0.35;
+    }
     ctx.translate(powerUp.x + size / 2, powerUp.y + size / 2);
     ctx.scale(pulseScale, pulseScale);
     ctx.translate(-size / 2, -size / 2);
@@ -798,12 +805,13 @@ export function renderFrame(
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // "VS" text
-    ctx.font = "bold 12px monospace";
+    // "PICK ONE!" text
+    ctx.globalAlpha = 1;
+    ctx.font = "bold 14px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "hsl(45, 100%, 85%)";
-    ctx.fillText("VS", cx, cy);
+    ctx.fillText("PICK ONE!", cx, cy);
     ctx.restore();
   });
 
