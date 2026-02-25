@@ -110,7 +110,7 @@ export const usePowerUps = (
       const id1 = getNextPowerUpId();
       const id2 = getNextPowerUpId();
       const centerX = brick.x + brick.width / 2;
-      const gap = PADDLE_WIDTH * 2.0; // 2.0 paddle widths between power-ups
+      const gap = PADDLE_WIDTH * 1.75; // 1.75 paddle widths between power-ups
       const halfGap = gap / 2;
 
       // Default positions: centered with gap
