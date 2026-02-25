@@ -18,6 +18,7 @@ import { particlePool } from "@/utils/particlePool";
 // ─── Module-level animation state (previously useRef) ────────
 
 let dashOffset = 0;
+const _drawnPairs = new Set<number>(); // reusable – cleared each frame, zero allocs
 
 // ─── Gradient Cache ──────────────────────────────────────────
 // Avoids recreating identical CanvasGradient objects every frame.
@@ -770,12 +771,14 @@ export function renderFrame(
   });
 
   // ═══ Draw dual-choice connectors (VS text between paired power-ups) ═══
-  const drawnPairs = new Set<string>();
+  _drawnPairs.clear();
   powerUps.forEach((pu) => {
     if (!pu.active || !pu.isDualChoice || pu.pairedWithId === undefined) return;
-    const pairKey = Math.min(pu.id!, pu.pairedWithId) + "-" + Math.max(pu.id!, pu.pairedWithId);
-    if (drawnPairs.has(pairKey)) return;
-    drawnPairs.add(pairKey);
+    const a = Math.min(pu.id!, pu.pairedWithId);
+    const b = Math.max(pu.id!, pu.pairedWithId);
+    const pairKey = ((a + b) * (a + b + 1)) / 2 + b; // Cantor pairing – zero string allocs
+    if (_drawnPairs.has(pairKey)) return;
+    _drawnPairs.add(pairKey);
 
     const partner = powerUps.find((p) => p.active && p.id === pu.pairedWithId);
     if (!partner) return;
