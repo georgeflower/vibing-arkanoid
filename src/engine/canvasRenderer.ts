@@ -767,7 +767,9 @@ export function renderFrame(
     ctx.stroke();
 
     if (isImageValid(img)) {
-      ctx.globalAlpha = 0.95;
+      // Preserve dim alpha for dual-choice; otherwise default to 0.95
+      const isDimmed = powerUp.isDualChoice && ctx.globalAlpha < 0.5;
+      if (!isDimmed) ctx.globalAlpha = 0.95;
       ctx.drawImage(img, 0, 0, size, size);
     } else if (debugEnabled) {
       ctx.fillStyle = "magenta";
