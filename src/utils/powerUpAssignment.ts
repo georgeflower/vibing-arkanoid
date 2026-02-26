@@ -6,7 +6,7 @@ import {
 } from "./powerUpWeights";
 
 /** Chance that a power-up brick becomes a dual-choice brick */
-const DUAL_CHOICE_CHANCE = 0.25;
+const DUAL_CHOICE_CHANCE = 0.15;
 
 /**
  * Pre-assigns power-ups to 8% of destructible bricks at level initialization
