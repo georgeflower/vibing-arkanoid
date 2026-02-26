@@ -1,7 +1,9 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import CRTOverlay from "@/components/CRTOverlay";
 import { GAME_VERSION } from "@/constants/version";
 import { CHANGELOG } from "@/constants/version";
+import { supabase } from "@/integrations/supabase/client";
 import startScreen from "@/assets/start-screen-new.webp";
 
 // Power-up images
@@ -77,7 +79,67 @@ const SectionTitle = ({ children }: { children: React.ReactNode }) => (
   </h2>
 );
 
+type LeaderboardTab = "all-time" | "weekly" | "daily";
+type DifficultyTab = "all" | "normal" | "godlike";
+
+interface ScoreEntry {
+  name: string;
+  score: number;
+  level: number;
+  difficulty?: string;
+  gameMode?: string;
+}
+
 const Home = () => {
+  const [leaderboardTab, setLeaderboardTab] = useState<LeaderboardTab>("all-time");
+  const [difficultyTab, setDifficultyTab] = useState<DifficultyTab>("all");
+  const [scores, setScores] = useState<ScoreEntry[]>([]);
+  const [scoresLoading, setScoresLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchScores = async () => {
+      setScoresLoading(true);
+      try {
+        let query = supabase
+          .from("high_scores")
+          .select("player_name, score, level, difficulty, game_mode")
+          .order("score", { ascending: false })
+          .limit(10);
+
+        if (difficultyTab === "godlike") {
+          query = query.eq("difficulty", "godlike");
+        } else if (difficultyTab === "normal") {
+          query = query.or("difficulty.is.null,difficulty.neq.godlike");
+        }
+
+        if (leaderboardTab === "weekly") {
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          query = query.gte("created_at", weekAgo.toISOString());
+        } else if (leaderboardTab === "daily") {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          query = query.gte("created_at", today.toISOString());
+        }
+
+        const { data } = await query;
+        setScores(
+          (data || []).map((r) => ({
+            name: r.player_name,
+            score: r.score,
+            level: r.level,
+            difficulty: r.difficulty || undefined,
+            gameMode: r.game_mode || undefined,
+          }))
+        );
+      } catch {
+        setScores([]);
+      } finally {
+        setScoresLoading(false);
+      }
+    };
+    fetchScores();
+  }, [leaderboardTab, difficultyTab]);
   return (
     <div
       className="relative"
@@ -353,6 +415,109 @@ const Home = () => {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* ===== HIGH SCORES ===== */}
+        <section className="amiga-box rounded-lg p-6 sm:p-8 mb-10">
+          <SectionTitle>High Scores</SectionTitle>
+
+          {/* Leaderboard tabs */}
+          <div className="flex justify-center gap-2 mb-3">
+            {(["all-time", "weekly", "daily"] as LeaderboardTab[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setLeaderboardTab(tab)}
+                className="retro-pixel-text px-3 py-1 rounded transition-colors"
+                style={{
+                  fontSize: "9px",
+                  background: leaderboardTab === tab ? "hsl(200,70%,50%)" : "hsl(210,20%,20%)",
+                  color: leaderboardTab === tab ? "hsl(0,0%,100%)" : "hsl(0,0%,60%)",
+                  border: `2px solid ${leaderboardTab === tab ? "hsl(200,70%,60%)" : "hsl(210,15%,35%)"}`,
+                }}
+              >
+                {tab === "all-time" ? "ALL TIME" : tab.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          {/* Difficulty filter */}
+          <div className="flex justify-center gap-2 mb-5">
+            {(["all", "normal", "godlike"] as DifficultyTab[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setDifficultyTab(tab)}
+                className="retro-pixel-text px-3 py-1 rounded transition-colors"
+                style={{
+                  fontSize: "8px",
+                  background: difficultyTab === tab ? "hsl(330,100%,45%)" : "hsl(210,20%,16%)",
+                  color: difficultyTab === tab ? "hsl(0,0%,100%)" : "hsl(0,0%,55%)",
+                  border: `2px solid ${difficultyTab === tab ? "hsl(330,100%,55%)" : "hsl(210,15%,30%)"}`,
+                }}
+              >
+                {tab === "godlike" ? "GOD-MODE" : tab.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          {/* Scores list */}
+          <div
+            className="rounded p-3"
+            style={{ background: "hsl(210,20%,12%)", border: "2px inset hsl(210,15%,40%)" }}
+          >
+            {scoresLoading ? (
+              <p className="retro-pixel-text text-center" style={{ fontSize: "9px", color: "hsl(0,0%,50%)" }}>
+                Loading...
+              </p>
+            ) : scores.length === 0 ? (
+              <p className="retro-pixel-text text-center" style={{ fontSize: "9px", color: "hsl(0,0%,45%)" }}>
+                No scores yet!
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {scores.map((entry, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 px-2 py-1 rounded"
+                    style={{
+                      background: i === 0 ? "hsl(45,80%,15%)" : i % 2 === 0 ? "hsl(210,15%,14%)" : "transparent",
+                    }}
+                  >
+                    <span
+                      className="retro-pixel-text w-5 text-right"
+                      style={{ fontSize: "9px", color: i === 0 ? "hsl(45,90%,60%)" : "hsl(200,70%,50%)" }}
+                    >
+                      {i + 1}.
+                    </span>
+                    <span className="retro-pixel-text flex-1 flex items-center gap-1" style={{ fontSize: "9px" }}>
+                      <span style={{ color: "hsl(330,100%,65%)" }}>{entry.name}</span>
+                      {entry.difficulty === "godlike" && (
+                        <span style={{ fontSize: "7px", color: "hsl(0,85%,55%)" }}>GOD</span>
+                      )}
+                      {entry.gameMode === "boss_rush" && (
+                        <span style={{ fontSize: "7px", color: "hsl(30,100%,60%)" }}>BOSS RUSH</span>
+                      )}
+                    </span>
+                    <span
+                      className="retro-pixel-text"
+                      style={{ fontSize: "9px", color: "hsl(45,90%,60%)" }}
+                    >
+                      {entry.score.toLocaleString()}
+                    </span>
+                    <span
+                      className="retro-pixel-text w-10 text-right"
+                      style={{ fontSize: "8px", color: "hsl(280,60%,55%)" }}
+                    >
+                      LV{entry.level}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <p className="retro-pixel-text text-center mt-3" style={{ fontSize: "7px", color: "hsl(0,0%,45%)" }}>
+            Top 10 scores shown
+          </p>
         </section>
 
         {/* ===== CHANGELOG ===== */}
