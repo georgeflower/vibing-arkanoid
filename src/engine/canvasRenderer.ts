@@ -680,7 +680,7 @@ export function renderFrame(
     // Alternating dim for dual-choice power-ups (zero-allocation)
     if (powerUp.isDualChoice && powerUp.pairedWithId !== undefined) {
       const isFirst = powerUp.id! < powerUp.pairedWithId;
-      const phase = Math.floor(now / 1000) % 2;
+      const phase = Math.floor(now / 750) % 2;
       const dimmed = isFirst ? phase === 0 : phase === 1;
       if (dimmed) ctx.globalAlpha = 0.35;
     }

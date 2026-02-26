@@ -184,6 +184,8 @@ export const powerUpPool = new EntityPool<PooledPowerUp>(
   (p) => {
     p.active = false;
     p.isMercyLife = false;
+    p.isDualChoice = false;
+    p.pairedWithId = undefined;
   },
   20,
   50
