@@ -157,12 +157,12 @@ const Home = () => {
             </p>
             <p className="retro-pixel-text">
               Vibing Arkanoid is a heartfelt tribute to that legendary game. We've reimagined the brick-breaking formula
-              with 20 challenging levels, epic boss battles, 13 unique power-ups, and an authentic retro Amiga aesthetic
-              — all running in your browser.
+              with 20 challenging levels, epic boss battles, 12 unique power-ups, a dual power-up choice system, and an
+              authentic retro Amiga aesthetic — all running in your browser.
             </p>
             <p className="retro-pixel-text">
-              The original Arkanoid's DNA is everywhere: the satisfying physics, the strategic power-up choices, the
-              "just one more level" pull. We hope Taito would approve.
+              The original Arkanoid's DNA is everywhere: the satisfying physics, the strategic power-up choices — including
+              dual drops where you pick one of two power-ups — the "just one more level" pull. We hope Taito would approve.
             </p>
           </div>
         </section>

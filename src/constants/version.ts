@@ -1,6 +1,16 @@
-export const GAME_VERSION = "0.9.972";
+export const GAME_VERSION = "0.9.973";
 
 export const CHANGELOG = [
+  {
+    version: "0.9.973",
+    changes: [
+      "NEW: Dual Power-Up Choice — 15% of power-up bricks now drop two side-by-side power-ups; pick one and the other vanishes",
+      "Dual choices connected by a golden dashed line with 'PICK ONE!' label for clear visual feedback",
+      "Alternating dim effect (0.75s cycle) highlights the active choice in dual drops",
+      "Fixed: single power-up drops no longer inherit stale dim/blink from recycled dual-choice entities",
+      "Entity pool now properly resets isDualChoice and pairedWithId flags on release",
+    ],
+  },
   {
     version: "0.9.972",
     changes: [
