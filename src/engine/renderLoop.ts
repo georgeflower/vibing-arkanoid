@@ -27,10 +27,16 @@ export function startRenderLoop(
 
   let rafId: number | null = null;
   let running = true;
+  let lastFrameTime = 0;
+  const MIN_FRAME_INTERVAL = 1000 / 62; // ~60fps cap with small margin to avoid skipping on 60Hz displays
 
-  const loop = () => {
+  const loop = (timestamp: number) => {
     if (!running) return;
     rafId = requestAnimationFrame(loop);
+
+    // Frame pacing: skip if we rendered too recently (reduces CPU/GPU on 120Hz+ displays)
+    if (timestamp - lastFrameTime < MIN_FRAME_INTERVAL) return;
+    lastFrameTime = timestamp;
 
     const now = Date.now();
     renderFrame(ctx, world, renderState, assets, now);

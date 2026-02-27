@@ -1117,16 +1117,22 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     }
   }, []);
 
-  // Initialize debug logger when debug features are enabled
+  // Initialize debug logger only when logging toggles are actually enabled (lazy activation)
+  const anyLoggingEnabled = ENABLE_DEBUG_FEATURES && (
+    debugSettings.enableCollisionLogging || debugSettings.enablePowerUpLogging ||
+    debugSettings.enablePerformanceLogging || debugSettings.enableFPSLogging ||
+    debugSettings.enableGCLogging || debugSettings.enableLagLogging ||
+    debugSettings.enableBossLogging || debugSettings.enablePaddleLogging
+  );
   useEffect(() => {
-    if (ENABLE_DEBUG_FEATURES) {
+    if (anyLoggingEnabled) {
       debugLogger.intercept();
       debugLogger.log("Debug logging initialized", { maxLogs: 500 });
       return () => {
         debugLogger.restore();
       };
     }
-  }, []);
+  }, [anyLoggingEnabled]);
 
   // ═══════════════════════════════════════════════════════════════
   // UNIFIED CLEANUP - Clear ALL timers, intervals, and listeners on unmount
@@ -3307,7 +3313,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // ═══ Run pure physics frame ═══
     const result = runPhysicsFrame({
       dtSeconds: 1 / 60,
-      frameTick: gameLoopRef.current?.getFrameTick() || 0,
+      frameTick: frameCountRef.current,
       level,
       canvasSize: { w: SCALED_CANVAS_WIDTH, h: SCALED_CANVAS_HEIGHT },
       minBrickDimension: Math.min(SCALED_BRICK_WIDTH, SCALED_BRICK_HEIGHT),
@@ -4254,7 +4260,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     if (profilerEnabled) frameProfiler.startTiming("particles");
     if (debugSettings.enableExplosions && debugSettings.enableParticles) {
       // Skip particle updates on alternate frames when quality is low
-      const currentFrameTick = gameLoopRef.current?.getFrameTick() || 0;
+      const currentFrameTick = frameCountRef.current;
       const shouldUpdateParticles = qualitySettings.level !== "low" || currentFrameTick % 2 === 0;
 
       if (shouldUpdateParticles) {
