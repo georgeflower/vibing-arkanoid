@@ -1,24 +1,24 @@
 
 
-# Fix Dual Power-Up Dim Leaking to Single Power-Ups + Snappier Blink
+# Three Fixes: Homepage Cache Busting, Square Letters, Retry Button Text
 
-## Status: ✅ COMPLETE
+## 1. Homepage Version/Cache Check
+The homepage currently has no service worker update logic, so users can see a stale cached version. We'll import and use the existing `useServiceWorkerUpdate` hook (from `src/hooks/useServiceWorkerUpdate.ts`) inside the `Home` component with `isMainMenu: true` and `shouldApplyUpdate: true` so that any pending update is detected and applied immediately when visiting the homepage.
 
-## Root Cause
-The entity pool's reset function for power-ups (`src/utils/entityPool.ts`) only reset `active` and `isMercyLife`. When a dual-choice power-up was released back to the pool and later re-acquired for a **single** drop, the `isDualChoice` and `pairedWithId` properties persisted from the previous use, causing the renderer's dim logic to incorrectly apply to single power-ups.
+**File:** `src/pages/Home.tsx`
+- Import `useServiceWorkerUpdate` hook
+- Call it inside `Home` component with `{ isMainMenu: true, shouldApplyUpdate: true }`
 
-## Changes Made
+## 2. Fix Stretched Bonus Letter Images
+The bonus letter images in the Gameplay section appear vertically stretched. The fix is to add `aspect-ratio: 1 / 1` and `object-fit: contain` to the letter `<img>` elements so they remain square regardless of the source image dimensions.
 
-### 1. ✅ Reset dual-choice flags in pool (`src/utils/entityPool.ts`)
-Added `isDualChoice = false` and `pairedWithId = undefined` to the power-up pool reset function.
+**File:** `src/pages/Home.tsx` (line ~306)
+- Add `style={{ imageRendering: "pixelated", aspectRatio: "1 / 1", objectFit: "contain" }}` to the bonus letter `<img>` tags
+- Ensure the container `<div>` also has a square aspect ratio
 
-### 2. ✅ Snappier dim alternation (`src/engine/canvasRenderer.ts`)
-Changed dim toggle from 1000ms to 750ms intervals.
+## 3. Remove "(Score Reset)" from Retry Button
+The End Screen's Retry button currently reads "RETRY LEVEL (Score Reset)". We'll change it to just "RETRY LEVEL".
 
-### 3. ✅ Reduced dual-choice chance (`src/utils/powerUpAssignment.ts`)
-Changed `DUAL_CHOICE_CHANCE` from 0.25 (25%) to 0.15 (15%).
+**File:** `src/components/EndScreen.tsx` (line 159)
+- Change `RETRY LEVEL (Score Reset)` to `RETRY LEVEL`
 
-## Files Modified
-- `src/utils/entityPool.ts` -- reset `isDualChoice` and `pairedWithId` on pool release
-- `src/engine/canvasRenderer.ts` -- dim interval from 1000ms to 750ms, alpha preservation for single drops
-- `src/utils/powerUpAssignment.ts` -- dual-choice chance reduced to 15%
