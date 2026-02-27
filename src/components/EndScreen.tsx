@@ -156,7 +156,7 @@ export const EndScreen = ({ onContinue, onReturnToMenu, onRetryLevel, stats }: E
               onClick={onRetryLevel}
               className="w-full text-base md:text-xl py-3 md:py-6 bg-orange-600 hover:bg-orange-700 text-white font-bold"
             >
-              RETRY LEVEL (Score Reset)
+              RETRY LEVEL
             </Button>
           )}
           
