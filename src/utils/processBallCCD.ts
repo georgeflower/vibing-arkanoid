@@ -323,7 +323,7 @@ export function processBallCCD(
   const ball = _tempBall;
   
   const events: CollisionEvent[] = [];
-  const debugArr: any[] = debug ? [] : [];
+  const debugArr: any[] | null = debug ? [] : null;
 
   // velocities are px/sec; per-substep movement fraction
   const subDt = dt / Math.max(1, substeps);
@@ -609,7 +609,7 @@ export function processBallCCD(
         }
       }
 
-      if (debug) debugArr.push({ sweptAabb: { ..._tempSweptAabb }, candidates: candidates.map((b) => b.id), earliest, iter });
+      if (debug && debugArr) debugArr.push({ sweptAabb: { ..._tempSweptAabb }, candidates: candidates.map((b) => b.id), earliest, iter });
 
       if (!earliest) {
         // no collision this iteration: commit full remaining move
