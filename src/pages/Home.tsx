@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useServiceWorkerUpdate } from "@/hooks/useServiceWorkerUpdate";
 import { Link } from "react-router-dom";
 import CRTOverlay from "@/components/CRTOverlay";
 import { GAME_VERSION } from "@/constants/version";
@@ -91,6 +92,7 @@ interface ScoreEntry {
 }
 
 const Home = () => {
+  useServiceWorkerUpdate({ isMainMenu: true, shouldApplyUpdate: true });
   const [leaderboardTab, setLeaderboardTab] = useState<LeaderboardTab>("all-time");
   const [difficultyTab, setDifficultyTab] = useState<DifficultyTab>("all");
   const [scores, setScores] = useState<ScoreEntry[]>([]);
@@ -304,7 +306,7 @@ const Home = () => {
                   src={bl.img}
                   alt={bl.letter}
                   className="w-8 h-8 sm:w-10 sm:h-10"
-                  style={{ imageRendering: "pixelated" }}
+                  style={{ imageRendering: "pixelated", aspectRatio: "1 / 1", objectFit: "contain" }}
                 />
               </div>
             ))}
