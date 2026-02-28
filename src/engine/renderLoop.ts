@@ -15,6 +15,9 @@ import { renderFrame } from "@/engine/canvasRenderer";
  * Start the render loop. Calls renderFrame every animation frame.
  * @returns A cleanup function that stops the loop.
  */
+// 60 fps cap — prevents GPU exhaustion on 120Hz+ displays with integrated graphics
+const MIN_FRAME_INTERVAL = 1000 / 62; // ~16.1ms (slightly above 60Hz to avoid drift)
+
 export function startRenderLoop(
   canvas: HTMLCanvasElement,
   assets: AssetRefs,
@@ -27,10 +30,16 @@ export function startRenderLoop(
 
   let rafId: number | null = null;
   let running = true;
+  let lastFrameTime = 0;
 
-  const loop = () => {
+  const loop = (timestamp: number) => {
     if (!running) return;
     rafId = requestAnimationFrame(loop);
+
+    // Skip frame if not enough time has elapsed
+    const elapsed = timestamp - lastFrameTime;
+    if (elapsed < MIN_FRAME_INTERVAL) return;
+    lastFrameTime = timestamp - (elapsed % MIN_FRAME_INTERVAL);
 
     const now = Date.now();
     renderFrame(ctx, world, renderState, assets, now);

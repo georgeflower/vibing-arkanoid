@@ -8,8 +8,8 @@ interface CRTOverlayProps {
 const CRTOverlay = ({ quality }: CRTOverlayProps) => {
   const isMobile = useIsMobile();
   
-  // Always disable CRT on mobile devices
-  if (isMobile) {
+  // Disable CRT on mobile devices AND on LOW quality (eliminates compositor overhead)
+  if (isMobile || quality === 'low') {
     return null;
   }
   

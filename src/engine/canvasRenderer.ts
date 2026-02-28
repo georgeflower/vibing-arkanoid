@@ -253,7 +253,7 @@ export function renderFrame(
   }
 
   // Music-reactive hue overlay (Phase 3 mega boss + hit streak x10+)
-  if (world.backgroundHue > 0) {
+  if (world.backgroundHue > 0 && qualitySettings.level !== "low") {
     ctx.save();
     ctx.globalCompositeOperation = "overlay";
     ctx.fillStyle = `hsla(${world.backgroundHue}, 80%, 50%, 0.25)`;
@@ -2053,9 +2053,22 @@ function drawEnemies(
       });
 
       if (singleEnemy.isAngry) {
+        // Double-fill technique: red shadow first, then white on top (no shadowBlur)
+        ctx.fillStyle = "rgba(255, 0, 0, 0.6)";
+        ctx.beginPath();
+        ctx.moveTo(centerX - 10 + 1, centerY - 5 + 1);
+        ctx.lineTo(centerX - 5 + 1, centerY - 5 + 1);
+        ctx.lineTo(centerX - 7 + 1, centerY + 1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(centerX + 10 + 1, centerY - 5 + 1);
+        ctx.lineTo(centerX + 5 + 1, centerY - 5 + 1);
+        ctx.lineTo(centerX + 7 + 1, centerY + 1);
+        ctx.closePath();
+        ctx.fill();
+
         ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-        ctx.shadowBlur = 5;
-        ctx.shadowColor = "rgba(255, 0, 0, 0.8)";
         ctx.beginPath();
         ctx.moveTo(centerX - 10, centerY - 5);
         ctx.lineTo(centerX - 5, centerY - 5);
@@ -2401,11 +2414,18 @@ function drawBossAttacks(
         const dirAngle = Math.atan2(attack.pendingDirection.dy, attack.pendingDirection.dx);
         ctx.rotate(dirAngle);
         const arrowPulse = 0.7 + Math.sin(now / 80) * 0.3;
-        ctx.fillStyle = `rgba(255, 255, 255, ${arrowPulse})`;
-        ctx.shadowBlur = 6;
-        ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
         const arrowOffset = attack.width / 2 + 4;
         const arrowSize = 8;
+        // Double-fill: glow layer then white (no shadowBlur)
+        ctx.fillStyle = `rgba(255, 255, 255, ${arrowPulse * 0.4})`;
+        ctx.beginPath();
+        ctx.moveTo(arrowOffset + arrowSize + 2, 0);
+        ctx.lineTo(arrowOffset - 1, -arrowSize * 0.8);
+        ctx.lineTo(arrowOffset + arrowSize * 0.3, 0);
+        ctx.lineTo(arrowOffset - 1, arrowSize * 0.8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = `rgba(255, 255, 255, ${arrowPulse})`;
         ctx.beginPath();
         ctx.moveTo(arrowOffset + arrowSize, 0);
         ctx.lineTo(arrowOffset, -arrowSize * 0.6);
@@ -2413,7 +2433,6 @@ function drawBossAttacks(
         ctx.lineTo(arrowOffset, arrowSize * 0.6);
         ctx.closePath();
         ctx.fill();
-        ctx.shadowBlur = 0;
         ctx.restore();
       }
     } else {
@@ -2625,11 +2644,13 @@ function drawSphereBoss(
   const baseHue = boss.isAngry ? 0 : 200;
   const oscillation = now / 500;
 
-  const mainGrad = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, radius * 0.1, 0, 0, radius);
-  mainGrad.addColorStop(0, `hsl(${baseHue}, 80%, 75%)`);
-  mainGrad.addColorStop(0.3, `hsl(${baseHue}, 70%, 55%)`);
-  mainGrad.addColorStop(0.7, `hsl(${baseHue}, 60%, 35%)`);
-  mainGrad.addColorStop(1, `hsl(${baseHue}, 50%, 15%)`);
+  const angryKey = boss.isAngry ? "1" : "0";
+  const mainGrad = getCachedRadialGradient(ctx, `bsphere_${angryKey}`, -radius * 0.3, -radius * 0.3, radius * 0.1, 0, 0, radius, [
+    [0, `hsl(${baseHue}, 80%, 75%)`],
+    [0.3, `hsl(${baseHue}, 70%, 55%)`],
+    [0.7, `hsl(${baseHue}, 60%, 35%)`],
+    [1, `hsl(${baseHue}, 50%, 15%)`],
+  ]);
 
   if (qualitySettings.shadowsEnabled) {
     drawCircleShadow(ctx, 5, 5, radius);
@@ -2668,7 +2689,6 @@ function drawSphereBoss(
 
   // Angry face
   if (boss.isAngry) {
-    ctx.shadowBlur = 0;
     const eyeSize = radius * 0.12;
     const eyeY = -radius * 0.1;
     const eyeSpacing = radius * 0.35;
