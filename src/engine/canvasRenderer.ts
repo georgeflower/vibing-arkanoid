@@ -302,24 +302,25 @@ export function renderFrame(
   //  }
 
   // Highlight flash effect
-  if (highlightFlash > 0 && level >= 1 && level <= 4) {
+  if (highlightFlash > 0 && level >= 1 && level <= 4 && qualitySettings.level !== "low") {
     ctx.save();
     const isGolden = highlightFlash > 1.2;
     const intensity = Math.min(highlightFlash, 1.0);
 
-    ctx.globalCompositeOperation = "overlay";
+    // Use globalAlpha instead of expensive blend modes for weak hardware
+    ctx.globalAlpha = intensity * 0.5;
     if (isGolden) {
-      ctx.fillStyle = `rgba(255, 200, 100, ${intensity * 0.6})`;
+      ctx.fillStyle = "rgba(255, 200, 100, 1)";
     } else {
-      ctx.fillStyle = `rgba(100, 200, 255, ${intensity * 0.5})`;
+      ctx.fillStyle = "rgba(100, 200, 255, 1)";
     }
     ctx.fillRect(0, 0, width, height);
 
-    ctx.globalCompositeOperation = "soft-light";
+    ctx.globalAlpha = intensity * 0.4;
     if (isGolden) {
-      ctx.fillStyle = `rgba(255, 220, 150, ${intensity * 0.7})`;
+      ctx.fillStyle = "rgba(255, 220, 150, 1)";
     } else {
-      ctx.fillStyle = `rgba(150, 220, 255, ${intensity * 0.6})`;
+      ctx.fillStyle = "rgba(150, 220, 255, 1)";
     }
     ctx.fillRect(0, 0, width, height);
     ctx.restore();
