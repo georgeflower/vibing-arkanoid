@@ -51,9 +51,8 @@ export function processBallWithCCD(
     qualityLevel?: 'low' | 'medium' | 'high';
   }
 ): CCDResult {
-  // Only measure timing when CCD performance overlay is actively visible (opt-in only)
-  // ENABLE_DEBUG_FEATURES alone is not enough — perf timing adds ~6 performance.now() calls per ball per frame
-  const shouldMeasurePerf = false; // Set to true only via debug dashboard deep profiling
+  // Only measure timing when debug is enabled (avoid syscall overhead on mobile)
+  const shouldMeasurePerf = ENABLE_DEBUG_FEATURES;
   const perfStart = shouldMeasurePerf ? performance.now() : 0;
   
   // Quality-aware substep limits
@@ -172,7 +171,7 @@ export function processBallWithCCD(
     canvasSize: gameState.canvasSize,
     currentTick: frameTick, // Pass deterministic frame tick
     maxSubstepTravelFactor: 0.9,
-    debug: false // Debug payload generation disabled for performance; enable only for deep profiling
+    debug: ENABLE_DEBUG_FEATURES // Pass debug flag to CCD
   });
   
   const ccdCoreEnd = shouldMeasurePerf ? performance.now() : 0;
