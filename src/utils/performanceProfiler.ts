@@ -29,6 +29,12 @@ export interface FrameMetrics {
   hasActiveBoss: boolean;
   hasScreenShake: boolean;
   hasBackgroundFlash: boolean;
+
+  // Phase 4: Subsystem timing (optional — populated when frame profiler is active)
+  simulationMs?: number;
+  renderMs?: number;
+  debugMs?: number;
+  longFrameCount?: number;
 }
 
 interface PerformanceThresholds {
@@ -164,6 +170,16 @@ class PerformanceProfiler {
     console.log(`│  ├─ Screen Shake: ${latestMetrics.hasScreenShake ? 'Yes' : 'No'}`);
     console.log(`│  └─ Background Flash: ${latestMetrics.hasBackgroundFlash ? 'Yes' : 'No'}`);
     console.log('│');
+
+    // Phase 4: Subsystem timings (if available)
+    if (latestMetrics.simulationMs !== undefined || latestMetrics.renderMs !== undefined) {
+      console.log('%c├─ SUBSYSTEM TIMING', 'color: #ff88ff; font-weight: bold;');
+      if (latestMetrics.simulationMs !== undefined) console.log(`│  ├─ Simulation: ${latestMetrics.simulationMs.toFixed(2)}ms`);
+      if (latestMetrics.renderMs !== undefined) console.log(`│  ├─ Render: ${latestMetrics.renderMs.toFixed(2)}ms`);
+      if (latestMetrics.debugMs !== undefined) console.log(`│  ├─ Debug: ${latestMetrics.debugMs.toFixed(2)}ms`);
+      if (latestMetrics.longFrameCount !== undefined) console.log(`│  └─ Long frames (>20ms): ${latestMetrics.longFrameCount}`);
+      console.log('│');
+    }
 
     if (bottlenecks.length > 0) {
       console.log('%c└─ BOTTLENECK ANALYSIS', 'color: #ffaa00; font-weight: bold;');

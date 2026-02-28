@@ -15,8 +15,22 @@ import { renderFrame } from "@/engine/canvasRenderer";
  * Start the render loop. Calls renderFrame every animation frame.
  * @returns A cleanup function that stops the loop.
  */
-// 60 fps cap — prevents GPU exhaustion on 120Hz+ displays with integrated graphics
-const MIN_FRAME_INTERVAL = 1000 / 62; // ~16.1ms (slightly above 60Hz to avoid drift)
+// Adaptive render cap — 100 FPS target for high-end, scales down for low quality
+// This prevents GPU exhaustion on 120Hz+ displays with integrated graphics
+// while allowing smoother rendering on capable hardware.
+const TARGET_FPS_HIGH = 100;
+const TARGET_FPS_LOW = 60;
+let currentTargetFps = TARGET_FPS_HIGH;
+let minFrameInterval = 1000 / (currentTargetFps + 2); // slight margin to avoid drift
+
+/** Update the render target FPS based on quality level */
+export function setRenderTargetFps(qualityLevel: 'low' | 'medium' | 'high'): void {
+  const newTarget = qualityLevel === 'low' ? TARGET_FPS_LOW : TARGET_FPS_HIGH;
+  if (newTarget !== currentTargetFps) {
+    currentTargetFps = newTarget;
+    minFrameInterval = 1000 / (currentTargetFps + 2);
+  }
+}
 
 export function startRenderLoop(
   canvas: HTMLCanvasElement,
@@ -36,10 +50,10 @@ export function startRenderLoop(
     if (!running) return;
     rafId = requestAnimationFrame(loop);
 
-    // Skip frame if not enough time has elapsed
+    // Skip frame if not enough time has elapsed (adaptive cap)
     const elapsed = timestamp - lastFrameTime;
-    if (elapsed < MIN_FRAME_INTERVAL) return;
-    lastFrameTime = timestamp - (elapsed % MIN_FRAME_INTERVAL);
+    if (elapsed < minFrameInterval) return;
+    lastFrameTime = timestamp - (elapsed % minFrameInterval);
 
     const now = Date.now();
     renderFrame(ctx, world, renderState, assets, now);

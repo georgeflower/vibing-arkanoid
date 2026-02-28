@@ -111,35 +111,66 @@ export interface PhysicsFrameResult {
   secondChanceSaves: Array<{ x: number; y: number }>;
 }
 
-// ─── Empty result factory ───
+// ─── Reusable result object (zero-alloc per frame) ───
+// Arrays are cleared with .length = 0 instead of creating new arrays.
+
+const _reusableResult: PhysicsFrameResult = {
+  allBallsLost: false,
+  scoreIncrease: 0,
+  bricksDestroyedCount: 0,
+  allBricksCleared: false,
+  soundsToPlay: [],
+  toastEvents: [],
+  screenShakes: [],
+  explosionsToCreate: [],
+  bonusLetterDrops: [],
+  largeSphereDrops: [],
+  bombIntervalsToClean: [],
+  enemiesKilledIncrease: 0,
+  destroyedEnemyData: [],
+  powerUpBricks: [],
+  explosiveBrickExplosions: [],
+  updatedPendingChainExplosions: [],
+  highlightFlashCount: 0,
+  backgroundFlash: false,
+  bossHits: [],
+  paddleHitBallIds: [],
+  bossHitBallIds: [],
+  enemyHitBallIds: [],
+  ccdPerformance: null,
+  secondChanceSaves: [],
+};
 
 function createEmptyResult(): PhysicsFrameResult {
-  return {
-    allBallsLost: false,
-    scoreIncrease: 0,
-    bricksDestroyedCount: 0,
-    allBricksCleared: false,
-    soundsToPlay: [],
-    toastEvents: [],
-    screenShakes: [],
-    explosionsToCreate: [],
-    bonusLetterDrops: [],
-    largeSphereDrops: [],
-    bombIntervalsToClean: [],
-    enemiesKilledIncrease: 0,
-    destroyedEnemyData: [],
-    powerUpBricks: [],
-    explosiveBrickExplosions: [],
-    updatedPendingChainExplosions: [],
-    highlightFlashCount: 0,
-    backgroundFlash: false,
-    bossHits: [],
-    paddleHitBallIds: [],
-    bossHitBallIds: [],
-    enemyHitBallIds: [],
-    ccdPerformance: null,
-    secondChanceSaves: [],
-  };
+  // Reset scalar fields
+  _reusableResult.allBallsLost = false;
+  _reusableResult.scoreIncrease = 0;
+  _reusableResult.bricksDestroyedCount = 0;
+  _reusableResult.allBricksCleared = false;
+  _reusableResult.enemiesKilledIncrease = 0;
+  _reusableResult.highlightFlashCount = 0;
+  _reusableResult.backgroundFlash = false;
+  _reusableResult.ccdPerformance = null;
+
+  // Clear arrays in-place (no new array allocation)
+  _reusableResult.soundsToPlay.length = 0;
+  _reusableResult.toastEvents.length = 0;
+  _reusableResult.screenShakes.length = 0;
+  _reusableResult.explosionsToCreate.length = 0;
+  _reusableResult.bonusLetterDrops.length = 0;
+  _reusableResult.largeSphereDrops.length = 0;
+  _reusableResult.bombIntervalsToClean.length = 0;
+  _reusableResult.destroyedEnemyData.length = 0;
+  _reusableResult.powerUpBricks.length = 0;
+  _reusableResult.explosiveBrickExplosions.length = 0;
+  _reusableResult.updatedPendingChainExplosions.length = 0;
+  _reusableResult.bossHits.length = 0;
+  _reusableResult.paddleHitBallIds.length = 0;
+  _reusableResult.bossHitBallIds.length = 0;
+  _reusableResult.enemyHitBallIds.length = 0;
+  _reusableResult.secondChanceSaves.length = 0;
+
+  return _reusableResult;
 }
 
 // ─── Boss-First Swept Collision ───

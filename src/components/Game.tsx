@@ -112,6 +112,7 @@ import { runPhysicsFrame, BALL_GRAVITY, GRAVITY_DELAY_MS } from "@/engine/physic
 import { brickSpatialHash } from "@/utils/spatialHash";
 import { resetAllPools, enemyPool, bombPool, explosionPool, getNextExplosionId, bulletPool } from "@/utils/entityPool";
 import { brickRenderer } from "@/utils/brickLayerCache";
+import { setRenderTargetFps } from "@/engine/renderLoop";
 import { assignPowerUpsToBricks, reassignPowerUpsToBricks } from "@/utils/powerUpAssignment";
 import { MEGA_BOSS_LEVEL, MEGA_BOSS_CONFIG } from "@/constants/megaBossConfig";
 import {
@@ -1118,15 +1119,20 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   }, []);
 
   // Initialize debug logger when debug features are enabled
+  // Only intercept console when at least one logging toggle is active
+  const anyLoggingActive = debugSettings.enableLagLogging || debugSettings.enableGCLogging ||
+    debugSettings.enableCollisionLogging || debugSettings.enablePowerUpLogging ||
+    debugSettings.enablePerformanceLogging || debugSettings.enableFPSLogging ||
+    debugSettings.enableDetailedFrameLogging || debugSettings.enableBossLogging;
+
   useEffect(() => {
-    if (ENABLE_DEBUG_FEATURES) {
+    if (ENABLE_DEBUG_FEATURES && anyLoggingActive) {
       debugLogger.intercept();
-      debugLogger.log("Debug logging initialized", { maxLogs: 500 });
       return () => {
         debugLogger.restore();
       };
     }
-  }, []);
+  }, [anyLoggingActive]);
 
   // ═══════════════════════════════════════════════════════════════
   // UNIFIED CLEANUP - Clear ALL timers, intervals, and listeners on unmount
@@ -1612,6 +1618,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     renderState.getReadyGlow = isMobileDevice ? getReadyGlow : null;
     renderState.secondChanceImpact = secondChanceImpact;
     renderState.ballReleaseHighlight = ballReleaseHighlight;
+
+    // Sync render loop FPS target with quality level
+    setRenderTargetFps(qualitySettings.level);
   }, [
     gameState, level, collectedLetters,
     qualitySettings, showHighScoreEntry, bossIntroActive,
@@ -3954,7 +3963,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // FPS tracking for adaptive quality
   const fpsTrackerRef = useRef({ lastTime: performance.now(), frameCount: 0, fps: 60 });
   const lastFrameTimeRef = useRef(performance.now());
-  const targetFrameTime = 1000 / 60; // 60 FPS cap
+  const targetFrameTime = 1000 / 102; // ~100 FPS simulation pacing (slight margin)
 
   // Lag detection ref for tracking frame timing with GC detection
   const lagDetectionRef = useRef({
@@ -4081,7 +4090,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     const deltaTime = frameNow - fpsTrackerRef.current.lastTime;
 
     if (deltaTime >= 1000) {
-      const fps = Math.min(60, Math.round((fpsTrackerRef.current.frameCount * 1000) / deltaTime));
+      const fps = Math.round((fpsTrackerRef.current.frameCount * 1000) / deltaTime);
       fpsTrackerRef.current.fps = fps;
       fpsTrackerRef.current.frameCount = 0;
       fpsTrackerRef.current.lastTime = frameNow;
@@ -6395,11 +6404,17 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       }
     });
 
-    // Clean up expired laser warnings
-    setLaserWarnings((prev) => prev.filter((warning) => Date.now() - warning.startTime < 800));
+    // Clean up expired laser warnings (skip filter if empty)
+    if (world.laserWarnings.length > 0) {
+      const nowCleanup = Date.now();
+      setLaserWarnings((prev) => prev.filter((warning) => nowCleanup - warning.startTime < 800));
+    }
 
-    // Clean up expired super warnings
-    setSuperWarnings((prev) => prev.filter((warning) => Date.now() - warning.startTime < 600));
+    // Clean up expired super warnings (skip filter if empty)
+    if (world.superWarnings.length > 0) {
+      const nowCleanup = Date.now();
+      setSuperWarnings((prev) => prev.filter((warning) => nowCleanup - warning.startTime < 600));
+    }
 
     // Boss collisions are now handled via CCD and shape-specific checks in Phase 3.5
     // Old collision code removed to prevent conflicts with unified boss-local cooldown system
