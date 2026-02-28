@@ -307,21 +307,13 @@ export function renderFrame(
     const isGolden = highlightFlash > 1.2;
     const intensity = Math.min(highlightFlash, 1.0);
 
-    // Use globalAlpha instead of expensive blend modes for weak hardware
+    // Use globalAlpha instead of expensive blend modes
     ctx.globalAlpha = intensity * 0.5;
-    if (isGolden) {
-      ctx.fillStyle = "rgba(255, 200, 100, 1)";
-    } else {
-      ctx.fillStyle = "rgba(100, 200, 255, 1)";
-    }
+    ctx.fillStyle = isGolden ? "rgba(255, 200, 100, 1)" : "rgba(100, 200, 255, 1)";
     ctx.fillRect(0, 0, width, height);
 
     ctx.globalAlpha = intensity * 0.4;
-    if (isGolden) {
-      ctx.fillStyle = "rgba(255, 220, 150, 1)";
-    } else {
-      ctx.fillStyle = "rgba(150, 220, 255, 1)";
-    }
+    ctx.fillStyle = isGolden ? "rgba(255, 220, 150, 1)" : "rgba(150, 220, 255, 1)";
     ctx.fillRect(0, 0, width, height);
     ctx.restore();
   }
