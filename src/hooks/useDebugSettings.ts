@@ -38,16 +38,16 @@ const DEFAULT_SETTINGS: DebugSettings = {
   showPoolStats: false,
   enableCollisionLogging: false,
   enablePowerUpLogging: false,
-  enablePerformanceLogging: true,
-  enableFPSLogging: true, // FPS logging enabled by default
+  enablePerformanceLogging: false, // Off by default to reduce hot-path overhead
+  enableFPSLogging: false, // Off by default — enable via debug dashboard
   enableDetailedFrameLogging: false, // Off by default (verbose)
   enablePaddleLogging: false,
   enableBossLogging: false,
   enableFrameProfilerLogging: false,
   enableScreenShakeLogging: false, // Screen shake logging off by default
   enablePointerLockLogging: false, // Pointer lock logging off by default
-  enableGCLogging: true, // GC detection logging enabled by default
-  enableLagLogging: true, // Lag detection logging enabled by default
+  enableGCLogging: false, // GC detection off by default to reduce hot-path overhead
+  enableLagLogging: false, // Lag detection off by default to reduce hot-path overhead
   enableScreenShake: true, // Screen shake enabled by default
   enableParticles: true, // Particles enabled by default
   enableExplosions: true, // Explosions enabled by default
