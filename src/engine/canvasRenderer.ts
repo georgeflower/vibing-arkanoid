@@ -301,34 +301,27 @@ export function renderFrame(
   }
 
   // Highlight flash effect
-  if (highlightFlash > 0 && level >= 1 && level <= 4) {
+  if (highlightFlash > 0 && level >= 1 && level <= 4 && qualitySettings.level !== "low") {
     ctx.save();
     const isGolden = highlightFlash > 1.2;
     const intensity = Math.min(highlightFlash, 1.0);
 
-    ctx.globalCompositeOperation = "overlay";
-    if (isGolden) {
-      ctx.fillStyle = `rgba(255, 200, 100, ${intensity * 0.6})`;
-    } else {
-      ctx.fillStyle = `rgba(100, 200, 255, ${intensity * 0.5})`;
-    }
+    // Use globalAlpha instead of expensive blend modes
+    ctx.globalAlpha = intensity * 0.5;
+    ctx.fillStyle = isGolden ? "rgba(255, 200, 100, 1)" : "rgba(100, 200, 255, 1)";
     ctx.fillRect(0, 0, width, height);
 
-    ctx.globalCompositeOperation = "soft-light";
-    if (isGolden) {
-      ctx.fillStyle = `rgba(255, 220, 150, ${intensity * 0.7})`;
-    } else {
-      ctx.fillStyle = `rgba(150, 220, 255, ${intensity * 0.6})`;
-    }
+    ctx.globalAlpha = intensity * 0.4;
+    ctx.fillStyle = isGolden ? "rgba(255, 220, 150, 1)" : "rgba(150, 220, 255, 1)";
     ctx.fillRect(0, 0, width, height);
     ctx.restore();
   }
 
   // Background flash
-  if (backgroundFlash > 0) {
-    ctx.fillStyle = `rgba(255, 255, 255, ${backgroundFlash * 0.4})`;
-    ctx.fillRect(0, 0, width, height);
-  }
+  //  if (backgroundFlash > 0) {
+  //    ctx.fillStyle = `rgba(255, 255, 255, ${backgroundFlash * 0.4})`;
+  //    ctx.fillRect(0, 0, width, height);
+  //  }
 
   // ═══ Draw bricks ═══
   if (brickRenderer.isReady()) {
