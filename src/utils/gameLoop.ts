@@ -37,7 +37,7 @@ export class FixedStepGameLoop {
   constructor(config?: Partial<GameLoopConfig>) {
     this.config = {
       maxDeltaMs: 250,
-      timeScale: 1.0,
+      timeScale: 0.9,
       ...config
     };
 
