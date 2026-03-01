@@ -3963,7 +3963,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // FPS tracking for adaptive quality
   const fpsTrackerRef = useRef({ lastTime: performance.now(), frameCount: 0, fps: 60 });
   const lastFrameTimeRef = useRef(performance.now());
-  const targetFrameTime = 1000 / 102; // ~100 FPS simulation pacing (slight margin)
+  const targetFrameTime = 1000 / 62; // ~60 FPS simulation pacing (slight margin)
 
   // Lag detection ref for tracking frame timing with GC detection
   const lagDetectionRef = useRef({
