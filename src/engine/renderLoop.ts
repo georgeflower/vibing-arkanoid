@@ -36,11 +36,22 @@ export function startRenderLoop(
   canvas: HTMLCanvasElement,
   assets: AssetRefs,
 ): () => void {
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d", {
+    // alpha: false eliminates per-pixel alpha compositing when painting the
+    // canvas to the page — a significant GPU bandwidth win on integrated GPUs.
+    alpha: false,
+    // desynchronized: true lets the compositor present frames without waiting
+    // for the page event loop, reducing latency on integrated graphics.
+    desynchronized: true,
+  });
   if (!ctx) {
     console.error("[RenderLoop] Failed to get 2D context");
     return () => {};
   }
+
+  // Disable bilinear filtering — not needed for pixel-art assets and saves
+  // GPU fill-rate on every drawImage call.
+  ctx.imageSmoothingEnabled = false;
 
   let rafId: number | null = null;
   let running = true;
