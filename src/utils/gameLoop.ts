@@ -11,6 +11,7 @@
 export interface GameLoopConfig {
   maxDeltaMs: number; // max frame delta to prevent issues (default 250ms)
   timeScale: number; // 1.0 = normal speed, 0.5 = half speed, etc.
+  fpsCapMs: number; // minimum milliseconds between frames (default 10ms = 100 FPS cap)
 }
 
 export interface GameLoopState {
@@ -24,6 +25,7 @@ export interface GameLoopDebug {
   frameTick: number;
   timeScale: number;
   maxDeltaMs: number;
+  fpsCapMs: number;
 }
 
 export class FixedStepGameLoop {
@@ -38,6 +40,7 @@ export class FixedStepGameLoop {
     this.config = {
       maxDeltaMs: 250,
       timeScale: 0.9,
+      fpsCapMs: 1000 / 100,
       ...config
     };
 
@@ -76,6 +79,11 @@ export class FixedStepGameLoop {
    */
   private loop = (currentTime: number) => {
     this.animationFrameId = requestAnimationFrame(this.loop);
+
+    // Skip frame if it occurs too soon (FPS cap)
+    if (currentTime - this.state.lastTime < this.config.fpsCapMs) {
+      return;
+    }
 
     this.state.lastTime = currentTime;
 
@@ -149,7 +157,8 @@ export class FixedStepGameLoop {
       fps: this.state.fps,
       frameTick: this.frameTick,
       timeScale: this.config.timeScale,
-      maxDeltaMs: this.config.maxDeltaMs
+      maxDeltaMs: this.config.maxDeltaMs,
+      fpsCapMs: this.config.fpsCapMs
     };
   }
 
