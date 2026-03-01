@@ -1,141 +1,56 @@
 
-## Deep-dive findings (double-checked from current code)
 
-Your logs are consistent with a render/main-thread bottleneck, not physics:
-- CCD stays near `0.0–0.2ms` with very low object counts.
-- FPS still collapses to ~13–48 even in LOW quality and simple scenes.
+# Fix Frame-Rate Dependent Game Speed
 
-I validated several hidden contributors in the code:
+## Root Cause
 
-1) **Hard 60 caps exist in two places**
-- `src/engine/renderLoop.ts`: `MIN_FRAME_INTERVAL = 1000 / 62` (~60 FPS cap).
-- `src/components/Game.tsx`: `targetFrameTime = 1000 / 60`, plus FPS is clamped with `Math.min(60, ...)`.
-- This explains reduced smoothness on high-end displays.
+The game has **two separate loops**:
+1. **Game loop** (`Game.tsx` gameLoop) -- runs simulation: physics, enemies, bombs, power-ups, boss movement, etc.
+2. **Render loop** (`renderLoop.ts`) -- draws the canvas from `world` state.
 
-2) **Debug overhead is active by default even when overlays are closed**
-- `src/hooks/useDebugSettings.ts`: defaults set `enableLagLogging: true`, `enableGCLogging: true`, `enablePerformanceLogging: true`, `enableFPSLogging: true`.
-- `src/components/Game.tsx` loop computes debug path every frame when those toggles are true.
-- `src/components/Game.tsx` also enables `debugLogger.intercept()` globally on mount when debug is enabled.
+Previously both ran at 60 FPS. The recent performance optimization changed the game loop target to ~100 FPS (`targetFrameTime = 1000 / 102`). However, nearly all movement code in the game loop is **frame-based** (e.g., `enemy.x += enemy.dx` per tick), meaning 100 ticks/sec = 67% faster movement.
 
-3) **Per-frame allocation churn still exists in hot paths**
-- `src/engine/physics.ts`: creates fresh result object + many arrays every frame (`createEmptyResult`, `map/filter/find/sort`).
-- `src/components/Game.tsx`: per-frame cleanup filters for warnings (`setLaserWarnings(...filter...)`, `setSuperWarnings(...filter...)`) even when mostly empty.
-- `src/engine/canvasRenderer.ts`: several array/filter paths still allocate in render path (small individually, but sustained).
+The ball physics are partially protected (CCD uses `dtSeconds: 1/60` and converts velocities), but even that assumes exactly 60 ticks/sec.
 
-4) **Loop architecture currently has no interpolation path**
-- Physics/update and rendering are independent loops.
-- With hard-capped update and no interpolation, high-refresh smoothness suffers.
+## Solution: Fixed 60Hz Simulation + 100Hz Rendering (Already the Architecture)
+
+The render loop is **already separate** and already runs at 100 FPS. The game loop should stay at a fixed 60 FPS simulation rate. This is the correct architecture described in the project's own performance philosophy.
+
+The fix is simple: **revert the game loop pacing back to 60 FPS** while keeping the render loop at its adaptive 100 FPS target.
 
 ---
 
-## Implementation approach (respecting your constraints)
+## Changes
 
-### Constraints honored
-- Keep debug system (do not remove debug flag).
-- Remove fixed 60 render cap behavior and support 100 FPS target for high-end.
-- Do not reduce ball motion smoothness.
+### File: `src/components/Game.tsx`
 
----
+**Change 1** -- Revert simulation pacing to 60 FPS (line ~3966):
+```
+// Before:
+const targetFrameTime = 1000 / 102; // ~100 FPS simulation pacing
 
-## Plan (sequenced)
+// After:
+const targetFrameTime = 1000 / 62; // ~60 FPS simulation pacing (slight margin)
+```
 
-### Phase 1 — Replace hard caps with adaptive frame pacing (no gameplay speed change)
-**Files:**  
-- `src/engine/renderLoop.ts`  
-- `src/components/Game.tsx`
+This single change fixes all frame-rate dependent movement (enemies, bombs, boss, power-ups, bullets, bonus letters, boss attacks) because they all run inside this game loop and were designed for 60 FPS ticks.
 
-**Changes:**
-1. Introduce configurable targets:
-   - Desktop high-performance target: **100 FPS** render pacing.
-   - Lower targets only when quality falls or device is constrained.
-2. Remove `Math.min(60, ...)` FPS clamp in `Game.tsx` metrics.
-3. Keep physics deterministic at fixed timestep (60Hz simulation), but decouple render pacing from simulation pacing.
-4. Add interpolation factor plumbing so render can run at ~100 FPS without speeding physics.
-
-**Why:** preserves gameplay correctness while restoring smoothness on high-end.
+The render loop in `renderLoop.ts` remains at its adaptive 100 FPS target, providing smooth visuals on high-refresh displays.
 
 ---
 
-### Phase 2 — Keep debug features, but make hot-path debug checks truly opt-in
-**Files:**  
-- `src/hooks/useDebugSettings.ts`  
-- `src/components/Game.tsx`  
-- `src/utils/debugLogger.ts`
+## Why This Works
 
-**Changes:**
-1. Keep all debug features available, but change expensive default runtime toggles:
-   - `enableLagLogging` and `enableGCLogging` default off.
-   - `enableDetailedFrameLogging` remains off.
-2. Only run lag/GC polling branches when the specific toggle is enabled.
-3. Keep console interception feature, but avoid globally intercepting unless at least one logging mode is active (or dashboard open).
+- **Ball physics**: Already frame-rate independent via CCD with `dtSeconds: 1/60`. Stays correct.
+- **All other movement**: Designed for 60 FPS frame-based updates. Restoring 60 FPS ticks makes them correct again.
+- **Visual smoothness**: The render loop draws at up to 100 FPS independently, reading from `world` state. Entities appear smooth because the canvas redraws at 100Hz even though positions update at 60Hz.
+- **Integrated graphics**: The render loop already adapts to 60 FPS on low quality. The simulation at 60 FPS is far less expensive than at 100 FPS (40% fewer physics/collision/state updates per second).
 
-**Why:** you keep debug capability, but baseline gameplay path is no longer paying continuous debug tax.
+## What This Does NOT Change
 
----
+- Render loop stays at adaptive 100/60 FPS target (no change to `renderLoop.ts`)
+- Debug features remain as-is
+- No speed constant conversions needed
+- No delta-time refactor needed across dozens of movement callsites
+- Ball smoothness preserved (CCD handles interpolation internally)
 
-### Phase 3 — Remove recurring allocation churn in per-frame code
-**Files:**  
-- `src/engine/physics.ts`  
-- `src/components/Game.tsx`  
-- `src/engine/canvasRenderer.ts`
-
-**Changes:**
-1. `physics.ts`: move from per-frame fresh result object/arrays to reusable frame buffers (clear-length pattern).
-2. Replace hot-path `map/filter` chains where practical with indexed loops and in-place compaction.
-3. In `Game.tsx`, avoid per-frame warning array `filter` when arrays are empty; use cheap guards and in-place cleanup patterns.
-4. In `canvasRenderer.ts`, remove unnecessary temporary array creation in always-executed paths.
-
-**Why:** cuts GC spikes that match “minimal scene but bad FPS” behavior.
-
----
-
-### Phase 4 — Improve observability so profiler points to real bottlenecks
-**Files:**  
-- `src/utils/performanceProfiler.ts`  
-- `src/components/Game.tsx`  
-- `src/utils/frameProfiler.ts`
-
-**Changes:**
-1. Add explicit measurements for:
-   - simulation/update cost
-   - render submit cost
-   - debug/logging cost
-   - GC/long-frame counts
-2. Keep detailed logging available, but reduce console flood by batching or cooldown-based summaries.
-
-**Why:** current profiler says “No bottlenecks detected” because it mostly tracks object counts/CCD, not full frame budget consumers.
-
----
-
-## Validation plan (before/after)
-
-1. **High-end machine test**
-- Confirm target render pacing near 100 FPS when quality high.
-- Confirm ball path smoothness improves vs current capped behavior.
-
-2. **Integrated graphics test**
-- Same scene as your logs (1 ball, ~25 bricks, no particles/enemies).
-- Verify stable uplift and fewer critical dips.
-- Verify low-quality fallback still helps without changing ball behavior.
-
-3. **Regression checks**
-- Pointer lock pause/resume.
-- Boss levels (background effects + music-reactive hue).
-- Debug dashboard toggles still work and can re-enable all diagnostics.
-
----
-
-## Risk controls
-
-- Physics remains fixed-step to avoid speed changes.
-- Render interpolation is additive (visual smoothness), not gameplay-altering.
-- Debug features are preserved, only baseline activation defaults/pacing change.
-- Changes are incremental by phase so each can be benchmarked and rolled back independently.
-
----
-
-## Technical note on your 100 FPS requirement
-To satisfy “100 FPS on high-end” **and** avoid worse integrated performance, the right model is:
-- fixed 60Hz simulation + interpolated render at up to 100Hz (adaptive),
-- not uncapped simulation ticks.
-This preserves collision determinism and ball behavior while improving perceived smoothness.
