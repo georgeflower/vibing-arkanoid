@@ -11,7 +11,7 @@
 export interface GameLoopConfig {
   maxDeltaMs: number; // max frame delta to prevent issues (default 250ms)
   timeScale: number; // 1.0 = normal speed, 0.5 = half speed, etc.
-  fpsCapMs: number; // minimum milliseconds between frames (default 10ms = 100 FPS cap)
+  fpsCapMs: number; // minimum milliseconds between frames (default ~8.33ms = 120 FPS cap)
 }
 
 export interface GameLoopState {
@@ -40,7 +40,7 @@ export class FixedStepGameLoop {
     this.config = {
       maxDeltaMs: 250,
       timeScale: 0.9,
-      fpsCapMs: 1000 / 100,
+      fpsCapMs: 1000 / 120,
       ...config
     };
 
