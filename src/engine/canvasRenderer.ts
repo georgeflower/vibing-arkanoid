@@ -898,7 +898,7 @@ export function renderFrame(
           ctx.fillStyle = `hsla(30, 100%, 60%, ${alpha})`;
           ctx.beginPath();
           ctx.arc(
-            bullet.x + bullet.width / 2 + (Math.random() - 0.5) * 6,
+            bullet.x + bullet.width / 2 + Math.sin(now * 0.053 + i * 2.3) * 3,
             bullet.y + bullet.height + offset,
             pSize,
             0,
@@ -964,20 +964,34 @@ export function renderFrame(
     }
 
     const flashSize = (impact.isSuper ? 20 : 12) * (1 - progress * 0.5);
-    const flashGradient = ctx.createRadialGradient(impact.x, impact.y, 0, impact.x, impact.y, flashSize);
-    if (impact.isSuper) {
-      flashGradient.addColorStop(0, `rgba(255, 255, 200, ${fadeOut})`);
-      flashGradient.addColorStop(0.5, `rgba(255, 220, 50, ${fadeOut * 0.7})`);
-      flashGradient.addColorStop(1, "rgba(255, 180, 0, 0)");
-    } else {
-      flashGradient.addColorStop(0, `rgba(200, 255, 255, ${fadeOut})`);
-      flashGradient.addColorStop(0.5, `rgba(50, 200, 255, ${fadeOut * 0.7})`);
-      flashGradient.addColorStop(1, "rgba(0, 150, 255, 0)");
-    }
+    const fadeBucket = Math.floor(fadeOut * 10);
+    const flashSizeBucket = Math.round(flashSize);
+    const flashGradient = impact.isSuper
+      ? getCachedRadialGradient(
+          ctx, `bulletImpactFlash_super_${fadeBucket}_${flashSizeBucket}`,
+          0, 0, 0, 0, 0, flashSizeBucket,
+          [
+            [0, `rgba(255, 255, 200, ${fadeOut})`],
+            [0.5, `rgba(255, 220, 50, ${fadeOut * 0.7})`],
+            [1, "rgba(255, 180, 0, 0)"],
+          ],
+        )
+      : getCachedRadialGradient(
+          ctx, `bulletImpactFlash_norm_${fadeBucket}_${flashSizeBucket}`,
+          0, 0, 0, 0, 0, flashSizeBucket,
+          [
+            [0, `rgba(200, 255, 255, ${fadeOut})`],
+            [0.5, `rgba(50, 200, 255, ${fadeOut * 0.7})`],
+            [1, "rgba(0, 150, 255, 0)"],
+          ],
+        );
+    ctx.save();
+    ctx.translate(impact.x, impact.y);
     ctx.fillStyle = flashGradient;
     ctx.beginPath();
-    ctx.arc(impact.x, impact.y, flashSize, 0, Math.PI * 2);
+    ctx.arc(0, 0, flashSizeBucket, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
 
     if (impact.isSuper && qualitySettings.level !== "low") {
       for (let i = 0; i < 6; i++) {
@@ -1257,23 +1271,26 @@ export function renderFrame(
     if (elapsed < 500) {
       const progress = elapsed / 500;
       const fadeOut = 1 - progress;
-      ctx.save();
+      const fadeBucket = Math.floor(fadeOut * 10);
       const waveRadius = 20 + progress * 80;
-      const waveGradient = ctx.createRadialGradient(
-        secondChanceImpact.x,
-        secondChanceImpact.y,
-        0,
-        secondChanceImpact.x,
-        secondChanceImpact.y,
-        waveRadius,
+      const waveRadiusBucket = Math.round(waveRadius / 5) * 5; // quantize to 5px steps
+      const waveGradient = getCachedRadialGradient(
+        ctx, `scWave_${fadeBucket}_${waveRadiusBucket}`,
+        0, 0, 0, 0, 0, waveRadiusBucket,
+        [
+          [0, `rgba(0, 255, 255, ${fadeOut * 0.8})`],
+          [0.5, `rgba(0, 200, 255, ${fadeOut * 0.4})`],
+          [1, "rgba(0, 200, 255, 0)"],
+        ],
       );
-      waveGradient.addColorStop(0, `rgba(0, 255, 255, ${fadeOut * 0.8})`);
-      waveGradient.addColorStop(0.5, `rgba(0, 200, 255, ${fadeOut * 0.4})`);
-      waveGradient.addColorStop(1, "rgba(0, 200, 255, 0)");
+      ctx.save();
+      ctx.translate(secondChanceImpact.x, secondChanceImpact.y);
       ctx.fillStyle = waveGradient;
       ctx.beginPath();
-      ctx.arc(secondChanceImpact.x, secondChanceImpact.y, waveRadius, 0, Math.PI * 2);
+      ctx.arc(0, 0, waveRadiusBucket, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+      ctx.save();
 
       ctx.fillStyle = `rgba(255, 255, 255, ${fadeOut * 0.9})`;
       // shadowBlur removed
@@ -1291,8 +1308,8 @@ export function renderFrame(
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.moveTo(secondChanceImpact.x, secondChanceImpact.y);
-          const midX = (secondChanceImpact.x + sx) / 2 + (Math.random() - 0.5) * 10;
-          const midY = (secondChanceImpact.y + sy) / 2 + (Math.random() - 0.5) * 10;
+          const midX = (secondChanceImpact.x + sx) / 2 + Math.sin(now * 0.047 + i * 1.9) * 5;
+          const midY = (secondChanceImpact.y + sy) / 2 + Math.cos(now * 0.041 + i * 2.3) * 5;
           ctx.lineTo(midX, midY);
           ctx.lineTo(sx, sy);
           ctx.stroke();
@@ -1862,28 +1879,37 @@ function drawEnemies(
         highlightColor = `hsl(${hue}, ${saturation}%, ${lightness + 30}%)`;
       }
 
-      const lightX = Math.cos(singleEnemy.rotationY) * radius * 0.4;
-      const lightY = Math.sin(singleEnemy.rotationX) * radius * 0.4;
-      const gradient = ctx.createRadialGradient(
-        centerX + lightX,
-        centerY + lightY,
-        radius * 0.1,
-        centerX,
-        centerY,
-        radius * 1.2,
-      );
-      gradient.addColorStop(0, highlightColor);
-      gradient.addColorStop(0.3, baseColor);
-      gradient.addColorStop(0.7, `hsl(${hue}, 60%, 25%)`);
-      gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
-
       if (qualitySettings.shadowsEnabled) {
         drawCircleShadow(ctx, centerX + 4, centerY + 4, radius);
       }
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-      ctx.fill();
+
+      const lightX = Math.cos(singleEnemy.rotationY) * radius * 0.4;
+      const lightY = Math.sin(singleEnemy.rotationX) * radius * 0.4;
+
+      if (qualitySettings.level === 'low') {
+        // Low quality: flat fill avoids per-frame gradient creation
+        ctx.fillStyle = baseColor;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        const gradient = ctx.createRadialGradient(
+          centerX + lightX,
+          centerY + lightY,
+          radius * 0.1,
+          centerX,
+          centerY,
+          radius * 1.2,
+        );
+        gradient.addColorStop(0, highlightColor);
+        gradient.addColorStop(0.3, baseColor);
+        gradient.addColorStop(0.7, `hsl(${hue}, 60%, 25%)`);
+        gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       const pulse = Math.abs(Math.sin(now / 100));
       ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + pulse * 0.5})`;
@@ -1972,26 +1998,34 @@ function drawEnemies(
 
       const lightX = Math.cos(singleEnemy.rotationY) * radius * 0.4;
       const lightY = Math.sin(singleEnemy.rotationX) * radius * 0.4;
-      const gradient = ctx.createRadialGradient(
-        centerX + lightX,
-        centerY + lightY,
-        radius * 0.1,
-        centerX,
-        centerY,
-        radius * 1.2,
-      );
-      gradient.addColorStop(0, highlightColor);
-      gradient.addColorStop(0.3, baseColor);
-      gradient.addColorStop(0.7, darkColor);
-      gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
 
       if (qualitySettings.shadowsEnabled) {
         drawCircleShadow(ctx, centerX + 4, centerY + 4, radius);
       }
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-      ctx.fill();
+      if (qualitySettings.level === 'low') {
+        // Low quality: flat fill avoids per-frame gradient creation
+        ctx.fillStyle = baseColor;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        const gradient = ctx.createRadialGradient(
+          centerX + lightX,
+          centerY + lightY,
+          radius * 0.1,
+          centerX,
+          centerY,
+          radius * 1.2,
+        );
+        gradient.addColorStop(0, highlightColor);
+        gradient.addColorStop(0.3, baseColor);
+        gradient.addColorStop(0.7, darkColor);
+        gradient.addColorStop(1, "rgba(0, 0, 0, 0.8)");
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       // Latitude/longitude lines
       ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
@@ -2005,21 +2039,21 @@ function drawEnemies(
         ctx.stroke();
       }
 
-      // Specular
-      const specGrad = ctx.createRadialGradient(
-        centerX + lightX * 0.7,
-        centerY + lightY * 0.7,
-        0,
-        centerX + lightX * 0.7,
-        centerY + lightY * 0.7,
-        radius * 0.4,
-      );
-      specGrad.addColorStop(0, "rgba(255, 255, 255, 0.8)");
-      specGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
-      ctx.fillStyle = specGrad;
-      ctx.beginPath();
-      ctx.arc(centerX + lightX * 0.7, centerY + lightY * 0.7, radius * 0.3, 0, Math.PI * 2);
-      ctx.fill();
+      // Specular — skip on low quality, use cached gradient otherwise
+      if (qualitySettings.level !== 'low') {
+        const specR = Math.round(radius * 0.4);
+        const specGrad = getCachedRadialGradient(ctx, `enemy_sphere_spec_${specR}`, 0, 0, 0, 0, 0, specR, [
+          [0, "rgba(255, 255, 255, 0.8)"],
+          [1, "rgba(255, 255, 255, 0)"],
+        ]);
+        ctx.save();
+        ctx.translate(centerX + lightX * 0.7, centerY + lightY * 0.7);
+        ctx.fillStyle = specGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
 
       if (singleEnemy.isAngry) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
@@ -2546,7 +2580,7 @@ function drawBoss(
       const y = boss.y + boss.height / 2 + Math.sin(angle) * r;
       ctx.beginPath();
       ctx.moveTo(x, y);
-      ctx.lineTo(x + Math.random() * 10 - 5, y + Math.random() * 10 - 5);
+      ctx.lineTo(x + Math.sin(now * 0.051 + i * 1.7) * 5, y + Math.cos(now * 0.043 + i * 2.1) * 5);
       ctx.stroke();
     }
     ctx.restore();
