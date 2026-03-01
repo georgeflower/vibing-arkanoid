@@ -89,7 +89,7 @@ export const renderState: RenderState = {
   // powerUps live in world.powerUps — no bridge needed
   // bullets live in world.bullets — no bridge needed
 
-  qualitySettings: { level: 'medium', ...QUALITY_PRESETS.medium, autoAdjust: true },
+  qualitySettings: { level: 'medium', autoAdjust: true, ...QUALITY_PRESETS.medium },
 
   showHighScoreEntry: false,
   bossIntroActive: false,
