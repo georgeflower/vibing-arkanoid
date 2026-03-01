@@ -104,6 +104,7 @@ import { useAdaptiveQuality } from "@/hooks/useAdaptiveQuality";
 import { useLevelProgress } from "@/hooks/useLevelProgress";
 import { soundManager } from "@/utils/sounds";
 import { FixedStepGameLoop } from "@/utils/gameLoop";
+import { DEFAULT_TIME_SCALE, MIN_TIME_SCALE, MAX_TIME_SCALE, FPS_CAP, MAX_DELTA_MS } from "@/constants/gameLoopConfig";
 import { createBoss, createResurrectedPyramid } from "@/utils/bossUtils";
 import { performBossAttack } from "@/utils/bossAttacks";
 import { BOSS_LEVELS, BOSS_CONFIG, ATTACK_PATTERNS } from "@/constants/bossConfig";
@@ -1112,9 +1113,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   useEffect(() => {
     if (!gameLoopRef.current) {
       gameLoopRef.current = new FixedStepGameLoop({
-        maxDeltaMs: 250,
-        timeScale: 1.0,
-        fpsCapMs: 1000 / 100,
+        maxDeltaMs: MAX_DELTA_MS,
+        timeScale: DEFAULT_TIME_SCALE,
+        fpsCapMs: 1000 / FPS_CAP,
       });
     }
   }, []);
@@ -3055,14 +3056,14 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         } else if (e.key === "[") {
           // Decrease time scale
           if (gameLoopRef.current) {
-            const newScale = Math.max(0.1, gameLoopRef.current.getTimeScale() - 0.1);
+            const newScale = Math.max(MIN_TIME_SCALE, gameLoopRef.current.getTimeScale() - 0.1);
             gameLoopRef.current.setTimeScale(newScale);
             toast.success(`Time scale: ${newScale.toFixed(1)}x`);
           }
         } else if (e.key === "]") {
           // Increase time scale
           if (gameLoopRef.current) {
-            const newScale = Math.min(3.0, gameLoopRef.current.getTimeScale() + 0.1);
+            const newScale = Math.min(MAX_TIME_SCALE, gameLoopRef.current.getTimeScale() + 0.1);
             gameLoopRef.current.setTimeScale(newScale);
             toast.success(`Time scale: ${newScale.toFixed(1)}x`);
           }
@@ -7816,8 +7817,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                               gameLoopRef.current?.getDebugInfo() ?? {
                                 fps: 0,
                                 frameTick: 0,
-                                timeScale: 1,
-                                maxDeltaMs: 250,
+                                timeScale: DEFAULT_TIME_SCALE,
+                                maxDeltaMs: MAX_DELTA_MS,
                               }
                             }
                             actualFps={currentFps}
