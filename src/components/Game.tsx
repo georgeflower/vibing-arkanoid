@@ -3315,7 +3315,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // ═══ Run pure physics frame ═══
     const result = runPhysicsFrame({
-      dtSeconds: 1 / 60,
+      dtSeconds: dtSecondsRef.current,
       frameTick: gameLoopRef.current?.getFrameTick() || 0,
       level,
       canvasSize: { w: SCALED_CANVAS_WIDTH, h: SCALED_CANVAS_HEIGHT },
@@ -3963,6 +3963,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
   // FPS tracking for adaptive quality
   const fpsTrackerRef = useRef({ lastTime: performance.now(), frameCount: 0, fps: 60 });
   const lastFrameTimeRef = useRef(performance.now());
+  const dtSecondsRef = useRef(1 / 60); // Actual delta time for current frame (seconds)
   const targetFrameTime = 1000 / 62; // ~60 FPS simulation pacing (slight margin)
 
   // Lag detection ref for tracking frame timing with GC detection
@@ -4085,6 +4086,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     lastFrameTimeRef.current = frameNow - (elapsed % targetFrameTime);
 
+    // Calculate actual delta time in seconds, clamped to 50ms max to prevent
+    // physics tunneling and instabilities on lag spikes or tab resume events
+    dtSecondsRef.current = Math.min(elapsed / 1000, 0.05);
+
     // Track FPS (use cached frameNow)
     fpsTrackerRef.current.frameCount++;
     const deltaTime = frameNow - fpsTrackerRef.current.lastTime;
@@ -4184,7 +4189,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         ball.x = paddle.x + paddle.width / 2;
         ball.y = paddle.y - ball.radius - 5;
       }
-      ball.rotation = ((ball.rotation || 0) + 3) % 360; // Spinning rotation
+      ball.rotation = ((ball.rotation || 0) + 180 * dtSecondsRef.current) % 360; // 180 deg/s = 3 deg/frame at 60fps
     }
 
     // Update power-ups
@@ -4195,7 +4200,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Direct world mutation — no React state updater, no stale-closure risk
     for (const letter of world.bonusLetters) {
       // Fall down
-      letter.y += letter.speed;
+      letter.y += letter.speed * dtSecondsRef.current * 60; // scale by normalized dt
       // Sine wave horizontal motion: amplitude 30, period 4 seconds
       const elapsed = currentTime - letter.spawnTime;
       const sinePhase = (elapsed / 4000) * 2 * Math.PI;
@@ -4217,9 +4222,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Update enemies - OPTIMIZED: Direct world mutation (skip if stunned)
     if (!isStunActive) {
+      const dtNorm = dtSecondsRef.current * 60; // normalized delta: 1.0 at 60fps
       for (const enemy of world.enemies) {
-        let newX = enemy.x + enemy.dx;
-        let newY = enemy.y + enemy.dy;
+        let newX = enemy.x + enemy.dx * dtNorm;
+        let newY = enemy.y + enemy.dy * dtNorm;
 
         // Sphere, Pyramid, and CrossBall enemies have more random movement
         if (enemy.type === "sphere" || enemy.type === "pyramid" || enemy.type === "crossBall") {
@@ -4250,11 +4256,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         enemy.x = newX;
         enemy.y = newY;
         enemy.rotationX +=
-          enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.08 : 0.05;
+          (enemy.type === "pyramid" ? 0.06 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.08 : 0.05) * dtNorm;
         enemy.rotationY +=
-          enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.12 : 0.08;
+          (enemy.type === "pyramid" ? 0.09 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.12 : 0.08) * dtNorm;
         enemy.rotationZ +=
-          enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.06 : 0.03;
+          (enemy.type === "pyramid" ? 0.04 : enemy.type === "sphere" || enemy.type === "crossBall" ? 0.06 : 0.03) * dtNorm;
       }
     }
     if (profilerEnabled) frameProfiler.endTiming("enemies");
@@ -4268,12 +4274,12 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
       if (shouldUpdateParticles) {
         // Update pooled particles in place (no new objects created)
-        particlePool.updateParticles(0.2);
+        particlePool.updateParticles(dtSecondsRef.current);
 
         // Update explosion frames in-place via pool (no array spread/splice)
         const activeExplosions = explosionPool.getActive();
         for (let i = activeExplosions.length - 1; i >= 0; i--) {
-          activeExplosions[i].frame += 1;
+          activeExplosions[i].frame += dtSecondsRef.current * 60; // scale by normalized dt
           if (activeExplosions[i].frame >= activeExplosions[i].maxFrames) {
             explosionPool.release(activeExplosions[i]);
           }
@@ -4350,6 +4356,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
     // Update bombs and rockets - OPTIMIZED: In-place mutation with backwards iteration
     // Define paddle danger zone for stun freezing
     const bombPaddleDangerZoneY = paddle ? paddle.y - 100 : SCALED_CANVAS_HEIGHT - 100;
+    const dtNormBombs = dtSecondsRef.current * 60; // normalized delta: 1.0 at 60fps
 
     // Update bombs and rockets - OPTIMIZED: Direct world mutation, backwards iteration for splice safety
     for (let i = world.bombs.length - 1; i >= 0; i--) {
@@ -4446,18 +4453,18 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               const newSpeed = Math.sqrt(newDx * newDx + newDy * newDy);
               bomb.dx = newSpeed > 0 ? (newDx / newSpeed) * currentSpeed : newDx;
               bomb.dy = newSpeed > 0 ? (newDy / newSpeed) * currentSpeed : newDy;
-              bomb.x += bomb.dx;
-              bomb.y += bomb.dy;
+              bomb.x += bomb.dx * dtNormBombs;
+              bomb.y += bomb.dy * dtNormBombs;
               continue;
             }
           }
-          bomb.x += bomb.dx || 0;
-          bomb.y += bomb.dy || 0;
+          bomb.x += (bomb.dx || 0) * dtNormBombs;
+          bomb.y += (bomb.dy || 0) * dtNormBombs;
         } else if (bomb.type === "pyramidBullet" && bomb.dx !== undefined) {
-          bomb.x += bomb.dx || 0;
-          bomb.y += bomb.speed;
+          bomb.x += (bomb.dx || 0) * dtNormBombs;
+          bomb.y += bomb.speed * dtNormBombs;
         } else {
-          bomb.y += bomb.speed;
+          bomb.y += bomb.speed * dtNormBombs;
         }
     }
 
@@ -4696,11 +4703,11 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           prev
             ? {
                 ...prev,
-                x: prev.x + (dx / distance) * moveSpeed,
-                y: prev.y + (dy / distance) * moveSpeed,
-                rotationX: prev.rotationX + 0.05,
-                rotationY: prev.rotationY + 0.08,
-                rotationZ: prev.rotationZ + 0.03,
+                x: prev.x + (dx / distance) * moveSpeed * dtSecondsRef.current * 60,
+                y: prev.y + (dy / distance) * moveSpeed * dtSecondsRef.current * 60,
+                rotationX: prev.rotationX + 0.05 * dtSecondsRef.current * 60,
+                rotationY: prev.rotationY + 0.08 * dtSecondsRef.current * 60,
+                rotationZ: prev.rotationZ + 0.03 * dtSecondsRef.current * 60,
               }
             : null,
         );
@@ -4714,9 +4721,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         prev
           ? {
               ...prev,
-              rotationX: prev.rotationX + 0.008, // Much slower than movement spin
-              rotationY: prev.rotationY + 0.012, // Primary visible rotation
-              rotationZ: prev.rotationZ + 0.005,
+              rotationX: prev.rotationX + 0.008 * dtSecondsRef.current * 60, // Much slower than movement spin
+              rotationY: prev.rotationY + 0.012 * dtSecondsRef.current * 60, // Primary visible rotation
+              rotationZ: prev.rotationZ + 0.005 * dtSecondsRef.current * 60,
             }
           : null,
       );
@@ -4728,8 +4735,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
         prev
           ? {
               ...prev,
-              rotationX: prev.rotationX + 0.013, // Slower than movement (0.08)
-              rotationY: prev.rotationY + 0.02, // Slower than movement (0.12)
+              rotationX: prev.rotationX + 0.013 * dtSecondsRef.current * 60, // Slower than movement (0.08)
+              rotationY: prev.rotationY + 0.02 * dtSecondsRef.current * 60, // Slower than movement (0.12)
             }
           : null,
       );
@@ -4746,7 +4753,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           if (!prev || !isMegaBoss(prev)) return prev;
           return {
             ...prev,
-            rotationY: prev.rotationY + 0.01, // Slow constant rotation for the hexagon
+            rotationY: prev.rotationY + 0.01 * dtSecondsRef.current * 60, // Slow constant rotation for the hexagon
           } as MegaBoss;
         });
       }
@@ -5094,7 +5101,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
         prev.forEach((ball) => {
           // Update position with wall bouncing
-          let updatedBall = updateDangerBall(ball, SCALED_CANVAS_WIDTH);
+          let updatedBall = updateDangerBall(ball, SCALED_CANVAS_WIDTH, dtSecondsRef.current);
 
           // If ball is homing, apply homing steering toward boss core
           if (updatedBall.isHoming && boss) {
@@ -5218,10 +5225,10 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
               i === idx
                 ? {
                     ...b,
-                    x: b.x + (dx / dist) * b.speed,
-                    y: b.y + (dy / dist) * b.speed,
-                    rotationX: b.rotationX + 0.08,
-                    rotationY: b.rotationY + 0.12,
+                    x: b.x + (dx / dist) * b.speed * dtSecondsRef.current * 60,
+                    y: b.y + (dy / dist) * b.speed * dtSecondsRef.current * 60,
+                    rotationX: b.rotationX + 0.08 * dtSecondsRef.current * 60,
+                    rotationY: b.rotationY + 0.12 * dtSecondsRef.current * 60,
                   }
                 : b,
             ),
@@ -5441,8 +5448,8 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
           }
         }
 
-        const newX = attack.x + (attack.dx || 0);
-        const newY = attack.y + (attack.dy || 0);
+        const newX = attack.x + (attack.dx || 0) * dtSecondsRef.current * 60;
+        const newY = attack.y + (attack.dy || 0) * dtSecondsRef.current * 60;
         if (newX < 0 || newX > SCALED_CANVAS_WIDTH || newY < 0 || newY > SCALED_CANVAS_HEIGHT) return false;
         attack.x = newX;
         attack.y = newY;

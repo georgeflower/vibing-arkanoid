@@ -89,7 +89,7 @@ class ParticlePool {
       
       // Initialize particle in-place
       const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
-      const speed = 2 + Math.random() * 3;
+      const speed = (2 + Math.random() * 3) * 60; // px/s
       
       particle.x = x;
       particle.y = y;
@@ -97,8 +97,8 @@ class ParticlePool {
       particle.vy = Math.sin(angle) * speed;
       particle.size = 3 + Math.random() * 4;
       particle.color = colors[i % colorCount];
-      particle.life = 30;
-      particle.maxLife = 30;
+      particle.life = 0.5; // seconds (30 frames / 60 fps)
+      particle.maxLife = 0.5;
       particle.useCircle = false; // Debris: rendered as fillRect squares
       
       this.activeParticles.push(particle);
@@ -119,7 +119,7 @@ class ParticlePool {
       }
       
       const angle = Math.random() * Math.PI * 2;
-      const speed = 2 + Math.random() * 4;
+      const speed = (2 + Math.random() * 4) * 60; // px/s
       const hue = Math.floor(Math.random() * 360);
       
       particle.x = centerX;
@@ -128,8 +128,8 @@ class ParticlePool {
       particle.vy = Math.sin(angle) * speed;
       particle.size = 2 + Math.random() * 4;
       particle.color = `hsl(${hue}, 70%, 60%)`;
-      particle.life = 60;
-      particle.maxLife = 60;
+      particle.life = 1.0; // seconds (60 frames / 60 fps)
+      particle.maxLife = 1.0;
       particle.useCircle = true;
       
       this.activeParticles.push(particle);
@@ -153,16 +153,16 @@ class ParticlePool {
       }
       
       const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
-      const speed = 3 + Math.random() * 5;
+      const speed = (3 + Math.random() * 5) * 60; // px/s
       
       particle.x = centerX + (Math.random() - 0.5) * 200;
       particle.y = centerY + (Math.random() - 0.5) * 100;
       particle.vx = Math.cos(angle) * speed;
-      particle.vy = Math.sin(angle) * speed - 2;
+      particle.vy = Math.sin(angle) * speed - 120; // upward boost in px/s
       particle.size = 4 + Math.random() * 6;
       particle.color = colors[i % colorCount];
-      particle.life = 120;
-      particle.maxLife = 120;
+      particle.life = 2.0; // seconds (120 frames / 60 fps)
+      particle.maxLife = 2.0;
       particle.useCircle = true;
       
       this.activeParticles.push(particle);
@@ -203,15 +203,15 @@ class ParticlePool {
   }
 
   // Optimized update: mutate in place, no new object creation
-  updateParticles(gravity: number = 0.2): void {
+  updateParticles(deltaTimeSeconds: number = 1 / 60, gravity: number = 12): void {
     for (let i = this.activeParticles.length - 1; i >= 0; i--) {
       const particle = this.activeParticles[i];
       
-      // Update position and velocity in place
-      particle.x += particle.vx;
-      particle.y += particle.vy;
-      particle.vy += gravity;
-      particle.life -= 1;
+      // Update position and velocity in place using time-based scaling
+      particle.x += particle.vx * deltaTimeSeconds;
+      particle.y += particle.vy * deltaTimeSeconds;
+      particle.vy += gravity * deltaTimeSeconds;
+      particle.life -= deltaTimeSeconds;
       
       // Release expired particles using swap-and-pop
       if (particle.life <= 0) {
