@@ -1114,6 +1114,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
       gameLoopRef.current = new FixedStepGameLoop({
         maxDeltaMs: 250,
         timeScale: 1.0,
+        fpsCapMs: 1000 / 100,
       });
     }
   }, []);
