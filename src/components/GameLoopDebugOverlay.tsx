@@ -3,10 +3,11 @@ import type { GameLoopDebug } from "@/utils/gameLoop";
 
 interface GameLoopDebugOverlayProps {
   getDebugInfo: () => GameLoopDebug;
+  actualFps?: number;
   visible?: boolean;
 }
 
-export const GameLoopDebugOverlay = ({ getDebugInfo, visible = true }: GameLoopDebugOverlayProps) => {
+export const GameLoopDebugOverlay = ({ getDebugInfo, actualFps, visible = true }: GameLoopDebugOverlayProps) => {
   const [debugInfo, setDebugInfo] = useState<GameLoopDebug>(getDebugInfo());
 
   useEffect(() => {
@@ -27,7 +28,14 @@ export const GameLoopDebugOverlay = ({ getDebugInfo, visible = true }: GameLoopD
         <div className="font-bold text-primary mb-2">Game Loop Debug</div>
         
         <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">FPS:</span>
+          <span className="text-muted-foreground">Actual FPS:</span>
+          <span className={actualFps !== undefined ? (actualFps >= 55 ? "text-green-400" : actualFps >= 30 ? "text-yellow-400" : "text-red-400") : "text-muted-foreground"}>
+            {actualFps !== undefined ? actualFps : "—"}
+          </span>
+        </div>
+
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Capped FPS:</span>
           <span className={debugInfo.fps >= 55 ? "text-green-400" : debugInfo.fps >= 30 ? "text-yellow-400" : "text-red-400"}>
             {debugInfo.fps}
           </span>
