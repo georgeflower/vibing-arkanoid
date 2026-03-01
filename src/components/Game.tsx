@@ -4090,7 +4090,9 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
 
     // Calculate actual delta time in seconds, clamped to 50ms max to prevent
     // physics tunneling and instabilities on lag spikes or tab resume events
-    dtSecondsRef.current = Math.min(elapsed / 1000, 0.05);
+    // Apply time scale to dt
+    const timeScale = gameLoopRef.current?.getTimeScale() ?? 1.0;
+    dtSecondsRef.current = Math.min((elapsed / 1000) * timeScale, 0.05);
 
     // Track FPS (use cached frameNow)
     fpsTrackerRef.current.frameCount++;
