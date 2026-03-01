@@ -7820,6 +7820,7 @@ export const Game = ({ settings, onReturnToMenu }: GameProps) => {
                                 maxDeltaMs: 250,
                               }
                             }
+                            actualFps={currentFps}
                             visible={debugSettings.showGameLoopDebug}
                           />
                         )}
