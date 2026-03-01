@@ -15,10 +15,10 @@ import { renderFrame } from "@/engine/canvasRenderer";
  * Start the render loop. Calls renderFrame every animation frame.
  * @returns A cleanup function that stops the loop.
  */
-// Adaptive render cap — 100 FPS target for high-end, scales down for low quality
-// This prevents GPU exhaustion on 120Hz+ displays with integrated graphics
+// Adaptive render cap — 120 FPS target for high-end, scales down for low quality
+// This prevents GPU exhaustion on high-refresh displays with integrated graphics
 // while allowing smoother rendering on capable hardware.
-const TARGET_FPS_HIGH = 100;
+const TARGET_FPS_HIGH = 120;
 const TARGET_FPS_LOW = 60;
 let currentTargetFps = TARGET_FPS_HIGH;
 let minFrameInterval = 1000 / (currentTargetFps + 2); // slight margin to avoid drift
