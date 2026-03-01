@@ -291,7 +291,7 @@ export function renderFrame(
   //    ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
   //    ctx.fillRect(0, 0, width, height);
 
-  if (!isMobile && qualitySettings.level === "high") {
+  if (!isMobile && qualitySettings.ambientFlickerEnabled) {
     const ambientFlicker = Math.sin(now / 500) * 0.03 + 0.03;
     ctx.save();
     ctx.globalCompositeOperation = "screen";
@@ -479,19 +479,26 @@ export function renderFrame(
     if (getReadyGlow && getReadyGlow.opacity > 0) {
       ctx.save();
       const glowRadius = ball.radius * 3;
-      const glowGradient = ctx.createRadialGradient(ball.x, ball.y, ball.radius, ball.x, ball.y, glowRadius);
-      glowGradient.addColorStop(0, `rgba(100, 200, 255, ${getReadyGlow.opacity * 0.6})`);
-      glowGradient.addColorStop(0.5, `rgba(100, 200, 255, ${getReadyGlow.opacity * 0.3})`);
-      glowGradient.addColorStop(1, "rgba(100, 200, 255, 0)");
+      const opaBucket = Math.floor(getReadyGlow.opacity * 10);
+      const glowGradient = getCachedRadialGradient(
+        ctx, `getReadyGlow_${opaBucket}_${Math.round(ball.radius)}`,
+        0, 0, ball.radius,
+        0, 0, glowRadius,
+        [
+          [0, `rgba(100, 200, 255, ${getReadyGlow.opacity * 0.6})`],
+          [0.5, `rgba(100, 200, 255, ${getReadyGlow.opacity * 0.3})`],
+          [1, "rgba(100, 200, 255, 0)"],
+        ],
+      );
+      ctx.translate(ball.x, ball.y);
       ctx.fillStyle = glowGradient;
       ctx.beginPath();
-      ctx.arc(ball.x, ball.y, glowRadius, 0, Math.PI * 2);
+      ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = `rgba(100, 200, 255, ${getReadyGlow.opacity * 0.8})`;
       ctx.lineWidth = 2;
-      // shadowBlur removed — radial gradient already provides glow
       ctx.beginPath();
-      ctx.arc(ball.x, ball.y, ball.radius * 2, 0, Math.PI * 2);
+      ctx.arc(0, 0, ball.radius * 2, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
@@ -507,14 +514,24 @@ export function renderFrame(
       const pulseIntensity = 1 + Math.sin(pulsePhase * Math.PI * 2) * 0.3;
 
       const releaseGlowRadius = ball.radius * 4 * pulseIntensity;
-      const releaseGradient = ctx.createRadialGradient(ball.x, ball.y, ball.radius, ball.x, ball.y, releaseGlowRadius);
-      releaseGradient.addColorStop(0, `rgba(255, 220, 100, ${glowOpacity * 0.8})`);
-      releaseGradient.addColorStop(0.4, `rgba(100, 255, 255, ${glowOpacity * 0.5})`);
-      releaseGradient.addColorStop(1, "rgba(100, 200, 255, 0)");
+      const opaBucket2 = Math.floor(glowOpacity * 10);
+      const releaseGradient = getCachedRadialGradient(
+        ctx, `releaseGlow_${opaBucket2}_${Math.round(ball.radius)}`,
+        0, 0, ball.radius,
+        0, 0, releaseGlowRadius,
+        [
+          [0, `rgba(255, 220, 100, ${glowOpacity * 0.8})`],
+          [0.4, `rgba(100, 255, 255, ${glowOpacity * 0.5})`],
+          [1, "rgba(100, 200, 255, 0)"],
+        ],
+      );
+      ctx.save();
+      ctx.translate(ball.x, ball.y);
       ctx.fillStyle = releaseGradient;
       ctx.beginPath();
-      ctx.arc(ball.x, ball.y, releaseGlowRadius, 0, Math.PI * 2);
+      ctx.arc(0, 0, releaseGlowRadius, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
 
       ctx.strokeStyle = `rgba(255, 255, 100, ${glowOpacity * 0.9})`;
       ctx.lineWidth = 3;
@@ -548,25 +565,26 @@ export function renderFrame(
     const visualRadius = ball.radius + 2;
 
     // Chaos-aware glow
-    if (chaosLevel > 0.2 && !ball.isFireball && qualitySettings.glowEnabled) {
+    if (chaosLevel > 0.2 && !ball.isFireball && qualitySettings.chaosGlowEnabled) {
       ctx.save();
       const chaosPulse = 1 + Math.sin(now / 200) * 0.2;
       const chaosGlowRadius = visualRadius * (2 + chaosLevel * 2) * chaosPulse;
       const chaosGlowOpacity = (chaosLevel - 0.2) * 0.875;
-      const chaosGradient = ctx.createRadialGradient(
-        ball.x,
-        ball.y,
-        visualRadius * 0.5,
-        ball.x,
-        ball.y,
-        chaosGlowRadius,
+      const opaBucket3 = Math.floor(chaosGlowOpacity * 10);
+      const chaosGradient = getCachedRadialGradient(
+        ctx, `chaosGlow_${opaBucket3}`,
+        0, 0, visualRadius * 0.5,
+        0, 0, chaosGlowRadius,
+        [
+          [0, `rgba(150, 230, 255, ${chaosGlowOpacity})`],
+          [0.5, `rgba(100, 200, 255, ${chaosGlowOpacity * 0.5})`],
+          [1, "rgba(80, 180, 255, 0)"],
+        ],
       );
-      chaosGradient.addColorStop(0, `rgba(150, 230, 255, ${chaosGlowOpacity})`);
-      chaosGradient.addColorStop(0.5, `rgba(100, 200, 255, ${chaosGlowOpacity * 0.5})`);
-      chaosGradient.addColorStop(1, "rgba(80, 180, 255, 0)");
+      ctx.translate(ball.x, ball.y);
       ctx.fillStyle = chaosGradient;
       ctx.beginPath();
-      ctx.arc(ball.x, ball.y, chaosGlowRadius, 0, Math.PI * 2);
+      ctx.arc(0, 0, chaosGlowRadius, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -1006,7 +1024,8 @@ export function renderFrame(
       const time = now / 1000;
       const pulseIntensity = 0.5 + Math.sin(time * 4) * 0.3;
 
-      for (let layer = 0; layer < 3; layer++) {
+      const layerCount = qualitySettings.level === 'high' ? 3 : 2;
+      for (let layer = 0; layer < layerCount; layer++) {
         const layerOffset = layer * 2;
         const layerAlpha = (1 - layer * 0.3) * pulseIntensity;
         // shadowBlur removed — layered strokes convey depth without blur
@@ -1045,58 +1064,63 @@ export function renderFrame(
         ctx.stroke();
       }
 
-      // Electrical arcs
-      const arcCount = 6;
-      for (let i = 0; i < arcCount; i++) {
-        const arcTime = time * 3 + i * ((Math.PI * 2) / arcCount);
-        const arcX = shieldX + shieldWidth / 2 + Math.cos(arcTime) * (shieldWidth / 2 - 5);
-        const arcY = shieldY + shieldHeight / 2 + Math.sin(arcTime) * (shieldHeight / 2 - 5);
-        const arcEndX = shieldX + shieldWidth / 2 + Math.cos(arcTime + 0.5) * (shieldWidth / 2);
-        const arcEndY = shieldY + shieldHeight / 2 + Math.sin(arcTime + 0.5) * (shieldHeight / 2);
-        const branchIntensity = (Math.sin(arcTime * 5) + 1) / 2;
+      // Electrical arcs — only on high quality
+      if (qualitySettings.shieldArcsEnabled) {
+        const arcCount = 6;
+        for (let i = 0; i < arcCount; i++) {
+          const arcTime = time * 3 + i * ((Math.PI * 2) / arcCount);
+          const arcX = shieldX + shieldWidth / 2 + Math.cos(arcTime) * (shieldWidth / 2 - 5);
+          const arcY = shieldY + shieldHeight / 2 + Math.sin(arcTime) * (shieldHeight / 2 - 5);
+          const arcEndX = shieldX + shieldWidth / 2 + Math.cos(arcTime + 0.5) * (shieldWidth / 2);
+          const arcEndY = shieldY + shieldHeight / 2 + Math.sin(arcTime + 0.5) * (shieldHeight / 2);
+          const branchIntensity = (Math.sin(arcTime * 5) + 1) / 2;
 
-        ctx.strokeStyle = `rgba(255, 255, 100, ${branchIntensity * 0.7})`;
-        ctx.lineWidth = 2;
-        // shadowBlur removed — bright yellow strokes are visible without blur
-        ctx.beginPath();
-        ctx.moveTo(arcX, arcY);
-        const segments = 4;
-        for (let s = 1; s <= segments; s++) {
-          const t = s / segments;
-          const baseX = arcX + (arcEndX - arcX) * t;
-          const baseY = arcY + (arcEndY - arcY) * t;
-          // Deterministic jitter: replaces Math.random() in render hot-path
-          const jitterX = Math.sin(now * 0.037 + i * 1.3 + s * 2.7) * 4;
-          const jitterY = Math.cos(now * 0.041 + i * 1.7 + s * 3.1) * 4;
-          ctx.lineTo(baseX + jitterX, baseY + jitterY);
+          ctx.strokeStyle = `rgba(255, 255, 100, ${branchIntensity * 0.7})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(arcX, arcY);
+          const segments = 4;
+          for (let s = 1; s <= segments; s++) {
+            const t = s / segments;
+            const baseX = arcX + (arcEndX - arcX) * t;
+            const baseY = arcY + (arcEndY - arcY) * t;
+            const jitterX = Math.sin(now * 0.037 + i * 1.3 + s * 2.7) * 4;
+            const jitterY = Math.cos(now * 0.041 + i * 1.7 + s * 3.1) * 4;
+            ctx.lineTo(baseX + jitterX, baseY + jitterY);
+          }
+          ctx.stroke();
         }
-        ctx.stroke();
       }
 
       // Inner energy fill
-      const shieldGrad = ctx.createRadialGradient(
-        shieldX + shieldWidth / 2,
-        shieldY + shieldHeight / 2,
-        0,
-        shieldX + shieldWidth / 2,
-        shieldY + shieldHeight / 2,
-        shieldWidth / 2,
+      const pulseBucket = Math.floor(pulseIntensity * 10);
+      const shieldGrad = getCachedRadialGradient(
+        ctx, `shieldEnergy_${pulseBucket}`,
+        0, 0, 0,
+        0, 0, shieldWidth / 2,
+        [
+          [0, `rgba(255, 255, 150, ${0.15 * pulseIntensity})`],
+          [1, "rgba(255, 220, 0, 0)"],
+        ],
       );
-      shieldGrad.addColorStop(0, `rgba(255, 255, 150, ${0.15 * pulseIntensity})`);
-      shieldGrad.addColorStop(1, "rgba(255, 220, 0, 0)");
+      ctx.save();
+      ctx.translate(shieldX + shieldWidth / 2, shieldY + shieldHeight / 2);
       ctx.fillStyle = shieldGrad;
+      const hw = shieldWidth / 2;
+      const hh = shieldHeight / 2;
       ctx.beginPath();
-      ctx.moveTo(shieldX + 8, shieldY);
-      ctx.lineTo(shieldX + shieldWidth - 8, shieldY);
-      ctx.arcTo(shieldX + shieldWidth, shieldY, shieldX + shieldWidth, shieldY + 8, 8);
-      ctx.lineTo(shieldX + shieldWidth, shieldY + shieldHeight - 8);
-      ctx.arcTo(shieldX + shieldWidth, shieldY + shieldHeight, shieldX + shieldWidth - 8, shieldY + shieldHeight, 8);
-      ctx.lineTo(shieldX + 8, shieldY + shieldHeight);
-      ctx.arcTo(shieldX, shieldY + shieldHeight, shieldX, shieldY + shieldHeight - 8, 8);
-      ctx.lineTo(shieldX, shieldY + 8);
-      ctx.arcTo(shieldX, shieldY, shieldX + 8, shieldY, 8);
+      ctx.moveTo(-hw + 8, -hh);
+      ctx.lineTo(hw - 8, -hh);
+      ctx.arcTo(hw, -hh, hw, -hh + 8, 8);
+      ctx.lineTo(hw, hh - 8);
+      ctx.arcTo(hw, hh, hw - 8, hh, 8);
+      ctx.lineTo(-hw + 8, hh);
+      ctx.arcTo(-hw, hh, -hw, hh - 8, 8);
+      ctx.lineTo(-hw, -hh + 8);
+      ctx.arcTo(-hw, -hh, -hw + 8, -hh, 8);
       ctx.closePath();
       ctx.fill();
+      ctx.restore();
       // shadowBlur removed
     }
 
@@ -1107,7 +1131,7 @@ export function renderFrame(
       const progress = elapsed / impact.duration;
       const fadeOut = 1 - progress;
       const rippleRadius = 15 + progress * 40;
-      const rippleCount = qualitySettings.level !== "low" ? 3 : 2;
+      const rippleCount = qualitySettings.level === 'low' ? 1 : (qualitySettings.level === 'medium' ? 2 : 3);
 
       for (let i = 0; i < rippleCount; i++) {
         const offset = i * 10;
@@ -1120,15 +1144,28 @@ export function renderFrame(
         ctx.stroke();
       }
 
-      const flashSize = 8 * (1 - progress * 0.5);
-      const flashGradient = ctx.createRadialGradient(impact.x, impact.y, 0, impact.x, impact.y, flashSize);
-      flashGradient.addColorStop(0, `rgba(255, 255, 255, ${fadeOut * 0.9})`);
-      flashGradient.addColorStop(0.5, `rgba(255, 220, 0, ${fadeOut * 0.6})`);
-      flashGradient.addColorStop(1, "rgba(255, 220, 0, 0)");
-      ctx.fillStyle = flashGradient;
-      ctx.beginPath();
-      ctx.arc(impact.x, impact.y, flashSize, 0, Math.PI * 2);
-      ctx.fill();
+      // Flash gradient — skip on low quality
+      if (qualitySettings.level !== "low") {
+        const flashSize = 8 * (1 - progress * 0.5);
+        const fadeBucket = Math.floor(fadeOut * 10);
+        const flashGradient = getCachedRadialGradient(
+          ctx, `shieldImpactFlash_${fadeBucket}`,
+          0, 0, 0,
+          0, 0, flashSize,
+          [
+            [0, `rgba(255, 255, 255, ${fadeOut * 0.9})`],
+            [0.5, `rgba(255, 220, 0, ${fadeOut * 0.6})`],
+            [1, "rgba(255, 220, 0, 0)"],
+          ],
+        );
+        ctx.save();
+        ctx.translate(impact.x, impact.y);
+        ctx.fillStyle = flashGradient;
+        ctx.beginPath();
+        ctx.arc(0, 0, flashSize, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
 
       if (qualitySettings.level !== "low") {
         for (let i = 0; i < 6; i++) {
@@ -1268,15 +1305,21 @@ export function renderFrame(
   // ═══ Reflect shield ═══
   if (paddle?.hasReflectShield) {
     ctx.save();
-    const rGrad = ctx.createLinearGradient(paddle.x, paddle.y - 18, paddle.x + paddle.width, paddle.y - 18);
-    rGrad.addColorStop(0, "rgba(192, 192, 192, 0.3)");
-    rGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.6)");
-    rGrad.addColorStop(1, "rgba(192, 192, 192, 0.3)");
+    const rGrad = getCachedLinearGradient(
+      ctx, `reflectShield_${Math.round(paddle.width)}`,
+      0, 0, paddle.width + 10, 0,
+      [
+        [0, "rgba(192, 192, 192, 0.3)"],
+        [0.5, "rgba(255, 255, 255, 0.6)"],
+        [1, "rgba(192, 192, 192, 0.3)"],
+      ],
+    );
+    ctx.translate(paddle.x - 5, paddle.y - 18);
     ctx.fillStyle = rGrad;
-    ctx.fillRect(paddle.x - 5, paddle.y - 18, paddle.width + 10, 12);
+    ctx.fillRect(0, 0, paddle.width + 10, 12);
     ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + Math.sin(now / 200) * 0.3})`;
     ctx.lineWidth = 1;
-    ctx.strokeRect(paddle.x - 5, paddle.y - 18, paddle.width + 10, 12);
+    ctx.strokeRect(0, 0, paddle.width + 10, 12);
     ctx.restore();
   }
 
@@ -1427,16 +1470,18 @@ export function renderFrame(
     ctx.moveTo(warning.x, startY);
     ctx.lineTo(warning.x, height);
     ctx.stroke();
-    // Crisp dashed line on top
-    ctx.strokeStyle = `rgba(255, 50, 50, ${warnAlpha})`;
-    ctx.lineWidth = 3;
-    ctx.setLineDash([12, 8]);
-    ctx.lineDashOffset = -now / 30;
-    ctx.beginPath();
-    ctx.moveTo(warning.x, startY);
-    ctx.lineTo(warning.x, height);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    // Crisp dashed line on top — only if animated dashes enabled
+    if (qualitySettings.animatedDashesEnabled) {
+      ctx.strokeStyle = `rgba(255, 50, 50, ${warnAlpha})`;
+      ctx.lineWidth = 3;
+      ctx.setLineDash([12, 8]);
+      ctx.lineDashOffset = -now / 30;
+      ctx.beginPath();
+      ctx.moveTo(warning.x, startY);
+      ctx.lineTo(warning.x, height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
 
     if (elapsed > 300) {
       ctx.fillStyle = `rgba(255, 50, 50, ${warnAlpha * 0.8})`;
@@ -1455,7 +1500,7 @@ export function renderFrame(
     const alpha = 0.3 + pulse * 0.7;
 
     ctx.save();
-    const ringCount = 3;
+    const ringCount = qualitySettings.superWarningEffects ? 3 : 1;
     for (let i = 0; i < ringCount; i++) {
       const ringRadius = 20 + progress * 80 + i * 15;
       const ringAlpha = alpha * (1 - i * 0.25);
@@ -1466,27 +1511,41 @@ export function renderFrame(
       ctx.stroke();
     }
 
-    ctx.strokeStyle = `rgba(255, 200, 50, ${alpha * 0.6})`;
-    ctx.lineWidth = 2;
-    ctx.setLineDash([4, 8]);
-    ctx.lineDashOffset = -now / 20;
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      ctx.beginPath();
-      ctx.moveTo(warning.x, warning.y);
-      ctx.lineTo(warning.x + Math.cos(angle) * 100, warning.y + Math.sin(angle) * 100);
-      ctx.stroke();
+    // Animated spokes — only if superWarningEffects enabled
+    if (qualitySettings.superWarningEffects) {
+      ctx.strokeStyle = `rgba(255, 200, 50, ${alpha * 0.6})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 8]);
+      ctx.lineDashOffset = -now / 20;
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(warning.x, warning.y);
+        ctx.lineTo(warning.x + Math.cos(angle) * 100, warning.y + Math.sin(angle) * 100);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
     }
-    ctx.setLineDash([]);
 
-    const cGrad = ctx.createRadialGradient(warning.x, warning.y, 0, warning.x, warning.y, 30);
-    cGrad.addColorStop(0, `rgba(255, 200, 100, ${alpha * 0.8})`);
-    cGrad.addColorStop(0.5, `rgba(255, 100, 0, ${alpha * 0.4})`);
-    cGrad.addColorStop(1, "rgba(255, 50, 0, 0)");
+    // Center glow (cached)
+    const alphaBucket = Math.floor(alpha * 10);
+    const cGrad = getCachedRadialGradient(
+      ctx, `superWarningGlow_${alphaBucket}`,
+      0, 0, 0,
+      0, 0, 30,
+      [
+        [0, `rgba(255, 200, 100, ${alpha * 0.8})`],
+        [0.5, `rgba(255, 100, 0, ${alpha * 0.4})`],
+        [1, "rgba(255, 50, 0, 0)"],
+      ],
+    );
+    ctx.save();
+    ctx.translate(warning.x, warning.y);
     ctx.fillStyle = cGrad;
     ctx.beginPath();
-    ctx.arc(warning.x, warning.y, 30, 0, Math.PI * 2);
+    ctx.arc(0, 0, 30, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
 
     if (progress > 0.2) {
       ctx.fillStyle = `rgba(255, 200, 50, ${alpha})`;

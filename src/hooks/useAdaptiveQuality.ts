@@ -13,6 +13,12 @@ export interface QualitySettings {
   explosionParticles: number;
   backgroundEffects: boolean;
   autoAdjust: boolean;
+  // Granular effect toggles (Phase 1)
+  chaosGlowEnabled: boolean;
+  animatedDashesEnabled: boolean;
+  shieldArcsEnabled: boolean;
+  superWarningEffects: boolean;
+  ambientFlickerEnabled: boolean;
 }
 
 interface AdaptiveQualityOptions {
@@ -21,39 +27,71 @@ interface AdaptiveQualityOptions {
   lowFpsThreshold?: number;
   mediumFpsThreshold?: number;
   highFpsThreshold?: number;
-  sampleWindow?: number; // seconds to average FPS
-  enableLogging?: boolean; // Toggle for FPS performance logs
+  sampleWindow?: number;
+  enableLogging?: boolean;
 }
 
-// Reduced particle counts for better mobile performance
 const QUALITY_PRESETS: Record<QualityLevel, Omit<QualitySettings, 'level' | 'autoAdjust'>> = {
   low: {
-    particleMultiplier: 0.25,
+    particleMultiplier: 0.15,
     shadowsEnabled: false,
     glowEnabled: false,
-    screenShakeMultiplier: 0.5,
-    explosionParticles: 5, // Reduced from 8
-    backgroundEffects: false
+    screenShakeMultiplier: 0.25,
+    explosionParticles: 3,
+    backgroundEffects: false,
+    chaosGlowEnabled: false,
+    animatedDashesEnabled: false,
+    shieldArcsEnabled: false,
+    superWarningEffects: false,
+    ambientFlickerEnabled: false,
   },
   medium: {
-    particleMultiplier: 0.5,
+    particleMultiplier: 0.4,
     shadowsEnabled: true,
     glowEnabled: false,
     screenShakeMultiplier: 0.75,
-    explosionParticles: 10, // Reduced from 15
-    backgroundEffects: true
+    explosionParticles: 8,
+    backgroundEffects: true,
+    chaosGlowEnabled: false,
+    animatedDashesEnabled: true,
+    shieldArcsEnabled: false,
+    superWarningEffects: false,
+    ambientFlickerEnabled: false,
   },
   high: {
     particleMultiplier: 1.0,
     shadowsEnabled: true,
     glowEnabled: true,
     screenShakeMultiplier: 1.0,
-    explosionParticles: 15, // Reduced from 20
-    backgroundEffects: true
+    explosionParticles: 15,
+    backgroundEffects: true,
+    chaosGlowEnabled: true,
+    animatedDashesEnabled: true,
+    shieldArcsEnabled: true,
+    superWarningEffects: true,
+    ambientFlickerEnabled: true,
   }
 };
 
 export { QUALITY_PRESETS };
+
+// ─── GPU Hardware Detection ──────────────────────────────────
+
+function detectIntegratedGPU(): boolean {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl') as WebGLRenderingContext | null;
+    if (!gl) return false;
+    const glCtx = gl as WebGLRenderingContext;
+    const debugInfo = glCtx.getExtension('WEBGL_debug_renderer_info');
+    if (!debugInfo) return false;
+    const renderer = glCtx.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL).toLowerCase();
+    const integratedIndicators = ['intel', 'uhd', 'iris', 'arc', 'integrated', 'mali', 'adreno'];
+    return integratedIndicators.some(indicator => renderer.includes(indicator));
+  } catch {
+    return false;
+  }
+}
 
 interface PerformanceLogEntry {
   timestamp: number;
@@ -72,30 +110,36 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
     enableLogging = true
   } = options;
 
-  const [quality, setQuality] = useState<QualityLevel>(initialQuality);
+  // GPU detection: force medium on integrated GPUs
+  const hasIntegratedGPU = useRef(detectIntegratedGPU()).current;
+  const forcedInitial = (hasIntegratedGPU && initialQuality === 'high') ? 'medium' : initialQuality;
+
+  const [quality, setQuality] = useState<QualityLevel>(forcedInitial);
   const [autoAdjustEnabled, setAutoAdjustEnabled] = useState(autoAdjust);
   const [lockedToLow, setLockedToLow] = useState(false);
+  const gpuToastShown = useRef(false);
   
   const fpsHistoryRef = useRef<number[]>([]);
   const lastAdjustmentTimeRef = useRef<number>(0);
-  const adjustmentCooldownMs = 2000; // 2 seconds between adjustments
+  const adjustmentCooldownMs = 2000;
   const notificationCooldownRef = useRef<number>(0);
   const performanceLogRef = useRef<PerformanceLogEntry[]>([]);
   const lastPerformanceLogMs = useRef<number>(0);
-  const lowQualityDropCountRef = useRef<number>(0); // Track how many times we dropped to low
-  const qualityStartTimeRef = useRef<Record<QualityLevel, number>>({
-    low: 0,
-    medium: 0,
-    high: 0
-  });
+  const lowQualityDropCountRef = useRef<number>(0);
   const qualityStatsRef = useRef<Record<QualityLevel, { min: number; max: number; samples: number; sum: number }>>({
     low: { min: Infinity, max: 0, samples: 0, sum: 0 },
     medium: { min: Infinity, max: 0, samples: 0, sum: 0 },
     high: { min: Infinity, max: 0, samples: 0, sum: 0 }
   });
-  const warningThresholdRef = useRef<number>(0);
 
-  // Get current quality settings
+  // Show GPU detection toast once
+  useEffect(() => {
+    if (hasIntegratedGPU && !gpuToastShown.current) {
+      gpuToastShown.current = true;
+      toast.info('Integrated GPU detected — quality set to medium', { duration: 4000 });
+    }
+  }, [hasIntegratedGPU]);
+
   const getQualitySettings = useCallback((): QualitySettings => {
     return {
       level: quality,
@@ -104,72 +148,54 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
     };
   }, [quality, autoAdjustEnabled]);
 
-  // Update FPS sample
   const updateFps = useCallback((fps: number) => {
     const now = performance.now();
     
-    // Update quality stats
     const stats = qualityStatsRef.current[quality];
     stats.min = Math.min(stats.min, fps);
     stats.max = Math.max(stats.max, fps);
     stats.samples++;
     stats.sum += fps;
     
-    // Performance logging every 5 seconds (reduced for mobile performance)
     if (now - lastPerformanceLogMs.current >= 5000) {
       performanceLogRef.current.push({ timestamp: now, fps, quality });
-      
-      // Keep only last 60 seconds of logs
       if (performanceLogRef.current.length > 12) {
         performanceLogRef.current.shift();
       }
-      
-      
       lastPerformanceLogMs.current = now;
     }
 
     if (!autoAdjustEnabled) return;
 
     fpsHistoryRef.current.push(fps);
-
-    // Keep only recent samples (based on sample window)
-    const maxSamples = sampleWindow * 10; // Assuming 10 samples per second
+    const maxSamples = sampleWindow * 10;
     if (fpsHistoryRef.current.length > maxSamples) {
       fpsHistoryRef.current.shift();
     }
 
-    // Only adjust if enough samples and cooldown has passed
     if (fpsHistoryRef.current.length < 30 || now - lastAdjustmentTimeRef.current < adjustmentCooldownMs) {
       return;
     }
 
-    // Calculate average FPS
     const avgFps = fpsHistoryRef.current.reduce((sum, f) => sum + f, 0) / fpsHistoryRef.current.length;
 
-    // Determine appropriate quality level
     let targetQuality: QualityLevel = quality;
 
     if (avgFps < lowFpsThreshold) {
       targetQuality = 'low';
     } else if (avgFps < mediumFpsThreshold) {
-      // If locked to low, don't upgrade to medium
       targetQuality = lockedToLow ? 'low' : 'medium';
     } else if (avgFps >= highFpsThreshold) {
-      // If locked to low, don't upgrade; cap to medium when high quality is disabled
       targetQuality = lockedToLow ? 'low' : (ENABLE_HIGH_QUALITY ? 'high' : 'medium');
     }
 
-    // Only adjust if quality level changes
     if (targetQuality !== quality) {
       const isDowngrade = 
         (quality === 'high' && (targetQuality === 'medium' || targetQuality === 'low')) ||
         (quality === 'medium' && targetQuality === 'low');
 
-      // Track drops to low quality
       if (targetQuality === 'low' && isDowngrade) {
         lowQualityDropCountRef.current++;
-        
-        // Lock to low if we've dropped twice
         if (lowQualityDropCountRef.current >= 2 && !lockedToLow) {
           setLockedToLow(true);
           toast.info('Quality locked to LOW for this game session', { duration: 4000 });
@@ -178,12 +204,9 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
 
       setQuality(targetQuality);
       lastAdjustmentTimeRef.current = now;
-      fpsHistoryRef.current = []; // Clear history after adjustment
-      
-      // Reset stats for new quality level
+      fpsHistoryRef.current = [];
       qualityStatsRef.current[targetQuality] = { min: Infinity, max: 0, samples: 0, sum: 0 };
 
-      // Show notification (with cooldown to avoid spam)
       if (now - notificationCooldownRef.current > 10000) {
         const message = isDowngrade
           ? `Quality adjusted to ${targetQuality} for better performance`
@@ -194,7 +217,6 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
     }
   }, [quality, autoAdjustEnabled, lowFpsThreshold, mediumFpsThreshold, highFpsThreshold, sampleWindow, lockedToLow]);
 
-  // Manual quality change
   const setManualQuality = useCallback((newQuality: QualityLevel) => {
     const capped = (!ENABLE_HIGH_QUALITY && newQuality === 'high') ? 'medium' : newQuality;
     setQuality(capped);
@@ -203,7 +225,6 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
     toast.success(`Quality set to ${capped}`);
   }, []);
 
-  // Toggle auto-adjust
   const toggleAutoAdjust = useCallback(() => {
     setAutoAdjustEnabled(prev => {
       const newValue = !prev;
@@ -212,7 +233,6 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
     });
   }, []);
 
-  // Reset quality lockout for new game session
   const resetQualityLockout = useCallback(() => {
     lowQualityDropCountRef.current = 0;
     setLockedToLow(false);
@@ -220,7 +240,6 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
     fpsHistoryRef.current = [];
   }, [initialQuality]);
 
-  // Get performance log for analysis
   const getPerformanceLog = useCallback(() => {
     return {
       log: performanceLogRef.current,
@@ -238,6 +257,7 @@ export const useAdaptiveQuality = (options: AdaptiveQualityOptions = {}) => {
     toggleAutoAdjust,
     getPerformanceLog,
     resetQualityLockout,
-    lockedToLow
+    lockedToLow,
+    isIntegratedGPU: hasIntegratedGPU,
   };
 };
