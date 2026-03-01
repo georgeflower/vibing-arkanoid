@@ -40,9 +40,11 @@ export function startRenderLoop(
     // alpha: false eliminates per-pixel alpha compositing when painting the
     // canvas to the page — a significant GPU bandwidth win on integrated GPUs.
     alpha: false,
-    // desynchronized: true lets the compositor present frames without waiting
-    // for the page event loop, reducing latency on integrated graphics.
-    desynchronized: true,
+    // NOTE: desynchronized: true was removed because it causes canvas content
+    // to disappear on integrated GPUs (e.g. HP laptops with Intel/AMD iGPU).
+    // The async compositor path it enables is not reliably supported by all
+    // 2D canvas implementations and leads to a blank gameplay area after a
+    // brief blink on affected hardware.
   });
   if (!ctx) {
     console.error("[RenderLoop] Failed to get 2D context");
