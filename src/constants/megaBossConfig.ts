@@ -33,7 +33,7 @@ export const MEGA_BOSS_CONFIG = {
   dangerBallCount: 5, // Must catch 5 per phase
   dangerBallIntervalMin: 1500,
   dangerBallIntervalMax: 3500,
-  dangerBallSpeed: 3.0,
+  dangerBallSpeed: 180, // px/s (3.0 px/frame × 60 fps)
   dangerBallSize: 14,
   
   // Swarming enemies in phase 3
